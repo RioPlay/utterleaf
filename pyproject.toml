@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "utterleaf"
+version = "0.2.2"
+description = "Hold a hotkey, speak, paste clean text. Local. Windows, macOS, and Linux."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "RioPlay" }]
+dependencies = [
+    "faster-whisper>=1.1.0",
+    "numpy>=1.26",
+    "pillow>=10.0.0",
+    "pynput>=1.7.7",
+    "pyperclip>=1.9.0",
+    "pystray>=0.19.5",
+    "sounddevice>=0.5.0",
+    "tomli>=2.0.0; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+npu = ["openvino>=2025.2", "openvino-genai>=2025.2"]
+cuda = [
+    "nvidia-cublas-cu12>=12.4",
+    "nvidia-cuda-runtime-cu12>=12.4",
+    "nvidia-cudnn-cu12>=9.0",
+]
+
+[project.scripts]
+utterleaf = "utterleaf.__main__:main"
+
+[project.gui-scripts]
+utterleaf-tray = "utterleaf.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["utterleaf*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

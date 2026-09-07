@@ -1,0 +1,24 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+artifacts/
+.pytest_cache/
+.mypy_cache/
+.env
+*.wav
+*.log
+.DS_Store
+Thumbs.db
+
+# Local development workflows and runtime data
+.grok/
+models/
+logs/
+/config/
+/config.toml
+/dictionary.txt
+.env.*
+!.env.example
