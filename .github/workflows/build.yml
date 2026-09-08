@@ -149,7 +149,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [windows, macos-build, linux-build]
+    needs: [windows, macos-build, linux-build, macos-tests, linux-tests]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -165,6 +165,7 @@ jobs:
       - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           gh release create "$GITHUB_REF_NAME" dist/* \
             --title "Utterleaf $GITHUB_REF_NAME" \
