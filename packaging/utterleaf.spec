@@ -70,6 +70,9 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
+# Windows exe icon; other platforms ignore it here (macOS wraps an .app later).
+app_icon = str(project_root / "packaging" / "utterleaf.ico") if sys.platform == "win32" else None
+
 exes = [
     EXE(
         pyz,
@@ -78,11 +81,13 @@ exes = [
         name="utterleaf",
         console=sys.platform != "win32",
         exclude_binaries=True,
+        icon=app_icon,
     )
 ]
 if sys.platform == "win32":
     exes.append(
-        EXE(pyz, a.scripts, [], name="utterleaf-cli", console=True, exclude_binaries=True)
+        EXE(pyz, a.scripts, [], name="utterleaf-cli", console=True, exclude_binaries=True,
+            icon=app_icon)
     )
     # Only the runw bootloader exists for a windowless exe; macOS/Linux bundle
     # wrappers ship later from the .app / AppImage specs.
@@ -94,6 +99,7 @@ if sys.platform == "win32":
             name="utterleafw",
             console=False,
             exclude_binaries=True,
+            icon=app_icon,
         )
     )
 

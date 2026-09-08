@@ -47,7 +47,7 @@ class SettingsWindow:
         root.rowconfigure(0, weight=1)
         try:
             from PIL import ImageTk
-            self.icon = ImageTk.PhotoImage(theme.mic_image(), master=root)
+            self.icon = ImageTk.PhotoImage(theme.leaf_image(), master=root)
             root.iconphoto(True, self.icon)
         except Exception:
             pass

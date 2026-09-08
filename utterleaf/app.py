@@ -27,7 +27,7 @@ from utterleaf.hardware import describe, ov_model_id, pick, probe
 from utterleaf.models import ct2_dir, ct2_ready, ov_dir, ov_ready, status_lines
 from utterleaf.host import doctor_host_lines, login_label
 from utterleaf.settings import launch_settings
-from utterleaf.theme import mic_image
+from utterleaf.theme import leaf_image
 from utterleaf.startup import enabled as startup_enabled, set_enabled as set_startup
 from utterleaf.transcribe import (
     clear_final,
@@ -480,7 +480,7 @@ class Utterleaf:
         if color == "idle" and self._status == LOADING:
             color = "busy"
         if self.icon is not None:
-            self.icon.icon = mic_image(color)
+            self.icon.icon = leaf_image(color)
             self.icon.title = tray_title(self._status)
         if badge is not None:
             self.indicator.set(badge, caption)
@@ -713,7 +713,7 @@ class Utterleaf:
         )
         color = "busy" if self._status == LOADING else "idle"
         self.indicator.start()
-        self.icon = Icon("Utterleaf", mic_image(color), tray_title(self._status), menu)
+        self.icon = Icon("Utterleaf", leaf_image(color), tray_title(self._status), menu)
         if first_run:
             launch_settings()
         def setup(icon):
