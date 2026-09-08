@@ -37,11 +37,15 @@ jobs:
         run: .\dist\Utterleaf\utterleaf-cli.exe --doctor
         continue-on-error: true
       - name: Package
-        run: Compress-Archive -Path dist\Utterleaf -DestinationPath dist\Utterleaf-windows-x64-cpu.zip
+        run: |
+          Compress-Archive -Path dist\Utterleaf -DestinationPath dist\Utterleaf-windows-x64-cpu.zip
+          Copy-Item dist\Utterleaf\SHA256SUMS.txt dist\SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: Utterleaf-windows-x64-cpu
-          path: dist/Utterleaf-windows-x64-cpu.zip
+          path: |
+            dist/Utterleaf-windows-x64-cpu.zip
+            dist/SHA256SUMS.txt
   linux-tests:
     runs-on: ubuntu-24.04
     defaults:
@@ -80,10 +84,88 @@ jobs:
           $pythonPrefix = brew --prefix python@3.14
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & "$pythonPrefix/bin/python3.14" -m venv .venv
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install
         run: ./.venv/bin/python -m pip install -e ".[dev]"
       - name: Test
         run: ./.venv/bin/python -m pytest -q -ra
       - name: CLI smoke test
         run: ./.venv/bin/python -m utterleaf --help
+
+  macos-build:
+    runs-on: macos-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python with matching Tk and PortAudio
+        run: |
+          brew install python@3.14 python-tk@3.14 portaudio
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $pythonPrefix = brew --prefix python@3.14
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & "$pythonPrefix/bin/python3.14" -m venv .venv
+      - name: Install
+        run: ./.venv/bin/python -m pip install -e . pyinstaller
+      - name: Build
+        run: ./.venv/bin/python -m PyInstaller --noconfirm --clean packaging/utterleaf.spec
+      - name: CLI smoke test
+        run: ./dist/Utterleaf/utterleaf --help
+      - name: Package
+        run: tar -czf dist/Utterleaf-macos-arm64.tar.gz -C dist Utterleaf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Utterleaf-macos-arm64
+          path: dist/Utterleaf-macos-arm64.tar.gz
+
+  linux-build:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system Python, Tk and audio libraries
+        run: |
+          sudo apt-get update
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          sudo apt-get install -y python3-venv python3-tk libportaudio2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install
+        run: |
+          /usr/bin/python3 -m venv .venv
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./.venv/bin/python -m pip install -e . pyinstaller
+      - name: Build
+        run: ./.venv/bin/python -m PyInstaller --noconfirm --clean packaging/utterleaf.spec
+      - name: CLI smoke test
+        run: ./dist/Utterleaf/utterleaf --help
+      - name: Package
+        run: tar -czf dist/Utterleaf-linux-x64.tar.gz -C dist Utterleaf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Utterleaf-linux-x64
+          path: dist/Utterleaf-linux-x64.tar.gz
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, macos-build, linux-build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist
+      - name: Checksum the archives
+        run: |
+          cd dist
+          for f in *.zip *.tar.gz; do sha256sum "$f" > "$f.sha256"; done
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "Utterleaf $GITHUB_REF_NAME" \
+            --notes "Windows is the supported binary target. The macOS and Linux archives are unsigned experimental onedir builds; models download at first run into the user data folder and are not included here. SHA256SUMS.txt covers the Windows executables, the .sha256 files cover each archive."

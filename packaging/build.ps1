@@ -34,3 +34,15 @@ Write-Host 'SHA256SUMS.txt written.'
 # regenerated every build).
 & .\.venv\Scripts\python 'packaging\collect_notices.py'
 if ($LASTEXITCODE -ne 0) { exit 1 }
+
+# Distribution policy: no model weights ship in the archive. Weights download
+# at first run into the user's app-data models folder, never beside the exes.
+$weights = Get-ChildItem $exeDir -Recurse -File | Where-Object {
+    $name = $_.Name.ToLowerInvariant()
+    $name -like 'model.bin' -or $name -like '*.safetensors' -or $name -like '*.gguf'
+}
+if ($weights) {
+    Write-Error "Model weights must not ship in dist: $($weights.FullName -join ', ')"
+    exit 1
+}
+Write-Host 'Weight-free distribution check passed.'
