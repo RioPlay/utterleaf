@@ -9,6 +9,10 @@ import socket
 import sys
 import threading
 import time
+from utterleaf.host import is_wayland, pin_tray_backend
+
+# Linux tray backend must be selected before pystray imports (see host.pin_tray_backend).
+pin_tray_backend()
 from pystray import Icon, Menu, MenuItem
 
 from utterleaf.beep import beep
@@ -21,7 +25,7 @@ from utterleaf.inject import foreground_app, foreground_id, paste, undo_last
 from utterleaf.polish import polish, stitch_to_previous
 from utterleaf.hardware import describe, ov_model_id, pick, probe
 from utterleaf.models import ct2_dir, ct2_ready, ov_dir, ov_ready, status_lines
-from utterleaf.host import doctor_host_lines, login_label, is_wayland
+from utterleaf.host import doctor_host_lines, login_label
 from utterleaf.settings import launch_settings
 from utterleaf.theme import mic_image
 from utterleaf.startup import enabled as startup_enabled, set_enabled as set_startup

@@ -23,6 +23,8 @@ def command(exe, env, *args):
 
 
 def run(release):
+    release = Path(release)
+    assert (release / "_internal" / "README.md").is_file(), "readme missing from the release"
     with tempfile.TemporaryDirectory(prefix="utterleaf-frozen-") as folder:
         root = Path(folder)
         shutil.copytree(release, root / "Utterleaf")
@@ -44,7 +46,15 @@ def run(release):
                 'allow_network = false\nbeep = false\nindicator = false\n', encoding="utf-8")
 
             assert command(exe, env, "--polish", "um we should ship it") == "We should ship it."
-            assert "hotkey parse: ok" in command(exe, env, "--doctor", "--offline")
+            doctor = command(exe, env, "--doctor", "--offline")
+            assert "hotkey parse: ok" in doctor
+            tray_line = next(
+                (line for line in doctor.splitlines() if line.startswith("tray backend: ")), ""
+            )
+            assert tray_line, doctor
+            expected = os.environ.get("UTTERLEAF_EXPECT_TRAY_BACKEND")
+            if expected:
+                assert tray_line == f"tray backend: {expected}", tray_line
             with tempfile.TemporaryFile(mode="w+") as output:
                 settings = subprocess.Popen([str(exe), "--settings"], env=env,
                                             cwd=exe.parent, stdout=output, stderr=output)

@@ -108,6 +108,37 @@ def test_missing_cublas_marks_cuda_not_ready() -> None:
     hardware._cuda_runtime = None
 
 
+def test_linux_cuda_preload_loads_sonames_from_discovered_dirs(monkeypatch, tmp_path):
+    import ctypes
+    from utterleaf import hardware
+
+    (tmp_path / "libcublas.so.12").write_bytes(b"")
+    (tmp_path / "libcudnn.so.9").write_bytes(b"")
+    (tmp_path / "libbroken.so.9").write_bytes(b"")
+    calls = []
+
+    def fake_cdll(path):
+        calls.append(path)
+        if "broken" in path:
+            raise OSError("unresolved dependency")
+
+    monkeypatch.setattr(ctypes, "CDLL", fake_cdll)
+    monkeypatch.setattr(hardware, "cuda_library_dirs", lambda: [tmp_path])
+    assert hardware._preload_linux_cuda() is True
+    assert str(tmp_path / "libcublas.so.12") in calls
+    assert str(tmp_path / "libcudnn.so.9") in calls
+    assert str(tmp_path / "libbroken.so.9") in calls
+
+
+def test_linux_cuda_preload_reports_false_without_libs(monkeypatch):
+    import ctypes
+    from utterleaf import hardware
+
+    monkeypatch.setattr(ctypes, "CDLL", lambda _path: None)
+    monkeypatch.setattr(hardware, "cuda_library_dirs", lambda: [])
+    assert hardware._preload_linux_cuda() is False
+
+
 def test_cuda_without_runtime_is_skipped() -> None:
     accels = [
         Accelerator("gpu", "CUDA (1 device), cublas not found", "ctranslate2", False),

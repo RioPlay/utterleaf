@@ -136,10 +136,20 @@ def _toolkit_bin_dirs() -> list[Path]:
     return dirs
 
 
+def _linux_toolkit_dirs() -> list[Path]:
+    if not sys.platform.startswith("linux"):
+        return []
+    dirs: list[Path] = []
+    for entry in sorted(Path("/usr/local").glob("cuda*/lib64")):
+        if entry.is_dir():
+            dirs.append(entry)
+    return dirs
+
+
 def cuda_library_dirs() -> list[Path]:
     found: list[Path] = []
     seen: set[str] = set()
-    for item in _nvidia_pip_lib_dirs() + _toolkit_bin_dirs():
+    for item in _nvidia_pip_lib_dirs() + _toolkit_bin_dirs() + _linux_toolkit_dirs():
         key = str(item.resolve()) if item.exists() else str(item)
         if key not in seen:
             seen.add(key)
@@ -168,6 +178,26 @@ def enable_cuda_libs() -> list[Path]:
     return dirs
 
 
+def _preload_linux_cuda() -> bool:
+    """Linux dlopen ignores PATH, so the directories found above are useless
+    until the sonames are resident. Load every NVIDIA .so by absolute path;
+    a resident library satisfies CTranslate2's later dlopen by soname. The
+    wheels' $ORIGIN rpath resolves each lib's own dependencies."""
+    import ctypes
+
+    loaded_cublas = False
+    for directory in cuda_library_dirs():
+        for path in sorted(directory.glob("lib*.so*")):
+            try:
+                ctypes.CDLL(str(path))
+            except OSError:
+                continue
+            if path.name.startswith("libcublas.so"):
+                loaded_cublas = True
+                log.info("Loaded NVIDIA %s", path.name)
+    return loaded_cublas
+
+
 def _cublas_loadable() -> bool:
     enable_cuda_libs()
     import ctypes
@@ -185,7 +215,9 @@ def _cublas_loadable() -> bool:
             return True
         except OSError:
             continue
-    return False
+    if sys.platform == "win32":
+        return False
+    return _preload_linux_cuda()
 
 
 def cuda_runtime_ok() -> bool:

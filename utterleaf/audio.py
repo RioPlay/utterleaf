@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 import threading
 from collections import deque
 
@@ -86,6 +87,9 @@ class Recorder:
         self.input_rate = float(info["default_samplerate"])
         log.info("Microphone: %s (%g Hz capture, %d Hz transcription)",
                  self.device_name, self.input_rate, SAMPLE_RATE)
+        # ALSA-to-Pulse bridging overflows the small default buffer right at
+        # open; dictation never needs low capture latency on Linux.
+        extra = {"latency": "high"} if sys.platform.startswith("linux") else {}
         stream = sd.InputStream(
             device=chosen,
             samplerate=self.input_rate,
@@ -93,6 +97,7 @@ class Recorder:
             dtype="float32",
             blocksize=0,
             callback=self._on_audio,
+            **extra,
         )
         try:
             stream.start()

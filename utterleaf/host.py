@@ -28,6 +28,43 @@ def ui_font() -> str:
     return "sans-serif"
 
 
+def pin_tray_backend() -> None:
+    """Choose the Linux tray backend before pystray imports.
+
+    pystray's own backend chain treats only ImportError as retryable, but a
+    missing GI typelib makes gi.require_version raise ValueError, which would
+    kill the app during `from pystray import ...`. Probe the GI stack here
+    with broad handling and pin the first backend pystray would have picked.
+    With no GI at all, leave pystray's chain untouched — every gi-based import
+    then fails with ImportError and it lands on xorg on its own.
+    """
+    import importlib
+
+    if sys.platform in ("win32", "darwin") or os.environ.get("PYSTRAY_BACKEND"):
+        return
+    try:
+        import gi
+    except Exception:
+        return
+    for name in ("AppIndicator3", "AyatanaAppIndicator3"):
+        try:
+            gi.require_version("Gtk", "3.0")
+            gi.require_version(name, "0.1")
+            importlib.import_module("gi.repository.Gtk")
+            importlib.import_module(f"gi.repository.{name}")
+        except Exception:
+            continue
+        os.environ["PYSTRAY_BACKEND"] = "appindicator"
+        return
+    try:
+        gi.require_version("Gtk", "3.0")
+        importlib.import_module("gi.repository.Gtk")
+    except Exception:
+        os.environ["PYSTRAY_BACKEND"] = "xorg"
+        return
+    os.environ["PYSTRAY_BACKEND"] = "gtk"
+
+
 def session_type() -> str:
     if sys.platform.startswith("linux"):
         session = (os.environ.get("XDG_SESSION_TYPE") or "").lower()
