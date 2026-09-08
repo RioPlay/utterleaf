@@ -1,0 +1,72 @@
+name: Publish verified release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag
+        required: true
+        type: string
+      build_run:
+        description: Build run ID containing successful native builds and tests
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ inputs.tag }}
+      BUILD_RUN: ${{ inputs.build_run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify tag, source revision, and all platform checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9][A-Za-z0-9.+-]*$ ]]
+          [[ "$BUILD_RUN" =~ ^[0-9]+$ ]]
+          tag_sha=$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")
+          run_sha=$(gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN" --jq .head_sha)
+          test "$tag_sha" = "$run_sha"
+          gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN/jobs?per_page=100" > jobs.json
+          for job in windows macos-build linux-build macos-tests linux-tests; do
+            jq -e --arg job "$job" '.jobs | any(.name == $job and .conclusion == "success")' jobs.json
+          done
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.build_run }}
+          pattern: Utterleaf-*
+          merge-multiple: true
+          path: release-assets
+      - name: Verify archive contents and generate download checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets
+          unzip -Z1 Utterleaf-windows-x64-cpu.zip > windows-files.txt
+          grep -Fx 'Utterleaf/utterleaf.exe' windows-files.txt
+          tar -tzf Utterleaf-macos-arm64.tar.gz > macos-files.txt
+          grep -Fx 'Utterleaf/utterleaf' macos-files.txt
+          tar -tzf Utterleaf-linux-x64.tar.gz > linux-files.txt
+          grep -Fx 'Utterleaf/utterleaf' linux-files.txt
+          sha256sum Utterleaf-windows-x64-cpu.zip Utterleaf-macos-arm64.tar.gz Utterleaf-linux-x64.tar.gz > SHA256SUMS.txt
+      - name: Publish compiled binaries
+        shell: bash
+        run: |
+          gh release create "$RELEASE_TAG" --verify-tag \
+            release-assets/Utterleaf-windows-x64-cpu.zip \
+            release-assets/Utterleaf-macos-arm64.tar.gz \
+            release-assets/Utterleaf-linux-x64.tar.gz \
+            release-assets/SHA256SUMS.txt \
+            --title "Utterleaf $RELEASE_TAG" \
+            --notes-file packaging/release-notes.md
