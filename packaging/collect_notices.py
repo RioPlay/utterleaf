@@ -16,8 +16,21 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SITE = ROOT / ".venv" / "Lib" / "site-packages"
 DIST = ROOT / "dist" / "Utterleaf"
+
+
+def site_packages() -> Path | None:
+    """The project venv's site-packages, Windows or POSIX layout."""
+    windows = ROOT / ".venv" / "Lib" / "site-packages"
+    if windows.is_dir():
+        return windows
+    candidates = sorted((ROOT / ".venv" / "lib").glob("python*/site-packages"))
+    if candidates:
+        return candidates[-1]
+    return None
+
+
+SITE = site_packages()
 
 # dist-info names for everything the frozen app ships. The notice column adds
 # context the license files themselves don't have (LGPL source offers, bundles).
@@ -92,10 +105,17 @@ def metadata(dist_info: Path) -> email.message.Message:
         return email.message_from_file(fh)
 
 
-def find_dist_info(name: str) -> Path:
+def find_dist_info(name: str) -> Path | None:
+    if SITE is None:
+        return None
     matches = sorted(SITE.glob(f"{name}-*.dist-info"))
     if not matches:
-        raise SystemExit(f"collect_notices: {name} not found in {SITE} — update PACKAGES")
+        if sys.platform == "win32":
+            raise SystemExit(f"collect_notices: {name} not found in {SITE} — update PACKAGES")
+        # macOS/Linux dependency closures legitimately omit Windows-only or
+        # conditional packages (pywin32_ctypes, colorama, ...); skip them.
+        print(f"collect_notices: {name} not bundled on {sys.platform}; skipping its notice")
+        return None
     return matches[-1]
 
 
@@ -142,6 +162,8 @@ def license_expression(meta: email.message.Message) -> str:
 
 
 def main() -> int:
+    if SITE is None:
+        raise SystemExit("collect_notices: could not find .venv site-packages — run from the repo root")
     if not DIST.exists():
         raise SystemExit(f"collect_notices: {DIST} does not exist — run the build first")
     shutil.copy2(ROOT / "LICENSE", DIST / "LICENSE")
@@ -158,6 +180,8 @@ def main() -> int:
             notes[name] = "NVIDIA proprietary; redistributable with the application per its EULA."
     for name in names:
         dist_info = find_dist_info(name)
+        if dist_info is None:
+            continue
         meta = metadata(dist_info)
         expression = license_expression(meta)
         copy_license_files(dist_info, meta, licenses_dir / name)

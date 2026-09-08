@@ -30,7 +30,7 @@ On **macOS**, grant Microphone and Accessibility when asked. Without Accessibili
 
 ## Install
 
-The public binary release targets Windows 11 x64. You need a microphone and internet for the first model download; an NVIDIA GPU is optional. Extract the entire release zip, then open `Utterleaf\utterleaf.exe`. Keep the `_internal` folder beside the executables. Python is not needed for the binary release.
+Binary releases are built for Windows 11 x64, macOS (Apple Silicon), and Linux x64 (Ubuntu 24.04 or compatible). You need a microphone and internet for the first model download; an NVIDIA GPU is optional. Extract the entire release archive, then open `Utterleaf\utterleaf.exe` on Windows or `./Utterleaf/utterleaf` on macOS/Linux. Keep the `_internal` folder beside the executables. Python is not needed for the binary release.
 
 From PowerShell in the extracted `Utterleaf` folder:
 
@@ -39,7 +39,7 @@ From PowerShell in the extracted `Utterleaf` folder:
 .\utterleaf-cli.exe --download-model
 ```
 
-For source installs below, use [Python 3.10+](https://www.python.org/downloads/). The Windows release is built and tested with Python 3.14; macOS/Linux instructions are source-install paths.
+For source installs below, use [Python 3.10+](https://www.python.org/downloads/). All three binaries are built and tested with Python 3.14; the macOS/Linux instructions below are for source installs.
 
 ### Windows
 
@@ -181,7 +181,7 @@ shipping — unsigned builds trip SmartScreen.
 
 `packaging\build.ps1` is the canonical Windows build entry point. It runs PyInstaller, writes executable checksums, ships `README.md` at the top of the dist folder, and collects third-party notices; invoking PyInstaller directly skips those release steps. Install the development dependencies above before running it. The script installs PyInstaller if needed.
 
-CI (`.github/workflows/build.yml`) uses Python 3.14 and a `.venv`, runs pytest, then calls the same build script for a Windows CPU build on pull requests, pushes to main, and `v*` tags. The CUDA release is prepared locally with the CUDA flag above. Separate CI jobs test source installs on macOS (Homebrew Python 3.14 with Tk) and Linux (Ubuntu 24.04 system Python with Xvfb). Those jobs do not produce native release bundles. CI uploads the Windows build artifact; it does not publish a GitHub Release. Signing is a manual pre-publish step.
+CI (`.github/workflows/build.yml`) runs pytest on Windows, macOS, and Linux, and builds native binaries for all three: the Windows CPU build via the same `packaging\build.ps1` script, and macOS/Linux bundles via the shared PyInstaller spec plus third-party notice collection. Pushes to `main` and pull requests run the full matrix; only `v*` tags publish a GitHub Release with all three archives. The CUDA release is prepared manually with the CUDA bundle flag. Signing is a manual pre-publish step.
 
 ## Screenshot
 

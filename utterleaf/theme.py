@@ -9,7 +9,7 @@ def _fonts() -> tuple[str, tuple, tuple, tuple, tuple]:
     family = ui_font()
     return family, (family, 22, "bold"), (family, 10), (family, 9), (family, 10, "bold")
 
-# Teal primary, light surface — same family as the tray mic.
+# Teal primary, light surface — same family as the tray leaf.
 PRIMARY = "#0F766E"
 PRIMARY_HOVER = "#0D9488"
 ON_PRIMARY = "#FFFFFF"

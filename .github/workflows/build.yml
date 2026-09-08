@@ -111,6 +111,8 @@ jobs:
         run: ./.venv/bin/python -m PyInstaller --noconfirm --clean packaging/utterleaf.spec
       - name: CLI smoke test
         run: ./dist/Utterleaf/utterleaf --help
+      - name: Collect third-party notices
+        run: ./.venv/bin/python packaging/collect_notices.py
       - name: Package
         run: tar -czf dist/Utterleaf-macos-arm64.tar.gz -C dist Utterleaf
       - uses: actions/upload-artifact@v4
@@ -140,6 +142,8 @@ jobs:
         run: ./.venv/bin/python -m PyInstaller --noconfirm --clean packaging/utterleaf.spec
       - name: CLI smoke test
         run: ./dist/Utterleaf/utterleaf --help
+      - name: Collect third-party notices
+        run: ./.venv/bin/python packaging/collect_notices.py
       - name: Package
         run: tar -czf dist/Utterleaf-linux-x64.tar.gz -C dist Utterleaf
       - name: Test extracted Linux release startup and Wayland session controls

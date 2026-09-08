@@ -25,6 +25,7 @@ def command(exe, env, *args):
 def run(release):
     release = Path(release)
     assert (release / "_internal" / "README.md").is_file(), "readme missing from the release"
+    assert (release / "THIRD-PARTY-NOTICES.md").is_file(), "third-party notices missing from the release"
     with tempfile.TemporaryDirectory(prefix="utterleaf-frozen-") as folder:
         root = Path(folder)
         shutil.copytree(release, root / "Utterleaf")

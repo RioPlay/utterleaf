@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+
+- New brand icon: a leaf with a speaking-mouth cutout, used for the tray, the Settings window, and the Windows executables.
+- Show the tray icon on Linux Wayland desktops (KDE, and GNOME with the AppIndicator extension): the frozen build selects the StatusNotifierItem backend, and `--doctor` prints which backend it picked.
+- Reply to recording IPC commands before slow microphone probing, so `utterleaf --toggle` no longer reports a false "not running".
+- Find NVIDIA CUDA libraries on Linux without setting `LD_LIBRARY_PATH`.
+- Ship the readme and third-party license notices with the macOS and Linux binaries as well as Windows.
+
 ## 0.2.5
 
 - Record at the input device's native sample rate and convert to 16 kHz for transcription, including anti-alias filtering.
