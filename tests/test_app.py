@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+import threading
 import time
 
 import numpy as np
@@ -266,6 +267,22 @@ def test_idle_keeps_engine_failed_pill(monkeypatch) -> None:
     )
     app._idle()
     assert badges == ["engine"]
+
+
+def test_ipc_toggle_replies_before_recording_side_effects(monkeypatch):
+    app = _app(monkeypatch)
+    release = threading.Event()
+    finished = threading.Event()
+
+    def blocked_toggle() -> None:
+        release.wait(2)
+        finished.set()
+
+    app.hotkey = SimpleNamespace(toggle=blocked_toggle)
+    assert app._handle_ipc("toggle") == "ok"
+    assert not finished.is_set()
+    release.set()
+    assert finished.wait(2)
 
 
 def test_reload_honors_indicator_off(monkeypatch) -> None:

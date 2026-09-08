@@ -504,19 +504,23 @@ class Utterleaf:
 
     def _handle_ipc(self, command: str) -> str:
         command = command.strip().lower()
+        # Recording commands can block for seconds inside PortAudio probing
+        # (broken or device-less audio stacks). Reply first and run the side
+        # effects in a thread, or the client's timeout turns a live instance
+        # into a false "Utterleaf is not running."
         if command == "toggle":
             if self.hotkey is None:
                 return "error"
-            self.hotkey.toggle()
+            threading.Thread(target=self.hotkey.toggle, daemon=True).start()
             return "ok"
         if command == "start":
-            self.start_recording()
+            threading.Thread(target=self.start_recording, daemon=True).start()
             return "ok"
         if command == "stop":
-            self.stop_recording()
+            threading.Thread(target=self.stop_recording, daemon=True).start()
             return "ok"
         if command == "cancel":
-            self.cancel_recording()
+            threading.Thread(target=self.cancel_recording, daemon=True).start()
             return "ok"
         if command == "quit":
             threading.Thread(target=self.quit, daemon=True).start()
