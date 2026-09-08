@@ -35,6 +35,10 @@ Write-Host 'SHA256SUMS.txt written.'
 & .\.venv\Scripts\python 'packaging\collect_notices.py'
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
+# The readme sits at the top of the dist folder, the first thing a user sees
+# after extracting the zip.
+Copy-Item 'README.md' "$exeDir\README.md"
+
 # Distribution policy: no model weights ship in the archive. Weights download
 # at first run into the user's app-data models folder, never beside the exes.
 $weights = Get-ChildItem $exeDir -Recurse -File | Where-Object {

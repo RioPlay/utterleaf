@@ -75,6 +75,11 @@ def tray_title(status: str) -> str:
     return title
 
 
+def tray_backend() -> str:
+    """The pystray backend the import selected; the log/doctor surface for tray problems."""
+    return Icon.__module__
+
+
 def setup_logging() -> None:
     path = log_path()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -709,7 +714,7 @@ class Utterleaf:
             launch_settings()
         def setup(icon):
             icon.visible = True
-            log.info("Tray ready")
+            log.info("Tray ready (%s)", tray_backend())
 
         self.icon.run(setup=setup)
         self.quit()
@@ -718,6 +723,7 @@ class Utterleaf:
 def run_doctor(cfg: Config) -> int:
     for line in doctor_host_lines():
         print(line)
+    print(f"tray backend: {tray_backend()}")
     print(f"config:     {config_path()}")
     print(f"dictionary: {dictionary_path()}")
     print(f"log:        {log_path()}")

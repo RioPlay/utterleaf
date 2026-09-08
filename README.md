@@ -80,7 +80,7 @@ python3 -m venv .venv
 .venv/bin/python -m utterleaf
 ```
 
-On Wayland use `wtype` with `wl-clipboard`. On X11 use `xdotool` with `xclip` for clipboard access. NVIDIA:
+On Wayland use `wtype` with `wl-clipboard`. On X11 use `xdotool` with `xclip` for clipboard access. The tray icon uses StatusNotifierItem: KDE Plasma shows it natively, GNOME needs the AppIndicator extension. Source installs also need PyGObject and the Ayatana appindicator bindings (`sudo apt install gir1.2-ayatanaappindicator3-0.1` on Debian/Ubuntu); without them the tray falls back to the legacy X11 icon, which Wayland sessions do not display. `utterleaf --doctor` prints the backend it picked. NVIDIA:
 
 ```bash
 .venv/bin/python -m pip install -e ".[cuda]"
@@ -179,7 +179,7 @@ To bundle the installed CUDA libraries for NVIDIA acceleration, set `$env:UTTERL
 and the --pill subprocess are all frozen-aware. Sign the exes (signtool) before
 shipping — unsigned builds trip SmartScreen.
 
-`packaging\build.ps1` is the canonical Windows build entry point. It runs PyInstaller, writes executable checksums, and collects third-party notices; invoking PyInstaller directly skips those release steps. Install the development dependencies above before running it. The script installs PyInstaller if needed.
+`packaging\build.ps1` is the canonical Windows build entry point. It runs PyInstaller, writes executable checksums, ships `README.md` at the top of the dist folder, and collects third-party notices; invoking PyInstaller directly skips those release steps. Install the development dependencies above before running it. The script installs PyInstaller if needed.
 
 CI (`.github/workflows/build.yml`) uses Python 3.14 and a `.venv`, runs pytest, then calls the same build script for a Windows CPU build on pull requests, pushes to main, and `v*` tags. The CUDA release is prepared locally with the CUDA flag above. Separate CI jobs test source installs on macOS (Homebrew Python 3.14 with Tk) and Linux (Ubuntu 24.04 system Python with Xvfb). Those jobs do not produce native release bundles. CI uploads the Windows build artifact; it does not publish a GitHub Release. Signing is a manual pre-publish step.
 

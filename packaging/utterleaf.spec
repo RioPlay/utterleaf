@@ -17,6 +17,8 @@ from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs
 
 datas = collect_data_files("faster_whisper")
 project_root = Path(SPECPATH).parent
+# The readme travels with every build so an extracted download explains itself.
+datas.append((str(project_root / "README.md"), "."))
 
 # packaging/stubs holds import-time stand-ins (see stubs/av/__init__.py). It must
 # come first so modulegraph resolves `import av` to the stub, never to the real
@@ -30,7 +32,19 @@ if sys.platform == "win32":
 elif sys.platform == "darwin":
     hidden = ["pystray._darwin", "pynput.keyboard._darwin", "pynput.mouse._darwin"]
 else:
-    hidden = ["pystray._xorg", "pynput.keyboard._xorg", "pynput.mouse._xorg"]
+    # Bundle every Linux pystray backend so runtime selection follows the host.
+    # The appindicator backend (StatusNotifierItem) is what KDE and GNOME-with-
+    # AppIndicator-extension actually display; XEmbed is the bare-X11 fallback.
+    # PyGObject and the AyatanaAppIndicator3 typelib must be installed on this
+    # build host for the SNI backend to bundle; otherwise the frozen app quietly
+    # falls back to the X11 tray, which Wayland sessions do not display.
+    hidden = [
+        "pystray._appindicator",
+        "pystray._gtk",
+        "pystray._xorg",
+        "pynput.keyboard._xorg",
+        "pynput.mouse._xorg",
+    ]
 
 # Optional accelerated edition. DLLs must retain their package layout so the
 # runtime's NVIDIA discovery can find them. The default stays a small CPU build.

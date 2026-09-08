@@ -25,6 +25,12 @@ def test_native_tray_titles_preserve_unicode(monkeypatch):
     assert app.tray_title("日本語") == "Utterleaf — 日本語"
 
 
+def test_tray_backend_reports_imported_icon_module(monkeypatch):
+    from utterleaf import app
+    monkeypatch.setattr(app, "Icon", SimpleNamespace(__module__="pystray._appindicator"))
+    assert app.tray_backend() == "pystray._appindicator"
+
+
 class FakeRecorder:
     def __init__(self, seconds: float = 1.0) -> None:
         self._seconds = seconds
