@@ -170,6 +170,7 @@ jobs:
         run: |
           cd dist
           for f in *.zip *.tar.gz; do sha256sum "$f" > "$f.sha256"; done
+          sha256sum *.zip *.tar.gz > SHA256SUMS.txt
       - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
