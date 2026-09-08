@@ -21,7 +21,7 @@ from utterleaf.inject import foreground_app, foreground_id, paste, undo_last
 from utterleaf.polish import polish, stitch_to_previous
 from utterleaf.hardware import describe, ov_model_id, pick, probe
 from utterleaf.models import ct2_dir, ct2_ready, ov_dir, ov_ready, status_lines
-from utterleaf.host import doctor_host_lines, login_label
+from utterleaf.host import doctor_host_lines, login_label, is_wayland
 from utterleaf.settings import launch_settings
 from utterleaf.theme import mic_image
 from utterleaf.startup import enabled as startup_enabled, set_enabled as set_startup
@@ -58,6 +58,8 @@ LINGER = {
 
 def status_hint(cfg: Config) -> str:
     """Tray / idle copy for the current hotkey mode."""
+    if is_wayland():
+        return "desktop shortcut: utterleaf --toggle"
     verb = "hold" if cfg.mode == "hold" else "press"
     return f"{verb} {cfg.hotkey}"
 
@@ -530,7 +532,7 @@ class Utterleaf:
                 on_cancel=self.cancel_recording,
             )
             self.hotkey.start()
-            log.info("Listening for %s (%s)", new.hotkey, new.mode)
+            log.info("Dictation control: %s", status_hint(new))
         if new.microphone != old.microphone:
             self.recorder.set_device(new.microphone)
             if self.state != "recording":
@@ -649,7 +651,7 @@ class Utterleaf:
             on_cancel=self.cancel_recording,
         )
         self.hotkey.start()
-        log.info("Listening for %s (%s)", self.cfg.hotkey, self.cfg.mode)
+        log.info("Dictation control: %s", status_hint(self.cfg))
 
         if not self.cfg.tray:
             try:

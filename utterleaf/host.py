@@ -102,7 +102,7 @@ def settings_blurb() -> str:
     if is_wayland():
         return (
             "On Wayland, bind a desktop shortcut to utterleaf --toggle. "
-            "Hold-to-talk hotkeys are unreliable there."
+            "Global key listening is disabled; Settings requires XWayland."
         )
     return "Hold or press the hotkey, speak, and clean text lands in the focused app."
 

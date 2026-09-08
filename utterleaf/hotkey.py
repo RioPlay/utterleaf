@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import sys
+import logging
 import threading
 from collections.abc import Callable
 
 from pynput import keyboard
+from utterleaf.host import is_wayland
 
 MOD_ALIASES = {
     "ctrl": "ctrl",
@@ -186,6 +188,11 @@ class HotkeyWatcher:
         return True
 
     def start(self) -> None:
+        if is_wayland():
+            logging.getLogger("utterleaf").info(
+                "Wayland: global key listening disabled; bind a desktop shortcut to utterleaf --toggle"
+            )
+            return
         kwargs = {}
         if sys.platform == "win32":
             kwargs["win32_event_filter"] = self._win32_filter

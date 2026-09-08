@@ -128,3 +128,25 @@ def test_toggle_ignores_key_repeat() -> None:
     watcher._on_release(keyboard.Key.f8)
     watcher._on_press(keyboard.Key.f8)
     assert stops == [1]
+
+
+def test_wayland_uses_ipc_toggle_without_starting_xorg_listener(monkeypatch):
+    from utterleaf import hotkey
+
+    monkeypatch.setattr(hotkey, "is_wayland", lambda: True)
+
+    def forbidden_listener(**kwargs):
+        raise AssertionError("Wayland must not start an Xorg key listener")
+
+    monkeypatch.setattr(hotkey.keyboard, "Listener", forbidden_listener)
+    events = []
+    watcher = HotkeyWatcher("f8", mode="hold", suppress=False,
+                            on_start=lambda: events.append("start"),
+                            on_stop=lambda: events.append("stop"),
+                            on_cancel=lambda: events.append("cancel"))
+    watcher.start()
+    watcher.toggle()
+    watcher.toggle()
+    watcher.stop()
+    assert events == ["start", "stop"]
+    assert watcher._listener is None

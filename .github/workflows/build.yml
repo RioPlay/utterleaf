@@ -129,7 +129,7 @@ jobs:
         run: |
           sudo apt-get update
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          sudo apt-get install -y python3-venv python3-tk libportaudio2
+          sudo apt-get install -y python3-venv python3-tk libportaudio2 xvfb xauth xclip xdotool
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install
         run: |
@@ -142,6 +142,13 @@ jobs:
         run: ./dist/Utterleaf/utterleaf --help
       - name: Package
         run: tar -czf dist/Utterleaf-linux-x64.tar.gz -C dist Utterleaf
+      - name: Test extracted Linux release startup and Wayland session controls
+        run: |
+          New-Item -ItemType Directory -Path extracted-release
+          tar -xzf dist/Utterleaf-linux-x64.tar.gz -C extracted-release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          xvfb-run -a ./.venv/bin/python tests/smoke_linux_release.py extracted-release/Utterleaf
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
           name: Utterleaf-linux-x64
@@ -154,6 +161,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
@@ -169,4 +177,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" dist/* \
             --title "Utterleaf $GITHUB_REF_NAME" \
-            --notes "Windows is the supported binary target. The macOS and Linux archives are unsigned experimental onedir builds; models download at first run into the user data folder and are not included here. SHA256SUMS.txt covers the Windows executables, the .sha256 files cover each archive."
+            --notes-file packaging/release-notes.md

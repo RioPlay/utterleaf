@@ -9,7 +9,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from utterleaf import theme
 from utterleaf.config import Config, load
-from utterleaf.host import login_label, settings_blurb, ui_font
+from utterleaf.host import login_label, settings_blurb, ui_font, is_wayland
 from utterleaf.polish import dictionary_text, polish_local
 from utterleaf.settings import SYSTEM_DEFAULT, apply_form, hotkey_presets
 from utterleaf.startup import enabled as startup_enabled
@@ -318,7 +318,11 @@ class SettingsWindow:
             self.save_button.configure(state="normal" if dirty else "disabled")
             self.status.set("Unsaved changes" if dirty else "All changes saved · Dictation stays on this device")
         verb = "Hold" if self.vars["mode"].get() == "hold" else "Press"
-        self.shortcut_hint.set(f"{verb}  {self.vars['hotkey'].get().replace('+', ' + ').title()}  to talk")
+        self.shortcut_hint.set(
+            "Use your desktop shortcut to start / stop"
+            if is_wayland()
+            else f"{verb}  {self.vars['hotkey'].get().replace('+', ' + ').title()}  to talk"
+        )
 
     def _names_changed(self, _event):
         if self.names.edit_modified():
