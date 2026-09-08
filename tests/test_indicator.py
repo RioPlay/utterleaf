@@ -61,6 +61,7 @@ def test_tk_long_caption_stays_inside_window(monkeypatch):
     deadline = time.monotonic() + 5
 
     def inspect():
+        retrying = False
         try:
             canvas = next(
                 (child for child in root.winfo_children() if isinstance(child, tk.Canvas)), None
@@ -71,12 +72,15 @@ def test_tk_long_caption_stays_inside_window(monkeypatch):
             ready = canvas is not None and len(texts) >= 2 and canvas.winfo_width() >= 460
             if not ready and time.monotonic() < deadline:
                 root.after(25, inspect)
+                retrying = True
                 return
             bounds.append(
                 (canvas.bbox(texts[-1]) if texts else None, canvas.winfo_width(), canvas.winfo_height())
             )
         finally:
-            events.put("quit")
+            # A retry must keep the mainloop alive; only a finished inspection quits.
+            if not retrying:
+                events.put("quit")
 
     root.after(150, inspect)
     root.after(6000, lambda: events.put("quit"))
