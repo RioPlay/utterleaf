@@ -720,7 +720,13 @@ class Utterleaf:
             icon.visible = True
             log.info("Tray ready (%s)", tray_backend())
 
-        self.icon.run(setup=setup)
+        try:
+            self.icon.run(setup=setup)
+        except Exception:
+            # Backends tear down over D-Bus (pystray's notification hide) and
+            # fail on bare sessions with no notification daemon; a quit must
+            # never turn into a crash.
+            log.exception("Tray loop ended with an error")
         self.quit()
 
 
