@@ -53,8 +53,7 @@ jobs:
         run: |
           set -euo pipefail
           cd release-assets
-          unzip -Z1 Utterleaf-windows-x64-cpu.zip > windows-files.txt
-          grep -Fx 'Utterleaf/utterleaf.exe' windows-files.txt
+          python -c 'import zipfile; z = zipfile.ZipFile("Utterleaf-windows-x64-cpu.zip"); names = [n.replace(chr(92), "/") for n in z.namelist()]; assert "Utterleaf/utterleaf.exe" in names, names[:20]; assert z.testzip() is None'
           tar -tzf Utterleaf-macos-arm64.tar.gz > macos-files.txt
           grep -Fx 'Utterleaf/utterleaf' macos-files.txt
           tar -tzf Utterleaf-linux-x64.tar.gz > linux-files.txt
