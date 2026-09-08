@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.5
+
+- Record at the input device's native sample rate and convert to 16 kHz for transcription, including anti-alias filtering.
+- Prevent Xorg tray title encoding crashes at startup and on status changes.
+- Report microphone initialization failures separately from model failures and continue model initialization.
+- Test extracted Linux binaries with the tray both enabled and disabled.
+
 ## 0.2.4
 
 - Bundle both pynput Xorg backends and the correct pystray Xorg backend in Linux binaries.

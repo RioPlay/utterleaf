@@ -1,5 +1,7 @@
 Compiled Utterleaf binaries for Windows, macOS, and Linux. Python is bundled; no Python installation or source build is required.
 
+Version 0.2.5 fixes ALSA devices rejecting 16 kHz input by capturing at the device's native rate and converting to 16 kHz for transcription. It also fixes the Linux Xorg tray's Unicode title crash. CI now exercises extracted Linux binaries with the tray enabled and disabled, in addition to audio conversion regression tests.
+
 | Platform | Download | Run after extracting the entire archive |
 | --- | --- | --- |
 | Windows x64 | `Utterleaf-windows-x64-cpu.zip` | `Utterleaf/utterleaf.exe` |

@@ -16,6 +16,30 @@ PREROLL_SECONDS = 0.30
 TAIL_SECONDS = 0.16
 
 
+def resample_audio(audio: np.ndarray, input_rate: float) -> np.ndarray:
+    """Convert captured mono PCM to Whisper's 16 kHz outside the callback.
+
+    Apply a windowed-sinc low-pass filter before downsampling to avoid aliasing.
+    Padding keeps the filter centered without changing the take's duration.
+    """
+    audio = np.asarray(audio, dtype=np.float32).reshape(-1)
+    if not audio.size or input_rate == SAMPLE_RATE:
+        return audio
+    if not np.isfinite(input_rate) or input_rate <= 0:
+        raise ValueError("Input sample rate must be positive and finite")
+    count = int(round(audio.size * SAMPLE_RATE / input_rate))
+    if count == 0:
+        return np.zeros(0, dtype=np.float32)
+    if input_rate > SAMPLE_RATE:
+        cutoff = 0.45 * SAMPLE_RATE / input_rate
+        offsets = np.arange(-63, 64)
+        kernel = 2 * cutoff * np.sinc(2 * cutoff * offsets) * np.hamming(127)
+        kernel /= kernel.sum()
+        audio = np.convolve(np.pad(audio, (63, 63), mode="edge"), kernel, mode="valid")
+    return np.interp(np.arange(count) * input_rate / SAMPLE_RATE,
+                     np.arange(audio.size), audio).astype(np.float32)
+
+
 class Recorder:
     """Keeps the mic stream open and a short pre-roll so the first word is not cut."""
 
@@ -28,6 +52,7 @@ class Recorder:
         self.recording = False
         self.preferred_device = (device or "").strip()
         self.device_name = ""
+        self.input_rate = float(SAMPLE_RATE)
 
     def set_device(self, name: str) -> None:
         name = (name or "").strip()
@@ -57,16 +82,23 @@ class Recorder:
             return
         self.device_name = name
         chosen = resolve_input_device(self.preferred_device)
-        log.info("Microphone: %s", self.device_name)
+        info = sd.query_devices(chosen, kind="input")
+        self.input_rate = float(info["default_samplerate"])
+        log.info("Microphone: %s (%g Hz capture, %d Hz transcription)",
+                 self.device_name, self.input_rate, SAMPLE_RATE)
         stream = sd.InputStream(
             device=chosen,
-            samplerate=SAMPLE_RATE,
+            samplerate=self.input_rate,
             channels=1,
             dtype="float32",
-            blocksize=512,
+            blocksize=0,
             callback=self._on_audio,
         )
-        stream.start()
+        try:
+            stream.start()
+        except Exception:
+            stream.close()
+            raise
         self._stream = stream
 
     def start(self) -> None:
@@ -82,7 +114,7 @@ class Recorder:
         with self._lock:
             self._ring.append(copy)
             self._ring_samples += len(copy)
-            limit = int(PREROLL_SECONDS * SAMPLE_RATE)
+            limit = int(PREROLL_SECONDS * self.input_rate)
             while self._ring and self._ring_samples - len(self._ring[0]) >= limit:
                 dropped = self._ring.popleft()
                 self._ring_samples -= len(dropped)
@@ -98,7 +130,7 @@ class Recorder:
             if max_seconds is None:
                 chunks = list(self._chunks)
             else:
-                limit = max(0, int(max_seconds * SAMPLE_RATE))
+                limit = max(0, int(max_seconds * self.input_rate))
                 if not limit:
                     return np.zeros(0, dtype=np.float32)
                 chunks = []
@@ -110,7 +142,7 @@ class Recorder:
                         break
                 chunks.reverse()
         audio = np.concatenate(chunks, axis=0).reshape(-1)
-        return audio if max_seconds is None else audio[-limit:]
+        return resample_audio(audio if max_seconds is None else audio[-limit:], self.input_rate)
 
     def stop(self) -> np.ndarray:
         with self._lock:
@@ -119,7 +151,7 @@ class Recorder:
                 return np.zeros(0, dtype=np.float32)
             chunks = self._chunks
             self._chunks = []
-        return np.concatenate(chunks, axis=0).reshape(-1)
+        return resample_audio(np.concatenate(chunks, axis=0).reshape(-1), self.input_rate)
 
     def close(self) -> None:
         with self._lock:

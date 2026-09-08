@@ -27,8 +27,9 @@ def run(release):
         root = Path(folder)
         shutil.copytree(release, root / "Utterleaf")
         exe = root / "Utterleaf" / "utterleaf"
-        for session in ("x11", "wayland"):
-            env = dict(os.environ, XDG_CONFIG_HOME=str(root / session),
+        for session, tray in (("x11", False), ("x11", True), ("wayland", False), ("wayland", True)):
+            profile_name = f"{session}-tray-{tray}"
+            env = dict(os.environ, XDG_CONFIG_HOME=str(root / profile_name),
                        XDG_SESSION_TYPE=session)
             for key in ("PYTHONPATH", "PYNPUT_BACKEND", "PYNPUT_BACKEND_KEYBOARD",
                         "PYNPUT_BACKEND_MOUSE", "PYSTRAY_BACKEND", "WAYLAND_DISPLAY"):
@@ -37,7 +38,7 @@ def run(release):
                 # Deliberately exercise Wayland detection with an XWayland-like
                 # X display; no compositor or paste is being simulated.
                 env["WAYLAND_DISPLAY"] = "wayland-ci-session-branch"
-            profile = root / session / "utterleaf"
+            profile = root / profile_name / "utterleaf"
             profile.mkdir(parents=True)
             (profile / "config.toml").write_text(
                 'allow_network = false\nbeep = false\nindicator = false\n', encoding="utf-8")
@@ -57,7 +58,8 @@ def run(release):
                     settings.wait(timeout=10)
 
             with tempfile.TemporaryFile(mode="w+") as output:
-                app = subprocess.Popen([str(exe), "--no-tray", "--offline"], env=env,
+                args = [str(exe), "--offline"] + ([] if tray else ["--no-tray"])
+                app = subprocess.Popen(args, env=env,
                                        cwd=exe.parent, stdout=output, stderr=output)
                 try:
                     deadline = time.monotonic() + 30
@@ -65,7 +67,8 @@ def run(release):
                         output.seek(0)
                         assert app.poll() is None, output.read()
                         log = profile / "utterleaf.log"
-                        if log.exists() and "Dictation control:" in log.read_text():
+                        ready = "Tray ready" if tray else "Dictation control:"
+                        if log.exists() and ready in log.read_text():
                             break
                         time.sleep(.1)
                     else:
@@ -81,7 +84,7 @@ def run(release):
                         assert command(exe, env, "--stop") == "ok"
                     assert command(exe, env, "--quit") == "ok"
                     assert app.wait(timeout=10) == 0
-                    print(f"{session}: frozen imports, Settings, app startup, IPC and shutdown passed")
+                    print(f"{session}, tray={tray}: frozen imports, Settings, app startup, IPC and shutdown passed")
                 finally:
                     if app.poll() is None:
                         app.terminate()

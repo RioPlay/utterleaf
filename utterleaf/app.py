@@ -64,6 +64,17 @@ def status_hint(cfg: Config) -> str:
     return f"{verb} {cfg.hotkey}"
 
 
+def tray_title(status: str) -> str:
+    title = f"Utterleaf — {status}"
+    if Icon.__module__ == "pystray._xorg":
+        # python-xlib encodes the legacy WM_NAME property as Latin-1,
+        # both when creating the icon and on every subsequent title update.
+        return title.replace("—", "-").replace("…", "...").encode(
+            "latin-1", errors="replace"
+        ).decode("latin-1")
+    return title
+
+
 def setup_logging() -> None:
     path = log_path()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -461,7 +472,7 @@ class Utterleaf:
             color = "busy"
         if self.icon is not None:
             self.icon.icon = mic_image(color)
-            self.icon.title = f"Utterleaf — {self._status}"
+            self.icon.title = tray_title(self._status)
         if badge is not None:
             self.indicator.set(badge, caption)
 
@@ -621,8 +632,15 @@ class Utterleaf:
         threading.Thread(target=self._ipc_loop, daemon=True).start()
 
         def warmup() -> None:
+            mic_ready = True
             try:
                 self.recorder.prepare()
+            except Exception:
+                mic_ready = False
+                log.exception("Microphone failed to open")
+                self._show_error("no_mic", NO_MIC,
+                                 "Choose a working microphone in Settings.")
+            try:
                 self.indicator.set("loading")
                 chosen = pick(self.cfg)
                 log.info("Device: %s via %s (%s)", chosen.kind, chosen.backend, chosen.name)
@@ -630,7 +648,8 @@ class Utterleaf:
                     self.indicator.set("loading", DOWNLOADING)
                 load_model(self.cfg, chosen)
                 log.info("Model ready")
-                self._set_icon("idle", status_hint(self.cfg), badge="hide")
+                self._set_icon("idle", status_hint(self.cfg) if mic_ready else NO_MIC,
+                               badge="hide" if mic_ready else "no_mic")
             except Exception:
                 log.exception("Model failed to load")
                 self._show_error(
@@ -685,10 +704,14 @@ class Utterleaf:
         )
         color = "busy" if self._status == LOADING else "idle"
         self.indicator.start()
-        self.icon = Icon("Utterleaf", mic_image(color), f"Utterleaf — {self._status}", menu)
+        self.icon = Icon("Utterleaf", mic_image(color), tray_title(self._status), menu)
         if first_run:
             launch_settings()
-        self.icon.run()
+        def setup(icon):
+            icon.visible = True
+            log.info("Tray ready")
+
+        self.icon.run(setup=setup)
         self.quit()
 
 

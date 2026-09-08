@@ -11,6 +11,20 @@ from utterleaf.app import ENGINE_FAILED, Utterleaf
 from utterleaf.config import Config
 
 
+def test_xorg_tray_titles_handle_non_latin1_status_updates(monkeypatch):
+    from utterleaf import app
+    monkeypatch.setattr(app, "Icon", SimpleNamespace(__module__="pystray._xorg"))
+    for status in ("loading model", app.ENGINE_FAILED, "Downloading…", "日本語"):
+        assert app.tray_title(status).encode("latin-1")
+    assert app.tray_title("loading model") == "Utterleaf - loading model"
+
+
+def test_native_tray_titles_preserve_unicode(monkeypatch):
+    from utterleaf import app
+    monkeypatch.setattr(app, "Icon", SimpleNamespace(__module__="pystray._win32"))
+    assert app.tray_title("日本語") == "Utterleaf — 日本語"
+
+
 class FakeRecorder:
     def __init__(self, seconds: float = 1.0) -> None:
         self._seconds = seconds
