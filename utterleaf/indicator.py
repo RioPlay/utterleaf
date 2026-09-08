@@ -544,6 +544,9 @@ def _run_tk(q: queue.Queue[PillItem]) -> None:
         sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
         canvas.config(width=w, height=h)
         root.geometry(f"{w}x{h}+{(sw - w) // 2}+{sh - h - 72}")
+        # Flush the resize synchronously so the window is never narrower
+        # than the caption already laid out on the canvas.
+        root.update_idletasks()
         canvas.delete("all")
         if look is None:
             try:

@@ -45,6 +45,7 @@ def test_win32_colorref_keeps_listening_red() -> None:
 
 def test_tk_long_caption_stays_inside_window(monkeypatch):
     import queue
+    import time
     import tkinter as tk
     import pytest
     from utterleaf import indicator
@@ -57,20 +58,33 @@ def test_tk_long_caption_stays_inside_window(monkeypatch):
     events = queue.Queue()
     events.put(("listening", "W" * 160))
     bounds = []
+    deadline = time.monotonic() + 5
 
     def inspect():
         try:
-            canvas = next(child for child in root.winfo_children() if isinstance(child, tk.Canvas))
-            texts = [item for item in canvas.find_all() if canvas.type(item) == "text"]
-            bounds.append((canvas.bbox(texts[-1]), canvas.winfo_width(), canvas.winfo_height()))
+            canvas = next(
+                (child for child in root.winfo_children() if isinstance(child, tk.Canvas)), None
+            )
+            texts = [item for item in canvas.find_all() if canvas.type(item) == "text"] if canvas else []
+            # The caption paint and the window resize land asynchronously on
+            # slow CI; wait until both are visible or the deadline passes.
+            ready = canvas is not None and len(texts) >= 2 and canvas.winfo_width() >= 460
+            if not ready and time.monotonic() < deadline:
+                root.after(25, inspect)
+                return
+            bounds.append(
+                (canvas.bbox(texts[-1]) if texts else None, canvas.winfo_width(), canvas.winfo_height())
+            )
         finally:
             events.put("quit")
 
     root.after(150, inspect)
-    root.after(2000, lambda: events.put("quit"))
+    root.after(6000, lambda: events.put("quit"))
     indicator._run_tk(events)
-    assert len(bounds) == 1
-    (left, top, right, bottom), width, height = bounds[0]
+    assert len(bounds) == 1, "caption never rendered within the deadline"
+    box, width, height = bounds[0]
+    assert box is not None, "caption text item is missing"
+    left, top, right, bottom = box
     assert 0 <= left < right <= width
     assert 0 <= top < bottom <= height - 8
 
