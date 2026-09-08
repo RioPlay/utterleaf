@@ -17,6 +17,27 @@ def test_list_input_names_skips_outputs(monkeypatch) -> None:
     assert list_input_names() == ["Headset Mic", "USB Mic"]
 
 
+def test_startup_input_overflow_is_quiet_but_late_overflow_warns(monkeypatch, caplog) -> None:
+    import logging
+
+    recorder = Recorder()
+    mono = np.zeros((16, 1), dtype=np.float32)
+    overflow = type("Status", (), {"input_overflow": True})()
+    monkeypatch.setattr("utterleaf.audio.time.monotonic", lambda: 1000.0)
+
+    recorder._opened_at = 1000.0
+    with caplog.at_level(logging.DEBUG, logger="utterleaf"):
+        recorder._on_audio(mono, 16, None, overflow)
+    assert any(record.levelno == logging.DEBUG for record in caplog.records)
+    assert not any(record.levelno >= logging.WARNING for record in caplog.records)
+
+    caplog.clear()
+    recorder._opened_at = 990.0
+    with caplog.at_level(logging.WARNING, logger="utterleaf"):
+        recorder._on_audio(mono, 16, None, overflow)
+    assert any(record.levelno >= logging.WARNING for record in caplog.records)
+
+
 def test_resolve_input_device(monkeypatch) -> None:
     monkeypatch.setattr("utterleaf.audio.sd.query_devices", _devices)
     assert resolve_input_device("") is None

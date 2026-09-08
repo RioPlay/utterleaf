@@ -86,6 +86,10 @@ On Wayland use `wtype` with `wl-clipboard`. On X11 use `xdotool` with `xclip` fo
 .venv/bin/python -m pip install -e ".[cuda]"
 ```
 
+A binary release on Linux uses the distro's NVIDIA toolkit instead: install `cuda` and `cudnn` for your distribution (Arch: `sudo pacman -S cuda cudnn`), or produce a self-contained CUDA build with `UTTERLEAF_BUNDLE_CUDA=1`.
+
+Don't know the exact command for your distro? Run `utterleaf --cuda-setup` (or open **Settings → Help & diagnostics → Set up NVIDIA GPU…**) for steps matched to this machine, or run the helper script `scripts/cuda-setup.sh` from the repo, which detects the package manager and installs CUDA for you.
+
 First launch downloads Whisper `small.en` into the app data folder (~500 MB). The pill says **Downloading the speech model (~500 MB)…**. After that it is offline.
 
 - Windows: `%APPDATA%\Utterleaf\models`

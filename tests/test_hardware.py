@@ -139,6 +139,96 @@ def test_linux_cuda_preload_reports_false_without_libs(monkeypatch):
     assert hardware._preload_linux_cuda() is False
 
 
+def test_linux_toolkit_scan_includes_opt_cuda(monkeypatch) -> None:
+    import utterleaf.hardware as hardware
+
+    monkeypatch.setattr(hardware.sys, "platform", "linux")
+
+    class FakePath:
+        def __init__(self, path: str) -> None:
+            self.path = path
+
+        def glob(self, pattern: str):
+            if self.path == "/opt" and pattern == "cuda*/lib64":
+                return [FakePath("/opt/cuda/lib64")]
+            if self.path == "/usr/local" and pattern == "cuda*/lib64":
+                return [FakePath("/usr/local/cuda/lib64")]
+            return []
+
+        def is_dir(self) -> bool:
+            return True
+
+        def __lt__(self, other) -> bool:
+            return self.path < other.path
+
+        def __str__(self) -> str:
+            return self.path
+
+    monkeypatch.setattr(hardware, "Path", FakePath)
+    dirs = [str(path) for path in hardware._linux_toolkit_dirs()]
+    assert "/usr/local/cuda/lib64" in dirs
+    assert "/opt/cuda/lib64" in dirs
+
+
+def test_cuda_missing_hint_names_the_toolkit_when_frozen(monkeypatch) -> None:
+    import utterleaf.hardware as hardware
+
+    monkeypatch.setattr(hardware.sys, "frozen", True, raising=False)
+    assert "UTTERLEAF_BUNDLE_CUDA" in hardware._cuda_missing_hint()
+
+    monkeypatch.setattr(hardware.sys, "frozen", False, raising=False)
+    assert hardware._cuda_missing_hint() == "pip install 'utterleaf[cuda]'"
+
+
+def test_linux_distro_reads_os_release_id(monkeypatch, tmp_path) -> None:
+    import utterleaf.hardware as hardware
+
+    monkeypatch.setattr(hardware.sys, "platform", "linux")
+    os_release = tmp_path / "os-release"
+    os_release.write_text('NAME="Arch Linux"\nID=arch\nID_LIKE="arch linux"\n', encoding="utf-8")
+
+    def fake_path(item: str):
+        return SimpleNamespace(read_text=lambda encoding="utf-8": os_release.read_text(encoding))
+
+    monkeypatch.setattr(hardware, "Path", fake_path)
+    assert hardware.linux_distro() == "arch"
+
+    monkeypatch.setattr(hardware, "Path", lambda _item: SimpleNamespace(read_text=lambda **_: (_ for _ in ()).throw(OSError)))
+    assert hardware.linux_distro() == ""
+
+
+def test_cuda_setup_plan_mentions_distro_command(monkeypatch) -> None:
+    import utterleaf.hardware as hardware
+
+    monkeypatch.setattr(hardware.sys, "platform", "linux")
+    monkeypatch.setattr(hardware.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(hardware, "cuda_runtime_ok", lambda: False)
+    monkeypatch.setattr(hardware, "nvidia_gpu_label", lambda: "NVIDIA GeForce RTX 3090 (24576 MiB)")
+    monkeypatch.setattr(hardware, "linux_distro", lambda: "arch")
+    plan = hardware.cuda_setup_plan()
+    assert any("pacman" in line for line in plan)
+    assert any("UTTERLEAF_BUNDLE_CUDA" in line for line in plan)
+
+
+def test_cuda_setup_plan_reports_working_gpu(monkeypatch) -> None:
+    import utterleaf.hardware as hardware
+
+    monkeypatch.setattr(hardware.sys, "platform", "linux")
+    monkeypatch.setattr(hardware, "cuda_runtime_ok", lambda: True)
+    plan = hardware.cuda_setup_plan()
+    assert plan[0].startswith("NVIDIA acceleration is already working")
+
+
+def test_cuda_setup_plan_reports_no_gpu(monkeypatch) -> None:
+    import utterleaf.hardware as hardware
+
+    monkeypatch.setattr(hardware.sys, "platform", "linux")
+    monkeypatch.setattr(hardware, "cuda_runtime_ok", lambda: False)
+    monkeypatch.setattr(hardware, "nvidia_gpu_label", lambda: "")
+    plan = hardware.cuda_setup_plan()
+    assert "No NVIDIA GPU detected" in plan[0]
+
+
 def test_cuda_without_runtime_is_skipped() -> None:
     accels = [
         Accelerator("gpu", "CUDA (1 device), cublas not found", "ctranslate2", False),

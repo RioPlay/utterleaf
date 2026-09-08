@@ -256,7 +256,9 @@ class SettingsWindow:
         self.diagnostic_text.insert("1.0", "Your device report will appear here. Running a check does not download a model.")
         self.diagnostic_text.configure(state="disabled")
         self.export_button = ttk.Button(p, text="Save report…", command=self.export_report, state="disabled")
-        self.export_button.pack(anchor="w")
+        self.export_button.pack(anchor="w", pady=(0, 8))
+        self.cuda_button = ttk.Button(p, text="Set up NVIDIA GPU…", command=self.cuda_setup)
+        self.cuda_button.pack(anchor="w")
 
     def show_page(self, name):
         if name != "Dictation":
@@ -435,6 +437,20 @@ class SettingsWindow:
             self.diagnostic_text.configure(state="disabled")
             self.export_button.configure(state="normal" if self.report else "disabled")
         self._worker(report, done)
+
+    def cuda_setup(self):
+        self.cuda_button.configure(state="disabled", text="Checking…")
+        def steps():
+            from utterleaf.hardware import cuda_setup_plan
+            return "\n".join(cuda_setup_plan())
+        def done(result):
+            self.cuda_button.configure(state="normal", text="Set up NVIDIA GPU…")
+            self.report = "" if isinstance(result, Exception) else result
+            self.diagnostic_text.configure(state="normal")
+            self.diagnostic_text.delete("1.0", "end")
+            self.diagnostic_text.insert("1.0", f"Could not check: {result}" if isinstance(result, Exception) else result)
+            self.diagnostic_text.configure(state="disabled")
+        self._worker(steps, done)
 
     def export_report(self):
         from pathlib import Path

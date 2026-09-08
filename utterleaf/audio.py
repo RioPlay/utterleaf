@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import sys
 import threading
+import time
 from collections import deque
 
 import numpy as np
@@ -50,6 +51,7 @@ class Recorder:
         self._ring: deque[np.ndarray] = deque()
         self._ring_samples = 0
         self._stream: sd.InputStream | None = None
+        self._opened_at: float | None = None
         self.recording = False
         self.preferred_device = (device or "").strip()
         self.device_name = ""
@@ -105,6 +107,7 @@ class Recorder:
             stream.close()
             raise
         self._stream = stream
+        self._opened_at = time.monotonic()
 
     def start(self) -> None:
         self.prepare()
@@ -112,9 +115,16 @@ class Recorder:
             self._chunks = [chunk.copy() for chunk in self._ring]
             self.recording = True
 
-    def _on_audio(self, indata, frames, time, status) -> None:  # noqa: ARG002
+    def _on_audio(self, indata, frames, timestamp, status) -> None:  # noqa: ARG002
         if status:
-            log.warning("Mic status: %s", status)
+            # ALSA-to-Pulse bridging overflows once at stream open before any
+            # recording starts; warn only about overflows that matter.
+            startup_overflow = (
+                getattr(status, "input_overflow", False)
+                and self._opened_at is not None
+                and time.monotonic() - self._opened_at < 0.5
+            )
+            (log.debug if startup_overflow else log.warning)("Mic status: %s", status)
         copy = indata.copy()
         with self._lock:
             self._ring.append(copy)

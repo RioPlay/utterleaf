@@ -1,5 +1,7 @@
 Compiled Utterleaf binaries for Windows, macOS, and Linux. Python is bundled; no Python installation or source build is required.
 
+Version 0.3.1 fixes CUDA discovery on Linux distros that install the NVIDIA toolkit to `/opt/cuda` (Arch), and stops frozen builds from pointing users at the source-only `pip install 'utterleaf[cuda]'` hint — a binary release uses the distro's `cuda` and `cudnn` packages instead. It also silences the transient microphone overflow warning at stream open.
+
 Version 0.3.0 introduces the brand leaf icon — a leaf with a speaking-mouth cutout — on the tray, the Settings window, and the Windows executables. The Linux tray now shows on Wayland desktops: the build selects the StatusNotifierItem (appindicator) backend that KDE shows natively and GNOME shows with the AppIndicator extension, and `--doctor` reports which backend is active. The `utterleaf --toggle` shortcut answers instantly even when the microphone is slow to open, instead of a false "Utterleaf is not running." NVIDIA CUDA libraries are now found on Linux without setting `LD_LIBRARY_PATH` (install the `utterleaf[cuda]` extra). Every platform's binary ships the readme and third-party license notices.
 
 | Platform | Download | Run after extracting the entire archive |

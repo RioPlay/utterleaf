@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+
+- Find the Linux NVIDIA toolkit installed at `/opt/cuda` (Arch) in addition to `/usr/local/cuda`.
+- Frozen builds now tell the truth about CUDA: the hint names the distro toolkit (`sudo pacman -S cuda cudnn`) or the bundle flag, not `pip install 'utterleaf[cuda]'`.
+- Added `utterleaf --cuda-setup` and a **Set up NVIDIA GPU…** button in Settings that print distro-aware steps to enable the GPU, plus `scripts/cuda-setup.sh` which installs CUDA automatically.
+- Quiet the microphone input-overflow warning that ALSA-to-Pulse bridging fires once at stream open; real overflows still warn.
+
 ## 0.3.0
 
 - New brand icon: a leaf with a speaking-mouth cutout, used for the tray, the Settings window, and the Windows executables.

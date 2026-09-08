@@ -140,9 +140,10 @@ def _linux_toolkit_dirs() -> list[Path]:
     if not sys.platform.startswith("linux"):
         return []
     dirs: list[Path] = []
-    for entry in sorted(Path("/usr/local").glob("cuda*/lib64")):
-        if entry.is_dir():
-            dirs.append(entry)
+    for root in (Path("/usr/local"), Path("/opt")):
+        for entry in sorted(root.glob("cuda*/lib64")):
+            if entry.is_dir():
+                dirs.append(entry)
     return dirs
 
 
@@ -220,6 +221,91 @@ def _cublas_loadable() -> bool:
     return _preload_linux_cuda()
 
 
+def _cuda_missing_hint() -> str:
+    """How to get the NVIDIA math libraries. Frozen builds cannot use the
+    pip extra, so the hint must name the distro toolkit instead."""
+    if getattr(sys, "frozen", False):
+        return "install the NVIDIA CUDA toolkit and cuDNN for this distro (Arch: sudo pacman -S cuda cudnn), or bundle a build with UTTERLEAF_BUNDLE_CUDA=1"
+    return "pip install 'utterleaf[cuda]'"
+
+
+def linux_distro() -> str:
+    """ID from /etc/os-release, falling back to ID_LIKE's first entry."""
+    if not sys.platform.startswith("linux"):
+        return ""
+    try:
+        text = Path("/etc/os-release").read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    info: dict[str, str] = {}
+    for line in text.splitlines():
+        if "=" in line and not line.startswith("#"):
+            key, _, value = line.partition("=")
+            info[key.strip()] = value.strip().strip('"').lower()
+    for key in ("ID", "ID_LIKE"):
+        if info.get(key):
+            return info[key].split()[0]
+    return ""
+
+
+def cuda_setup_plan() -> list[str]:
+    """Approved next step to enable the NVIDIA GPU, for THIS machine and build.
+
+    Source installs use the pip extra; binary releases need the distro CUDA
+    toolkit (Linux) or a bundled CUDA build. No system changes are made.
+    """
+    if cuda_runtime_ok():
+        return ["NVIDIA acceleration is already working; 'auto' picks the GPU."]
+    if not nvidia_gpu_label():
+        return ["No NVIDIA GPU detected. Utterleaf already runs on CPU — nothing to set up."]
+
+    frozen = bool(getattr(sys, "frozen", False))
+    if sys.platform == "win32":
+        if not frozen:
+            return [
+                "This is a source install. Add the CUDA libraries to your environment:",
+                '    python -m pip install -e ".[cuda]"',
+                "",
+                "Restart Utterleaf; the next launch uses the GPU.",
+            ]
+        return [
+            "This binary does not bundle the NVIDIA libraries. Either:",
+            "  - install the NVIDIA CUDA Toolkit (developer.nvidia.com/cuda-downloads)",
+            "    with cuDNN, so CTranslate2 finds the DLLs; or",
+            "  - produce a CUDA-bundled build with UTTERLEAF_BUNDLE_CUDA=1.",
+        ]
+
+    distro = linux_distro()
+    lines = [f"Linux NVIDIA acceleration for this distro ({distro or 'unknown'}):"]
+    if distro in ("arch", "manjaro", "endeavouros"):
+        lines += [
+            "    sudo pacman -S --needed cuda cudnn",
+            "",
+            "Arch package 'cuda' installs to /opt/cuda, which Utterleaf scans automatically.",
+        ]
+    elif distro in ("debian", "ubuntu", "linuxmint", "pop"):
+        lines += [
+            "    sudo apt-get update && sudo apt-get install -y nvidia-cuda-toolkit",
+            "",
+            "  Ubuntu/Debian split cuDNN into a release-matched package; find it with:",
+            "    apt search libcudnn",
+        ]
+    else:
+        lines += [
+            "Use NVIDIA's network installer, which installs to /usr/local/cuda:",
+            "    https://developer.nvidia.com/cuda-downloads",
+        ]
+    if frozen:
+        lines.append(
+            "Bundled CUDA (UTTERLEAF_BUNDLE_CUDA=1 at build time) is the other option."
+        )
+    lines += [
+        "",
+        "Afterwards restart Utterleaf and confirm with:  utterleaf --doctor",
+    ]
+    return lines
+
+
 def cuda_runtime_ok() -> bool:
     """GPU is usable only if CTranslate2 can load NVIDIA's math libraries."""
     global _cuda_runtime
@@ -227,7 +313,7 @@ def cuda_runtime_ok() -> bool:
         return _cuda_runtime
     _cuda_runtime = _cublas_loadable()
     if not _cuda_runtime:
-        log.info("NVIDIA GPU present but cublas is not loadable; install: pip install 'utterleaf[cuda]'")
+        log.info("NVIDIA GPU present but cublas is not loadable; %s", _cuda_missing_hint())
     return _cuda_runtime
 
 
@@ -390,7 +476,7 @@ def describe(accels: list[Accelerator], chosen: Accelerator) -> list[str]:
         if item.ready:
             status = "ready"
         elif item.kind == "gpu" and item.backend == "ctranslate2":
-            status = "present, install CUDA libs: pip install 'utterleaf[cuda]'"
+            status = f"present, {_cuda_missing_hint()}"
         else:
             status = "present, install extra to use (pip install 'utterleaf[npu]')"
         lines.append(f"  {item.kind}: {item.name} via {item.backend} ({status})")

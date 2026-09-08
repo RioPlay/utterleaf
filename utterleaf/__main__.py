@@ -16,6 +16,7 @@ def main(argv: list[str] | None = None) -> int:
         description="Hold a hotkey, speak, paste clean text. Local. Windows, macOS, and Linux.",
     )
     parser.add_argument("--doctor", action="store_true", help="Check mic, hotkey, paste helper, and paths")
+    parser.add_argument("--cuda-setup", action="store_true", help="Print how to enable the NVIDIA GPU for this build")
     parser.add_argument("--toggle", action="store_true", help="Toggle recording on a running instance")
     parser.add_argument("--stop", action="store_true", help="Stop a running instance")
     parser.add_argument("--quit", action="store_true", dest="quit_app", help="Quit a running instance")
@@ -116,6 +117,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.doctor:
         return run_doctor(cfg)
+
+    if args.cuda_setup:
+        from utterleaf.hardware import cuda_setup_plan
+
+        print("\n".join(cuda_setup_plan()))
+        return 0
 
     if args.polish is not None:
         print(run_once(args.polish, cfg, app_name=args.app))
