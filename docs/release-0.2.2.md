@@ -1,5 +1,8 @@
 # Release 0.2.2 preparation
 
+> Archived release record. Use the [latest downloads](https://github.com/RioPlay/utterleaf/releases/latest)
+> and [installation guide](installation.md) for the current app.
+
 ## Final pre-flight verification (2026-09-07)
 
 - PASS: version 0.2.2 in pyproject.toml. LICENSE matches https://www.apache.org/licenses/LICENSE-2.0.txt after whitespace normalization (blank-line layout differs; no text differences). NOTICE identifies Utterleaf and Copyright 2026 RioPlay and points to third-party notices. Candidate LICENSE and NOTICE are byte-identical to the repository copies.

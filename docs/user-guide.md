@@ -28,7 +28,9 @@ puts the text on your system clipboard, where your OS clipboard history may
 retain it. You can also bind a desktop shortcut to `utterleaf --copy-last` or
 clear it with `utterleaf --forget-last`.
 
-Click the tray icon (or right-click → **Settings…**) to open the Utterleaf control center. First launch opens it automatically. Opening Settings again raises the existing window and preserves unsaved edits, including when using `--settings` directly.
+## Settings and recovery
+
+Click the tray icon (or right-click → **Settings…**) to open Settings. First launch opens it automatically. Opening Settings again raises the existing window and preserves unsaved edits, including when using `--settings` directly.
 
 - **Dictation:** choose your shortcut, hold or press mode, microphone, recording feedback, and start at login. A five-second microphone check shows input levels without saving audio.
 - **Vocabulary:** add names and custom terms, choose text cleanup options, and preview the result on a sample before saving.
@@ -40,6 +42,7 @@ Prefer a clear screen? **Tray icon only** is the default. Switch the overlay on
 from the tray's **Floating indicator** toggle, or choose **Tray + floating indicator**
 under Dictation → Recording feedback. Live captions only run when the overlay is visible.
 Settings uses a dark theme by default. Native system dialogs follow the OS theme.
+Controls are grouped by task, with Save and Close visible while you scroll.
 
 **Help → Icons & artwork** explains every icon and mascot, previews them on light
 and dark surfaces, and exports a complete asset pack with transparent PNG cutouts.

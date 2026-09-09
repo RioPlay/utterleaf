@@ -1,5 +1,9 @@
 # Dictation regression investigation
 
+> Historical, machine-specific investigation. These timings and installed-build
+> findings are not current release guarantees. See the [user guide](user-guide.md)
+> and [platform testing](platform-testing.md) for current behavior.
+
 ## Findings
 
 The installed Windows CPU release requested GPU in its config, but recent logs

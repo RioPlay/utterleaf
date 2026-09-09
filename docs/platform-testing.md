@@ -2,6 +2,13 @@
 
 ## Current validation — September 9, 2026
 
+Version 0.3.6 interface refresh: Windows **328 passed, 1 skipped**;
+AlmaLinux/WSL **327 passed, 2 skipped**, plus CLI help. Real Windows screenshots
+were reviewed at default and compact size. Local documentation links resolve,
+and GitHub's Markdown renderer retains the theme-aware wordmark and download
+table. No additional UI dependencies were introduced. Native Wayland and macOS
+microphone/editor validation limits below still apply.
+
 Version 0.3.5 local validation: Windows **328 passed, 1 skipped**;
 AlmaLinux/WSL **327 passed, 2 skipped**, plus CLI help. Regression checks cover
 excluding X11 paste fallback on Wayland, retaining clipboard text after failed

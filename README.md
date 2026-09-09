@@ -1,56 +1,71 @@
 <p align="center">
-  <img src="docs/assets/brand/utterling-default.png" width="120" alt="Utterling, your leafy dictation companion" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/wordmark-inverse.png" />
+    <img src="docs/assets/brand/wordmark.png" width="340" alt="Utterleaf — Let ideas speak" />
+  </picture>
 </p>
-<h1 align="center">Utterleaf</h1>
-<p align="center"><strong>Let ideas speak.</strong><br />Private, on-device dictation for Windows, macOS, and Linux.</p>
+<p align="center"><strong>A little leaf. A lot less typing.</strong><br />Private, on-device dictation for Windows, macOS, and Linux.</p>
 <p align="center">
-  <a href="https://github.com/RioPlay/utterleaf/releases/latest"><strong>Download</strong></a>
-  · <a href="#get-started">Get started</a>
-  · <a href="docs/user-guide.md">User guide</a>
+  <a href="#download"><strong>Download</strong></a> ·
+  <a href="docs/user-guide.md">How to use it</a> ·
+  <a href="docs/screenshots.md">Take a look</a> ·
+  <a href="docs/README.md">Help & docs</a>
 </p>
 
-Hold a shortcut, speak, and release. Utterleaf turns your speech into text and
-pastes it into the app you're using. Your microphone closes between takes, and
-speech recognition stays on your device. No account. No saved recording history.
+Speak into the app you're already using. Utterleaf turns your words into text,
+then gets out of the way. No account, no cloud transcription, and no saved audio
+history. Your microphone closes between takes.
 
-![Utterleaf's dark Settings with shortcut controls, a microphone check, and Utterling](docs/assets/screenshots/dictation-dark.png)
+![Utterleaf Settings: a quiet dark interface, shortcut controls, microphone check, and Utterling](docs/assets/screenshots/dictation-dark.png)
 
-*Current development version on Windows. The [latest release](https://github.com/RioPlay/utterleaf/releases/latest) may look different.*
+*Real Windows app, with sample settings. [More screens](docs/screenshots.md).*
 
-## Get started
+## Download
 
-1. **[Download your build](https://github.com/RioPlay/utterleaf/releases/latest)** and extract the entire archive. Keep the `_internal` folder beside the executable; Python is included.
-2. **Open Utterleaf.** Run `Utterleaf/utterleaf.exe` on Windows, or `./Utterleaf/utterleaf` on macOS/Linux. The selected speech model downloads on first use; recognition then works offline.
-3. **Click a text field and dictate.** Hold **Ctrl+Win** on Windows or **Ctrl+Shift+Space** on macOS/X11 Linux, wait for the recording state or start sound, speak, then release. **Esc** cancels.
+Python is included. Extract the **whole archive**, then open Utterleaf.
 
-Downloads support Windows x64, macOS Apple Silicon, and Linux x64 (Ubuntu 24.04
-or compatible). Builds are unsigned; macOS is not notarized. On macOS, allow
-Microphone and Accessibility access. On Wayland, configure a desktop shortcut
-for `utterleaf --toggle` and a compatible paste helper—see the
-[platform setup guide](docs/installation.md).
+| Your computer | Download | Setup |
+| --- | --- | --- |
+| Windows x64 | [Windows ZIP](https://github.com/RioPlay/utterleaf/releases/latest/download/Utterleaf-windows-x64-cpu.zip) | Open `Utterleaf/utterleaf.exe` |
+| macOS Apple Silicon | [macOS archive](https://github.com/RioPlay/utterleaf/releases/latest/download/Utterleaf-macos-arm64.tar.gz) | [Permissions & launch](docs/installation.md#macos) |
+| Linux x64 | [Linux archive](https://github.com/RioPlay/utterleaf/releases/latest/download/Utterleaf-linux-x64.tar.gz) | [X11 setup](docs/installation.md#linux) · [Wayland setup](docs/wayland.md) |
 
-## Make it yours
+Linux builds target Ubuntu 24.04 or compatible distributions. Downloads are
+unsigned; macOS is not notarized. Wayland needs manual shortcut/paste setup and
+XWayland; native desktop dictation is still being validated.
+[Release notes & checksums](https://github.com/RioPlay/utterleaf/releases/latest).
 
-- **A quieter desktop.** Dark Settings and tray-only feedback by default. Enable the floating indicator when you want a countdown or live captions.
-- **Your words, your way.** Add names and phrases to your vocabulary. Use spoken punctuation and list commands, or turn cleanup off to keep the model transcript.
-- **A way back.** If text doesn't arrive, choose **Copy last dictation (2 min)** from the tray. Only the latest result is held temporarily in memory; **Forget last dictation** clears it. Copies may remain in your system clipboard history.
-- **A friendly companion.** Utterling welcomes you, helps explain voice commands, and reacts to your microphone check. All artwork is bundled locally.
+## Your first words
 
-Click the tray leaf to open Settings. [Explore the current screens](docs/screenshots.md)
-or follow the [user guide](docs/user-guide.md) for microphone checks, lists, and
-editing commands. Follow-up edits in unsupported text fields use manual clipboard
-replacement rather than changing your document automatically.
+1. **Open Utterleaf.** The speech model downloads on first launch. Once installed,
+   recognition works offline; you can disable further model downloads in Settings.
+2. **Check your microphone.** Click the tray leaf, then **Test microphone**.
+3. **Click a text field and speak.** Hold **Ctrl+Win** on Windows or
+   **Ctrl+Shift+Space** on macOS/X11, wait for Listening or the start sound, and
+   release when finished. Prefer a toggle? Choose **Press to start / stop**.
+   On Wayland, use your configured desktop shortcut instead.
 
-NVIDIA acceleration needs compatible CUDA libraries; selecting GPU alone doesn't
-install them. The Windows CPU download works without those libraries, and macOS
-currently uses CPU inference. [Installation and GPU setup](docs/installation.md).
+## Small touches that help
+
+- **Your words, your way.** Teach it names, say punctuation and bullet lists, or
+  turn cleanup off to keep the model transcript.
+- **A quiet desktop.** Dark Settings and tray-only feedback by default. Add an
+  optional countdown and draft dictation captions when you want them.
+- **Room to recover.** Copy the last dictation from the tray within two minutes,
+  or restore default settings from Help. Your vocabulary and models stay.
+
+<p align="center"><img src="docs/assets/brand/utterling-default.png" width="100" alt="Utterling, Utterleaf's leafy companion" /><br /><em>Meet Utterling. A friendly face, bundled right in the app.</em></p>
+
+Recognition runs locally. Recent output is held temporarily in memory; text you
+copy may remain in your OS clipboard history. GPU acceleration needs compatible
+CUDA libraries; the Windows download also works on CPU, and macOS currently uses
+CPU inference. [Privacy & usage](docs/user-guide.md) · [GPU setup](docs/installation.md).
 
 ## Keep growing
 
-[Roadmap](docs/roadmap.md) · [Development & builds](docs/development.md) ·
-[Platform testing](docs/platform-testing.md) · [Artwork](docs/branding.md) ·
-[Report an issue](https://github.com/RioPlay/utterleaf/issues)
+[Roadmap](docs/roadmap.md) · [Contribute & build](docs/development.md) ·
+[Platform testing](docs/platform-testing.md) · [Brand & artwork](docs/branding.md) ·
+[Report a problem](https://github.com/RioPlay/utterleaf/issues)
 
 Utterleaf is [Apache-2.0 licensed](LICENSE), © 2026 RioPlay. See [NOTICE](NOTICE)
-for attribution. Binary downloads include third-party notices and license texts.
-Model weights download separately and are not bundled in the repository.
+for attribution. Downloads include third-party notices; model weights are separate.

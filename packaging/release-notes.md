@@ -1,64 +1,34 @@
-Compiled Utterleaf binaries for Windows, macOS, and Linux. Python is bundled; no Python installation or source build is required.
+A quieter, friendlier Utterleaf. **v0.3.6** refreshes Settings and the documentation without adding a UI framework or changing the speech engine.
 
-Version 0.3.5 improves Settings recovery and Wayland troubleshooting:
+- Charcoal surfaces, grouped controls, softer field borders, and the approved wordmark in the sidebar.
+- Clearer headings and Help organized around recovery, device checks, and optional artwork.
+- A simpler GitHub download table, theme-aware branding, a documentation index, and refreshed real-app screenshots.
+- Historical reviews are clearly marked. The existing single Settings window, staged defaults reset, and Wayland recovery fixes are retained.
 
-- Opening Settings again raises the existing window and preserves unsaved edits. A process lock also handles simultaneous launches and recovers after a crash.
-- **Help → Restore default settings…** stages default preferences for review before Save. Advanced settings are reset too; vocabulary and downloaded models are preserved. The confirmation explains the restored download preference and disabled login startup.
-- Wayland no longer falls back to an X11 key helper that can falsely report insertion into native apps. Failed helpers leave copied dictation available for manual paste. Stale XWayland focus information is ignored.
-- Unsupported in-app hotkey controls are disabled on Wayland, with desktop-shortcut guidance. Diagnostics explain XWayland, clipboard, and key-helper requirements.
-- Updated user guide, Wayland troubleshooting, and a real Help screenshot.
+## Download and open
 
-Wayland still requires desktop-specific setup and XWayland. Native GNOME/KDE/wlroots end-to-end delivery remains unverified; this release does not add portal shortcuts or native Wayland input.
-
-Version 0.3.4 improves microphone sharing and recovery:
-
-- Windows prefers WASAPI shared mode for the default input and exact, unique matches for a named microphone. Other backends remain available when no safe match exists.
-- A temporary device-unavailable error gets one retry after closing the failed stream. Other errors report recovery guidance directly.
-- A failed microphone start resets toggle mode, so the next shortcut press can retry normally.
-- Microphone troubleshooting and platform-test documentation are updated. The feature plan describes long dictation, file transcription, captions, meetings, speaker labels, and translation; these planned features are not included yet.
-
-A local Windows test opened two simultaneous microphone streams successfully. This does not override another application's exclusive access or establish compatibility with every driver/calling app. Recovery from a disconnect during an active take remains planned.
-
-Version 0.3.3 brings the latest interface and dictation improvements into the downloadable app:
-
-- Dark Settings with green accents, clearer navigation, and simpler tray menus.
-- Tray-only feedback by default for new configurations. Existing overlay preferences are preserved. Toggle **Floating indicator** in the tray menu, or choose **Tray icon only** in Dictation → Recording feedback.
-- The optional floating indicator shows remaining recording time and a final-ten-seconds warning, including alongside live captions. Hidden captions no longer consume inference time.
-- List formatting preserves multiword comma-separated items and supports explicit “bullet point … next bullet point …” boundaries. Say “end list” to return to prose.
-- Typing and Speaking Utterlings now appear on the Vocabulary and Voice commands pages; all seven expressions have a role in normal Settings use.
-- Local timing diagnostics separate transcription, formatting, and delivery delays without logging dictated text.
-- Updated screenshots and focused installation, usage, and development guides.
-
-This release retains the reliability and privacy improvements from 0.3.2:
-
-- The microphone opens only for a take, recording has a time limit, and queued takes retain their order.
-- Paste checks protect against a changed destination or clipboard. The latest dictation can be recovered for two minutes in memory, copied again, or forgotten immediately.
-- Text cleanup can be disabled to preserve the model's wording. Settings report partial save failures and allow a retry.
-- The new leaf-waveform icons and detailed Utterling mascot appear in Settings. Help → Icons & artwork shows every artwork family on light and dark backgrounds and exports the complete asset pack, including transparent PNG cutouts.
-- Linux CUDA discovery supports `/opt/cuda` (Arch), frozen builds give appropriate CUDA installation guidance, and transient microphone overflow warnings at stream open are suppressed.
-
-This release also includes an offline-STT research summary, a prioritized roadmap, artwork documentation, and an expanded platform-testing guide in the repository.
-
-Version 0.3.0 introduces the brand leaf icon — a leaf with a speaking-mouth cutout — on the tray, the Settings window, and the Windows executables. The Linux tray now shows on Wayland desktops: the build selects the StatusNotifierItem (appindicator) backend that KDE shows natively and GNOME shows with the AppIndicator extension, and `--doctor` reports which backend is active. The `utterleaf --toggle` shortcut answers instantly even when the microphone is slow to open, instead of a false "Utterleaf is not running." NVIDIA CUDA libraries are now found on Linux without setting `LD_LIBRARY_PATH` (install the `utterleaf[cuda]` extra). Every platform's binary ships the readme and third-party license notices.
-
-| Platform | Download | Run after extracting the entire archive |
+| Computer | Archive | After extracting the whole archive |
 | --- | --- | --- |
-| Windows x64 | `Utterleaf-windows-x64-cpu.zip` | `Utterleaf/utterleaf.exe` |
-| macOS Apple Silicon (arm64) | `Utterleaf-macos-arm64.tar.gz` | `./Utterleaf/utterleaf` |
-| Linux x64 (Ubuntu 24.04 or compatible) | `Utterleaf-linux-x64.tar.gz` | `./Utterleaf/utterleaf` |
+| Windows x64 | `Utterleaf-windows-x64-cpu.zip` | Open `Utterleaf/utterleaf.exe` |
+| macOS Apple Silicon | `Utterleaf-macos-arm64.tar.gz` | Run `./Utterleaf/utterleaf` |
+| Linux x64 (Ubuntu 24.04 or compatible) | `Utterleaf-linux-x64.tar.gz` | Run `./Utterleaf/utterleaf` |
 
-Keep the `_internal` directory beside the executable. First launch downloads the speech model; speech recognition then runs locally on the CPU. Model weights and optional CUDA libraries are not bundled.
+Python is bundled. Keep `_internal` beside the executable. The selected speech
+model downloads on first launch; recognition then runs locally. Model weights
+and optional CUDA libraries are separate. `SHA256SUMS.txt` lists archive checksums.
 
-Windows uses Ctrl+Win for dictation. macOS and X11 Linux use Ctrl+Shift+Space. macOS requires Microphone and Accessibility permissions. Linux requires a desktop session and a paste helper (`xdotool` on X11; `wtype` on Wayland).
+## Platform setup
 
-On Wayland, global key listening is disabled. Bind a compositor/desktop shortcut to the absolute executable path plus `--toggle`, for example `/home/you/Utterleaf/utterleaf --toggle`. Press once to record and again to transcribe. The current Tk/Xorg components require XWayland and a working `DISPLAY`. Native Wayland paste requires `wl-clipboard` and a compatible helper (`wtype` on supported compositors, or configured `ydotool`); compositor support varies.
+- **Windows:** Ctrl+Win is the default shortcut. GPU acceleration needs compatible CUDA libraries; the CPU build works without them.
+- **macOS:** Apple Silicon only, with CPU inference. Grant Microphone and Accessibility permissions. The portable build is unsigned and not notarized.
+- **Linux:** X11 needs a paste helper. Wayland requires XWayland, a desktop shortcut to the absolute executable path plus `--toggle`, `wl-clipboard`, and a compatible/configured paste helper. Native Wayland dictation still needs desktop-specific validation.
 
-Version 0.2.5 fixes ALSA devices rejecting 16 kHz input by capturing at the device's native rate and converting to 16 kHz for transcription. It also fixes the Linux Xorg tray's Unicode title crash. CI now exercises extracted Linux binaries with the tray enabled and disabled, in addition to audio conversion regression tests.
+These are portable archives, not installers. All builds are unsigned. Source tests
+and packaged smoke checks do not establish native microphone and editor delivery
+on every desktop. Long dictation, meetings, system-audio captions, and translation
+remain planned features.
 
-Version 0.2.4 fixes the Linux startup crash caused by missing `pynput.mouse._xorg` and corrects the bundled pystray backend. Linux CI now tests the extracted executable's imports, Settings startup, app startup, IPC controls and clean shutdown under X11 and the Wayland session branch. This is not a real-compositor dictation test.
-
-These builds are unsigned; macOS is not notarized. The macOS and Linux packages are portable executable directories, not installers. The macOS download is for Apple Silicon, not Intel Macs. Native macOS/Linux microphone and paste interactions have not been manually verified.
-
-All three binaries were built and passed frozen CLI smoke checks on native GitHub Actions runners. Windows, macOS, and Linux source test jobs passed. Publication verifies that the build revision matches the release tag and all five build/test jobs succeeded.
-
-`SHA256SUMS.txt` verifies the three downloadable archives. The Windows archive also contains executable checksums.
+[Installation](https://github.com/RioPlay/utterleaf/blob/main/docs/installation.md) ·
+[Wayland help](https://github.com/RioPlay/utterleaf/blob/main/docs/wayland.md) ·
+[Screenshots](https://github.com/RioPlay/utterleaf/blob/main/docs/screenshots.md) ·
+[Earlier releases](https://github.com/RioPlay/utterleaf/releases)

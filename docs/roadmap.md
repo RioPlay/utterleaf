@@ -23,6 +23,11 @@ intended field, with understandable local processing and minimal interruption.
 
 ## Current delivery status
 
+**Version 0.3.6 interface and documentation refresh:** grouped Settings controls,
+charcoal surfaces, the approved sidebar wordmark, recovery-first Help, and updated
+screenshots. A [documentation index](README.md) separates current guides from
+historical investigations. [Interface guidelines](interface.md) keep future work consistent.
+
 **Version 0.3.5 changes:** one Settings window per configuration, staged defaults
 recovery under Help, and a current Help screenshot. Wayland fixes exclude misleading X11 paste
 fallbacks, avoid stale XWayland focus queries, and explain missing desktop setup

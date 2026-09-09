@@ -24,8 +24,11 @@ root.update()
 time.sleep(0.3)
 for name in window.pages:
     window.show_page(name)
-    root.update()
-    time.sleep(0.15)
+    # Layout changes can schedule further resize and repaint events. Pump the
+    # event loop through settling instead of capturing an intermediate frame.
+    for _ in range(6):
+        root.update()
+        time.sleep(0.05)
     x, y = root.winfo_rootx(), root.winfo_rooty()
     (ImageGrab.grab(window=root.winfo_id()) if sys.platform == "win32" else ImageGrab.grab(bbox=(x, y, x + root.winfo_width(), y + root.winfo_height()))).save(
         output / (name.lower().replace(" & ", "-").replace(" ", "-") + ".png")

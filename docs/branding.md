@@ -1,10 +1,17 @@
 # Utterleaf identity
 
-![Utterleaf — Let ideas speak](assets/brand/wordmark.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/brand/wordmark-inverse.png" />
+  <img src="assets/brand/wordmark.png" width="340" alt="Utterleaf — Let ideas speak" />
+</picture>
 
-A vector interpretation of the supplied brand board: an upright leaf encloses
+Utterleaf's mark is an upright leaf enclosing
 five waveform bars, with the center bar continuing into the stem. Green is the
 primary accent; neutral surfaces keep the utility quiet and readable.
+
+The app sidebar uses the inverse wordmark on charcoal. GitHub selects primary
+or inverse artwork to suit the reader's color scheme. See the [interface guide](interface.md)
+for layout, copy, and screenshot conventions.
 
 ## Implemented in the application
 

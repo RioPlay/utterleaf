@@ -5,6 +5,8 @@
 ## Local checks
 
 The interface uses native Tk widgets with no web runtime. UI tests use sample settings and mocked devices. On headless Linux, run the UI tests under a virtual display (such as Xvfb).
+Follow the [interface guidelines](interface.md) and [brand guide](branding.md)
+when changing layout, copy, or artwork.
 
 Settings, vocabulary, and login registration use atomic file replacement. If a
 later save step fails, the error identifies what saved and what was not

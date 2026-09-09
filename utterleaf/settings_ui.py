@@ -43,7 +43,7 @@ class SettingsWindow:
         self.status = tk.StringVar(root, value="Your voice. Your device.")
         self.connection = tk.StringVar(root, value="Checking app…" if background else "App status unavailable")
         theme.apply(root)
-        root.title("Utterleaf")
+        root.title("Utterleaf · Settings")
         root.minsize(760, 560)
         width = min(960, root.winfo_screenwidth() - 60)
         height = min(780, root.winfo_screenheight() - 90)
@@ -60,10 +60,15 @@ class SettingsWindow:
         sidebar = tk.Frame(root, bg=theme.SURFACE_LOW, width=190)
         sidebar.grid(row=0, column=0, sticky="nsew")
         sidebar.grid_propagate(False)
-        tk.Label(sidebar, text="utterleaf", font=(ui_font(), 24, "bold"),
-                 bg=theme.SURFACE_LOW, fg=theme.ON_SURFACE).pack(anchor="w", padx=22, pady=(28, 0))
-        tk.Label(sidebar, text="LET IDEAS SPEAK.", font=(ui_font(), 8, "bold"),
-                 bg=theme.SURFACE_LOW, fg=theme.ON_VARIANT).pack(anchor="w", padx=24, pady=(4, 22))
+        from importlib.resources import files
+        from PIL import Image, ImageTk
+        with files("utterleaf").joinpath("assets", "wordmark-inverse.png").open("rb") as stream:
+            with Image.open(stream) as source:
+                logo = source.convert("RGBA")
+        logo.thumbnail((154, 46), Image.Resampling.LANCZOS)
+        self.wordmark = ImageTk.PhotoImage(logo, master=root)
+        tk.Label(sidebar, image=self.wordmark, bg=theme.SURFACE_LOW,
+                 takefocus=False).pack(anchor="w", padx=18, pady=(28, 30))
         for name in ("Dictation", "Vocabulary", "Voice commands", "Engine", "Help & diagnostics"):
             label = {"Engine": "Speech & privacy", "Help & diagnostics": "Help"}.get(name, name)
             button = ttk.Button(sidebar, text=label, style="Nav.TButton",
@@ -78,12 +83,12 @@ class SettingsWindow:
         content.grid(row=0, column=1, sticky="nsew")
         content.columnconfigure(0, weight=1)
         content.rowconfigure(0, weight=1)
-        self.canvas = tk.Canvas(content, bg=theme.SURFACE, highlightthickness=0)
+        self.canvas = tk.Canvas(content, bg=theme.SURFACE_LOW, highlightthickness=0)
         self.canvas.grid(row=0, column=0, sticky="nsew")
         scroll = ttk.Scrollbar(content, orient="vertical", command=self.canvas.yview)
         scroll.grid(row=0, column=1, sticky="ns")
         self.canvas.configure(yscrollcommand=scroll.set)
-        self.body = ttk.Frame(self.canvas, padding=(30, 26, 30, 24))
+        self.body = ttk.Frame(self.canvas, style="Page.TFrame", padding=(26, 26, 26, 24))
         self.body.columnconfigure(0, weight=1)
         self.body.rowconfigure(0, weight=1)
         self.window_id = self.canvas.create_window(0, 0, window=self.body, anchor="nw")
@@ -123,12 +128,12 @@ class SettingsWindow:
         self.poll_id = root.after(80, self._poll)
 
     def _page(self, name, eyebrow, title, subtitle):
-        frame = ttk.Frame(self.body)
+        frame = ttk.Frame(self.body, style="Page.TFrame")
         self.pages[name] = frame
-        header = ttk.Frame(frame)
-        header.pack(fill="x")
+        header = ttk.Frame(frame, style="Page.TFrame")
+        header.pack(fill="x", pady=(0, 10))
         header.columnconfigure(0, weight=1)
-        words = ttk.Frame(header)
+        words = ttk.Frame(header, style="Page.TFrame")
         words.grid(row=0, column=0, sticky="ew")
         eyebrow_label = ttk.Label(words, text=eyebrow.upper(), style="Eyebrow.TLabel", wraplength=560)
         eyebrow_label.pack(anchor="w")
@@ -137,13 +142,13 @@ class SettingsWindow:
         expression = {"Dictation": "default", "Vocabulary": "typing",
                       "Voice commands": "speaking", "Help & diagnostics": "thinking"}.get(name)
         if expression:
-            label = ttk.Label(header, takefocus=False)
+            label = ttk.Label(header, style="Page.TLabel", takefocus=False)
             label.grid(row=0, column=1, sticky="ne", padx=(12, 0))
             self.mascot_labels[name] = label
             if self._set_mascot(name, expression):
                 self._mascot_heading_labels.update((eyebrow_label, title_label))
         if subtitle:
-            ttk.Label(frame, text=subtitle, style="Hint.TLabel", wraplength=540).pack(anchor="w", pady=(0, 24))
+            ttk.Label(frame, text=subtitle, style="Subtitle.TLabel", wraplength=540).pack(anchor="w", pady=(0, 18))
         return frame
 
     def _set_mascot(self, page, expression):
@@ -159,10 +164,15 @@ class SettingsWindow:
         return True
 
     def _section(self, parent, title, hint=""):
-        ttk.Separator(parent).pack(fill="x", pady=(10, 18))
-        ttk.Label(parent, text=title, style="Section.TLabel").pack(anchor="w", pady=(0, 6))
+        border = tk.Frame(parent, bg=theme.SURFACE, highlightthickness=1,
+                          highlightbackground=theme.OUTLINE_VARIANT)
+        border.pack(fill="x", pady=(0, 14))
+        panel = ttk.Frame(border, padding=16)
+        panel.pack(fill="x")
+        ttk.Label(panel, text=title, style="Section.TLabel").pack(anchor="w", pady=(0, 6))
         if hint:
-            ttk.Label(parent, text=hint, style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=(0, 12))
+            ttk.Label(panel, text=hint, style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=(0, 8))
+        return panel
 
     def _choice(self, parent, label, key, values, *, editable=False):
         row = ttk.Frame(parent)
@@ -193,7 +203,8 @@ class SettingsWindow:
         return box
 
     def _dictation(self):
-        p = self._page("Dictation", "On-device dictation", "Think it. Say it. Done.", "")
+        page = self._page("Dictation", "Your everyday setup", "Make it flow.", "")
+        p = page
         card = tk.Frame(p, bg=theme.PRIMARY_CONTAINER, padx=20, pady=18)
         self.shortcut_card = card
         card.pack(fill="x", pady=(0, 12))
@@ -205,6 +216,7 @@ class SettingsWindow:
         tk.Label(card, textvariable=self.shortcut_steps,
                  bg=theme.PRIMARY_CONTAINER, fg=theme.ON_PRIMARY_CONTAINER,
                  font=(ui_font(), 10), wraplength=490, justify="left").pack(anchor="w", pady=(10, 0))
+        p = self._section(page, "Your shortcut")
         self.hotkey_box = self._choice(p, "Keyboard shortcut", "hotkey", [v for _, v in hotkey_presets() if v], editable=True)
         if is_wayland():
             self.hotkey_box.configure(state="disabled")
@@ -218,7 +230,7 @@ class SettingsWindow:
         self.limit_hint = tk.StringVar(self.root)
         ttk.Label(p, textvariable=self.limit_hint,
                   style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=(0, 8))
-        self._section(p, "Microphone", "Check that Utterleaf can hear you. Audio from this check is discarded.")
+        p = self._section(page, "Microphone", "Check your input. Test audio is discarded.")
         self.mic_box = self._choice(p, "Input device", "microphone", [SYSTEM_DEFAULT])
         actions = ttk.Frame(p)
         actions.pack(fill="x", pady=8)
@@ -230,7 +242,7 @@ class SettingsWindow:
         self.meter = ttk.Progressbar(p, maximum=100)
         self.meter.pack(fill="x", pady=(8, 6))
         ttk.Label(p, textvariable=self.mic_message, style="Hint.TLabel", wraplength=520).pack(anchor="w")
-        self._section(p, "Recording feedback", "The tray icon always shows recording and processing. Choose whether to also show a floating indicator.")
+        p = self._section(page, "Recording feedback", "Keep things quiet, or add a little guidance while you speak.")
         ttk.Radiobutton(p, text="Tray icon only", variable=self.vars["indicator"], value=False).pack(anchor="w", pady=4)
         ttk.Radiobutton(p, text="Tray + floating indicator", variable=self.vars["indicator"], value=True).pack(anchor="w", pady=4)
         ttk.Label(p, text="The floating indicator includes your remaining recording time.",
@@ -238,22 +250,23 @@ class SettingsWindow:
         self.preview_toggle = self._check(p, "Show live captions in the floating indicator", "live_preview",
                                          "Optional draft words while you speak. Uses additional processing power.")
         self._check(p, "Play start / stop sounds", "beep")
-        self._section(p, "Startup")
+        p = self._section(page, "Startup")
         self._check(p, login_label(), "start_at_login")
 
     def _vocabulary(self):
-        p = self._page("Vocabulary", "Words, your way", "A little more you.",
+        page = self._page("Vocabulary", "Words, your way", "A little more you.",
                        "Teach Utterleaf names, terms, and phrases you use every day.")
+        p = self._section(page, "Your words")
         self._check(p, "Clean up dictated text", "text_cleanup",
                     "Turn off to keep the model transcript unchanged. Vocabulary replacements and spoken commands "
                     "are also paused. Speech recognition can still make mistakes.")
-        self._section(p, "Personal vocabulary", "One replacement per line: spoken = written. For example: utter leaf = Utterleaf")
+        p = self._section(page, "Personal vocabulary", "One replacement per line: spoken = written. For example: utter leaf = Utterleaf")
         self.names = self._text(p, 8)
         self.names.insert("1.0", dictionary_text())
-        self._section(p, "Text cleanup")
+        p = self._section(page, "Text cleanup")
         self._check(p, "Remove filler words", "remove_fillers", "Clean up “um” and “uh” automatically.")
         self._check(p, "Follow spoken corrections", "fix_corrections", "Recognize corrections such as “no wait” and “I mean”.")
-        self._section(p, "Try your cleanup", "Type a sample to preview your vocabulary and cleanup settings before saving.")
+        p = self._section(page, "Try it out", "Preview your vocabulary and cleanup before saving.")
         self.sample = self._text(p, 3)
         self.sample.insert("1.0", "um I think we should try utter leaf")
         ttk.Button(p, text="Preview clean text", command=self.preview).pack(anchor="w", pady=(0, 10))
@@ -275,12 +288,12 @@ class SettingsWindow:
         ttk.Label(p, text="Use edits immediately after dictating, in the same text field. If the field cannot be verified, "
                   "revised text is copied for you to replace manually. Your document is left alone.\n"
                   "Cleanup uses text rules; it does not generate new ideas or rewrite meaning.",
-                  style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=10)
+                  style="Subtitle.TLabel", wraplength=520).pack(anchor="w", pady=10)
 
     def _engine(self):
-        p = self._page("Engine", "Local power, simple choices", "Find your balance.",
+        page = self._page("Engine", "Speech & privacy", "Your voice stays here.",
                        "The default model balances speed and accuracy. Smaller models use less memory and generally finish sooner.")
-        self._section(p, "Speech model", "tiny: lightest  ·  base: faster  ·  small: balanced  ·  medium: larger\n"
+        p = self._section(page, "Speech model", "tiny: lightest  ·  base: faster  ·  small: balanced  ·  medium: larger\n"
                       "Changing models may require a one-time download. Custom model names and paths are supported.")
         self._choice(p, "Model", "model", ["tiny", "base", "small", "medium", "large-v3", "distil-small.en"], editable=True)
         self._choice(p, "Processing device", "device", ["auto", "cpu", "gpu", "npu"])
@@ -290,7 +303,7 @@ class SettingsWindow:
         ttk.Label(p, text="Use auto to detect the language, or enter a language code. English-only models require English.",
                   style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=8)
         self._choice(p, "Noise reduction", "denoise", ["auto", "on", "off"])
-        self._section(p, "Privacy & clipboard", "Your microphone is released after each take. Audio is processed on this device "
+        p = self._section(page, "Privacy & clipboard", "Your microphone is released after each take. Audio is processed on this device "
                       "and is not saved to a recording history. The latest output has a two-minute recovery slot in memory. "
                       "Use Forget last dictation in the tray menu to clear it sooner. No account is required.")
         self._check(p, "Allow missing model downloads", "allow_network",
@@ -298,19 +311,19 @@ class SettingsWindow:
         self._check(p, "Restore my clipboard after pasting", "restore_clipboard")
 
     def _help(self):
-        p = self._page("Help & diagnostics", "A clear path forward", "Keep things running.",
-                       "Check your setup and get a report when something needs attention.")
-        ttk.Button(p, text="Icons & artwork…", command=self.show_appearance).pack(anchor="w", pady=(0, 14))
+        page = self._page("Help & diagnostics", "A little help", "Let's get you unstuck.",
+                         "Recover your words, check your setup, or start fresh.")
+        p = self._section(page, "App status")
         ttk.Label(p, textvariable=self.connection, style="Section.TLabel").pack(anchor="w", pady=(0, 12))
         ttk.Label(p, text=settings_blurb(), style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=(0, 14))
-        self._section(p, "Quick checks", "No text? Click an editable text field before dictating.\n"
+        p = self._section(page, "Quick checks", "No text? Click an editable text field before dictating.\n"
                       "Lost a result? Use Copy last dictation in the tray menu within two minutes.\n"
                       "No audio? Choose a microphone on the Dictation page and run a check.\n"
                       "First launch? Allow the speech model to finish downloading and loading.")
+        p = self._section(page, "A fresh start", "Restore preferences without removing your vocabulary or models.")
         self.reset_button = ttk.Button(p, text="Restore default settings…", command=self.restore_defaults)
         self.reset_button.pack(anchor="w", pady=(10, 4))
-        ttk.Label(p, text="Review defaults before saving. Your vocabulary and downloaded models stay.",
-                  style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=(0, 12))
+        p = self._section(page, "Device report", "Check your setup without downloading a model. Review the report before sharing it.")
         self.diagnostic_button = ttk.Button(p, text="Check this device", command=self.diagnostics)
         self.diagnostic_button.pack(anchor="w", pady=10)
         self.diagnostic_text = self._text(p, 12)
@@ -320,6 +333,8 @@ class SettingsWindow:
         self.export_button.pack(anchor="w", pady=(0, 8))
         self.cuda_button = ttk.Button(p, text="Set up NVIDIA GPU…", command=self.cuda_setup)
         self.cuda_button.pack(anchor="w")
+        p = self._section(page, "Meet Utterling", "Your local companion. Explore the artwork and export icons for light or dark backgrounds.")
+        ttk.Button(p, text="Icons & artwork…", command=self.show_appearance).pack(anchor="w", pady=(4, 0))
 
     def show_appearance(self):
         if self.appearance_guide is not None and self.appearance_guide.root.winfo_exists():
@@ -346,6 +361,7 @@ class SettingsWindow:
 
     def _scroll_top(self):
         self._page_reset = None
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
         self.canvas.yview_moveto(0)
 
     def _resize(self, event):
@@ -354,7 +370,7 @@ class SettingsWindow:
         def wrap(widget):
             for child in widget.winfo_children():
                 if isinstance(child, (ttk.Label, tk.Label)) and int(child.cget("wraplength") or 0):
-                    inset = 140 if child.master is self.shortcut_card else 90
+                    inset = 140 if child.master is self.shortcut_card else 104
                     if child in self._mascot_heading_labels:
                         inset += 116
                     child.configure(wraplength=max(180, event.width - inset))
@@ -421,7 +437,7 @@ class SettingsWindow:
         self.shortcut_steps.set(
             "Click a text field. Press your shortcut, wait for Listening, then speak. Press again to paste."
             if is_wayland() or self.vars["mode"].get() == "toggle"
-            else "Click a text field. Hold your shortcut, wait for Listening, then speak. Release to paste."
+            else "Click a text field. Hold until Listening, speak, then release to paste."
         )
         limit = Config().max_seconds if self._reset_pending else self.cfg.max_seconds
         self.limit_hint.set(

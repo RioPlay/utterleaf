@@ -1,4 +1,4 @@
-"""Material 3 tokens for Settings and the status pill. No extra UI kit."""
+"""Utterleaf's shared dark palette and accessible native-widget styles."""
 
 from __future__ import annotations
 
@@ -15,9 +15,9 @@ PRIMARY_HOVER = "#A0E9B2"
 ON_PRIMARY = "#102A1B"
 PRIMARY_CONTAINER = "#203C2D"
 ON_PRIMARY_CONTAINER = "#C1F2CD"
-SURFACE = "#111B18"
-SURFACE_LOW = "#0C1411"
-SURFACE_CONTAINER = "#20302A"
+SURFACE = "#171E20"
+SURFACE_LOW = "#101617"
+SURFACE_CONTAINER = "#283335"
 ON_SURFACE = "#E5EEE8"
 ON_VARIANT = "#AABCB1"
 OUTLINE = "#71897B"
@@ -55,9 +55,12 @@ def apply(root) -> None:
 
     style.configure(".", background=SURFACE, foreground=ON_SURFACE, font=font_body)
     style.configure("TFrame", background=SURFACE)
+    style.configure("Page.TFrame", background=SURFACE_LOW)
+    style.configure("Page.TLabel", background=SURFACE_LOW)
     style.configure("Card.TFrame", background=SURFACE_CONTAINER, relief="flat")
     style.configure("TLabel", background=SURFACE, foreground=ON_SURFACE, font=font_body)
-    style.configure("Title.TLabel", background=SURFACE, foreground=ON_SURFACE, font=font_title)
+    style.configure("Title.TLabel", background=SURFACE_LOW, foreground=ON_SURFACE, font=font_title)
+    style.configure("Subtitle.TLabel", background=SURFACE_LOW, foreground=ON_VARIANT, font=font_body)
     style.configure("Hint.TLabel", background=SURFACE, foreground=ON_VARIANT, font=font_hint)
     style.configure("Card.TLabel", background=SURFACE_CONTAINER, foreground=ON_SURFACE, font=font_body)
     style.configure(
@@ -87,6 +90,9 @@ def apply(root) -> None:
         background=SURFACE_LOW,
         foreground=ON_SURFACE,
         arrowcolor=ON_VARIANT,
+        bordercolor=OUTLINE_VARIANT,
+        lightcolor=OUTLINE_VARIANT,
+        darkcolor=OUTLINE_VARIANT,
         padding=6,
     )
     style.map(
@@ -102,6 +108,9 @@ def apply(root) -> None:
         fieldbackground=SURFACE_LOW,
         foreground=ON_SURFACE,
         padding=6,
+        bordercolor=OUTLINE_VARIANT,
+        lightcolor=OUTLINE_VARIANT,
+        darkcolor=OUTLINE_VARIANT,
     )
     style.map(
         "TEntry",
@@ -118,7 +127,8 @@ def apply(root) -> None:
         relief="flat",
         borderwidth=0,
     )
-    style.map("TButton", background=[("active", SURFACE_LOW)])
+    style.map("TButton", background=[("active", OUTLINE_VARIANT)],
+              foreground=[("disabled", OUTLINE)])
     style.configure(
         "Primary.TButton",
         background=PRIMARY,
@@ -131,7 +141,7 @@ def apply(root) -> None:
     style.map("Primary.TButton", background=[("disabled", SURFACE_CONTAINER), ("active", PRIMARY_HOVER)],
               foreground=[("disabled", OUTLINE), ("!disabled", ON_PRIMARY)])
     style.configure("Section.TLabel", font=(_family, 13, "bold"))
-    style.configure("Eyebrow.TLabel", foreground=PRIMARY, font=(_family, 9, "bold"))
+    style.configure("Eyebrow.TLabel", background=SURFACE_LOW, foreground=PRIMARY, font=(_family, 9, "bold"))
     style.configure("Nav.TButton", anchor="w", padding=(16, 12), background=SURFACE_LOW)
     style.map("Nav.TButton", background=[("active", SURFACE_CONTAINER)])
     style.configure("Selected.Nav.TButton", background=PRIMARY_CONTAINER,

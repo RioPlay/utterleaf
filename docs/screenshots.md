@@ -2,8 +2,8 @@
 
 [Back to Utterleaf](../README.md) · [User guide](user-guide.md)
 
-These are real screenshots of the current Windows development version, captured
-with sample vocabulary. The latest downloadable release may look different.
+Real Windows screenshots of the v0.3.6 interface, captured with sample vocabulary.
+The app uses bundled artwork and local fonts; no remote content is loaded by Settings.
 
 ## Dictation
 
@@ -17,6 +17,13 @@ Teach Utterleaf the names and phrases you use every day. Typing Utterling keeps
 you company while you make the words your own.
 
 ![Dark Vocabulary settings with Typing Utterling](assets/screenshots/vocabulary-dark.png)
+
+## Speech and privacy
+
+Choose your model and hardware, then review download and clipboard preferences
+in their own section. Default Settings stay dark and the floating indicator is opt-in.
+
+![Speech model controls in the dark Settings interface](assets/screenshots/speech-dark.png)
 
 ## Voice commands
 
