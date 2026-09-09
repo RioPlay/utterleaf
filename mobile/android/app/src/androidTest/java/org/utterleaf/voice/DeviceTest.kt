@@ -7,11 +7,14 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.FixMethodOrder
+import org.junit.runners.MethodSorters
 import org.junit.runner.RunWith
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 @RunWith(AndroidJUnit4::class)
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class DeviceTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val app = instrumentation.targetContext
@@ -99,5 +102,34 @@ class DeviceTest {
         NativeEngine.reset(); NativeEngine.cancel()
         assertNull(NativeEngine.decode(ModelStore.file(app.noBackupFilesDir).absolutePath, audio))
         audio.fill(0f); result.fill(0)
+    }
+    @Test fun zCaptureStopsAndReleasesItsLeaseOnCancel() {
+        // Last test: granting a runtime permission persists for this emulator install.
+        instrumentation.context.assets.open("ggml-tiny.en.bin").use { ModelStore.install(it, app.noBackupFilesDir) }
+        instrumentation.uiAutomation.grantRuntimePermission(app.packageName, "android.permission.RECORD_AUDIO")
+        val activity = instrumentation.startActivitySync(android.content.Intent(app, SetupActivity::class.java)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        val listening = java.util.concurrent.CountDownLatch(1)
+        val failure = java.util.concurrent.atomic.AtomicReference<String>()
+        lateinit var session: VoiceSession
+        try {
+            instrumentation.runOnMainSync {
+                session = VoiceSession(app, { if (it.startsWith("Listening")) listening.countDown() },
+                    { failure.set("Cancelled capture produced text") }, { failure.set(it); listening.countDown() })
+                session.start()
+            }
+            assertTrue("Capture did not start", listening.await(10, java.util.concurrent.TimeUnit.SECONDS))
+            assertNull(failure.get())
+        } finally {
+            instrumentation.runOnMainSync { session.cancel(); activity.finish() }
+        }
+        val deadline = android.os.SystemClock.elapsedRealtime() + 5000
+        var released = false
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            if (WorkLease.acquire()) { WorkLease.release(); released = true; break }
+            Thread.sleep(20)
+        }
+        assertTrue("Capture did not release its lease", released)
+        assertNull(failure.get())
     }
 }
