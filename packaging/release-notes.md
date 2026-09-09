@@ -1,6 +1,16 @@
 Compiled Utterleaf binaries for Windows, macOS, and Linux. Python is bundled; no Python installation or source build is required.
 
-Version 0.3.2 includes the dictation, privacy, and artwork improvements prepared for 0.3.1, plus the Pillow/Tk packaging fix caught by the extracted Linux app test before 0.3.1 could be published:
+Version 0.3.3 brings the latest interface and dictation improvements into the downloadable app:
+
+- Dark Settings with green accents, clearer navigation, and simpler tray menus.
+- Tray-only feedback by default for new configurations. Existing overlay preferences are preserved. Toggle **Floating indicator** in the tray menu, or choose **Tray icon only** in Dictation → Recording feedback.
+- The optional floating indicator shows remaining recording time and a final-ten-seconds warning, including alongside live captions. Hidden captions no longer consume inference time.
+- List formatting preserves multiword comma-separated items and supports explicit “bullet point … next bullet point …” boundaries. Say “end list” to return to prose.
+- Typing and Speaking Utterlings now appear on the Vocabulary and Voice commands pages; all seven expressions have a role in normal Settings use.
+- Local timing diagnostics separate transcription, formatting, and delivery delays without logging dictated text.
+- Updated screenshots and focused installation, usage, and development guides.
+
+This release retains the reliability and privacy improvements from 0.3.2:
 
 - The microphone opens only for a take, recording has a time limit, and queued takes retain their order.
 - Paste checks protect against a changed destination or clipboard. The latest dictation can be recovered for two minutes in memory, copied again, or forgotten immediately.
