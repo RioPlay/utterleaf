@@ -47,6 +47,10 @@ else:
         "pynput.mouse._xorg",
     ]
 
+# Pillow's native Tk bridge imports this helper from C, outside modulegraph's
+# Python import analysis. Settings now displays PNG artwork through ImageTk.
+hidden += ["PIL._tkinter_finder", "PIL._imagingtk"]
+
 # Optional accelerated edition. DLLs must retain their package layout so the
 # runtime's NVIDIA discovery can find them. The default stays a small CPU build.
 binaries = []

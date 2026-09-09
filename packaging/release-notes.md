@@ -1,6 +1,6 @@
 Compiled Utterleaf binaries for Windows, macOS, and Linux. Python is bundled; no Python installation or source build is required.
 
-Version 0.3.1 improves dictation reliability, privacy, and the desktop experience:
+Version 0.3.2 includes the dictation, privacy, and artwork improvements prepared for 0.3.1, plus the Pillow/Tk packaging fix caught by the extracted Linux app test before 0.3.1 could be published:
 
 - The microphone opens only for a take, recording has a time limit, and queued takes retain their order.
 - Paste checks protect against a changed destination or clipboard. The latest dictation can be recovered for two minutes in memory, copied again, or forgotten immediately.
