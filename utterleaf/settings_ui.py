@@ -132,11 +132,13 @@ class SettingsWindow:
         eyebrow_label.pack(anchor="w")
         title_label = ttk.Label(words, text=title, style="Title.TLabel", wraplength=560)
         title_label.pack(anchor="w", pady=(6, 8))
-        if name in {"Dictation", "Help & diagnostics"}:
+        expression = {"Dictation": "default", "Vocabulary": "typing",
+                      "Voice commands": "speaking", "Help & diagnostics": "thinking"}.get(name)
+        if expression:
             label = ttk.Label(header, takefocus=False)
             label.grid(row=0, column=1, sticky="ne", padx=(12, 0))
             self.mascot_labels[name] = label
-            if self._set_mascot(name, "default" if name == "Dictation" else "thinking"):
+            if self._set_mascot(name, expression):
                 self._mascot_heading_labels.update((eyebrow_label, title_label))
         if subtitle:
             ttk.Label(frame, text=subtitle, style="Hint.TLabel", wraplength=540).pack(anchor="w", pady=(0, 24))
@@ -251,7 +253,7 @@ class SettingsWindow:
             ("“Scratch that”", "Discard this take. Said alone, it removes the last dictation when its text field can be verified."),
             ("“Make this shorter”", "Remove hedges and tighten the wording."),
             ("“Make it more professional”", "Expand slang and contractions with local text rules."),
-            ("“Make a bulleted list …”", "Say “one two three” for three items, or use “first”, “second”, and “third”. Say “end list” to return to prose. You can also ask for a numbered list."),
+            ("“Make a bulleted list …”", "Separate items with “bullet point” and “next bullet point”, or use “first”, “second”, and “third”. Say “end list” to return to prose. You can also ask for a numbered list."),
             ("“Comma” / “question mark”", "Add punctuation as you speak."),
         ):
             self._section(p, title, description)

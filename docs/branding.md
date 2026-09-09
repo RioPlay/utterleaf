@@ -52,7 +52,9 @@ and wordmark are unchanged.
 All mascot PNGs are now RGBA cutouts with real alpha transparency and antialiased edges.
 GIMP removed the exterior white matte while preserving eye highlights and the
 intentional white speech-balloon interior. No checkerboard is baked into the files.
-Utterling now appears in the Dictation and Help settings headers. During the
+Utterling appears in the Dictation (Default), Vocabulary (Typing), Voice commands
+(Speaking), and Help (Thinking) settings headers. All seven expressions have a
+role in normal Settings use, without opening the artwork guide. During the
 microphone check it shows thinking while opening the device, listening after it
 opens, success when audio is detected, and concern if opening fails. A stopped
 check returns to the default expression; low input keeps the thoughtful expression.

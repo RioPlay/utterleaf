@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import queue
 import subprocess
 import sys
@@ -31,6 +32,14 @@ ERROR_KINDS = frozenset({"no_mic", "engine", "transcribe", "no_paste"})
 
 # Queue items: ("kind", caption) from set(), or "quit" from close().
 PillItem = str | tuple[str, str]
+
+
+def recording_caption(remaining: float, draft: str = "") -> str:
+    seconds = max(0, math.ceil(remaining))
+    clock = f"{seconds // 60}:{seconds % 60:02d} left"
+    if seconds <= 10:
+        clock += " · Finishing soon"
+    return f"{clock} · {draft}" if draft else clock
 
 
 def appearance(kind: str) -> tuple[str, str, str] | None:

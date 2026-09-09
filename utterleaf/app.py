@@ -21,7 +21,7 @@ from utterleaf import edit_target, ipc
 from utterleaf.audio import TAIL_SECONDS, Recorder, list_devices
 from utterleaf.config import Config, config_path, dictionary_path, log_path
 from utterleaf.hotkey import HotkeyWatcher, parse_hotkey
-from utterleaf.indicator import Indicator
+from utterleaf.indicator import Indicator, recording_caption
 from utterleaf.inject import copy_text, foreground_app, foreground_id, paste
 from utterleaf.polish import polish, stitch_to_previous
 from utterleaf.recovery import RecentDictation
@@ -150,6 +150,9 @@ class Utterleaf:
         self._tail_timer: threading.Timer | None = None
         self._tail_args = None
         self._limit_timer: threading.Timer | None = None
+        self._countdown_timer: threading.Timer | None = None
+        self._recording_deadline = 0.0
+        self._recording_draft = ""
         self._lock = threading.Lock()
         self._capture_lock = threading.RLock()
         self._stop = threading.Event()
@@ -208,14 +211,17 @@ class Utterleaf:
         self._set_icon("busy", "opening microphone", badge="loading", caption="Getting your microphone ready…")
         try:
             self.recorder.start(max_seconds=self.cfg.max_seconds)
+            self._recording_deadline = time.monotonic() + self.cfg.max_seconds
+            self._recording_draft = ""
             log.info("Recording")
             self._set_icon("recording", "listening", badge="listening",
-                           caption=f"Stops automatically after {self.cfg.max_seconds:g} seconds.")
+                           caption=recording_caption(self.cfg.max_seconds))
             beep("start", self.cfg.beep)
             timer = threading.Timer(self.cfg.max_seconds, self._recording_limit, args=(self._cut_id,))
             timer.daemon = True
             self._limit_timer = timer
             timer.start()
+            self._update_countdown(self._cut_id)
             if self.cfg.live_preview:
                 self._preview_stop.clear()
                 threading.Thread(target=self._preview_loop, args=(self._cut_id,), daemon=True).start()
@@ -242,13 +248,31 @@ class Utterleaf:
             except Exception:
                 log.debug("Live preview failed", exc_info=True)
                 continue
-            if draft and self.state == "recording" and cut_id == self._cut_id and not self._preview_stop.is_set():
-                self.indicator.set("listening", draft)
+            with self._capture_lock:
+                if draft and self.state == "recording" and cut_id == self._cut_id and not self._preview_stop.is_set():
+                    self._recording_draft = draft
+                    self.indicator.set("listening", recording_caption(
+                        self._recording_deadline - time.monotonic(), draft))
+
+    def _update_countdown(self, cut_id: int) -> None:
+        with self._capture_lock:
+            if self.state != "recording" or cut_id != self._cut_id or self._stop.is_set():
+                return
+            remaining = self._recording_deadline - time.monotonic()
+            self.indicator.set("listening", recording_caption(remaining, self._recording_draft))
+            if remaining > 0 and self.indicator.enabled:
+                timer = threading.Timer(min(1.0, remaining), self._update_countdown, args=(cut_id,))
+                timer.daemon = True
+                self._countdown_timer = timer
+                timer.start()
 
     def _recording_limit(self, cut_id: int) -> None:
         self.stop_recording(limit_cut_id=cut_id)
 
     def _cancel_limit_timer(self) -> None:
+        countdown, self._countdown_timer = self._countdown_timer, None
+        if countdown is not None:
+            countdown.cancel()
         timer, self._limit_timer = self._limit_timer, None
         if timer is not None:
             timer.cancel()
@@ -375,7 +399,10 @@ class Utterleaf:
                 self._after_job()
                 return
             app_name = foreground_app()
+            decode_started = time.perf_counter()
             raw = transcribe(audio, self.cfg)
+            log.info("Dictation timing: audio=%.2fs decode=%.3fs",
+                     len(audio) / 16000, time.perf_counter() - decode_started)
             # Esc may arrive during a long decode. Check again before editing
             # or pasting into the user's app, not just before transcription.
             if self._cancel_job or self._stop.is_set():
@@ -390,6 +417,7 @@ class Utterleaf:
             if not raw:
                 self._after_job("missed")
                 return
+            format_started = time.perf_counter()
             result = polish(
                 raw,
                 app_name=app_name,
@@ -397,6 +425,7 @@ class Utterleaf:
                 fix_corrections=self.cfg.fix_corrections,
                 text_cleanup=self.cfg.text_cleanup,
             )
+            log.info("Dictation timing: formatting=%.3fs", time.perf_counter() - format_started)
             if result.command_only and self.last_text and (
                 not self.last_target
                 or foreground_id() != self.last_target
@@ -466,6 +495,7 @@ class Utterleaf:
                 to_paste = ("\n" + text) if previous else text
             else:
                 to_paste = stitch_to_previous(previous, text)
+            delivery_started = time.perf_counter()
             before = edit_target.read_field()
             self._remember_result(to_paste)
             outcome = paste(
@@ -473,6 +503,8 @@ class Utterleaf:
                 restore_clipboard=self.cfg.restore_clipboard,
                 target=target,
             )
+            log.info("Dictation timing: delivery=%.3fs outcome=%s",
+                     time.perf_counter() - delivery_started, outcome)
             if outcome == "pasted":
                 self._edit_receipt = edit_target.capture(before, to_paste)
                 self._last_prefix = to_paste[:-len(text)] if text and to_paste.endswith(text) else ""

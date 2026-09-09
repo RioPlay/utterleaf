@@ -27,6 +27,18 @@ def test_spoken_bullet_list_variants(phrase):
     assert result.text == "- One\n- Two\n- Three"
 
 
+@pytest.mark.parametrize("phrase, expected", [
+    ("Make a bulleted list olive oil, coffee beans, and paper towels.",
+     "- Olive oil\n- Coffee beans\n- Paper towels"),
+    ("Make a bulleted list research and development, first aid supplies, and delivery dates.",
+     "- Research and development\n- First aid supplies\n- Delivery dates"),
+    ("Make a bulleted list bullet point research and development next bullet point first aid supplies end list That is all.",
+     "- Research and development\n- First aid supplies\n\nThat is all."),
+])
+def test_explicit_list_boundaries_preserve_multiword_items(phrase, expected):
+    assert polish_local(phrase, vocab=[]).text == expected
+
+
 @pytest.mark.parametrize("phrase", ["make a bulleted list 1 2 3.", "make a bolded list 1, 2, 3."])
 def test_digit_list_from_recognizer(phrase):
     assert polish_local(phrase, vocab=[]).text == "- 1\n- 2\n- 3"

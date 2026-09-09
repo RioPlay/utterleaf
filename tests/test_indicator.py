@@ -1,6 +1,14 @@
 from utterleaf.indicator import appearance, decode_pill, encode_pill
 
 
+def test_recording_countdown_rounding_warning_and_preview():
+    from utterleaf.indicator import recording_caption
+    assert recording_caption(120) == "2:00 left"
+    assert recording_caption(60.1) == "1:01 left"
+    assert recording_caption(10, "A live draft") == "0:10 left · Finishing soon · A live draft"
+    assert recording_caption(-2) == "0:00 left · Finishing soon"
+
+
 def test_hide_has_no_appearance() -> None:
     assert appearance("hide") is None
     assert appearance("idle") is None

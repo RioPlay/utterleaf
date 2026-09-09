@@ -487,6 +487,17 @@ def split_items(text: str) -> list[str]:
     text = LIST_LEAD.sub("", (text or "").strip()).strip(" .")
     if not text:
         return []
+    # Explicit item boundaries take priority over words inside an item (for
+    # example "research and development" or "first aid supplies").
+    marked = re.split(r"\b(?:next\s+)?bullet\s+point\b\s*[:,-]?\s*", text,
+                      flags=re.IGNORECASE)
+    if len(marked) > 1 and not marked[0].strip(" .,:;"):
+        return [part.strip(" .,:;") for part in marked[1:] if part.strip(" .,:;")]
+    if "," in text:
+        bits = [re.sub(r"^and\s+", "", part.strip(" ."), flags=re.IGNORECASE)
+                for part in text.split(",") if part.strip(" .")]
+        if len(bits) >= 2:
+            return [part for part in bits if part]
     # Recognizers may return '1 2 3' rather than 'one two three'.
     if re.fullmatch(r"\d+(?:\s+\d+)+", text):
         return text.split()
@@ -497,10 +508,6 @@ def split_items(text: str) -> list[str]:
     stepped = [part.strip(" .") for part in ITEM_SPLIT.split(text) if part.strip()]
     if len(stepped) >= 2:
         return stepped
-    if "," in text:
-        bits = [part.strip(" .") for part in re.split(r",|\band\b", text) if part.strip()]
-        if len(bits) >= 2:
-            return _expand_bare_words(bits)
     anded = [part.strip(" .") for part in re.split(r"\band\b", text) if part.strip()]
     if len(anded) >= 2:
         return _expand_bare_words(anded)

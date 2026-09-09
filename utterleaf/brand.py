@@ -23,8 +23,8 @@ MASCOT_LABELS = {
     "thinking": ("Thinking", "Help header, opening a microphone, or very little audio detected."),
     "success": ("Success", "Audio detected during the microphone check."),
     "error": ("Concern", "Microphone check failed; the message explains why."),
-    "speaking": ("Speaking", "Illustration for guides. Does not indicate a speech-output feature."),
-    "typing": ("Typing", "Illustration for guides. Does not confirm that text was delivered."),
+    "speaking": ("Speaking", "Voice commands page: guidance for speaking commands. Does not indicate speech output."),
+    "typing": ("Typing", "Vocabulary page: names, phrases, and text cleanup. Does not confirm text delivery."),
 }
 # Cubic segments on a 100-unit canvas. An open base separates the leaf and stem.
 OUTLINE = [

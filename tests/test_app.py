@@ -347,6 +347,36 @@ def test_old_limit_timer_cannot_stop_a_new_take(monkeypatch):
     assert app._tail_timer is None
 
 
+def test_countdown_keeps_preview_and_stale_ticks_cannot_overwrite_status(monkeypatch):
+    app = _app(monkeypatch)
+    shown, timers = [], []
+    app.indicator = SimpleNamespace(enabled=True, set=lambda *args: shown.append(args))
+    app.state = "recording"
+    app._cut_id = 5
+    app._recording_deadline = 130.0
+    app._recording_draft = "My draft"
+    monkeypatch.setattr("utterleaf.app.time.monotonic", lambda: 120.0)
+    class Timer:
+        def __init__(self, *args, **kwargs):
+            self.cancelled = False
+            timers.append(self)
+        def start(self):
+            pass
+        def cancel(self):
+            self.cancelled = True
+    monkeypatch.setattr("utterleaf.app.threading.Timer", Timer)
+    app._update_countdown(5)
+    assert shown == [("listening", "0:10 left · Finishing soon · My draft")]
+    assert len(timers) == 1
+    app._update_countdown(4)
+    assert len(shown) == 1
+    app.state = "busy"
+    app._cancel_limit_timer()
+    assert timers[0].cancelled
+    app._update_countdown(5)
+    assert len(shown) == 1
+
+
 def test_cut_releases_microphone_before_transcription(monkeypatch):
     app = _app(monkeypatch)
     released = []

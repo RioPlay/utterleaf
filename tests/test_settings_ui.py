@@ -48,7 +48,7 @@ def test_pages_preserve_edits_and_preview(window):
 
 
 def test_mascots_are_loaded_from_package_and_fit_compact_header(window):
-    assert set(window.mascots) == {"Dictation", "Help & diagnostics"}
+    assert set(window.mascots) == {"Dictation", "Vocabulary", "Voice commands", "Help & diagnostics"}
     window.root.deiconify()
     window.root.geometry("760x560")
     for name in window.mascots:
