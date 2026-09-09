@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Utterleaf Voice</string>
+    <string name="voice_input">English voice input</string>
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#83DA9A</item>
+        <item name="android:windowBackground">#171E20</item>
+        <item name="android:statusBarColor">#171E20</item>
+        <item name="android:navigationBarColor">#171E20</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

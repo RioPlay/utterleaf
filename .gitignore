@@ -22,3 +22,8 @@ logs/
 /dictionary.txt
 .env.*
 !.env.example
+mobile/android/.gradle/
+mobile/android/.kotlin/
+mobile/android/local.properties
+mobile/android/**/.cxx/
+mobile/android/app/src/androidTest/assets/

@@ -1,0 +1,27 @@
+Utterleaf Voice — Android preview
+
+Utterleaf code: Apache License 2.0. Full text: UTTERLEAF-LICENSE.txt in this APK.
+whisper.cpp / ggml: MIT License. Full text: WHISPER-LICENSE.txt in this APK.
+English Whisper model: OpenAI MIT License; imported separately, not bundled.
+Kotlin standard library: Apache License 2.0.
+Android NDK libc++: Apache License 2.0 with LLVM exceptions (LIBCXX-LICENSE.txt).
+
+No affiliation with GrapheneOS or FUTO. Utterleaf artwork is reused from this repository.
+
+Privacy: this application requests microphone permission only. It has no Internet
+permission, analytics, background capture service, contacts access, clipboard
+history, or automatic recording/transcript storage. Capture starts when you tap
+Speak and ends on Stop, cancellation, leaving the voice view, or the visible
+120-second limit. Recordings are processed in memory. Preview text expires after
+two minutes and is discarded when leaving or changing fields. Memory cleanup is
+best effort; it is not a forensic erasure guarantee.
+
+Model import uses the Android document picker and stores a verified copy in the
+private no-backup directory. Backup and device transfer are disabled. Deleting
+the imported model does not delete the original file in Downloads. Opening the
+download link sends you to your browser and requires a confirmation.
+
+IME insertion sends text to the current app. Speech-intent results go to the
+calling app after you tap Insert. That app and your selected keyboard have their
+own privacy policies. Utterleaf cannot control their retention. Our IME avoids
+password fields but a speech-intent caller controls its own destination.
