@@ -70,6 +70,9 @@ class DeviceTest {
             }
             val speak = buttons(panel.view).first { it.text == "Speak" }
             val insert = buttons(panel.view).first { it.text == "Insert" }
+            panel.view.measure(android.view.View.MeasureSpec.makeMeasureSpec(Ui.dp(app, 360), android.view.View.MeasureSpec.EXACTLY),
+                android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED))
+            assertTrue("Idle voice panel takes too much space", panel.view.measuredHeight <= Ui.dp(app, 240))
             speak.performClick()
             panel.clear() // Same path used by input-field changes and hiding the IME.
             callbacks[0]("stale speech")

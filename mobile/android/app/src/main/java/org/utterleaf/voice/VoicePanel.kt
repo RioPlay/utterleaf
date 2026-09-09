@@ -15,6 +15,7 @@ class VoicePanel(context: Context, private val insert: (String) -> Boolean, priv
     private var transcript = ""
     private val status = Ui.text(context, "Microphone off · English · local processing")
     private val preview = Ui.text(context, "Tap Speak when you are ready.")
+    private val previewScroll = ScrollView(context).apply { addView(preview); visibility = android.view.View.GONE }
     private val speak = Ui.button(context, "Speak") { begin() }
     private val stop = Ui.button(context, "Stop") { session?.stop() }
     private val send = Ui.button(context, "Insert") {
@@ -27,7 +28,7 @@ class VoicePanel(context: Context, private val insert: (String) -> Boolean, priv
     init {
         view.addView(Ui.text(context, "Utterleaf Voice", 20f))
         view.addView(status)
-        view.addView(ScrollView(context).apply { addView(preview) },
+        view.addView(previewScroll,
             LinearLayout.LayoutParams(-1, Ui.dp(context, 72)))
         val actions = LinearLayout(context)
         listOf(speak, stop, send).forEach { actions.addView(it, LinearLayout.LayoutParams(0, -2, 1f)) }
@@ -46,6 +47,7 @@ class VoicePanel(context: Context, private val insert: (String) -> Boolean, priv
             { if (gate.accepts(token)) status.text = it },
             { if (gate.accepts(token)) {
                 transcript = it; preview.text = it
+                previewScroll.visibility = android.view.View.VISIBLE
                 status.text = "Microphone off · preview expires in 2 minutes"
                 stop.isEnabled = false; speak.isEnabled = true; send.isEnabled = true
                 handler.postDelayed(expire, 120000)
@@ -56,6 +58,7 @@ class VoicePanel(context: Context, private val insert: (String) -> Boolean, priv
     fun clear() {
         gate.invalidate(); session?.cancel(); session = null
         transcript = ""; preview.text = "Tap Speak when you are ready."
+        previewScroll.visibility = android.view.View.GONE
         status.text = "Microphone off · English · local processing"
         handler.removeCallbacks(expire)
         speak.isEnabled = true; stop.isEnabled = false; send.isEnabled = false
