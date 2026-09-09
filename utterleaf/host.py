@@ -108,7 +108,9 @@ def paste_backend() -> str:
 def linux_helpers() -> tuple[str, ...]:
     """Paste/key helpers ordered for the active Linux display session."""
     if is_wayland():
-        return ("wtype", "ydotool", "xdotool")
+        # XTest can report success against XWayland without delivering keys
+        # to the focused native Wayland client. Never treat it as a fallback.
+        return ("wtype", "ydotool")
     return ("xdotool", "ydotool", "wtype")
 
 
@@ -160,6 +162,13 @@ def doctor_host_lines() -> list[str]:
         lines.append("accessibility: MISSING — grant in System Settings")
     if is_wayland():
         lines.append("wayland: bind a desktop shortcut to: utterleaf --toggle")
+        lines.append("wayland shortcuts: press once to start, again to stop; global hold/Esc listening is unavailable")
+        lines.append(f"desktop: {os.environ.get('XDG_CURRENT_DESKTOP') or 'unknown'}")
+        lines.append("XWayland: " + ("DISPLAY is set (connection not tested)" if os.environ.get("DISPLAY") else "MISSING DISPLAY — Settings requires XWayland"))
+        lines.append("wayland paste: wtype requires virtual-keyboard protocol support; ydotool requires its daemon and input permissions")
+        lines.append("wayland paste: installed helpers are not proof of successful delivery; xdotool is excluded")
+        missing = [name for name in ("wl-copy", "wl-paste") if not shutil.which(name)]
+        lines.append("wayland clipboard: " + ("MISSING " + ", ".join(missing) + " (install wl-clipboard)" if missing else "wl-copy and wl-paste installed (access not tested)"))
     if paste_backend() == "none":
-        lines.append("paste helper: MISSING (install wtype, xdotool, or ydotool)")
+        lines.append("paste helper: MISSING (install/configure " + " or ".join(linux_helpers()) + ")")
     return lines

@@ -28,7 +28,7 @@ puts the text on your system clipboard, where your OS clipboard history may
 retain it. You can also bind a desktop shortcut to `utterleaf --copy-last` or
 clear it with `utterleaf --forget-last`.
 
-Click the tray icon (or right-click → **Settings…**) to open the Utterleaf control center. First launch opens it automatically.
+Click the tray icon (or right-click → **Settings…**) to open the Utterleaf control center. First launch opens it automatically. Opening Settings again raises the existing window and preserves unsaved edits, including when using `--settings` directly.
 
 - **Dictation:** choose your shortcut, hold or press mode, microphone, recording feedback, and start at login. A five-second microphone check shows input levels without saving audio.
 - **Vocabulary:** add names and custom terms, choose text cleanup options, and preview the result on a sample before saving.
@@ -45,6 +45,13 @@ Settings uses a dark theme by default. Native system dialogs follow the OS theme
 and dark surfaces, and exports a complete asset pack with transparent PNG cutouts.
 
 The window resizes and scrolls, with Save always accessible. **Ctrl+S** (or **Command+S** on macOS) saves without closing; closing with unsaved changes asks before discarding them. Device checks run in the background.
+
+To recover from unwanted configuration changes, use **Help → Restore default
+settings…**. Confirm, review the form, then choose **Save changes**. This resets
+advanced preferences as well as the visible controls, turns off start at login,
+and restores the default model/hardware and missing-model download preference.
+Vocabulary entries and downloaded models are preserved. Closing without saving
+discards the staged reset. See the [Help screenshot](screenshots.md#help-and-recovery).
 
 On **Wayland**, Utterleaf disables global key listening. Bind a desktop shortcut to the absolute path of the executable followed by `--toggle`, for example `/home/you/Utterleaf/utterleaf --toggle`. Press once to record and again to transcribe. XWayland and a working `DISPLAY` are required for the current Tk/Xorg components. Install `wl-clipboard` and a compatible paste helper (`wtype` on supported compositors, or a configured `ydotool`); support varies by compositor. The shortcut must point to the same executable you launched.
 

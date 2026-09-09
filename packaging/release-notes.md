@@ -1,5 +1,15 @@
 Compiled Utterleaf binaries for Windows, macOS, and Linux. Python is bundled; no Python installation or source build is required.
 
+Version 0.3.5 improves Settings recovery and Wayland troubleshooting:
+
+- Opening Settings again raises the existing window and preserves unsaved edits. A process lock also handles simultaneous launches and recovers after a crash.
+- **Help → Restore default settings…** stages default preferences for review before Save. Advanced settings are reset too; vocabulary and downloaded models are preserved. The confirmation explains the restored download preference and disabled login startup.
+- Wayland no longer falls back to an X11 key helper that can falsely report insertion into native apps. Failed helpers leave copied dictation available for manual paste. Stale XWayland focus information is ignored.
+- Unsupported in-app hotkey controls are disabled on Wayland, with desktop-shortcut guidance. Diagnostics explain XWayland, clipboard, and key-helper requirements.
+- Updated user guide, Wayland troubleshooting, and a real Help screenshot.
+
+Wayland still requires desktop-specific setup and XWayland. Native GNOME/KDE/wlroots end-to-end delivery remains unverified; this release does not add portal shortcuts or native Wayland input.
+
 Version 0.3.4 improves microphone sharing and recovery:
 
 - Windows prefers WASAPI shared mode for the default input and exact, unique matches for a named microphone. Other backends remain available when no safe match exists.

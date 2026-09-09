@@ -145,6 +145,47 @@ def test_close_preserves_unsaved_work(window, monkeypatch):
     assert not window.closed
 
 
+def test_restore_defaults_is_staged_and_preserves_vocabulary(window, monkeypatch):
+    window.vars["device"].set("gpu")
+    window.vars["indicator"].set(True)
+    window.vars["start_at_login"].set(True)
+    before = window._snapshot()
+    monkeypatch.setattr("utterleaf.settings_ui.messagebox.askyesno", lambda *a, **k: False)
+    window.restore_defaults()
+    assert window._snapshot() == before
+    monkeypatch.setattr("utterleaf.settings_ui.messagebox.askyesno", lambda *a, **k: True)
+    monkeypatch.setattr("utterleaf.settings.save", lambda _: pytest.fail("Saved before user chose Save"))
+    window.restore_defaults()
+    assert window.vars["device"].get() == "auto"
+    assert not window.vars["indicator"].get()
+    assert not window.vars["start_at_login"].get()
+    assert window._snapshot()["names"] == before["names"]
+    assert window._reset_pending
+    assert str(window.save_button.cget("state")) == "normal"
+
+
+def test_reset_saves_advanced_defaults_and_reloads_app(window, monkeypatch):
+    saved, names, startup, commands = [], [], [], []
+    monkeypatch.setattr("utterleaf.settings_ui.messagebox.askyesno", lambda *a, **k: True)
+    monkeypatch.setattr("utterleaf.settings_ui.load", lambda: pytest.fail("Reset reused broken config"))
+    monkeypatch.setattr("utterleaf.settings.save", saved.append)
+    monkeypatch.setattr("utterleaf.settings.save_dictionary", names.append)
+    monkeypatch.setattr("utterleaf.settings.set_startup", startup.append)
+    monkeypatch.setattr("utterleaf.ipc.send", lambda command: commands.append(command) or "ok")
+    monkeypatch.setattr(window, "_worker", lambda action, done: done(action()))
+    window.cfg = Config(compute_type="float16", max_seconds=1, tray=False)
+    window.restore_defaults()
+    # Reset must still be dirty when all visible values already matched defaults.
+    assert window._reset_pending
+    window.save()
+    assert saved == [Config()]
+    assert names == ["utter leaf = Utterleaf"]
+    assert startup == [False]
+    assert commands == ["reload"]
+    assert not window._reset_pending
+    assert str(window.save_button.cget("state")) == "disabled"
+
+
 def test_cuda_report_can_be_exported_and_failure_disables_export(window, monkeypatch):
     monkeypatch.setattr(window, "_worker", lambda action, done: done("GPU setup steps"))
     window.cuda_setup()

@@ -85,6 +85,18 @@ def test_linux_paste_helper_matches_session(monkeypatch: pytest.MonkeyPatch) -> 
     assert host.paste_backend() == "xdotool"
 
 
+def test_wayland_does_not_report_xdotool_as_usable(monkeypatch):
+    monkeypatch.setattr(host.sys, "platform", "linux")
+    monkeypatch.setenv("XDG_SESSION_TYPE", "wayland")
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.setattr(host.shutil, "which", lambda name: name == "xdotool")
+    assert host.paste_backend() == "none"
+    lines = "\n".join(host.doctor_host_lines())
+    assert "MISSING DISPLAY" in lines
+    assert "MISSING wl-copy, wl-paste" in lines
+    assert "global hold/Esc listening is unavailable" in lines
+
+
 def test_hotkey_presets_lead_with_platform_default(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("utterleaf.settings.default_hotkey", lambda: "ctrl+shift+space")
     presets = hotkey_presets()

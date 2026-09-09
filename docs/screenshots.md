@@ -24,3 +24,11 @@ Find the words for punctuation, lists, and editing. Speaking Utterling marks the
 place to learn what you can say.
 
 ![Dark Voice commands settings with Speaking Utterling](assets/screenshots/commands-dark.png)
+
+## Help and recovery
+
+Restore default settings, check your device, and find recovery instructions in
+one place. Defaults are staged for review before saving; vocabulary and installed
+models remain available.
+
+![Help with Restore default settings and Thinking Utterling](assets/screenshots/help-dark.png)

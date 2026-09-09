@@ -165,3 +165,31 @@ def test_windows_combo_reports_sendinput_count(monkeypatch: pytest.MonkeyPatch) 
     assert inject._windows_combo(ctrl=True, key="v") is True
     monkeypatch.setattr(ctypes.windll.user32, "SendInput", lambda n, _ptr, _size: n - 1)
     assert inject._windows_combo(ctrl=True, key="v") is False
+
+
+def test_wayland_failed_native_helpers_preserve_dictation(monkeypatch):
+    monkeypatch.setattr(inject.sys, "platform", "linux")
+    monkeypatch.setenv("XDG_SESSION_TYPE", "wayland")
+    monkeypatch.setattr(inject.shutil, "which", lambda name: name in {"wtype", "ydotool", "xdotool"})
+    calls = []
+
+    def run(args, **kwargs):
+        calls.append(args[0])
+        return subprocess.CompletedProcess(args, 0 if args[0] == "xdotool" else 1)
+
+    monkeypatch.setattr(inject.subprocess, "run", run)
+    clipboard = ["old"]
+    monkeypatch.setattr(inject.pyperclip, "paste", lambda: clipboard[-1])
+    monkeypatch.setattr(inject.pyperclip, "copy", clipboard.append)
+    monkeypatch.setattr(inject.time, "sleep", lambda _: None)
+    assert inject.paste("keep this dictation", target="") == "fail"
+    assert calls == ["wtype", "ydotool"]
+    assert clipboard == ["old", "keep this dictation"]
+
+
+def test_wayland_does_not_use_stale_xwayland_focus(monkeypatch):
+    monkeypatch.setattr(inject.sys, "platform", "linux")
+    monkeypatch.setenv("XDG_SESSION_TYPE", "wayland")
+    monkeypatch.setattr(inject.shutil, "which", lambda _: True)
+    monkeypatch.setattr(inject.subprocess, "run", lambda *a, **k: pytest.fail("Queried X11 focus on Wayland"))
+    assert inject.foreground_id() == ""

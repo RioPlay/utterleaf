@@ -22,6 +22,7 @@ class SettingsWindow:
         self.closed = False
         self._page_reset = None
         self.saving = False
+        self._reset_pending = False
         self.mic_stop = threading.Event()
         self.pages: dict[str, ttk.Frame] = {}
         self.nav: dict[str, ttk.Button] = {}
@@ -204,12 +205,18 @@ class SettingsWindow:
         tk.Label(card, textvariable=self.shortcut_steps,
                  bg=theme.PRIMARY_CONTAINER, fg=theme.ON_PRIMARY_CONTAINER,
                  font=(ui_font(), 10), wraplength=490, justify="left").pack(anchor="w", pady=(10, 0))
-        self._choice(p, "Keyboard shortcut", "hotkey", [v for _, v in hotkey_presets() if v], editable=True)
+        self.hotkey_box = self._choice(p, "Keyboard shortcut", "hotkey", [v for _, v in hotkey_presets() if v], editable=True)
+        if is_wayland():
+            self.hotkey_box.configure(state="disabled")
+            ttk.Label(p, text="Set your shortcut in desktop keyboard settings to the executable path followed by --toggle.",
+                      style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=(0, 8))
         modes = ttk.Frame(p)
         modes.pack(fill="x", pady=(6, 12))
-        ttk.Radiobutton(modes, text="Hold to talk", variable=self.vars["mode"], value="hold").pack(side="left", padx=(0, 24))
-        ttk.Radiobutton(modes, text="Press to start / stop", variable=self.vars["mode"], value="toggle").pack(side="left")
-        ttk.Label(p, text=f"Esc cancels a take. Stops automatically after {self.cfg.max_seconds:g} seconds.",
+        mode_state = "disabled" if is_wayland() else "normal"
+        ttk.Radiobutton(modes, text="Hold to talk", variable=self.vars["mode"], value="hold", state=mode_state).pack(side="left", padx=(0, 24))
+        ttk.Radiobutton(modes, text="Press to start / stop", variable=self.vars["mode"], value="toggle", state=mode_state).pack(side="left")
+        self.limit_hint = tk.StringVar(self.root)
+        ttk.Label(p, textvariable=self.limit_hint,
                   style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=(0, 8))
         self._section(p, "Microphone", "Check that Utterleaf can hear you. Audio from this check is discarded.")
         self.mic_box = self._choice(p, "Input device", "microphone", [SYSTEM_DEFAULT])
@@ -300,6 +307,10 @@ class SettingsWindow:
                       "Lost a result? Use Copy last dictation in the tray menu within two minutes.\n"
                       "No audio? Choose a microphone on the Dictation page and run a check.\n"
                       "First launch? Allow the speech model to finish downloading and loading.")
+        self.reset_button = ttk.Button(p, text="Restore default settings…", command=self.restore_defaults)
+        self.reset_button.pack(anchor="w", pady=(10, 4))
+        ttk.Label(p, text="Review defaults before saving. Your vocabulary and downloaded models stay.",
+                  style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=(0, 12))
         self.diagnostic_button = ttk.Button(p, text="Check this device", command=self.diagnostics)
         self.diagnostic_button.pack(anchor="w", pady=10)
         self.diagnostic_text = self._text(p, 12)
@@ -374,9 +385,30 @@ class SettingsWindow:
     def _snapshot(self):
         return {**{key: var.get() for key, var in self.vars.items()}, "names": self.names.get("1.0", "end-1c")}
 
+    def restore_defaults(self):
+        if self.saving:
+            return
+        if not messagebox.askyesno(
+            "Restore default settings?",
+            "Replace preferences with the app defaults, including advanced settings?\n\n"
+            "This selects the system microphone, automatic hardware, English, and the small model; "
+            "allows missing model downloads; and turns off start at login and the floating indicator.\n\n"
+            "Your vocabulary and downloaded models stay. Nothing changes on disk until you choose Save changes.",
+            parent=self.root,
+        ):
+            return
+        defaults = Config()
+        self._reset_pending = True
+        self.mic_stop.set()
+        for key, var in self.vars.items():
+            value = False if key == "start_at_login" else getattr(defaults, key)
+            var.set(SYSTEM_DEFAULT if key == "microphone" else value)
+        self._dirty()
+        self.status.set("Defaults ready to review · Save changes to apply")
+
     def _dirty(self, *_):
         self.preview_toggle.configure(state="normal" if self.vars["indicator"].get() else "disabled")
-        dirty = self._snapshot() != self.baseline
+        dirty = self._reset_pending or self._snapshot() != self.baseline
         if not self.saving:
             self.save_button.configure(state="normal" if dirty else "disabled")
             self.status.set("Unsaved changes" if dirty else "All changes saved · Dictation stays on this device")
@@ -390,6 +422,11 @@ class SettingsWindow:
             "Click a text field. Press your shortcut, wait for Listening, then speak. Press again to paste."
             if is_wayland() or self.vars["mode"].get() == "toggle"
             else "Click a text field. Hold your shortcut, wait for Listening, then speak. Release to paste."
+        )
+        limit = Config().max_seconds if self._reset_pending else self.cfg.max_seconds
+        self.limit_hint.set(
+            ("Desktop shortcut toggles recording; global Esc is unavailable. " if is_wayland() else "Esc cancels a take. ")
+            + f"Stops automatically after {limit:g} seconds."
         )
 
     def _names_changed(self, _event):
@@ -544,13 +581,15 @@ class SettingsWindow:
         if self.saving:
             return
         snapshot = self._snapshot()
+        reset_pending = self._reset_pending
         self.saving = True
         self.save_button.configure(state="disabled")
+        self.reset_button.configure(state="disabled")
         self.status.set("Saving changes…")
         def commit():
             from utterleaf import ipc
             try:
-                cfg = apply_form(load(), **snapshot)
+                cfg = apply_form(Config() if reset_pending else load(), **snapshot)
             except SettingsSaveError as exc:
                 if exc.saved:
                     ipc.send("reload")
@@ -558,6 +597,7 @@ class SettingsWindow:
             return cfg, ipc.send("reload")
         def done(result):
             self.saving = False
+            self.reset_button.configure(state="normal")
             if isinstance(result, Exception):
                 self._dirty()
                 self.status.set(
@@ -568,6 +608,7 @@ class SettingsWindow:
                 messagebox.showerror("Could not save changes", str(result), parent=self.root)
                 return
             self.cfg, reply = result
+            self._reset_pending = False
             self.baseline = snapshot
             self._dirty()
             if self._snapshot() == snapshot:
@@ -578,7 +619,7 @@ class SettingsWindow:
         if self.saving:
             self.status.set("Finishing your save…")
             return
-        if self._snapshot() != self.baseline:
+        if self._reset_pending or self._snapshot() != self.baseline:
             if not messagebox.askyesno("Discard unsaved changes?", "Close without saving your changes?", parent=self.root):
                 return
         self.closed = True
@@ -600,8 +641,35 @@ def enable_dpi_awareness():
 
 
 def run() -> int:
-    enable_dpi_awareness()
-    root = tk.Tk()
-    SettingsWindow(root, load())
-    root.mainloop()
+    from utterleaf.settings_instance import SettingsInstance
+
+    requests = threading.Event()
+    instance = SettingsInstance()
+    if not instance.acquire(requests.set):
+        return 0
+    root = None
+    try:
+        enable_dpi_awareness()
+        root = tk.Tk()
+        window = SettingsWindow(root, load())
+
+        def poll_activation():
+            if window.closed:
+                return
+            if requests.is_set():
+                requests.clear()
+                root.deiconify()
+                root.lift()
+                root.focus_force()
+            root.after(100, poll_activation)
+
+        poll_activation()
+        root.mainloop()
+    finally:
+        instance.close()
+        if root is not None:
+            try:
+                root.destroy()
+            except tk.TclError:
+                pass
     return 0

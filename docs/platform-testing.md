@@ -2,6 +2,15 @@
 
 ## Current validation — September 9, 2026
 
+Version 0.3.5 local validation: Windows **328 passed, 1 skipped**;
+AlmaLinux/WSL **327 passed, 2 skipped**, plus CLI help. Regression checks cover
+excluding X11 paste fallback on Wayland, retaining clipboard text after failed
+helpers, refusing stale XWayland focus information, cross-process Settings reuse,
+crash lock recovery, and staged default restoration including advanced settings.
+The Help screen was captured from real Windows Tk widgets and visually reviewed.
+Native compositor delivery
+is still unverified; see [Wayland setup and troubleshooting](wayland.md).
+
 Local results for the v0.3.4 microphone-recovery changes:
 
 | Environment | Result | Scope |

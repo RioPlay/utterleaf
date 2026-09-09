@@ -52,7 +52,7 @@ python3 -m venv .venv
 .venv/bin/python -m utterleaf
 ```
 
-On Wayland use `wtype` with `wl-clipboard`. On X11 use `xdotool` with `xclip` for clipboard access. The tray icon uses StatusNotifierItem: KDE Plasma shows it natively, GNOME needs the AppIndicator extension. Source installs also need PyGObject and the Ayatana appindicator bindings (`sudo apt install gir1.2-ayatanaappindicator3-0.1` on Debian/Ubuntu); without them the tray falls back to the legacy X11 icon, which Wayland sessions do not display. `utterleaf --doctor` prints the backend it picked. NVIDIA:
+Wayland requires desktop-specific setup; see the [Wayland troubleshooting guide](wayland.md). Installing `wtype` alone does not guarantee paste support. On X11 use `xdotool` with `xclip` for clipboard access. The tray icon uses StatusNotifierItem: KDE Plasma shows it natively, GNOME needs the AppIndicator extension. Source installs also need PyGObject and the Ayatana appindicator bindings (`sudo apt install gir1.2-ayatanaappindicator3-0.1` on Debian/Ubuntu); without them the tray falls back to the legacy X11 icon, which Wayland sessions do not display. `utterleaf --doctor` prints the backend it picked. NVIDIA:
 
 ```bash
 .venv/bin/python -m pip install -e ".[cuda]"

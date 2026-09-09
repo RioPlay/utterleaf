@@ -161,7 +161,10 @@ def _relaunch(*args: str) -> None:
 
 
 def launch_settings() -> None:
-    _relaunch("--settings")
+    from utterleaf.settings_instance import activate
+
+    if not activate():
+        _relaunch("--settings")
 
 
 def run_settings() -> int:

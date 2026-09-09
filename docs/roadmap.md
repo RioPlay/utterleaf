@@ -23,6 +23,12 @@ intended field, with understandable local processing and minimal interruption.
 
 ## Current delivery status
 
+**Version 0.3.5 changes:** one Settings window per configuration, staged defaults
+recovery under Help, and a current Help screenshot. Wayland fixes exclude misleading X11 paste
+fallbacks, avoid stale XWayland focus queries, and explain missing desktop setup
+in diagnostics. [Wayland setup](wayland.md) documents current limitations.
+Native GNOME/KDE/wlroots delivery validation and portal integration remain needed.
+
 **Microphone recovery release:** [v0.3.4](https://github.com/RioPlay/utterleaf/releases/tag/v0.3.4).
 Included: Windows shared microphone selection, a bounded retry for
 temporary device-unavailable errors, and resetting toggle state after a failed

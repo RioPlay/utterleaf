@@ -9,7 +9,7 @@ import sys
 import time
 
 import pyperclip
-from utterleaf.host import linux_helpers
+from utterleaf.host import is_wayland, linux_helpers
 
 log = logging.getLogger("utterleaf")
 
@@ -226,6 +226,9 @@ def _mac_foreground() -> str:
 
 
 def _linux_foreground() -> str:
+    # XWayland's active window may be stale while a native client has focus.
+    if is_wayland():
+        return ""
     if shutil.which("xdotool"):
         wid = subprocess.run(
             ["xdotool", "getactivewindow"], capture_output=True, text=True, check=False
@@ -320,5 +323,5 @@ def _linux_paste() -> bool:
         result = subprocess.run(args, check=False)
         if result.returncode == 0:
             return True
-    log.warning("No paste helper found (install xdotool, wtype, or ydotool)")
+    log.warning("Paste helpers unavailable or failed (%s); text remains on the clipboard", ", ".join(linux_helpers()))
     return False
