@@ -60,6 +60,17 @@ def test_mascots_are_loaded_from_package_and_fit_compact_header(window):
         assert label.winfo_rootx() + label.winfo_width() <= window.canvas.winfo_rootx() + window.canvas.winfo_width()
 
 
+def test_tray_only_disables_caption_control_without_losing_preference(window):
+    assert not window.vars["indicator"].get()
+    assert window.preview_toggle.instate(["disabled"])
+    window.vars["live_preview"].set(True)
+    window.vars["indicator"].set(True)
+    assert not window.preview_toggle.instate(["disabled"])
+    window.vars["indicator"].set(False)
+    assert window.preview_toggle.instate(["disabled"])
+    assert window.vars["live_preview"].get()
+
+
 def test_appearance_guide_shows_all_assets_and_reuses_window(window):
     from utterleaf import brand
     window.show_appearance()

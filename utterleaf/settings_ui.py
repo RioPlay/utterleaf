@@ -64,7 +64,8 @@ class SettingsWindow:
         tk.Label(sidebar, text="LET IDEAS SPEAK.", font=(ui_font(), 8, "bold"),
                  bg=theme.SURFACE_LOW, fg=theme.ON_VARIANT).pack(anchor="w", padx=24, pady=(4, 22))
         for name in ("Dictation", "Vocabulary", "Voice commands", "Engine", "Help & diagnostics"):
-            button = ttk.Button(sidebar, text=name, style="Nav.TButton",
+            label = {"Engine": "Speech & privacy", "Help & diagnostics": "Help"}.get(name, name)
+            button = ttk.Button(sidebar, text=label, style="Nav.TButton",
                                 command=lambda n=name: self.show_page(n))
             button.pack(fill="x", padx=12, pady=3)
             self.nav[name] = button
@@ -173,9 +174,11 @@ class SettingsWindow:
         return box
 
     def _check(self, parent, title, key, hint=""):
-        ttk.Checkbutton(parent, text=title, variable=self.vars[key]).pack(anchor="w", pady=(8, 2))
+        button = ttk.Checkbutton(parent, text=title, variable=self.vars[key])
+        button.pack(anchor="w", pady=(8, 2))
         if hint:
             ttk.Label(parent, text=hint, style="Hint.TLabel", wraplength=510).pack(anchor="w", padx=(24, 0), pady=(0, 4))
+        return button
 
     def _text(self, parent, height=6):
         box = tk.Text(parent, height=height, wrap="word", undo=True, relief="flat",
@@ -220,10 +223,15 @@ class SettingsWindow:
         self.meter = ttk.Progressbar(p, maximum=100)
         self.meter.pack(fill="x", pady=(8, 6))
         ttk.Label(p, textvariable=self.mic_message, style="Hint.TLabel", wraplength=520).pack(anchor="w")
-        self._section(p, "Make it feel right")
-        self._check(p, "Play recording sounds", "beep")
-        self._check(p, "Show the listening indicator", "indicator")
-        self._check(p, "Show live captions", "live_preview", "Preview words while you speak. Uses additional processing power.")
+        self._section(p, "Recording feedback", "The tray icon always shows recording and processing. Choose whether to also show a floating indicator.")
+        ttk.Radiobutton(p, text="Tray icon only", variable=self.vars["indicator"], value=False).pack(anchor="w", pady=4)
+        ttk.Radiobutton(p, text="Tray + floating indicator", variable=self.vars["indicator"], value=True).pack(anchor="w", pady=4)
+        ttk.Label(p, text="The floating indicator includes your remaining recording time.",
+                  style="Hint.TLabel", wraplength=510).pack(anchor="w", pady=(0, 4))
+        self.preview_toggle = self._check(p, "Show live captions in the floating indicator", "live_preview",
+                                         "Optional draft words while you speak. Uses additional processing power.")
+        self._check(p, "Play start / stop sounds", "beep")
+        self._section(p, "Startup")
         self._check(p, login_label(), "start_at_login")
 
     def _vocabulary(self):
@@ -367,6 +375,7 @@ class SettingsWindow:
         return {**{key: var.get() for key, var in self.vars.items()}, "names": self.names.get("1.0", "end-1c")}
 
     def _dirty(self, *_):
+        self.preview_toggle.configure(state="normal" if self.vars["indicator"].get() else "disabled")
         dirty = self._snapshot() != self.baseline
         if not self.saving:
             self.save_button.configure(state="normal" if dirty else "disabled")

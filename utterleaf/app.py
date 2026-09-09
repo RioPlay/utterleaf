@@ -27,10 +27,10 @@ from utterleaf.polish import polish, stitch_to_previous
 from utterleaf.recovery import RecentDictation
 from utterleaf.hardware import describe, ov_model_id, pick, probe
 from utterleaf.models import ct2_dir, ct2_ready, ov_dir, ov_ready, status_lines
-from utterleaf.host import doctor_host_lines, login_label
+from utterleaf.host import doctor_host_lines
 from utterleaf.settings import launch_settings
 from utterleaf.theme import leaf_image
-from utterleaf.startup import enabled as startup_enabled, set_enabled as set_startup
+from utterleaf.startup import enabled as startup_enabled
 from utterleaf.transcribe import (
     clear_final,
     load_model,
@@ -222,7 +222,7 @@ class Utterleaf:
             self._limit_timer = timer
             timer.start()
             self._update_countdown(self._cut_id)
-            if self.cfg.live_preview:
+            if self.cfg.live_preview and self.indicator.enabled:
                 self._preview_stop.clear()
                 threading.Thread(target=self._preview_loop, args=(self._cut_id,), daemon=True).start()
         except Exception:
@@ -240,6 +240,8 @@ class Utterleaf:
         while not self._preview_stop.wait(0.75):
             if self.state != "recording" or cut_id != self._cut_id:
                 return
+            if not self.indicator.enabled:
+                continue
             audio = self.recorder.snapshot(max_seconds=4.0)
             if self.recorder.seconds(audio) < 0.65:
                 continue
@@ -803,6 +805,30 @@ class Utterleaf:
         self.indicator = Indicator(enabled=want)
         self.indicator.start()
 
+    def toggle_indicator(self) -> None:
+        """Change only the overlay preference; preserve other saved settings."""
+        from dataclasses import replace
+        from utterleaf.config import load, save
+        try:
+            enabled = not self.cfg.indicator
+            save(replace(load(), indicator=enabled))
+        except Exception:
+            log.exception("Could not save the floating indicator preference")
+            self._set_icon("error", "Could not save display preference; open Settings")
+            return
+        with self._capture_lock:
+            self.cfg.indicator = enabled
+            self._sync_indicator()
+            if enabled:
+                if self.state == "recording":
+                    if self._countdown_timer is not None:
+                        self._countdown_timer.cancel()
+                    self._update_countdown(self._cut_id)
+                elif self.state == "busy":
+                    self.indicator.set("transcribing")
+            if self.icon is not None:
+                self.icon.update_menu()
+
     def _ipc_loop(self) -> None:
         assert self._server is not None
         while not self._stop.is_set():
@@ -876,27 +902,21 @@ class Utterleaf:
             self.quit()
             return
 
-        def toggle_startup(_icon=None, item=None) -> None:
-            try:
-                set_startup(not startup_enabled())
-            except Exception:
-                log.exception("Could not change start at login")
-
         menu = Menu(
-            MenuItem(lambda item: f"Utterleaf — {status_hint(self.cfg)}", None, enabled=False),
+            MenuItem(lambda item: f"Utterleaf — {self._status}", None, enabled=False),
             Menu.SEPARATOR,
             # default=True: a left-click on the tray icon opens Settings.
             MenuItem("Settings…", lambda *_: launch_settings(), default=True),
             MenuItem("Copy last dictation (2 min)", lambda *_: self.copy_last_dictation()),
             MenuItem("Forget last dictation", lambda *_: self.forget_last_dictation()),
-            MenuItem(
-                login_label(),
-                toggle_startup,
-                checked=lambda _: startup_enabled(),
-            ),
             Menu.SEPARATOR,
-            MenuItem("Open dictionary", lambda *_: open_path(dictionary_path())),
-            MenuItem("Open log", lambda *_: open_path(log_path())),
+            MenuItem("Floating indicator", lambda *_: self.toggle_indicator(),
+                     checked=lambda _: self.cfg.indicator),
+            MenuItem("Tools", Menu(
+                MenuItem("Open vocabulary file", lambda *_: open_path(dictionary_path())),
+                MenuItem("Open diagnostic log", lambda *_: open_path(log_path())),
+            )),
+            Menu.SEPARATOR,
             MenuItem("Quit", lambda *_: self.quit()),
         )
         color = "busy" if self._status == LOADING else "idle"

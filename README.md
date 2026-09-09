@@ -1,28 +1,54 @@
-# Utterleaf
+<p align="center">
+  <img src="docs/assets/brand/utterling-default.png" width="130" alt="Utterling, your little leaf companion" />
+</p>
+<h1 align="center">Utterleaf</h1>
+<p align="center"><strong>Let ideas speak.</strong><br />A little leaf. A quieter way to write.</p>
+<p align="center">Private, on-device dictation for Windows, macOS, and Linux.<br />Speak naturally. Keep your words close.</p>
+<p align="center">
+  <a href="https://github.com/RioPlay/utterleaf/releases/latest"><strong>Download Utterleaf</strong></a>
+  · <a href="#use-it">Get started</a>
+  · <a href="docs/roadmap.md">What's growing next</a>
+</p>
 
-![Utterleaf — Let ideas speak](docs/assets/brand/wordmark.svg)
+Hold a shortcut, speak, and release. Utterleaf turns your speech into text and
+pastes it into the app you're using. It lives quietly in your system tray, with
+a friendly leaf to tell you when it's listening.
 
-Development priorities and completion criteria: [roadmap](docs/roadmap.md).
+| Your words stay yours | Less fuss, more writing | A little personality |
+| --- | --- | --- |
+| Local speech recognition. No account. No saved recording history. | Personal vocabulary, spoken punctuation, list formatting, and optional text cleanup. | Dark Settings, a quiet tray icon, and Utterling to help you find your way. |
 
-Hold a hotkey, speak, release. Clean text lands in whatever app is focused.
+The selected speech model downloads once, then recognition works offline.
+NVIDIA acceleration requires compatible CUDA libraries; CPU works without them.
 
-A small speech model runs on your machine. GPU if you have one, otherwise CPU. First launch downloads the selected speech model once. After that Utterleaf stays offline. No account. Speech stays on the device.
+## A look inside
 
-**Windows, macOS, and Linux.** Same app. Each OS gets a default hotkey that does not fight the desktop, a status pill, and start-at-login. `--doctor` prints what this machine can actually do.
+![Utterleaf's dark Dictation settings with shortcut controls, a microphone check, and Utterling](docs/assets/screenshots/dictation-dark.png)
+
+<p align="center"><em>Your shortcut, your microphone, your pace.</em></p>
+
+| Words, your way | Let your voice do it |
+| --- | --- |
+| ![Vocabulary settings with the typing Utterling](docs/assets/screenshots/vocabulary-dark.png) | ![Voice commands with the speaking Utterling](docs/assets/screenshots/commands-dark.png) |
+| Teach Utterleaf names and phrases you use every day. | Find the commands for lists, corrections, and punctuation. |
+
+Screenshots show the current development version on Windows, using sample
+vocabulary. The latest downloadable release may look different; check its release notes.
 
 ## Use it
 
-Utterleaf lives in the system tray (a teal mic). There is no main window.
+Utterleaf lives in the system tray as a green leaf. Click it to open Settings.
 
 1. Hold the hotkey, wait for **Listening** or the start sound, talk, then release. Default is **Ctrl+Win** on Windows, **Ctrl+Shift+Space** on macOS and Linux.
-2. A pill says **Listening**, then **Transcribing**.
+2. The tray icon changes as it records and processes your words. The floating indicator is optional.
 3. The sentence lands in the app you were already in. Esc cancels a take.
 
 The microphone opens for a take and is released after its short ending buffer;
 it is not kept listening while idle. Microphone checks in Settings open it only
 for the check. Audio stays in memory for processing and is not saved as a
 recording history. Takes stop automatically at 120 seconds by default, with a
-notice to start another take. Up to four takes can wait behind a slow decode;
+notice to start another take. When enabled, the floating indicator shows the remaining time.
+Up to four takes can wait behind a slow decode;
 Utterleaf asks you to wait before accepting more.
 
 If a result does not reach your text field, open the tray menu and choose
@@ -38,10 +64,26 @@ Click the tray icon (or right-click → **Settings…**) to open the Utterleaf c
 - **Dictation:** choose your shortcut, hold or press mode, microphone, recording feedback, and start at login. A five-second microphone check shows input levels without saving audio.
 - **Vocabulary:** add names and custom terms, choose text cleanup options, and preview the result on a sample before saving.
 - **Voice commands:** browse the built-in editing and punctuation commands.
-- **Engine:** choose a model, processing device, language, noise reduction, and clipboard behavior. Missing model downloads can be disabled.
-- **Help & diagnostics:** check whether the app is running, generate a device report, and save it wherever you choose.
+- **Speech & privacy:** choose a model, processing device, language, noise reduction, and clipboard behavior. Missing model downloads can be disabled.
+- **Help:** check whether the app is running, generate a device report, and save it wherever you choose.
 
-Utterling appears in Dictation and Help, and reacts to the microphone check. The artwork is bundled locally. **Help ? Icons & artwork** explains every icon and mascot, previews them on light and dark surfaces, and exports a complete asset pack with transparent PNG cutouts.
+Meet **Utterling**, your leafy companion. You'll find it welcoming you in Dictation,
+typing alongside Vocabulary, explaining Voice commands, and reacting to microphone
+checks. All seven expressions are bundled locally—no extra downloads.
+
+<p align="center">
+  <img src="docs/assets/brand/utterling-listening.png" width="105" alt="Listening Utterling" />
+  <img src="docs/assets/brand/utterling-thinking.png" width="105" alt="Thinking Utterling" />
+  <img src="docs/assets/brand/utterling-success.png" width="105" alt="Happy Utterling after a successful check" />
+</p>
+
+Prefer a clear screen? **Tray icon only** is the default. Switch the overlay on
+from the tray's **Floating indicator** toggle, or choose **Tray + floating indicator**
+under Dictation → Recording feedback. Live captions only run when the overlay is visible.
+Settings uses a dark theme by default. Native system dialogs follow the OS theme.
+
+**Help → Icons & artwork** explains every icon and mascot, previews them on light
+and dark surfaces, and exports a complete asset pack with transparent PNG cutouts.
 
 The window resizes and scrolls, with Save always accessible. **Ctrl+S** (or **Command+S** on macOS) saves without closing; closing with unsaved changes asks before discarding them. Device checks run in the background.
 
@@ -60,7 +102,7 @@ From PowerShell in the extracted `Utterleaf` folder:
 .\utterleaf-cli.exe --download-model
 ```
 
-For source installs below, use [Python 3.10+](https://www.python.org/downloads/). All three binaries are built and tested with Python 3.14; the macOS/Linux instructions below are for source installs.
+For source installs below, use [Python 3.10+](https://www.python.org/downloads/). CI uses Python 3.14 on Windows/macOS and Ubuntu's system Python on Linux; the instructions below are for source installs.
 
 ### Windows
 
@@ -109,9 +151,9 @@ On Wayland use `wtype` with `wl-clipboard`. On X11 use `xdotool` with `xclip` fo
 
 A binary release on Linux uses the distro's NVIDIA toolkit instead: install `cuda` and `cudnn` for your distribution (Arch: `sudo pacman -S cuda cudnn`), or produce a self-contained CUDA build with `UTTERLEAF_BUNDLE_CUDA=1`.
 
-Don't know the exact command for your distro? Run `utterleaf --cuda-setup` (or open **Settings → Help & diagnostics → Set up NVIDIA GPU…**) for steps matched to this machine, or run the helper script `scripts/cuda-setup.sh` from the repo, which detects the package manager and installs CUDA for you.
+Don't know the exact command for your distro? Run `utterleaf --cuda-setup` (or open **Settings → Help → Set up NVIDIA GPU…**) for steps matched to this machine, or run the helper script `scripts/cuda-setup.sh` from the repo, which detects the package manager and installs CUDA for you.
 
-First launch downloads Whisper `small.en` into the app data folder (~500 MB). The pill says **Downloading your speech model… First use only.** After that it is offline.
+First launch downloads Whisper `small.en` into the app data folder (~500 MB). The tray shows loading status; the optional overlay also explains the download. After that recognition works offline.
 
 - Windows: `%APPDATA%\Utterleaf\models`
 - macOS: `~/Library/Application Support/Utterleaf/models`

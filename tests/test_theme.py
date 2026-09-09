@@ -1,10 +1,19 @@
 from utterleaf.theme import ON_PRIMARY, PRIMARY, SURFACE, apply, leaf_image, leaf_master
 
 
-def test_primary_is_leaf_green() -> None:
-    assert PRIMARY.lower() == "#137d40"
-    assert ON_PRIMARY == "#FFFFFF"
-    assert SURFACE.startswith("#")
+def test_dark_palette_has_readable_text_and_green_accent() -> None:
+    from utterleaf.theme import ON_SURFACE, ON_VARIANT, SURFACE_LOW
+    def luminance(color):
+        rgb = [int(color[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+        linear = [v / 12.92 if v <= .04045 else ((v + .055) / 1.055) ** 2.4 for v in rgb]
+        return sum(a * b for a, b in zip(linear, (.2126, .7152, .0722)))
+    assert luminance(SURFACE) < .03
+    for foreground, background in ((ON_SURFACE, SURFACE), (ON_VARIANT, SURFACE),
+                                   (ON_VARIANT, SURFACE_LOW), (ON_PRIMARY, PRIMARY)):
+        low, high = sorted((luminance(foreground), luminance(background)))
+        assert (high + .05) / (low + .05) >= 4.5
+    red, green, blue = [int(PRIMARY[i:i + 2], 16) for i in (1, 3, 5)]
+    assert green > red and green > blue
 
 
 def test_apply_theme_configures_root(monkeypatch) -> None:

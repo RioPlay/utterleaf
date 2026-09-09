@@ -618,6 +618,39 @@ def test_reload_honors_indicator_off(monkeypatch) -> None:
     assert app.indicator.enabled is False
 
 
+def test_overlay_toggle_preserves_other_saved_settings(monkeypatch):
+    app = _app(monkeypatch)
+    saved = []
+    monkeypatch.setattr("utterleaf.config.load", lambda: Config(model="medium", indicator=False))
+    monkeypatch.setattr("utterleaf.config.save", lambda cfg: saved.append(cfg))
+    monkeypatch.setattr(app, "_sync_indicator", lambda: None)
+    app.toggle_indicator()
+    assert saved[0].model == "medium"
+    assert saved[0].indicator is True
+    assert app.cfg.indicator is True
+
+
+def test_overlay_save_failure_keeps_current_preference(monkeypatch):
+    app = _app(monkeypatch)
+    monkeypatch.setattr("utterleaf.config.load", lambda: Config())
+    def fail(_):
+        raise OSError("read only")
+    monkeypatch.setattr("utterleaf.config.save", fail)
+    app.toggle_indicator()
+    assert app.cfg.indicator is False
+
+
+def test_hidden_overlay_does_not_start_preview_inference(monkeypatch):
+    app = _app(monkeypatch, live_preview=True)
+    app.state = "recording"
+    waits = iter([False, True])
+    monkeypatch.setattr(app._preview_stop, "wait", lambda _: next(waits))
+    def infer(*_):
+        raise AssertionError("Hidden captions must not transcribe")
+    monkeypatch.setattr("utterleaf.app.transcribe_preview", infer)
+    app._preview_loop(app._cut_id)
+
+
 def test_tray_failure_uses_error_art_and_recovers(monkeypatch):
     app = _app(monkeypatch)
     app.icon = SimpleNamespace(icon=None, title="")

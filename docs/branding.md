@@ -80,7 +80,7 @@ the sole indication of recording, an error, or successful delivery.
 
 ## In-app reference and export
 
-Open **Help & diagnostics ? Icons & artwork?**. Five tabs show the entire catalog
+Open **Help → Icons & artwork…**. Five tabs show the entire catalog
 on light and dark backgrounds, with filenames and usage notes:
 
 | Tab | Contents | File references |

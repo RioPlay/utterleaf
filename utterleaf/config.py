@@ -65,7 +65,7 @@ class Config:
 
     restore_clipboard: bool = True
     tray: bool = True
-    indicator: bool = True
+    indicator: bool = False  # Tray status is sufficient by default; overlay is opt-in.
     live_preview: bool = False
     beep: bool = True
     min_seconds: float = 0.35

@@ -9,20 +9,20 @@ def _fonts() -> tuple[str, tuple, tuple, tuple, tuple]:
     family = ui_font()
     return family, (family, 22, "bold"), (family, 10), (family, 9), (family, 10, "bold")
 
-# Teal primary, light surface — same family as the tray leaf.
-PRIMARY = "#137D40"
-PRIMARY_HOVER = "#106B37"
-ON_PRIMARY = "#FFFFFF"
-PRIMARY_CONTAINER = "#DCF5E2"
-ON_PRIMARY_CONTAINER = "#164B2B"
-SURFACE = "#FFFFFF"
-SURFACE_LOW = "#F5F7F8"
-SURFACE_CONTAINER = "#EDF2F3"
-ON_SURFACE = "#172B35"
-ON_VARIANT = "#526671"
-OUTLINE = "#788B94"
-OUTLINE_VARIANT = "#DAE3E7"
-ERROR = "#B3261E"
+# Dark by default, with the same green identity as the tray leaf.
+PRIMARY = "#83DA9A"
+PRIMARY_HOVER = "#A0E9B2"
+ON_PRIMARY = "#102A1B"
+PRIMARY_CONTAINER = "#203C2D"
+ON_PRIMARY_CONTAINER = "#C1F2CD"
+SURFACE = "#111B18"
+SURFACE_LOW = "#0C1411"
+SURFACE_CONTAINER = "#20302A"
+ON_SURFACE = "#E5EEE8"
+ON_VARIANT = "#AABCB1"
+OUTLINE = "#71897B"
+OUTLINE_VARIANT = "#35483D"
+ERROR = "#FFB4AB"
 
 # Dark surfaces for the always-on overlay.
 PILL_SURFACE = "#1C1B1F"
@@ -34,13 +34,17 @@ from utterleaf.brand import STATE_COLORS, leaf_image, leaf_master
 
 
 def apply(root) -> None:
-    """Paint a Tk root with the Material light theme."""
+    """Paint Settings and artwork windows with the default dark theme."""
     from tkinter import ttk
 
     _family, font_title, font_body, font_hint, font_button = _fonts()
     root.configure(bg=SURFACE)
     # A global *Font overrides ttk's named styles, erasing title hierarchy.
     root.option_add("*Text.Font", font_body)
+    root.option_add("*TCombobox*Listbox.background", SURFACE_CONTAINER)
+    root.option_add("*TCombobox*Listbox.foreground", ON_SURFACE)
+    root.option_add("*TCombobox*Listbox.selectBackground", PRIMARY_CONTAINER)
+    root.option_add("*TCombobox*Listbox.selectForeground", ON_PRIMARY_CONTAINER)
     # Preserve the platform's scaling so text respects the user's display size.
 
     style = ttk.Style(root)
@@ -64,6 +68,19 @@ def apply(root) -> None:
         focuscolor=SURFACE,
     )
     style.map("TCheckbutton", background=[("active", SURFACE)])
+    for control in ("TCheckbutton", "TRadiobutton"):
+        style.configure(control, background=SURFACE, foreground=ON_SURFACE,
+                        indicatorbackground=SURFACE_CONTAINER, indicatorforeground=PRIMARY)
+        style.map(control, background=[("active", SURFACE)],
+                  foreground=[("disabled", OUTLINE)],
+                  indicatorbackground=[("selected", PRIMARY), ("active", SURFACE_CONTAINER)])
+    style.configure("TScrollbar", background=SURFACE_CONTAINER, troughcolor=SURFACE_LOW,
+                    arrowcolor=ON_VARIANT, bordercolor=SURFACE)
+    style.map("TScrollbar", background=[("active", OUTLINE_VARIANT)])
+    style.configure("TNotebook", background=SURFACE, bordercolor=OUTLINE_VARIANT)
+    style.configure("TNotebook.Tab", background=SURFACE_CONTAINER, foreground=ON_VARIANT, padding=(10, 6))
+    style.map("TNotebook.Tab", background=[("selected", PRIMARY_CONTAINER)],
+              foreground=[("selected", ON_PRIMARY_CONTAINER)])
     style.configure(
         "TCombobox",
         fieldbackground=SURFACE_LOW,
@@ -111,7 +128,8 @@ def apply(root) -> None:
         relief="flat",
         borderwidth=0,
     )
-    style.map("Primary.TButton", background=[("active", PRIMARY_HOVER)])
+    style.map("Primary.TButton", background=[("disabled", SURFACE_CONTAINER), ("active", PRIMARY_HOVER)],
+              foreground=[("disabled", OUTLINE), ("!disabled", ON_PRIMARY)])
     style.configure("Section.TLabel", font=(_family, 13, "bold"))
     style.configure("Eyebrow.TLabel", foreground=PRIMARY, font=(_family, 9, "bold"))
     style.configure("Nav.TButton", anchor="w", padding=(16, 12), background=SURFACE_LOW)
