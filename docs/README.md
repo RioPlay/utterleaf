@@ -2,6 +2,8 @@
 
 [Back to Utterleaf](../README.md)
 
+<img src="assets/brand/utterling-default.png" width="88" alt="Utterling welcoming you to the guides" />
+
 Start with what you want to do. These guides describe the current app; future
 features are kept in the roadmap.
 
@@ -10,12 +12,15 @@ features are kept in the roadmap.
 | Install the app or enable my GPU | [Installation](installation.md) |
 | Dictate, make lists, or recover my last words | [User guide](user-guide.md) |
 | See what the app looks like | [Screenshots](screenshots.md) |
+| Understand the leaf icons and recording feedback | [Know your leaf](status-guide.md) |
 | Fix a busy or missing microphone | [Microphone help](microphone-troubleshooting.md) |
 | Set up Wayland shortcuts and paste | [Wayland help](wayland.md) |
 | Restore default preferences | [Settings and recovery](user-guide.md#settings-and-recovery) |
 | Find out what's coming next | [Roadmap](roadmap.md) · [Feature plan](feature-plan.md) |
 
 ## For contributors
+
+<img src="assets/brand/utterling-typing.png" width="72" alt="Utterling working on improvements" />
 
 [Development & builds](development.md) · [Platform validation](platform-testing.md) ·
 [Interface guidelines](interface.md) · [Brand & assets](branding.md) ·

@@ -1,5 +1,7 @@
 # Wayland setup and troubleshooting
 
+<img src="assets/brand/utterling-thinking.png" width="80" alt="Utterling working through desktop setup" />
+
 Utterleaf's Wayland support currently needs manual desktop setup. Recognition
 runs locally, but shortcuts, tray visibility, and inserting text depend on the
 desktop. Passing Linux CI does not establish working native Wayland dictation:

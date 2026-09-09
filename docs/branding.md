@@ -15,6 +15,9 @@ for layout, copy, and screenshot conventions.
 
 ## Implemented in the application
 
+Just want to understand the tray? Start with [Know your leaf](status-guide.md).
+This page is the full artwork reference.
+
 The tray and Settings window use the shared leaf/waveform renderer. Settings use
 leaf-green accents and “Let ideas speak.” Windows executable icons are regenerated
 from the same geometry. Existing builds must be rebuilt to acquire the new icon.

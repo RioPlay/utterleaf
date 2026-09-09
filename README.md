@@ -4,6 +4,7 @@
     <img src="docs/assets/brand/wordmark.png" width="340" alt="Utterleaf — Let ideas speak" />
   </picture>
 </p>
+<p align="center"><img src="docs/assets/brand/utterling-default.png" width="88" alt="Utterling, your leafy dictation companion" /></p>
 <p align="center"><strong>A little leaf. A lot less typing.</strong><br />Private, on-device dictation for Windows, macOS, and Linux.</p>
 <p align="center">
   <a href="#download"><strong>Download</strong></a> ·
@@ -47,14 +48,24 @@ XWayland; native desktop dictation is still being validated.
 
 ## Small touches that help
 
-- **Your words, your way.** Teach it names, say punctuation and bullet lists, or
-  turn cleanup off to keep the model transcript.
-- **A quiet desktop.** Dark Settings and tray-only feedback by default. Add an
-  optional countdown and draft dictation captions when you want them.
-- **Room to recover.** Copy the last dictation from the tray within two minutes,
-  or restore default settings from Help. Your vocabulary and models stay.
+| Speak naturally | Make it yours | Find your way back |
+| :--- | :--- | :--- |
+| <img src="docs/assets/brand/utterling-listening.png" width="72" alt="Utterling listening" /> | <img src="docs/assets/brand/utterling-typing.png" width="72" alt="Utterling typing" /> | <img src="docs/assets/brand/utterling-thinking.png" width="72" alt="Utterling thinking" /> |
+| Say punctuation and bullet lists. Keep the desktop quiet, or enable a countdown and dictation preview. | Add names and phrases to your vocabulary. Turn cleanup off when you want the model transcript unchanged. | Copy the latest dictation within two minutes. Restore defaults without losing vocabulary, models, or privacy preferences. |
+| [Dictation basics](docs/user-guide.md#dictate-and-recover-text) | [Voice commands](docs/user-guide.md#voice-commands) | [Settings & recovery](docs/user-guide.md#settings-and-recovery) |
 
-<p align="center"><img src="docs/assets/brand/utterling-default.png" width="100" alt="Utterling, Utterleaf's leafy companion" /><br /><em>Meet Utterling. A friendly face, bundled right in the app.</em></p>
+## Know your leaf
+
+The small leaf in your system tray shows what Utterleaf is doing. Click it to
+open Settings; use the tray menu to copy or forget your latest dictation.
+
+| <img src="docs/assets/brand/tray-idle.png" width="32" alt="Green ready icon" /> Ready | <img src="docs/assets/brand/tray-recording.png" width="32" alt="Recording icon with a dot" /> Recording | <img src="docs/assets/brand/tray-busy.png" width="32" alt="Processing icon with three dots" /> Processing | <img src="docs/assets/brand/tray-error.png" width="32" alt="Error icon with an exclamation mark" /> Needs attention |
+| --- | --- | --- | --- |
+| Ready for a take | Capturing your voice | Loading or transcribing | Check the status message |
+
+The dot, three dots, and exclamation mark help distinguish states without relying
+only on color. Offline use is normal—not an error.
+[Icon meanings & next steps](docs/status-guide.md).
 
 Recognition runs locally. Recent output is held temporarily in memory; text you
 copy may remain in your OS clipboard history. GPU acceleration needs compatible

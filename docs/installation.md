@@ -2,6 +2,8 @@
 
 [Back to Utterleaf](../README.md) · [User guide](user-guide.md)
 
+<img src="assets/brand/utterling-default.png" width="80" alt="Utterling welcoming you to setup" />
+
 Binary releases are built for Windows 11 x64, macOS (Apple Silicon), and Linux x64 (Ubuntu 24.04 or compatible). You need a microphone and internet for the first model download; an NVIDIA GPU is optional. Extract the entire release archive, then open `Utterleaf\utterleaf.exe` on Windows or `./Utterleaf/utterleaf` on macOS/Linux. Keep the `_internal` folder beside the executables. Python is not needed for the binary release.
 
 From PowerShell in the extracted `Utterleaf` folder:

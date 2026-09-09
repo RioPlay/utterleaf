@@ -10,7 +10,10 @@ Microphone busy or missing? Follow the [microphone recovery guide](microphone-tr
 
 ## Dictate and recover text
 
+<img src="assets/brand/utterling-listening.png" width="80" alt="Utterling listening to your first take" />
+
 Utterleaf lives in the system tray as a green leaf. Click it to open Settings.
+See [Know your leaf](status-guide.md) for each icon's meaning and what to do next.
 
 1. Hold the hotkey, wait for **Listening** or the start sound, talk, then release. Default is **Ctrl+Win** on Windows, **Ctrl+Shift+Space** on macOS and Linux.
 2. The tray icon changes as it records and processes your words. The floating indicator is optional.
@@ -68,6 +71,8 @@ On **Wayland**, Utterleaf disables global key listening. Bind a desktop shortcut
 On **macOS**, grant Microphone and Accessibility when asked. Without Accessibility, the hotkey and the paste both do nothing.
 
 ## Voice commands
+
+<img src="assets/brand/utterling-speaking.png" width="80" alt="Utterling introducing spoken commands" />
 
 These also appear in Settings so you do not need this table to start.
 
