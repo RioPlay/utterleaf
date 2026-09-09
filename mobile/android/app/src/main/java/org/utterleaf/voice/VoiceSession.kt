@@ -11,15 +11,21 @@ import android.os.Looper
 import android.os.SystemClock
 import java.util.concurrent.atomic.AtomicBoolean
 
+interface CaptureSession {
+    fun start()
+    fun stop()
+    fun cancel()
+}
+
 class VoiceSession(private val context: Context, private val state: (String) -> Unit,
-                   private val result: (String) -> Unit, private val error: (String) -> Unit) {
+                   private val result: (String) -> Unit, private val error: (String) -> Unit) : CaptureSession {
     private val main = Handler(Looper.getMainLooper())
     private val stopped = AtomicBoolean(false)
     private val cancelled = AtomicBoolean(false)
     private var started = false
     private var ownsLease = false
     private fun update(text: String) = main.post { if (!cancelled.get()) state(text) }
-    fun start() {
+    override fun start() {
         if (started) return
         started = true
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -36,18 +42,19 @@ class VoiceSession(private val context: Context, private val state: (String) -> 
         update("Opening microphone…")
         Thread({ runTake() }, "utterleaf-take").start()
     }
-    fun stop() { stopped.set(true) }
-    fun cancel() {
+    override fun stop() { stopped.set(true) }
+    override fun cancel() {
         cancelled.set(true)
         stopped.set(true)
         if (ownsLease) NativeEngine.cancel()
     }
     @Suppress("MissingPermission") // Permission checked before starting; revocation is handled below.
     private fun runTake() {
-        val audio = FloatArray(16000 * 120)
+        var audio = FloatArray(0)
         var count = 0
         var recorder: AudioRecord? = null
         try {
+            audio = FloatArray(16000 * 120)
             val minimum = AudioRecord.getMinBufferSize(16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
             check(minimum > 0) { "This microphone does not support 16 kHz capture." }
             if (cancelled.get()) return
@@ -101,9 +108,11 @@ class VoiceSession(private val context: Context, private val state: (String) -> 
                           else if (failure is IllegalStateException) failure.message ?: "Capture failed. Try again."
                           else "Capture failed. Check the microphone and try again."
             main.post { if (!cancelled.get()) error(message) }
+        } catch (_: OutOfMemoryError) {
+            main.post { if (!cancelled.get()) error("Not enough memory. Close other apps and try again.") }
         } finally {
             try { recorder?.stop() } catch (_: Exception) { }
-            recorder?.release()
+            try { recorder?.release() } catch (_: Exception) { }
             audio.fill(0f)
             main.post { ownsLease = false; WorkLease.release() }
         }

@@ -62,6 +62,11 @@ class SetupActivity : Activity() {
         column.addView(Ui.button(this, "Licenses and privacy") {
             AlertDialog.Builder(this).setTitle("Utterleaf Voice")
                 .setMessage(assets.open("NOTICE.txt").bufferedReader().use { it.readText() })
+                .setNeutralButton("Full licenses") { _, _ ->
+                    val licenses = listOf("UTTERLEAF-LICENSE.txt", "WHISPER-LICENSE.txt", "MODEL-LICENSE.txt", "LIBCXX-LICENSE.txt")
+                        .joinToString("\n\n") { name -> name + "\n\n" + assets.open(name).bufferedReader().use { it.readText() } }
+                    AlertDialog.Builder(this).setTitle("Third-party licenses").setMessage(licenses).setPositiveButton("Close", null).show()
+                }
                 .setPositiveButton("Close", null).show()
         })
         setContentView(ScrollView(this).apply { addView(column) })

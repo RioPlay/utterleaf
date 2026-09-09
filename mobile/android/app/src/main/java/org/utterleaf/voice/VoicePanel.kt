@@ -5,11 +5,13 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.*
 
-class VoicePanel(context: Context, private val insert: (String) -> Boolean, private val leave: () -> Unit) {
+class VoicePanel(context: Context, private val insert: (String) -> Boolean, private val leave: () -> Unit,
+    private val createSession: ((String) -> Unit, (String) -> Unit, (String) -> Unit) -> CaptureSession =
+        { state, result, error -> VoiceSession(context.applicationContext, state, result, error) }) {
     val view = Ui.column(context)
     private val handler = Handler(Looper.getMainLooper())
     private val gate = TakeGate()
-    private var session: VoiceSession? = null
+    private var session: CaptureSession? = null
     private var transcript = ""
     private val status = Ui.text(context, "Microphone off · English · local processing")
     private val preview = Ui.text(context, "Tap Speak when you are ready.")
@@ -40,7 +42,7 @@ class VoicePanel(context: Context, private val insert: (String) -> Boolean, priv
         clear()
         val token = gate.next()
         speak.isEnabled = false; stop.isEnabled = true
-        session = VoiceSession(view.context.applicationContext,
+        session = createSession(
             { if (gate.accepts(token)) status.text = it },
             { if (gate.accepts(token)) {
                 transcript = it; preview.text = it

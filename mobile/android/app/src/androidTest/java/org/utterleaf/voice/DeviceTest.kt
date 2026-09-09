@@ -27,6 +27,41 @@ class DeviceTest {
         assertFalse(VoiceIme.safeField(InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD))
         assertTrue(VoiceIme.safeField(InputType.TYPE_CLASS_TEXT))
     }
+    @Test fun realPanelRejectsLateSpeechAndInsertsOnlyOnce() {
+        instrumentation.runOnMainSync {
+            val callbacks = mutableListOf<(String) -> Unit>()
+            val inserted = mutableListOf<String>()
+            var cancellations = 0
+            val panel = VoicePanel(app, { inserted.add(it); true }, {}, { _, result, _ ->
+                callbacks.add(result)
+                object : CaptureSession {
+                    override fun start() { }
+                    override fun stop() { }
+                    override fun cancel() { cancellations++ }
+                }
+            })
+            fun buttons(view: android.view.View): List<android.widget.Button> = when(view) {
+                is android.widget.Button -> listOf(view)
+                is android.view.ViewGroup -> (0 until view.childCount).flatMap { buttons(view.getChildAt(it)) }
+                else -> emptyList()
+            }
+            val speak = buttons(panel.view).first { it.text == "Speak" }
+            val insert = buttons(panel.view).first { it.text == "Insert" }
+            speak.performClick()
+            panel.clear() // Same path used by input-field changes and hiding the IME.
+            callbacks[0]("stale speech")
+            assertFalse(insert.isEnabled)
+            assertEquals(1, cancellations)
+            speak.performClick()
+            callbacks[1]("fresh speech")
+            assertTrue(insert.isEnabled)
+            insert.performClick()
+            insert.performClick()
+            assertEquals(listOf("fresh speech"), inserted)
+            assertFalse(insert.isEnabled)
+            panel.clear()
+        }
+    }
     @Test fun verifiedModelTranscribesRealSpeechWithoutNetwork() {
         val testAssets = instrumentation.context.assets
         testAssets.open("ggml-tiny.en.bin").use { ModelStore.install(it, app.noBackupFilesDir) }
