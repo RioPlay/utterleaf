@@ -1,4 +1,4 @@
-from utterleaf.audio import Recorder, list_input_names, resolve_input_device
+from utterleaf.audio import Recorder, SelectedMicrophoneUnavailable, list_input_names, resolve_input_device
 import numpy as np
 import pytest
 from utterleaf.audio import resample_audio
@@ -42,8 +42,47 @@ def test_resolve_input_device(monkeypatch) -> None:
     monkeypatch.setattr("utterleaf.audio.sd.query_devices", _devices)
     assert resolve_input_device("") is None
     assert resolve_input_device("USB Mic") == 2
-    assert resolve_input_device("headset") == 1
-    assert resolve_input_device("missing") is None
+    for name in ("headset", "missing", "Speakers", "usb mic"):
+        with pytest.raises(SelectedMicrophoneUnavailable):
+            resolve_input_device(name)
+
+
+def test_missing_selected_microphone_never_opens_default_and_can_retry(monkeypatch):
+    from utterleaf import audio
+    devices = [{"name": "Laptop Mic", "max_input_channels": 1,
+                "default_samplerate": 48000}]
+    monkeypatch.setattr(audio.sd, "query_devices", lambda index=None, **kw:
+                        devices if index is None else devices[index])
+    monkeypatch.setattr(audio, "shared_input_device", lambda chosen, info, preferred: (chosen, info))
+    opened = []
+    class Stream:
+        def __init__(self, **kwargs):
+            opened.append(kwargs["device"])
+        def start(self):
+            pass
+        def stop(self):
+            pass
+        def close(self):
+            pass
+    monkeypatch.setattr(audio.sd, "InputStream", Stream)
+    recorder = Recorder("Headset Mic")
+    with pytest.raises(SelectedMicrophoneUnavailable) as failure:
+        recorder.start()
+    assert not opened
+    assert not recorder.recording
+    assert "Settings" in audio.microphone_error_hint(failure.value)
+    devices.append({**devices[0], "name": "Headset Mic"})
+    recorder.start()
+    assert opened == [1]
+    assert recorder.device_name == "Headset Mic"
+    recorder.stop()
+    devices.pop()
+    with pytest.raises(SelectedMicrophoneUnavailable):
+        recorder.start()
+    assert recorder._stream is None
+    assert not recorder.recording
+    assert opened == [1]
+    recorder.close()
 
 
 def test_recorder_set_device_reopens() -> None:

@@ -56,6 +56,30 @@ for current behavior and limits.
 
 These are implemented capabilities, not proof of end-to-end quality on every platform.
 
+## Privacy-first convenience milestones
+
+Each milestone must preserve explicit capture, bounded retention, offline use,
+and actionable recovery. No accounts, passive listening, automatic transcript
+archives, or background reading of other apps are required.
+
+| Order | Deliverable | Acceptance gate |
+| --- | --- | --- |
+| 1 — active | Microphone recovery, safe delivery, clear readiness | Missing named inputs never open a substitute; reconnect/permission errors offer recovery. Test native device loss and editor delivery before broader reliability claims. Show loading/download/ready states and require explicit download approval. |
+| 2 | Comfortable long dictation | Bounded RAM and queued processing, ordered text across chunk boundaries, cancel/discard, elapsed time and optional limits; no automatic disk recording. |
+| 3 | Understandable speed choices | Local, user-requested measurements inform Faster/Balanced/More accurate choices; show actual engine/device and explain fallback. Never upload benchmark speech. |
+| 4 | Vocabulary helper and selective backup | Explicit local vocabulary additions; preview exported preferences/vocabulary. Exclude recordings, transcripts, device-specific control tokens, and secrets. No contacts or clipboard-history scanning. |
+| 5 | Local file transcription | Explicit file selection, text/SRT/VTT export and discard; handle missing models and media support without unexpected downloads. |
+| Later | Captions, meetings, speaker labels, translation | Follow the [feature plan](feature-plan.md), with explicit session start, source selection, retention and export controls. |
+
+Wayland desktop-managed shortcuts and safe insertion belong to milestone 1;
+shortcut registration does not establish successful or correctly targeted paste.
+Keep frequent actions in the tray, preferences in Settings, and repair tools in
+Help. Use Utterlings for helpful status and recovery guidance without new popups.
+
+First implementation in v0.3.8: exact saved microphone selection,
+failure before capture when it is missing, and refresh guidance that preserves
+the selection. Native hotplug recovery and device identity remain open work.
+
 ## 1. Reliable delivery — active
 
 Implemented in the current pass: check focus after the shortcut-settling delay;

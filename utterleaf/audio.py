@@ -69,26 +69,20 @@ class Recorder:
             return
         self.close()
 
-    def _active_name(self) -> str:
-        try:
-            resolved = resolve_input_device(self.preferred_device)
-            if resolved is None:
-                return str(sd.query_devices(kind="input").get("name") or "default")
-            info = sd.query_devices(resolved)
-            return str(info.get("name") or self.preferred_device or "default")
-        except Exception:
-            return self.device_name or self.preferred_device or "default"
-
     def prepare(self) -> None:
-        name = self._active_name()
+        try:
+            chosen = resolve_input_device(self.preferred_device)
+            info = sd.query_devices(chosen, kind="input")
+            chosen, info = shared_input_device(chosen, info, self.preferred_device)
+        except Exception:
+            self.close()
+            raise
+        name = str(info.get("name") or self.preferred_device or "default")
         if self._stream is not None and name != self.device_name:
             log.info("Mic changed (%s -> %s); reopening", self.device_name, name)
             self.close()
         if self._stream is not None:
             return
-        chosen = resolve_input_device(self.preferred_device)
-        info = sd.query_devices(chosen, kind="input")
-        chosen, info = shared_input_device(chosen, info, self.preferred_device)
         self.device_name = str(info.get("name") or name)
         self.input_rate = float(info["default_samplerate"])
         log.info("Microphone: %s (%g Hz capture, %d Hz transcription)",
@@ -227,7 +221,15 @@ def device_unavailable(exc: BaseException) -> bool:
     return isinstance(exc, sd.PortAudioError) and len(exc.args) > 1 and exc.args[1] == -9985
 
 
+class SelectedMicrophoneUnavailable(RuntimeError):
+    """The explicitly selected input is absent; capture must not fall back."""
+
+
 def microphone_error_hint(exc: BaseException) -> str:
+    if isinstance(exc, SelectedMicrophoneUnavailable):
+        return ("Your selected microphone is unavailable. Reconnect it, then try again. "
+                "To use another input, open Settings → Dictation, refresh devices, "
+                "choose an input and Save. If it still does not appear, restart Utterleaf.")
     if device_unavailable(exc):
         return ("Microphone unavailable. Another app may have exclusive access, or the device may be disconnected. "
                 "Release it in that app, reconnect it, or choose an input in Settings → Dictation, then try again.")
@@ -293,9 +295,4 @@ def resolve_input_device(name: str) -> int | None:
     for index, device in enumerate(devices):
         if device["max_input_channels"] > 0 and str(device["name"]) == wanted:
             return index
-    lowered = wanted.lower()
-    for index, device in enumerate(devices):
-        if device["max_input_channels"] > 0 and lowered in str(device["name"]).lower():
-            return index
-    log.warning("Microphone %r not found; using system default", wanted)
-    return None
+    raise SelectedMicrophoneUnavailable("Selected microphone is not in the input device list")

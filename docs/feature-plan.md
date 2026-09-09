@@ -14,6 +14,7 @@ the larger modes below remain planned.
 | --- | --- | --- |
 | Windows shared microphone access | v0.3.4 | WASAPI shared mode for the system default or an unambiguously matching named endpoint; other platforms retain their capture backend. |
 | Temporary open failures | v0.3.4 | Close failed streams, retry device-unavailable once, keep other errors actionable, reset toggle state on failure. |
+| Missing selected microphone | v0.3.8 | Exact saved name required; no partial-name or default fallback. Refresh preserves selection and explains recovery. Identical hardware names remain a limitation. |
 | Device loss during recording | Planned | Detect a stopped stream or missing callbacks; preserve captured speech; explain interruption without treating quiet audio as device failure. |
 | Reconnect and permission recovery | Planned | Refresh devices, show selected/actual input, retry without restart; never change system permissions automatically. |
 | Hold until release | Planned | Replace the 120-second hold-mode cutoff with bounded incremental processing; preserve words and order across boundaries. |

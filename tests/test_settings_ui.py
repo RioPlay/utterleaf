@@ -104,6 +104,20 @@ def test_microphone_check_mascot_follows_result(window, monkeypatch, result, exp
     assert str(window.mic_button.cget("text")) == "Test microphone"
 
 
+def test_refresh_microphones_preserves_missing_selection_and_explains_recovery(window, monkeypatch):
+    callbacks = []
+    monkeypatch.setattr(window, "_worker", lambda action, done: callbacks.append(done))
+    window.vars["microphone"].set("Headset Mic")
+    window.refresh_mics()
+    callbacks.pop()(["Laptop Mic"])
+    assert window.vars["microphone"].get() == "Headset Mic"
+    assert "unavailable" in window.mic_message.get()
+    window.refresh_mics()
+    callbacks.pop()(["Headset Mic", "Laptop Mic"])
+    assert "Devices refreshed" in window.mic_message.get()
+    assert window.vars["microphone"].get() == "Headset Mic"
+
+
 def test_preview_can_preserve_transcript_without_vocabulary_or_commands(window):
     window.vars["text_cleanup"].set(False)
     window.sample.delete("1.0", "end")

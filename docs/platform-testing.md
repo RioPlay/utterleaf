@@ -2,6 +2,14 @@
 
 ## Current validation — September 9, 2026
 
+Version 0.3.8 selected-microphone protection: Windows **338 passed, 1 skipped**;
+AlmaLinux/WSL **337 passed, 2 skipped**, plus Linux CLI help. Regression tests
+verify that missing/partial input names cannot open another microphone, retry
+works when the exact device returns to enumeration, and real Settings widgets
+preserve the missing selection and clear stale guidance after refresh.
+Device enumeration and streams in these regressions are simulated; physical
+hotplug, Bluetooth and sleep/wake recovery are not established by these tests.
+
 Version 0.3.7 design/QA changes: Windows **336 passed, 1 skipped**;
 AlmaLinux/WSL **335 passed, 2 skipped**, plus CLI help. Added real-widget checks
 cover invalid vocabulary selection, compact footer containment, config/label

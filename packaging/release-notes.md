@@ -1,17 +1,13 @@
-**v0.3.7** improves Settings usability following a product design and QA audit. The speech engine and dependencies are unchanged.
+**v0.3.8** protects your microphone choice and starts the privacy-first convenience roadmap. The speech engine and dependencies are unchanged.
 
-**Privacy and security:** local control commands now require a per-launch secret,
-oversized requests are rejected, and stalled clients no longer terminate the
-listener. Quit the older app and reopen the updated version after extracting;
-updated clients refuse to send control commands using the old protocol.
+- A missing selected microphone now blocks capture instead of silently opening the system default.
+- Saved names must match exactly. If you previously entered a partial name manually, select the full name in Settings → Dictation and Save.
+- Refresh devices preserves your selection and explains when it is unavailable or ready to test. System default remains an explicit choice.
+- Updated roadmap milestones cover recovery, safe delivery, readiness, long dictation, speed choices, vocabulary, selective backup, and file transcription.
 
-- Direct task headings and smaller mascots leave more space for controls.
-- Contrasting selection marks and keyboard focus colors improve control visibility.
-- Long status messages wrap without crowding Save and Close.
-- Invalid settings return you to the relevant field; an invalid vocabulary line is selected for correction before anything is saved.
-- Restoring defaults preserves your download and clipboard preferences, including offline mode.
-- Hardware and noise controls show readable labels. Draft captions are clearly labeled as dictation preview.
-- Updated screenshots and a documented quality audit distinguish verified checks from remaining native-platform, accessibility, and display-scaling work.
+This does not yet add native hotplug refresh or recovery during a take. Some backends require restarting the app after reconnecting. Identical microphone names cannot distinguish physical devices.
+
+Quit the older app before extracting and reopening the update. Local control authentication and the privacy-preserving defaults reset from v0.3.7 remain included.
 
 ## Download and open
 

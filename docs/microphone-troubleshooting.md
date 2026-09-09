@@ -37,9 +37,21 @@ flowchart TD
 
 On Windows, the system default prefers WASAPI shared mode. A named microphone
 switches backend only when an exact, unique WASAPI name match exists; otherwise
-the existing selected backend is retained. The older device resolver still
-supports partial names and falls back to the system default for a missing saved
-name; explicit missing-device handling remains planned work.
+the existing selected backend is retained.
+
+## Selected microphone protection (v0.3.8)
+
+A saved microphone now requires an exact device-name match. If it is missing,
+Utterleaf stops before opening any input and explains how to reconnect or choose
+another microphone. It does not silently switch to the laptop microphone.
+Older manually entered partial names must be replaced by a full name from the
+Settings picker. **System default** remains an explicit choice that follows the
+operating system's default input.
+
+Refresh keeps a missing selection visible and reports its status. Try again
+after reconnecting; some audio backends may require restarting Utterleaf before
+a newly connected device appears. Identical device names cannot distinguish
+physical microphones; stable hardware identifiers remain future work.
 
 Only PortAudio's device-unavailable error receives one retry, after 150 ms.
 Failed streams are closed first. Format and other errors are reported directly;

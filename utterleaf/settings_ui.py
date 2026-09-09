@@ -509,6 +509,10 @@ class SettingsWindow:
             self.mic_box.configure(values=values)
             if not result:
                 self.mic_message.set("No microphones found. Connect a microphone, then refresh.")
+            elif self.vars["microphone"].get() not in ("", SYSTEM_DEFAULT, *result):
+                self.mic_message.set("Selected microphone is unavailable. Reconnect it or choose another input and Save.")
+            else:
+                self.mic_message.set("Devices refreshed. Choose an input, then Test microphone. Save to apply changes.")
         self._worker(query, done)
 
     def test_mic(self):
