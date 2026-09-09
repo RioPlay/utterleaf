@@ -10,6 +10,9 @@ it does not replace or add dependencies to the desktop Python application.
 
 ## Android — compact voice companion first
 
+[Download the Android alpha](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha01) ·
+[Setup and current limits](../mobile/android/README.md)
+
 The initial implementation uses Kotlin, Android's input-method framework, and
 local whisper.cpp inference. It offers a compact voice IME and an explicit
 speech-recognition activity result for compatible keyboards. A full keyboard is

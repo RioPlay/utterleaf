@@ -21,7 +21,8 @@ the compact Utterleaf voice panel through Android's keyboard switcher.
 
 ## Try it
 
-1. Install the **debug APK** from a successful [Android CI run](https://github.com/RioPlay/utterleaf/actions/workflows/android.yml).
+1. Install the **debug APK** from the [Android alpha release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha01).
+   Development builds and reports are also available from [Android CI](https://github.com/RioPlay/utterleaf/actions/workflows/android.yml).
    The unsigned release APK is for developers and cannot be installed until signed.
    CI debug certificates are disposable; a later preview may require uninstalling
    the old one, which removes the imported model. Stable release signing is pending.
