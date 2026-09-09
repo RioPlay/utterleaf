@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(utterleaf_voice LANGUAGES C CXX)
+# The installable alpha uses a debug Android signature; inference still needs
+# optimized native kernels rather than an unoptimized tensor implementation.
+add_compile_options(-O3)
 include(FetchContent)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
