@@ -2,6 +2,8 @@
 
 [Back to Utterleaf](../README.md) · [Installation](installation.md)
 
+Microphone busy or missing? Follow the [microphone recovery guide](microphone-troubleshooting.md).
+
 ## Dictate and recover text
 
 Utterleaf lives in the system tray as a green leaf. Click it to open Settings.

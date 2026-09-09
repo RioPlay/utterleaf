@@ -43,7 +43,7 @@ def resample_audio(audio: np.ndarray, input_rate: float) -> np.ndarray:
 
 
 class Recorder:
-    """Keeps the mic stream open and a short pre-roll so the first word is not cut."""
+    """Capture one take with a short pre-roll; the caller releases the stream."""
 
     def __init__(self, device: str = "") -> None:
         self._lock = threading.Lock()
@@ -86,31 +86,48 @@ class Recorder:
             self.close()
         if self._stream is not None:
             return
-        self.device_name = name
         chosen = resolve_input_device(self.preferred_device)
         info = sd.query_devices(chosen, kind="input")
+        chosen, info = shared_input_device(chosen, info, self.preferred_device)
+        self.device_name = str(info.get("name") or name)
         self.input_rate = float(info["default_samplerate"])
         log.info("Microphone: %s (%g Hz capture, %d Hz transcription)",
                  self.device_name, self.input_rate, SAMPLE_RATE)
         # ALSA-to-Pulse bridging overflows the small default buffer right at
         # open; dictation never needs low capture latency on Linux.
         extra = {"latency": "high"} if sys.platform.startswith("linux") else {}
-        stream = sd.InputStream(
-            device=chosen,
-            samplerate=self.input_rate,
-            channels=1,
-            dtype="float32",
-            blocksize=0,
-            callback=self._on_audio,
-            **extra,
-        )
-        try:
-            stream.start()
-        except Exception:
-            stream.close()
-            raise
-        self._stream = stream
-        self._opened_at = time.monotonic()
+        if sys.platform == "win32" and "hostapi" in info:
+            host = sd.query_hostapis(info["hostapi"])
+            if host["name"] == "Windows WASAPI":
+                extra["extra_settings"] = sd.WasapiSettings(exclusive=False)
+        # Retry only PortAudio's device-unavailable error. A permission or format
+        # error needs a different action, and must not turn into a retry loop.
+        for attempt in range(2):
+            stream = None
+            try:
+                stream = sd.InputStream(
+                    device=chosen, samplerate=self.input_rate, channels=1,
+                    dtype="float32", blocksize=0, callback=self._on_audio, **extra,
+                )
+                stream.start()
+            except Exception as exc:
+                if stream is not None:
+                    try:
+                        stream.close()
+                    except Exception:
+                        log.warning("Could not close failed microphone stream", exc_info=True)
+                        raise exc
+                with self._lock:
+                    self._ring.clear()
+                    self._ring_samples = 0
+                if attempt == 0 and device_unavailable(exc):
+                    log.info("Microphone temporarily unavailable; retrying once")
+                    time.sleep(0.15)
+                    continue
+                raise
+            self._stream = stream
+            self._opened_at = time.monotonic()
+            break
 
     def start(self, max_seconds: float | None = None) -> None:
         if max_seconds is not None and (not np.isfinite(max_seconds) or max_seconds <= 0):
@@ -204,6 +221,43 @@ class Recorder:
 
     def seconds(self, audio: np.ndarray) -> float:
         return float(len(audio)) / SAMPLE_RATE
+
+
+def device_unavailable(exc: BaseException) -> bool:
+    return isinstance(exc, sd.PortAudioError) and len(exc.args) > 1 and exc.args[1] == -9985
+
+
+def microphone_error_hint(exc: BaseException) -> str:
+    if device_unavailable(exc):
+        return ("Microphone unavailable. Another app may have exclusive access, or the device may be disconnected. "
+                "Release it in that app, reconnect it, or choose an input in Settings → Dictation, then try again.")
+    return "Could not open the microphone. Check microphone permission and your input in Settings → Dictation, then try again."
+
+
+def shared_input_device(chosen, info, preferred):
+    """Prefer WASAPI without fuzzy matching a named mic to different hardware."""
+    if sys.platform != "win32" or "hostapi" not in info:
+        return chosen, info
+    try:
+        hosts = sd.query_hostapis()
+        wasapi = next((i for i, host in enumerate(hosts) if host["name"] == "Windows WASAPI"), None)
+        if wasapi is None or info["hostapi"] == wasapi:
+            return chosen, info
+        if not preferred:
+            index = hosts[wasapi]["default_input_device"]
+            if index >= 0:
+                candidate = sd.query_devices(index)
+                if candidate["max_input_channels"] > 0 and candidate["hostapi"] == wasapi:
+                    return index, candidate
+        else:
+            matches = [(i, d) for i, d in enumerate(sd.query_devices())
+                       if d["max_input_channels"] > 0 and d["hostapi"] == wasapi
+                       and d["name"] == info["name"]]
+            if len(matches) == 1:
+                return matches[0]
+    except (sd.PortAudioError, KeyError, IndexError, TypeError):
+        log.debug("WASAPI selection unavailable; keeping selected input", exc_info=True)
+    return chosen, info
 
 
 def list_devices() -> list[str]:

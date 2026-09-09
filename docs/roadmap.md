@@ -1,6 +1,6 @@
 # Utterleaf roadmap
 
-Updated September 8, 2026. Priorities follow the
+Updated September 9, 2026. Priorities follow the
 [offline STT user research](offline-stt-user-research-2026-09-08.md).
 This is an ordered development plan, not a promise of release dates.
 
@@ -18,6 +18,21 @@ intended field, with understandable local processing and minimal interruption.
 - Two-minute in-memory recovery, explicit forgetting, and recovery CLI commands.
 - Conservative native-field editing and manual fallback when edits cannot be verified.
 - Clearer settings, shortcut validation, and partial-save error reporting.
+- Dark Settings, optional overlay with countdown, tray-only defaults, and all seven Utterlings in normal UI use (v0.3.3).
+- Multiword list fixes and local timing diagnostics (v0.3.3).
+
+## Current delivery status
+
+**Microphone recovery release:** [v0.3.4](https://github.com/RioPlay/utterleaf/releases/tag/v0.3.4).
+Included: Windows shared microphone selection, a bounded retry for
+temporary device-unavailable errors, and resetting toggle state after a failed
+microphone start. These are included in v0.3.4, not v0.3.3.
+
+**Planned, not implemented:** long dictation without the fixed hold-mode cutoff,
+file transcription, subtitle export, system-audio captions, meetings, speaker
+labels, and translation. See the [feature plan](feature-plan.md) for dependencies
+and acceptance criteria, and [microphone troubleshooting](microphone-troubleshooting.md)
+for current behavior and limits.
 
 These are implemented capabilities, not proof of end-to-end quality on every platform.
 
@@ -69,7 +84,7 @@ explicit accuracy/latency tradeoffs. Set performance budgets from that baseline.
 
 - Test keyboard-only setup and recovery, screen readers, and high display scaling.
 - Verify recording status and errors without relying on sound or color alone.
-- Resolve the Tk test-order initialization issue so UI checks cannot silently skip.
+- Keep real Tk checks running in CI; investigate any unexpected display-related skips.
 - Evaluate a different desktop shell only if measured usability, accessibility,
   startup, or packaging limits justify it. Keep the Python speech pipeline unless
   evidence identifies it as the constraint.
@@ -79,9 +94,14 @@ reliably in the supported environments.
 
 ## Scope discipline
 
-Cloud accounts, bundled chat, meeting workspaces, engagement statistics, and
-permanent recording history are not planned priorities. New features should make
-everyday dictation more dependable without adding unnecessary setup or retention.
+The new user-requested expansion is optional **Transcribe**, **Captions**, and
+**Meeting** modes. These share the local speech engine while keeping ordinary
+dictation quiet and lightweight. Meeting capture requires a deliberate session
+start, clear capture state, and explicit save/discard behavior.
+
+Cloud accounts, bundled chat, team workspaces, engagement statistics, and
+automatic permanent recording history remain outside the plan. Optional models
+should be installed only for features the user enables.
 
 Live microphones, external editor delivery, clean-install packaging, and speech
 benchmarks still require direct validation. Automated unit tests do not substitute

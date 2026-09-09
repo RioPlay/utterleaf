@@ -1,29 +1,25 @@
 # Platform testing
 
-## Latest local results — September 8, 2026
+## Current validation — September 9, 2026
 
-These results cover the working tree, including the current uncommitted changes.
+Local results for the v0.3.4 microphone-recovery changes:
 
 | Environment | Result | Scope |
 | --- | --- | --- |
-| Windows, Python 3.14 | 296 passed, 1 skipped; CLI help passed | Full automated suite, real Tk widgets and test-owned native Edit control. Linux symlink test skipped because Windows lacks the required privilege. |
-| AlmaLinux 10, WSL2, Python 3.12.12, WSLg | 295 passed, 2 skipped in each session-selection run; CLI help passed | Full automated suite including Tk under WSLg, with Wayland detection and then explicit X11 selection. Only two Windows-native tests skipped. |
-| macOS | Current working tree not yet run natively | Existing CI runs native macOS tests and builds. Local tests exercise AppleScript dispatch and return codes using mocks; they do not validate macOS permissions. |
+| Windows, Python 3.14 | 319 passed, 1 skipped | Full suite, including real Tk widgets and a test-owned native Edit control. Windows symlink privilege limitation is the skip. |
+| AlmaLinux 10, WSL2, Python 3.12.12, WSLg | 318 passed, 2 skipped; CLI help passed | Full suite; the two Windows-native checks are skipped. |
+| Windows default microphone | Two simultaneous streams active at 48 kHz | Both streams closed after a brief test; samples discarded. Does not test every calling app, exclusive access, hotplug, or device loss. |
 
-Windows results: `artifacts/windows-tests.xml`. Linux results:
-`artifacts/linux-tests.xml` (latest X11-selection run). These local artifacts are ignored by Git.
+Published release validation is recorded in [GitHub Actions](https://github.com/RioPlay/utterleaf/actions/workflows/build.yml).
+The release workflow tests and builds Windows, macOS, and Linux on native runners;
+publication is gated on all five jobs. The Linux package also runs extracted-app
+startup and IPC checks under Xvfb with X11 and Wayland session selection. This is
+not a real Wayland compositor, microphone, or external-editor test.
 
-The [latest baseline CI run](https://github.com/RioPlay/utterleaf/actions/runs/34275651113)
-passed Windows, Linux, and macOS tests/builds for commit
-`8e2b30e765a8672283c13489f987f9e426e733f8`. It does not include the uncommitted
-improvements. The existing build workflow will validate the next pushed revision;
-no new remote run or release was triggered during this pass.
-
-The WSL run found an environment-dependent test: recording hints assumed a
-non-Wayland session. The test now explicitly covers both global-hotkey and
-Wayland desktop-shortcut hints. CI also has a second Linux suite run with Wayland
-session selection. That run uses Xvfb for rendering; it is not a Wayland compositor
-integration test.
+macOS microphone permission, Accessibility, and real-app paste still need human
+validation. Source test success and frozen CLI success do not substitute for it.
+The older research and review documents retain their dated results as historical
+snapshots; this page records the current validation scope.
 
 ### Local Linux environment
 

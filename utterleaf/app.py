@@ -18,7 +18,7 @@ from pystray import Icon, Menu, MenuItem
 
 from utterleaf.beep import beep
 from utterleaf import edit_target, ipc
-from utterleaf.audio import TAIL_SECONDS, Recorder, list_devices
+from utterleaf.audio import TAIL_SECONDS, Recorder, list_devices, microphone_error_hint
 from utterleaf.config import Config, config_path, dictionary_path, log_path
 from utterleaf.hotkey import HotkeyWatcher, parse_hotkey
 from utterleaf.indicator import Indicator, recording_caption
@@ -225,15 +225,18 @@ class Utterleaf:
             if self.cfg.live_preview and self.indicator.enabled:
                 self._preview_stop.clear()
                 threading.Thread(target=self._preview_loop, args=(self._cut_id,), daemon=True).start()
-        except Exception:
+        except Exception as exc:
             log.exception("Microphone failed")
+            self._cancel_limit_timer()
+            if self.hotkey is not None:
+                self.hotkey.reset_active()
             beep("err", self.cfg.beep)
             with self._lock:
                 self.state = "idle"
             self._show_error(
                 "no_mic",
                 NO_MIC,
-                "Another app may be using it, or pick a different mic in Settings.",
+                microphone_error_hint(exc),
             )
 
     def _preview_loop(self, cut_id: int) -> None:

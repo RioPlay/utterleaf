@@ -347,6 +347,21 @@ def test_old_limit_timer_cannot_stop_a_new_take(monkeypatch):
     assert app._tail_timer is None
 
 
+def test_failed_microphone_start_resets_toggle_for_next_attempt(monkeypatch):
+    app = _app(monkeypatch, mode="toggle")
+    resets = []
+    app.hotkey = SimpleNamespace(reset_active=lambda: resets.append(True))
+    monkeypatch.setattr("utterleaf.app.foreground_id", lambda: 1)
+    monkeypatch.setattr("utterleaf.app.foreground_app", lambda: "editor")
+    def fail(**kwargs):
+        raise RuntimeError("Device disappeared")
+    monkeypatch.setattr(app.recorder, "start", fail)
+    app.start_recording()
+    assert app.state == "idle"
+    assert resets == [True]
+    assert app._limit_timer is None
+
+
 def test_countdown_keeps_preview_and_stale_ticks_cannot_overwrite_status(monkeypatch):
     app = _app(monkeypatch)
     shown, timers = [], []

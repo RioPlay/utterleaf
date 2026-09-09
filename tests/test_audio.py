@@ -204,3 +204,59 @@ def test_close_releases_stream_even_when_stop_fails():
     recorder.close()
     assert closed == [True]
     assert recorder._stream is None
+
+
+def test_windows_shared_host_selection_preserves_named_mic(monkeypatch):
+    from utterleaf import audio
+    monkeypatch.setattr(audio.sys, "platform", "win32")
+    legacy = {"name": "USB microphone", "hostapi": 0, "max_input_channels": 1}
+    shared = {**legacy, "hostapi": 1}
+    other = {**shared, "name": "Laptop microphone"}
+    hosts = [{"name": "MME"}, {"name": "Windows WASAPI", "default_input_device": 2}]
+    monkeypatch.setattr(audio.sd, "query_hostapis", lambda: hosts)
+    monkeypatch.setattr(audio.sd, "query_devices", lambda i=None: [legacy, shared, other] if i is None else [legacy, shared, other][i])
+    assert audio.shared_input_device(None, legacy, "") == (2, other)
+    assert audio.shared_input_device(0, legacy, "USB microphone") == (1, shared)
+    monkeypatch.setattr(audio.sd, "query_devices", lambda: [legacy, shared, shared])
+    assert audio.shared_input_device(0, legacy, "USB microphone") == (0, legacy)
+
+
+@pytest.mark.parametrize("failures", [1, 2])
+def test_unavailable_stream_retries_once_and_closes_failures(monkeypatch, failures):
+    from utterleaf import audio
+    monkeypatch.setattr(audio.sys, "platform", "win32")
+    monkeypatch.setattr(audio.sd, "query_devices", lambda *a, **k: {
+        "name": "mic", "default_samplerate": 48000, "hostapi": 0,
+    })
+    monkeypatch.setattr(audio, "shared_input_device", lambda chosen, info, preferred: (chosen, info))
+    monkeypatch.setattr(audio.sd, "query_hostapis", lambda _: {"name": "Windows WASAPI"})
+    sentinel = object()
+    modes, streams, waits = [], [], []
+    monkeypatch.setattr(audio.sd, "WasapiSettings", lambda **kw: modes.append(kw) or sentinel)
+    monkeypatch.setattr(audio.time, "sleep", lambda delay: waits.append(delay))
+    class Stream:
+        def __init__(self, **kwargs):
+            assert kwargs["extra_settings"] is sentinel
+            self.closed = False
+            streams.append(self)
+        def start(self):
+            if len(streams) <= failures:
+                raise audio.sd.PortAudioError("Device unavailable", -9985)
+        def close(self):
+            self.closed = True
+        def stop(self):
+            pass
+    monkeypatch.setattr(audio.sd, "InputStream", Stream)
+    recorder = Recorder()
+    if failures == 2:
+        with pytest.raises(audio.sd.PortAudioError):
+            recorder.prepare()
+        assert recorder._stream is None
+    else:
+        recorder.prepare()
+        assert recorder._stream is streams[1]
+    assert len(streams) == 2
+    assert all(s.closed for s in streams[:failures])
+    assert waits == [.15]
+    assert modes == [{"exclusive": False}]
+    recorder.close()

@@ -471,7 +471,8 @@ class SettingsWindow:
             self.meter.configure(value=0)
             if isinstance(result, Exception):
                 self._set_mascot("Dictation", "error")
-                self.mic_message.set(f"Could not open the microphone: {result}")
+                from utterleaf.audio import microphone_error_hint
+                self.mic_message.set(microphone_error_hint(result))
             elif self.mic_stop.is_set():
                 self._set_mascot("Dictation", "default")
                 self.mic_message.set("Microphone check stopped.")

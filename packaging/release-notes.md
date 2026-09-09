@@ -1,5 +1,14 @@
 Compiled Utterleaf binaries for Windows, macOS, and Linux. Python is bundled; no Python installation or source build is required.
 
+Version 0.3.4 improves microphone sharing and recovery:
+
+- Windows prefers WASAPI shared mode for the default input and exact, unique matches for a named microphone. Other backends remain available when no safe match exists.
+- A temporary device-unavailable error gets one retry after closing the failed stream. Other errors report recovery guidance directly.
+- A failed microphone start resets toggle mode, so the next shortcut press can retry normally.
+- Microphone troubleshooting and platform-test documentation are updated. The feature plan describes long dictation, file transcription, captions, meetings, speaker labels, and translation; these planned features are not included yet.
+
+A local Windows test opened two simultaneous microphone streams successfully. This does not override another application's exclusive access or establish compatibility with every driver/calling app. Recovery from a disconnect during an active take remains planned.
+
 Version 0.3.3 brings the latest interface and dictation improvements into the downloadable app:
 
 - Dark Settings with green accents, clearer navigation, and simpler tray menus.
