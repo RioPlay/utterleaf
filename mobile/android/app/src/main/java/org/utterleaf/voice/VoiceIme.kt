@@ -15,10 +15,7 @@ class VoiceIme : InputMethodService() {
         window.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         panel = VoicePanel(this, { text ->
             allowed && currentInputConnection?.commitText(text, 1) == true
-        }, {
-            if (android.os.Build.VERSION.SDK_INT < 28 || !switchToPreviousInputMethod())
-                (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
-        })
+        }, { returnKeyboard() })
         return panel!!.view
     }
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
@@ -31,7 +28,11 @@ class VoiceIme : InputMethodService() {
         panel?.clear()
         allowed = info != null && safeField(info.inputType)
         panel?.view?.visibility = if (allowed) View.VISIBLE else View.GONE
-        if (!allowed) requestHideSelf(0)
+        if (!allowed) { requestHideSelf(0); returnKeyboard() }
+    }
+    private fun returnKeyboard() {
+        if (android.os.Build.VERSION.SDK_INT < 28 || !switchToPreviousInputMethod())
+            (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
     }
     override fun onFinishInputView(finishingInput: Boolean) { panel?.clear(); super.onFinishInputView(finishingInput) }
     override fun onFinishInput() { allowed = false; panel?.clear(); super.onFinishInput() }
