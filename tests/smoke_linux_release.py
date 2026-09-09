@@ -65,6 +65,10 @@ def run(release):
                         time.sleep(3)
                         output.seek(0)
                         assert settings.poll() is None, output.read()
+                        # A second frozen launch must activate and exit, not
+                        # leave another Settings window/process behind.
+                        assert command(exe, env, "--settings") == ""
+                        assert settings.poll() is None, "Activation closed the original Settings"
                     finally:
                         if settings.poll() is None:
                             settings.terminate()
