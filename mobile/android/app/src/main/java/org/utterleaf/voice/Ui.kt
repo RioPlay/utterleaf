@@ -1,6 +1,7 @@
 package org.utterleaf.voice
 
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.view.View
@@ -22,7 +23,12 @@ object Ui {
     fun title(context: Context, value: String) = text(context, value, 24f).apply { setTypeface(typeface, Typeface.BOLD) }
     fun button(context: Context, label: String, action: () -> Unit) = Button(context).apply {
         text = label; isAllCaps = false; minHeight = dp(context, 48)
-        setTextColor(green); setOnClickListener { action() }
+        backgroundTintList = ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_pressed), intArrayOf(android.R.attr.state_focused), intArrayOf()),
+            intArrayOf(Color.rgb(53, 92, 69), Color.rgb(53, 92, 69), Color.rgb(40, 51, 53)))
+        setTextColor(ColorStateList(arrayOf(intArrayOf(-android.R.attr.state_enabled), intArrayOf()),
+            intArrayOf(Color.rgb(113, 137, 123), green)))
+        setOnClickListener { action() }
     }
     fun mascot(context: Context) = ImageView(context).apply {
         setImageResource(org.utterleaf.voice.R.drawable.utterling_default)
