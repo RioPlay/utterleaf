@@ -16,6 +16,7 @@ from PyInstaller.building.api import EXE, COLLECT, PYZ
 from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs
 
 datas = collect_data_files("faster_whisper")
+datas += collect_data_files("utterleaf", includes=["assets/*.png"])
 project_root = Path(SPECPATH).parent
 # The readme travels with every build so an extracted download explains itself.
 datas.append((str(project_root / "README.md"), "."))

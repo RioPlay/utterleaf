@@ -59,6 +59,7 @@ class Config:
     microphone: str = ""
 
     # Local rules only. Unknown keys in an old config.toml (polish, ollama, …) are ignored.
+    text_cleanup: bool = True
     remove_fillers: bool = True
     fix_corrections: bool = True
 
@@ -101,6 +102,7 @@ def _dump_toml(cfg: Config) -> str:
         f"allow_network = {str(cfg.allow_network).lower()}",
         f'microphone = {quote(cfg.microphone)}',
         "",
+        f"text_cleanup = {str(cfg.text_cleanup).lower()}",
         f"remove_fillers = {str(cfg.remove_fillers).lower()}",
         f"fix_corrections = {str(cfg.fix_corrections).lower()}",
         "",
@@ -127,14 +129,18 @@ def load() -> Config:
 
 
 def save(cfg: Config) -> Path:
-    path = config_path()
+    return atomic_write_text(config_path(), _dump_toml(cfg))
+
+
+def atomic_write_text(path: Path, text: str) -> Path:
+    """A failed write must not truncate the previously saved file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = None
     try:
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
                                          suffix=".tmp", delete=False) as stream:
             temporary = Path(stream.name)
-            stream.write(_dump_toml(cfg))
+            stream.write(text)
         temporary.replace(path)
     finally:
         if temporary is not None:

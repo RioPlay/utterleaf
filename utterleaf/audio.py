@@ -56,6 +56,9 @@ class Recorder:
         self.preferred_device = (device or "").strip()
         self.device_name = ""
         self.input_rate = float(SAMPLE_RATE)
+        self._capture_limit = None
+        self._captured_samples = 0
+        self.limit_reached = threading.Event()
 
     def set_device(self, name: str) -> None:
         name = (name or "").strip()
@@ -109,10 +112,19 @@ class Recorder:
         self._stream = stream
         self._opened_at = time.monotonic()
 
-    def start(self) -> None:
+    def start(self, max_seconds: float | None = None) -> None:
+        if max_seconds is not None and (not np.isfinite(max_seconds) or max_seconds <= 0):
+            raise ValueError("Recording limit must be positive and finite")
         self.prepare()
         with self._lock:
             self._chunks = [chunk.copy() for chunk in self._ring]
+            self._captured_samples = sum(len(chunk) for chunk in self._chunks)
+            # The limit measures new speech; keep the small pre-roll as well.
+            self._capture_limit = (
+                self._captured_samples + int(max_seconds * self.input_rate)
+                if max_seconds is not None else None
+            )
+            self.limit_reached.clear()
             self.recording = True
 
     def _on_audio(self, indata, frames, timestamp, status) -> None:  # noqa: ARG002
@@ -134,7 +146,13 @@ class Recorder:
                 dropped = self._ring.popleft()
                 self._ring_samples -= len(dropped)
             if self.recording:
-                self._chunks.append(copy)
+                remaining = len(copy) if self._capture_limit is None else self._capture_limit - self._captured_samples
+                if remaining > 0:
+                    chunk = copy[:remaining].copy() if remaining < len(copy) else copy
+                    self._chunks.append(chunk)
+                    self._captured_samples += len(chunk)
+                if self._capture_limit is not None and self._captured_samples >= self._capture_limit:
+                    self.limit_reached.set()
 
     def snapshot(self, max_seconds: float | None = None) -> np.ndarray:
         # Select only the needed tail under the lock, then copy outside the audio
@@ -177,8 +195,12 @@ class Recorder:
             self._ring_samples = 0
             self._chunks = []
         if stream is not None:
-            stream.stop()
-            stream.close()
+            try:
+                stream.stop()
+            except Exception:
+                log.warning("Microphone stop failed; releasing the stream", exc_info=True)
+            finally:
+                stream.close()
 
     def seconds(self, audio: np.ndarray) -> float:
         return float(len(audio)) / SAMPLE_RATE

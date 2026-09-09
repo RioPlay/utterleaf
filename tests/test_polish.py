@@ -2,6 +2,19 @@ from utterleaf.polish import COMMAND_HINT, infer_style, polish_local
 import pytest
 
 
+@pytest.mark.parametrize("raw", [
+    "um I mean scratch that", "  make a list one two three  ",
+    "je veux garder ça, new paragraph", "i use a p i dot py", " utter leaf\n",
+])
+def test_cleanup_off_preserves_model_transcript_exactly(raw):
+    result = polish_local(raw, vocab=[("utter leaf", "Utterleaf")], app_name="terminal",
+                          text_cleanup=False)
+    assert result.text == raw
+    assert not result.command_only
+    assert not result.discarded
+    assert result.command is None
+
+
 @pytest.mark.parametrize("phrase", [
     "make a bulleted list one two three",
     "Make a bulleted list: one two three.",

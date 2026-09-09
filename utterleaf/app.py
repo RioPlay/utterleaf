@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections import deque
 from logging.handlers import RotatingFileHandler
 import os
 import socket
@@ -16,13 +17,14 @@ pin_tray_backend()
 from pystray import Icon, Menu, MenuItem
 
 from utterleaf.beep import beep
-from utterleaf import ipc
+from utterleaf import edit_target, ipc
 from utterleaf.audio import TAIL_SECONDS, Recorder, list_devices
 from utterleaf.config import Config, config_path, dictionary_path, log_path
 from utterleaf.hotkey import HotkeyWatcher, parse_hotkey
 from utterleaf.indicator import Indicator
-from utterleaf.inject import foreground_app, foreground_id, paste, undo_last
+from utterleaf.inject import copy_text, foreground_app, foreground_id, paste
 from utterleaf.polish import polish, stitch_to_previous
+from utterleaf.recovery import RecentDictation
 from utterleaf.hardware import describe, ov_model_id, pick, probe
 from utterleaf.models import ct2_dir, ct2_ready, ov_dir, ov_ready, status_lines
 from utterleaf.host import doctor_host_lines, login_label
@@ -44,9 +46,10 @@ log = logging.getLogger("utterleaf")
 State = str  # idle | recording | busy
 
 LOADING = "loading model"
-ENGINE_FAILED = "engine not ready — see log"
+ENGINE_FAILED = "speech model unavailable"
 NO_MIC = "microphone unavailable"
-DOWNLOADING = "Downloading the speech model (~500 MB)…"
+DOWNLOADING = "Downloading your speech model… First use only."
+MAX_PENDING_TAKES = 4
 
 # How long a result pill stays up. Failures linger longer than successes.
 # engine is omitted on purpose: that pill stays until the model loads.
@@ -125,12 +128,19 @@ class Utterleaf:
         self.recorder = Recorder(device=cfg.microphone)
         self.state: State = "idle"
         self.last_text = ""
+        self._recent_generation = 0
+        self.recent_dictation = RecentDictation(on_expire=self._expire_recovery_context)
         self.last_app = ""
         self.last_target = None
         self.last_paste_at = 0.0
+        self._edit_receipt = None
+        self._last_prefix = ""
+        self._edit_expiry: threading.Timer | None = None
+        self._edit_generation = 0
         self._queued_audio = None
         self._queued_target = None
         self._queued_continuation = None
+        self._queued_takes = deque()
         self._take_continuation = None
         self._cancel_job = False
         self._job_running = False
@@ -138,13 +148,21 @@ class Utterleaf:
         self._cut_id = 0
         self._tail_done_for = -1
         self._tail_timer: threading.Timer | None = None
+        self._tail_args = None
+        self._limit_timer: threading.Timer | None = None
         self._lock = threading.Lock()
+        self._capture_lock = threading.RLock()
         self._stop = threading.Event()
         self.icon: Icon | None = None
         self.hotkey: HotkeyWatcher | None = None
         self._server: socket.socket | None = None
         self._status = LOADING
+        self._indicator_generation = 0
         self.indicator = Indicator(enabled=cfg.indicator and cfg.tray)
+        if cfg.tray:
+            # Render before installing hotkeys, never on the path to mic start.
+            for color in ("idle", "recording", "busy", "error"):
+                leaf_image(color)
 
     def _needs_download(self, chosen) -> bool:
         """True when the picked backend still has to fetch its weights."""
@@ -155,7 +173,20 @@ class Utterleaf:
         return not ct2_ready(ct2_dir(name))
 
     def start_recording(self) -> None:
+        with self._capture_lock:
+            self._start_recording()
+
+    def _start_recording(self) -> None:
         self._harvest_pending_tail()
+        with self._lock:
+            full = len(self._queued_takes) + (self._queued_audio is not None) >= MAX_PENDING_TAKES
+        if full:
+            if self.hotkey is not None:
+                self.hotkey.reset_active()
+            beep("err", self.cfg.beep)
+            self._set_icon("busy", "finishing queued dictation", badge="transcribing",
+                           caption="Please wait for queued dictation to finish before starting another take.")
+            return
         start_target = foreground_id()
         start_app = foreground_app()
         continuation = None
@@ -174,14 +205,20 @@ class Utterleaf:
             self._cut_id += 1
             self.state = "recording"
             self._take_continuation = continuation
-        log.info("Recording")
-        self._set_icon("recording", "listening", badge="listening")
-        beep("start", self.cfg.beep)
+        self._set_icon("busy", "opening microphone", badge="loading", caption="Getting your microphone ready…")
         try:
-            self.recorder.start()
+            self.recorder.start(max_seconds=self.cfg.max_seconds)
+            log.info("Recording")
+            self._set_icon("recording", "listening", badge="listening",
+                           caption=f"Stops automatically after {self.cfg.max_seconds:g} seconds.")
+            beep("start", self.cfg.beep)
+            timer = threading.Timer(self.cfg.max_seconds, self._recording_limit, args=(self._cut_id,))
+            timer.daemon = True
+            self._limit_timer = timer
+            timer.start()
             if self.cfg.live_preview:
                 self._preview_stop.clear()
-                threading.Thread(target=self._preview_loop, daemon=True).start()
+                threading.Thread(target=self._preview_loop, args=(self._cut_id,), daemon=True).start()
         except Exception:
             log.exception("Microphone failed")
             beep("err", self.cfg.beep)
@@ -193,9 +230,9 @@ class Utterleaf:
                 "Another app may be using it, or pick a different mic in Settings.",
             )
 
-    def _preview_loop(self) -> None:
+    def _preview_loop(self, cut_id: int) -> None:
         while not self._preview_stop.wait(0.75):
-            if self.state != "recording":
+            if self.state != "recording" or cut_id != self._cut_id:
                 return
             audio = self.recorder.snapshot(max_seconds=4.0)
             if self.recorder.seconds(audio) < 0.65:
@@ -205,27 +242,42 @@ class Utterleaf:
             except Exception:
                 log.debug("Live preview failed", exc_info=True)
                 continue
-            if draft and self.state == "recording" and not self._preview_stop.is_set():
+            if draft and self.state == "recording" and cut_id == self._cut_id and not self._preview_stop.is_set():
                 self.indicator.set("listening", draft)
 
-    def stop_recording(self) -> None:
-        self._preview_stop.set()
+    def _recording_limit(self, cut_id: int) -> None:
+        self.stop_recording(limit_cut_id=cut_id)
+
+    def _cancel_limit_timer(self) -> None:
+        timer, self._limit_timer = self._limit_timer, None
+        if timer is not None:
+            timer.cancel()
+
+    def stop_recording(self, *, limit_cut_id: int | None = None) -> None:
+        with self._capture_lock:
+            self._stop_recording(limit_cut_id=limit_cut_id)
+
+    def _stop_recording(self, *, limit_cut_id: int | None = None) -> None:
         with self._lock:
-            if self.state != "recording":
+            if self.state != "recording" or (limit_cut_id is not None and limit_cut_id != self._cut_id):
                 return
             follow_on = self._job_running
             if not follow_on:
                 self._job_running = True
             self.state = "busy"
+        self._preview_stop.set()
+        self._cancel_limit_timer()
+        if limit_cut_id is not None and self.hotkey is not None:
+            self.hotkey.reset_active()
         request_final()
-        self._set_icon("busy", "transcribing", badge="transcribing")
+        self._set_icon("busy", "transcribing", badge="transcribing",
+                       caption="Recording limit reached. Start another take to continue." if limit_cut_id is not None else "")
         beep("stop", self.cfg.beep)
         target = foreground_id()
         cut_id = self._cut_id
         continuation = self._take_continuation
-        timer = threading.Timer(
-            TAIL_SECONDS, self._cut, args=(target, follow_on, cut_id, continuation)
-        )
+        self._tail_args = (target, follow_on, cut_id, continuation)
+        timer = threading.Timer(TAIL_SECONDS, self._cut, args=self._tail_args)
         self._tail_timer = timer
         timer.start()
 
@@ -235,51 +287,72 @@ class Utterleaf:
             return
         self._tail_timer = None
         timer.cancel()
-        self._cut(
-            foreground_id(), self._job_running, self._cut_id, self._take_continuation
-        )
+        # Preserve the release-time target and whether this tail owns the
+        # worker reservation. _job_running alone also includes that reservation.
+        args = self._tail_args
+        if args is not None:
+            self._cut(*args)
 
     def _cut(self, target, follow_on: bool, cut_id: int, continuation=None) -> None:
+        with self._capture_lock:
+            self._cut_recording(target, follow_on, cut_id, continuation)
+
+    def _cut_recording(self, target, follow_on: bool, cut_id: int, continuation=None) -> None:
         with self._lock:
             if cut_id != self._cut_id or self._tail_done_for == cut_id:
                 return
             self._tail_done_for = cut_id
             self._tail_timer = None
         audio = self.recorder.stop()
+        try:
+            self.recorder.close()
+        except Exception:
+            # A disconnected device must not discard audio already captured.
+            log.warning("Microphone release failed", exc_info=True)
         seconds = self.recorder.seconds(audio)
         if seconds < self.cfg.min_seconds:
             log.info("Ignored short tap (%.2fs)", seconds)
-            if follow_on:
-                return
             with self._lock:
+                if follow_on and self._job_running:
+                    return
                 self._cancel_job = False
                 self._job_running = False
             clear_final()
-            self._job_running = False
             self._flash("too_short")
             return
-        if seconds > self.cfg.max_seconds:
-            audio = audio[: int(self.cfg.max_seconds * 16000)]
-        if follow_on:
-            self._queued_audio = audio
-            self._queued_target = target
-            self._queued_continuation = continuation
-            log.info("Queued next take")
-            return
+        with self._lock:
+            if follow_on and self._job_running:
+                if self._queued_audio is not None:
+                    self._queued_takes.append((audio, target, continuation))
+                else:
+                    self._queued_audio = audio
+                    self._queued_target = target
+                    self._queued_continuation = continuation
+                log.info("Queued next take")
+                return
+            # The previous decode may have finished during the recording tail.
+            self._job_running = True
         threading.Thread(
             target=self._finish, args=(audio, target, continuation), daemon=True
         ).start()
 
     def cancel_recording(self) -> None:
+        with self._capture_lock:
+            self._cancel_recording()
+
+    def _cancel_recording(self) -> None:
+        self._cancel_limit_timer()
         self._preview_stop.set()
         clear_final()
         self._queued_audio = None
         self._queued_target = None
         self._queued_continuation = None
+        self._queued_takes.clear()
         with self._lock:
             if self.state == "recording":
                 self.state = "idle"
                 self.recorder.stop()
+                self.recorder.close()
                 log.info("Cancelled")
                 self._set_icon("idle", badge="hide")
                 beep("err", self.cfg.beep)
@@ -297,6 +370,7 @@ class Utterleaf:
                 self._queued_audio = None
                 self._queued_target = None
                 self._queued_continuation = None
+                self._queued_takes.clear()
                 log.info("Paste skipped")
                 self._after_job()
                 return
@@ -309,9 +383,10 @@ class Utterleaf:
                 self._queued_audio = None
                 self._queued_target = None
                 self._queued_continuation = None
+                self._queued_takes.clear()
                 self._after_job()
                 return
-            log.debug("Heard (%s): %s", app_name or "?", raw)
+            log.debug("Transcription received (%d characters)", len(raw))
             if not raw:
                 self._after_job("missed")
                 return
@@ -320,6 +395,7 @@ class Utterleaf:
                 app_name=app_name,
                 remove_fillers=self.cfg.remove_fillers,
                 fix_corrections=self.cfg.fix_corrections,
+                text_cleanup=self.cfg.text_cleanup,
             )
             if result.command_only and self.last_text and (
                 not self.last_target
@@ -330,11 +406,15 @@ class Utterleaf:
                 return
             if result.discarded:
                 if result.command_only and self.last_text:
-                    undo_last()
+                    outcome, self._edit_receipt = edit_target.replace(self._edit_receipt, None)
+                    if outcome != "replaced":
+                        self._after_job("no_paste", "Select your last dictation and delete it manually. This field could not be verified.")
+                        return
                     self.last_text = ""
                     self.last_app = ""
                     self.last_target = None
                     self.last_paste_at = 0.0
+                    self.recent_dictation.clear()
                 log.info("Discarded")
                 self._after_job("hide")
                 return
@@ -345,10 +425,20 @@ class Utterleaf:
                 if result.command == "professional":
                     text = polish_local(text, app_name="outlook").text or text
                 if text and text != self.last_text:
-                    undo_last()
-                    time.sleep(0.05)
-                    paste(text, restore_clipboard=self.cfg.restore_clipboard, target=target)
+                    self._remember_result(text)
+                    outcome, self._edit_receipt = edit_target.replace(self._edit_receipt, self._last_prefix + text)
+                    if outcome != "replaced":
+                        beep("err", self.cfg.beep)
+                        if outcome == "unavailable" and copy_text(text):
+                            self._after_job("clipboard", "Revised text copied. Select the old dictation and paste to replace it.")
+                        else:
+                            self._after_job("no_paste", "Could not verify the edit. Check your text before trying again.")
+                        return
                     self.last_text = text
+                    self.last_app = app_name
+                    self.last_target = target
+                    self.last_paste_at = time.time()
+                    self._schedule_edit_expiry()
                     beep("ok", self.cfg.beep)
                 self._after_job("pasted", text)
                 return
@@ -370,21 +460,28 @@ class Utterleaf:
                     and app_name == continuation_app == self.last_app
                 )
             previous = self.last_text if same_place else ""
-            if result.command in {"bullets", "numbered", "paragraph", "newline"}:
+            if not self.cfg.text_cleanup:
+                to_paste = text
+            elif result.command in {"bullets", "numbered", "paragraph", "newline"}:
                 to_paste = ("\n" + text) if previous else text
             else:
                 to_paste = stitch_to_previous(previous, text)
+            before = edit_target.read_field()
+            self._remember_result(to_paste)
             outcome = paste(
                 to_paste,
                 restore_clipboard=self.cfg.restore_clipboard,
                 target=target,
             )
             if outcome == "pasted":
+                self._edit_receipt = edit_target.capture(before, to_paste)
+                self._last_prefix = to_paste[:-len(text)] if text and to_paste.endswith(text) else ""
                 self.last_text = text.strip()
                 self.last_app = app_name
                 self.last_target = target
                 self.last_paste_at = time.time()
-                log.debug("Pasted: %s", to_paste)
+                self._schedule_edit_expiry()
+                log.debug("Text delivered (%d characters)", len(to_paste))
                 beep("ok", self.cfg.beep)
                 self._after_job("pasted", to_paste)
                 return
@@ -394,21 +491,77 @@ class Utterleaf:
                 return
             # Heard fine, could not deliver it. Never blame the user's voice.
             beep("err", self.cfg.beep)
-            self._after_job("no_paste", "The target app refused the paste.")
+            self._after_job("no_paste", "Use Copy last dictation in the tray menu to recover your text.")
             return
         except Exception:
             log.exception("Transcription failed")
             beep("err", self.cfg.beep)
-            self._after_job("transcribe", "Transcription failed — see the log.")
+            self._after_job("transcribe", "Try another take. If this repeats, open Settings → Help & diagnostics.")
             return
 
+    def _remember_result(self, text: str) -> None:
+        self._recent_generation = self.recent_dictation.put(text)
+
+    def _expire_recovery_context(self, generation: int) -> None:
+        if self._recent_generation == generation:
+            self._clear_edit_context()
+
+    def copy_last_dictation(self) -> bool:
+        text = self.recent_dictation.get()
+        if not text:
+            self._show_error("no_paste", "nothing to recover", "No recent dictation. Recovery text expires after two minutes.")
+            return False
+        if not copy_text(text):
+            self._show_error("no_paste", "clipboard unavailable", "Could not copy. Your recent text is still available; try again.")
+            return False
+        # Copying from the tray must not reset an active recording or decode.
+        if self.state == "idle":
+            self._flash("clipboard", "Last dictation copied. Click your text field and paste.")
+        return True
+
+    def forget_last_dictation(self) -> None:
+        self.recent_dictation.clear()
+        self._clear_edit_context()
+        if self.state == "idle":
+            self._idle()
+
+    def _clear_edit_context(self) -> None:
+        self.last_text = ""
+        self.last_app = ""
+        self.last_target = None
+        self.last_paste_at = 0.0
+        self._edit_receipt = None
+        self._last_prefix = ""
+
+    def _schedule_edit_expiry(self) -> None:
+        if self._edit_expiry is not None:
+            self._edit_expiry.cancel()
+        self._edit_generation += 1
+        generation = self._edit_generation
+        def expire():
+            if self._edit_generation == generation:
+                self._edit_receipt = None
+                self._edit_expiry = None
+        timer = threading.Timer(20, expire)
+        timer.daemon = True
+        self._edit_expiry = timer
+        timer.start()
+
     def _after_job(self, badge: str = "hide", caption: str = "") -> None:
-        queued = self._queued_audio
-        queued_target = self._queued_target
-        queued_continuation = self._queued_continuation
-        self._queued_audio = None
-        self._queued_target = None
-        self._queued_continuation = None
+        with self._lock:
+            queued = self._queued_audio
+            queued_target = self._queued_target
+            queued_continuation = self._queued_continuation
+            if self._queued_takes:
+                self._queued_audio, self._queued_target, self._queued_continuation = self._queued_takes.popleft()
+            else:
+                self._queued_audio = None
+                self._queued_target = None
+                self._queued_continuation = None
+            if queued is None:
+                self._job_running = False
+            still_recording = self.state == "recording"
+            pending_tail = self._tail_timer is not None
         if queued is not None:
             threading.Thread(
                 target=self._finish,
@@ -416,18 +569,17 @@ class Utterleaf:
                 daemon=True,
             ).start()
             return
-        with self._lock:
-            self._job_running = False
-            still_recording = self.state == "recording"
-        if still_recording:
+        if still_recording or pending_tail:
             return
         self._flash(badge, caption)
 
     def _hide_after(self, seconds: float) -> None:
         """Daemon timer: a pending pill must never hold up quit()."""
 
+        generation = self._indicator_generation
+
         def hide() -> None:
-            if self.state == "idle":
+            if self.state == "idle" and generation == self._indicator_generation:
                 self.indicator.set("hide")
 
         timer = threading.Timer(seconds, hide)
@@ -479,14 +631,22 @@ class Utterleaf:
             self._status = status
         if color == "idle" and self._status == LOADING:
             color = "busy"
+        if badge in {"no_mic", "engine", "transcribe", "no_paste"}:
+            color = "error"
         if self.icon is not None:
             self.icon.icon = leaf_image(color)
             self.icon.title = tray_title(self._status)
         if badge is not None:
+            self._indicator_generation += 1
             self.indicator.set(badge, caption)
 
     def quit(self) -> None:
         self._stop.set()
+        self.recent_dictation.clear()
+        self._cancel_limit_timer()
+        if self._edit_expiry is not None:
+            self._edit_expiry.cancel()
+        self._edit_receipt = None
         if self.hotkey is not None:
             self.hotkey.stop()
         if self.state == "recording":
@@ -527,6 +687,11 @@ class Utterleaf:
             return "ok"
         if command == "ping":
             return "ok"
+        if command == "copy-last":
+            return "ok" if self.copy_last_dictation() else "error"
+        if command == "forget-last":
+            self.forget_last_dictation()
+            return "ok"
         if command == "reload":
             threading.Thread(target=self.reload_config, daemon=True).start()
             return "ok"
@@ -558,15 +723,8 @@ class Utterleaf:
             self.hotkey.start()
             log.info("Dictation control: %s", status_hint(new))
         if new.microphone != old.microphone:
-            self.recorder.set_device(new.microphone)
-            if self.state != "recording":
-                try:
-                    self.recorder.prepare()
-                except Exception:
-                    log.exception(
-                        "Could not open microphone %s",
-                        new.microphone or "(system default)",
-                    )
+            with self._capture_lock:
+                self.recorder.set_device(new.microphone)
         model_changed = (
             new.model != old.model
             or new.device != old.device
@@ -591,7 +749,7 @@ class Utterleaf:
                     self._show_error(
                         "engine",
                         ENGINE_FAILED,
-                        "Dictation is unavailable. Check the log for details.",
+                        "Open Settings → Help & diagnostics to check your device and model.",
                         seconds=None,
                     )
 
@@ -645,14 +803,6 @@ class Utterleaf:
         threading.Thread(target=self._ipc_loop, daemon=True).start()
 
         def warmup() -> None:
-            mic_ready = True
-            try:
-                self.recorder.prepare()
-            except Exception:
-                mic_ready = False
-                log.exception("Microphone failed to open")
-                self._show_error("no_mic", NO_MIC,
-                                 "Choose a working microphone in Settings.")
             try:
                 self.indicator.set("loading")
                 chosen = pick(self.cfg)
@@ -661,14 +811,14 @@ class Utterleaf:
                     self.indicator.set("loading", DOWNLOADING)
                 load_model(self.cfg, chosen)
                 log.info("Model ready")
-                self._set_icon("idle", status_hint(self.cfg) if mic_ready else NO_MIC,
-                               badge="hide" if mic_ready else "no_mic")
+                if self.state == "idle":
+                    self._set_icon("idle", status_hint(self.cfg), badge="hide")
             except Exception:
                 log.exception("Model failed to load")
                 self._show_error(
                     "engine",
                     ENGINE_FAILED,
-                    "Dictation is unavailable. Check the log for details.",
+                    "Open Settings → Help & diagnostics to check your device and model.",
                     seconds=None,
                 )
 
@@ -705,6 +855,8 @@ class Utterleaf:
             Menu.SEPARATOR,
             # default=True: a left-click on the tray icon opens Settings.
             MenuItem("Settings…", lambda *_: launch_settings(), default=True),
+            MenuItem("Copy last dictation (2 min)", lambda *_: self.copy_last_dictation()),
+            MenuItem("Forget last dictation", lambda *_: self.forget_last_dictation()),
             MenuItem(
                 login_label(),
                 toggle_startup,
@@ -776,5 +928,6 @@ def run_once(text: str, cfg: Config, app_name: str = "") -> str:
         app_name=app_name,
         remove_fillers=cfg.remove_fillers,
         fix_corrections=cfg.fix_corrections,
+        text_cleanup=cfg.text_cleanup,
     )
     return result.text

@@ -7,6 +7,7 @@ import threading
 import time
 
 import numpy as np
+import pytest
 
 from utterleaf.app import ENGINE_FAILED, Utterleaf
 from utterleaf.config import Config
@@ -48,7 +49,7 @@ class FakeRecorder:
     def prepare(self) -> None:
         return None
 
-    def start(self) -> None:
+    def start(self, max_seconds=None) -> None:
         self.recording = True
 
     def stop(self) -> np.ndarray:
@@ -87,6 +88,8 @@ class FakePill:
 
 def _app(monkeypatch, **cfg_kw) -> Utterleaf:
     monkeypatch.setattr("utterleaf.app.beep", lambda *_a, **_k: None)
+    monkeypatch.setattr("utterleaf.app.edit_target.read_field", lambda: None)
+    monkeypatch.setattr("utterleaf.app.copy_text", lambda text: True)
     cfg = Config(tray=False, indicator=False, beep=False, min_seconds=0.35, **cfg_kw)
     app = Utterleaf(cfg)
     app.recorder = FakeRecorder()
@@ -118,10 +121,57 @@ def test_edit_command_never_undoes_another_window(monkeypatch):
     monkeypatch.setattr("utterleaf.app.transcribe", lambda *a: "scratch that")
     undone = []
     badges = []
-    monkeypatch.setattr("utterleaf.app.undo_last", lambda: undone.append(True))
+    monkeypatch.setattr("utterleaf.app.edit_target.replace", lambda *args: undone.append(True))
     monkeypatch.setattr(app, "_after_job", lambda badge="hide", caption="": badges.append(badge))
     app._finish(np.ones(16000, dtype=np.float32), target=456)
     assert not undone
+    assert badges == ["no_paste"]
+
+
+@pytest.mark.parametrize("outcome,badge", [("replaced", "pasted"), ("unavailable", "clipboard"), ("failed", "no_paste")])
+def test_edit_command_reports_delivery_and_tracks_only_success(monkeypatch, outcome, badge):
+    app = _app(monkeypatch)
+    app.last_text = "I think we should ship it."
+    app.last_target = 123
+    app.last_app = "editor"
+    app.last_paste_at = time.time() - 10
+    old_time = app.last_paste_at
+    monkeypatch.setattr("utterleaf.app.foreground_id", lambda: 123)
+    monkeypatch.setattr("utterleaf.app.foreground_app", lambda: "editor")
+    monkeypatch.setattr("utterleaf.app.transcribe", lambda *a: "make this shorter")
+    monkeypatch.setattr("utterleaf.app.edit_target.replace", lambda *a: (outcome, None))
+    monkeypatch.setattr("utterleaf.app.paste", lambda *a, **k: pytest.fail("Edits must not send blind paste"))
+    badges = []
+    monkeypatch.setattr(app, "_after_job", lambda badge="hide", caption="": badges.append(badge))
+    app._finish(np.ones(16000, dtype=np.float32), target=123)
+    assert badges == [badge]
+    if outcome == "replaced":
+        assert app.last_text
+        assert app.last_target == 123
+        assert app.last_paste_at > old_time
+    else:
+        assert app.last_text == "I think we should ship it."
+        assert app._edit_receipt is None
+        assert app.last_paste_at == old_time
+
+
+@pytest.mark.parametrize("command", ["scratch that", "make this shorter"])
+def test_failed_verified_edit_preserves_last_dictation_without_blind_paste(monkeypatch, command):
+    app = _app(monkeypatch)
+    app.last_text = "I think we should ship it."
+    app.last_target = 123
+    app.last_paste_at = time.time()
+    monkeypatch.setattr("utterleaf.app.foreground_id", lambda: 123)
+    monkeypatch.setattr("utterleaf.app.foreground_app", lambda: "editor")
+    monkeypatch.setattr("utterleaf.app.transcribe", lambda *a: command)
+    monkeypatch.setattr("utterleaf.app.edit_target.replace", lambda *a: ("failed", None))
+    pasted = []
+    monkeypatch.setattr("utterleaf.app.paste", lambda *a, **k: pasted.append(a))
+    badges = []
+    monkeypatch.setattr(app, "_after_job", lambda badge="hide", caption="": badges.append(badge))
+    app._finish(np.ones(16000, dtype=np.float32), target=123)
+    assert not pasted
+    assert app.last_text == "I think we should ship it."
     assert badges == ["no_paste"]
 
 
@@ -196,15 +246,254 @@ def test_follow_on_take_is_queued(monkeypatch) -> None:
     assert app._queued_target == "hwnd"
 
 
+def test_rapid_restart_harvests_tail_with_original_target_and_worker(monkeypatch):
+    app = _app(monkeypatch)
+    launched = []
+
+    class Timer:
+        def __init__(self, interval, callback, args):
+            self.callback, self.args = callback, args
+        def start(self):
+            pass
+        def cancel(self):
+            pass
+
+    class Thread:
+        def __init__(self, **kwargs):
+            launched.append(kwargs)
+        def start(self):
+            pass
+
+    monkeypatch.setattr("utterleaf.app.threading.Timer", Timer)
+    monkeypatch.setattr("utterleaf.app.threading.Thread", Thread)
+    monkeypatch.setattr("utterleaf.app.foreground_id", lambda: 123)
+    monkeypatch.setattr("utterleaf.app.foreground_app", lambda: "editor")
+    app.start_recording()
+    app.stop_recording()
+    monkeypatch.setattr("utterleaf.app.foreground_id", lambda: 456)
+    app.start_recording()
+    assert len(launched) == 1
+    assert launched[0]["target"] == app._finish
+    assert launched[0]["args"][1] == 123
+    assert app._queued_audio is None
+    assert app.state == "recording"
+
+
+def test_follow_on_tail_starts_worker_when_previous_decode_finished(monkeypatch):
+    app = _app(monkeypatch)
+    app.state = "busy"
+    app._job_running = False
+    launched = []
+
+    class Thread:
+        def __init__(self, **kwargs):
+            launched.append(kwargs)
+        def start(self):
+            pass
+
+    monkeypatch.setattr("utterleaf.app.threading.Thread", Thread)
+    app._cut(123, True, app._cut_id)
+    assert len(launched) == 1
+    assert launched[0]["args"][1] == 123
+    assert app._job_running
+    assert app._queued_audio is None
+
+
+def test_previous_decode_does_not_hide_pending_tail(monkeypatch):
+    app = _app(monkeypatch)
+    app.state = "busy"
+    app._job_running = True
+    app._tail_timer = object()
+    flashed = []
+    monkeypatch.setattr(app, "_flash", lambda *a: flashed.append(a))
+    app._after_job("pasted")
+    assert not flashed
+    assert app.state == "busy"
+    assert not app._job_running
+
+
+def test_limit_stops_once_announces_reason_and_resets_toggle(monkeypatch):
+    app = _app(monkeypatch)
+    app.state = "recording"
+    reset = []
+    app.hotkey = SimpleNamespace(reset_active=lambda: reset.append(True))
+    timers = []
+    class Timer:
+        def __init__(self, *args, **kwargs):
+            timers.append(self)
+        def start(self):
+            pass
+        def cancel(self):
+            pass
+    monkeypatch.setattr("utterleaf.app.threading.Timer", Timer)
+    messages = []
+    monkeypatch.setattr(app, "_set_icon", lambda *a, **kw: messages.append(kw))
+    app._recording_limit(app._cut_id)
+    app._recording_limit(app._cut_id)
+    assert app.state == "busy"
+    assert reset == [True]
+    assert len(timers) == 1
+    assert "limit reached" in messages[0]["caption"]
+
+
+def test_old_limit_timer_cannot_stop_a_new_take(monkeypatch):
+    app = _app(monkeypatch)
+    app.state = "recording"
+    app._cut_id = 5
+    app._preview_stop.clear()
+    app._recording_limit(4)
+    assert app.state == "recording"
+    assert not app._preview_stop.is_set()
+    assert app._tail_timer is None
+
+
+def test_cut_releases_microphone_before_transcription(monkeypatch):
+    app = _app(monkeypatch)
+    released = []
+    monkeypatch.setattr(app.recorder, "close", lambda: released.append(True))
+    class Thread:
+        def __init__(self, **kwargs):
+            assert released == [True]
+        def start(self):
+            pass
+    monkeypatch.setattr("utterleaf.app.threading.Thread", Thread)
+    app._cut(123, False, app._cut_id)
+    assert released == [True]
+
+
+def test_cancel_releases_microphone(monkeypatch):
+    app = _app(monkeypatch)
+    app.state = "recording"
+    released = []
+    monkeypatch.setattr(app.recorder, "close", lambda: released.append(True))
+    app.cancel_recording()
+    assert released == [True]
+    assert app.state == "idle"
+
+
+def test_start_sound_only_after_microphone_is_open(monkeypatch):
+    app = _app(monkeypatch)
+    events = []
+    monkeypatch.setattr(app.recorder, "start", lambda **kw: events.append("open"))
+    monkeypatch.setattr("utterleaf.app.beep", lambda kind, enabled: events.append(kind))
+    app.start_recording()
+    app.cancel_recording()
+    assert events[:2] == ["open", "start"]
+
+
+def test_full_backlog_refuses_new_recording_without_dropping_audio(monkeypatch):
+    from utterleaf.app import MAX_PENDING_TAKES
+    app = _app(monkeypatch)
+    app.state = "busy"
+    app._queued_audio = np.ones(16000, dtype=np.float32)
+    app._queued_takes.extend((app._queued_audio, i, None) for i in range(MAX_PENDING_TAKES - 1))
+    monkeypatch.setattr(app.recorder, "start", lambda **kw: pytest.fail("Queue full"))
+    app.start_recording()
+    assert len(app._queued_takes) == MAX_PENDING_TAKES - 1
+    assert app.state == "busy"
+
+
+def test_dictation_text_is_not_in_debug_logs(monkeypatch, caplog):
+    import logging
+    app = _app(monkeypatch)
+    secret = "My private project is called Pineapple."
+    monkeypatch.setattr("utterleaf.app.foreground_app", lambda: "editor")
+    monkeypatch.setattr("utterleaf.app.transcribe", lambda *args: secret)
+    monkeypatch.setattr("utterleaf.app.paste", lambda *args, **kwargs: "pasted")
+    with caplog.at_level(logging.DEBUG, logger="utterleaf"):
+        app._finish(np.ones(16000, dtype=np.float32), target=123)
+    assert secret not in caplog.text
+    assert "Pineapple" not in caplog.text
+    assert "characters" in caplog.text
+
+
+def test_failed_delivery_can_be_recovered_without_retranscribing(monkeypatch):
+    app = _app(monkeypatch)
+    monkeypatch.setattr("utterleaf.app.foreground_app", lambda: "editor")
+    monkeypatch.setattr("utterleaf.app.transcribe", lambda *args: "Please keep this sentence.")
+    monkeypatch.setattr("utterleaf.app.paste", lambda *args, **kwargs: "fail")
+    app._finish(np.ones(16000, dtype=np.float32), target=123)
+    copied = []
+    monkeypatch.setattr("utterleaf.app.copy_text", lambda text: copied.append(text) or True)
+    assert app.copy_last_dictation()
+    assert copied == ["Please keep this sentence."]
+
+
+def test_recovery_copy_failure_is_honest_and_keeps_text(monkeypatch):
+    app = _app(monkeypatch)
+    app.recent_dictation.put("Keep me.")
+    monkeypatch.setattr("utterleaf.app.copy_text", lambda text: False)
+    messages = []
+    monkeypatch.setattr(app, "_show_error", lambda *args: messages.append(args))
+    assert app.copy_last_dictation() is False
+    assert app.recent_dictation.get() == "Keep me."
+    assert messages[0][0] == "no_paste"
+
+
+def test_forget_clears_recovery_and_edit_context_without_changing_clipboard(monkeypatch):
+    app = _app(monkeypatch)
+    app.recent_dictation.put("Keep me.")
+    app.last_text = "Keep me."
+    app._edit_receipt = object()
+    monkeypatch.setattr("utterleaf.app.copy_text", lambda text: pytest.fail("Clipboard belongs to user"))
+    app.forget_last_dictation()
+    assert app.recent_dictation.get() == ""
+    assert app.last_text == ""
+    assert app._edit_receipt is None
+
+
+def test_transcript_mode_does_not_execute_commands_or_add_sentence_formatting(monkeypatch):
+    app = _app(monkeypatch, text_cleanup=False)
+    app.last_text = "Previous words"
+    app.last_app = "editor"
+    app.last_target = 123
+    app.last_paste_at = time.time()
+    raw = "scratch that"
+    monkeypatch.setattr("utterleaf.app.foreground_app", lambda: "editor")
+    monkeypatch.setattr("utterleaf.app.foreground_id", lambda: 123)
+    monkeypatch.setattr("utterleaf.app.transcribe", lambda *args: raw)
+    monkeypatch.setattr("utterleaf.app.edit_target.replace", lambda *args: pytest.fail("Command must stay literal"))
+    pasted = []
+    monkeypatch.setattr("utterleaf.app.paste", lambda text, **kwargs: pasted.append(text) or "pasted")
+    app._finish(np.ones(16000, dtype=np.float32), target=123)
+    assert pasted == [raw]
+
+
+def test_slow_decode_preserves_multiple_follow_on_takes_in_order(monkeypatch):
+    app = _app(monkeypatch)
+    app.state = "busy"
+    app._job_running = True
+    launched = []
+
+    class Thread:
+        def __init__(self, **kwargs):
+            launched.append(kwargs)
+        def start(self):
+            pass
+
+    monkeypatch.setattr("utterleaf.app.threading.Thread", Thread)
+    app._cut(123, True, app._cut_id)
+    app._cut_id += 1
+    app._cut(456, True, app._cut_id)
+    assert app._queued_target == 123
+    app._after_job()
+    app._after_job()
+    assert [job["args"][1] for job in launched] == [123, 456]
+    assert app._queued_audio is None
+    assert not app._queued_takes
+
+
 def test_cancel_busy_drops_queued_take(monkeypatch) -> None:
     app = _app(monkeypatch)
     app.state = "busy"
     app._job_running = True
     app._queued_audio = np.ones(100, dtype=np.float32)
     app._queued_target = "hwnd"
+    app._queued_takes.append((app._queued_audio, "second", None))
     app.cancel_recording()
     assert app._queued_audio is None
     assert app._queued_target is None
+    assert not app._queued_takes
     assert app._cancel_job is True
 
 
@@ -297,6 +586,16 @@ def test_reload_honors_indicator_off(monkeypatch) -> None:
     )
     app.reload_config()
     assert app.indicator.enabled is False
+
+
+def test_tray_failure_uses_error_art_and_recovers(monkeypatch):
+    app = _app(monkeypatch)
+    app.icon = SimpleNamespace(icon=None, title="")
+    monkeypatch.setattr("utterleaf.app.leaf_image", lambda state: state)
+    app._set_icon("idle", "Microphone unavailable", badge="no_mic")
+    assert app.icon.icon == "error"
+    app._set_icon("idle", "Ready", badge="hide")
+    assert app.icon.icon == "idle"
 
 
 def test_reload_honors_indicator_on(monkeypatch) -> None:

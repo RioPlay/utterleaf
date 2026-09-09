@@ -23,6 +23,11 @@ def test_live_preview_defaults_off() -> None:
     assert loaded.live_preview is False
 
 
+def test_unchanged_transcript_preference_survives_config_roundtrip():
+    values = _parse_toml(_dump_toml(Config(text_cleanup=False)))
+    assert Config(**values).text_cleanup is False
+
+
 def test_first_run_does_not_enable_startup(tmp_path, monkeypatch) -> None:
     called = {"n": 0}
     monkeypatch.setattr("utterleaf.config.data_dir", lambda: tmp_path)

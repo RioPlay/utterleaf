@@ -1,0 +1,62 @@
+{
+  "sizes": [
+    16,
+    24,
+    32,
+    48,
+    64,
+    128,
+    256,
+    512
+  ],
+  "states": {
+    "idle": [
+      "Ready",
+      "Ready to dictate, including offline. No audio is being captured."
+    ],
+    "recording": [
+      "Recording",
+      "The microphone is capturing your take. A solid dot accompanies the color."
+    ],
+    "busy": [
+      "Processing",
+      "Opening a device, loading the model, or transcribing. The tooltip gives the exact status."
+    ],
+    "error": [
+      "Needs attention",
+      "Microphone, engine, transcription, or delivery failure. Read the status message for details."
+    ]
+  },
+  "mascots": {
+    "default": [
+      "Welcome",
+      "Dictation header and stopped microphone checks."
+    ],
+    "listening": [
+      "Listening",
+      "Microphone check after the device opens."
+    ],
+    "thinking": [
+      "Thinking",
+      "Help header, opening a microphone, or very little audio detected."
+    ],
+    "success": [
+      "Success",
+      "Audio detected during the microphone check."
+    ],
+    "error": [
+      "Concern",
+      "Microphone check failed; the message explains why."
+    ],
+    "speaking": [
+      "Speaking",
+      "Illustration for guides. Does not indicate a speech-output feature."
+    ],
+    "typing": [
+      "Typing",
+      "Illustration for guides. Does not confirm that text was delivered."
+    ]
+  },
+  "alpha": "PNG files are RGBA. Badge fills and the speech balloon interior are intentional. Cutout marks and mascots have transparent backgrounds.",
+  "usage": "Choose for-light cutouts on light backgrounds and for-dark on dark backgrounds. Use inverse white marks and wordmark on dark backgrounds. Preview all assets in Help > Icons & artwork. Offline is Ready; speaking and typing mascots are illustrations, not app capabilities."
+}

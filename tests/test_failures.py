@@ -32,9 +32,16 @@ def test_engine_failure_does_not_auto_hide() -> None:
     assert "engine" not in LINGER
 
 
-def test_status_hint_follows_mode() -> None:
+def test_status_hint_follows_mode(monkeypatch) -> None:
+    monkeypatch.setattr("utterleaf.app.is_wayland", lambda: False)
     assert status_hint(Config(hotkey="f8", mode="hold")) == "hold f8"
     assert status_hint(Config(hotkey="f8", mode="toggle")) == "press f8"
+
+
+@pytest.mark.parametrize("mode", ["hold", "toggle"])
+def test_wayland_status_hint_uses_desktop_shortcut(monkeypatch, mode) -> None:
+    monkeypatch.setattr("utterleaf.app.is_wayland", lambda: True)
+    assert status_hint(Config(hotkey="f8", mode=mode)) == "desktop shortcut: utterleaf --toggle"
 
 
 def test_status_strings_are_distinct() -> None:

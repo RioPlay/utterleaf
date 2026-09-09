@@ -14,6 +14,16 @@ from utterleaf.host import linux_helpers
 log = logging.getLogger("utterleaf")
 
 
+def copy_text(text: str) -> bool:
+    """Offer manual recovery without sending keystrokes to an unknown field."""
+    try:
+        pyperclip.copy(text)
+        return True
+    except Exception:
+        log.warning("Could not copy text for manual recovery")
+        return False
+
+
 def foreground_id() -> object:
     """Stable id for the focused window. Used to refuse a wrong-app paste."""
     try:
@@ -64,7 +74,7 @@ def _paste_settled(deadline: float = 0.28) -> None:
         return
     deadline_at = time.monotonic() + deadline
     saw_open = False
-    while time.perf_counter() < deadline_at:
+    while time.monotonic() < deadline_at:
         if get_open():
             saw_open = True
         elif saw_open:
@@ -97,22 +107,39 @@ def paste(text: str, restore_clipboard: bool = True, target=None) -> str:
         log.exception("Clipboard copy failed")
         return "fail"
 
+    # Allow shortcut modifiers to settle before the final focus check. Doing
+    # this inside the platform helper leaves an avoidable wrong-window gap.
+    time.sleep(0.05)
+    if target is not None and not same_target(target, foreground_id()):
+        log.warning("Focus moved before delivery; left text on the clipboard")
+        return "clipboard"
+    try:
+        if pyperclip.paste() != text:
+            log.warning("Clipboard changed before delivery; paste cancelled")
+            return "fail"
+    except Exception:
+        log.warning("Could not verify clipboard before delivery; paste cancelled")
+        return "fail"
+
     ok = _send_paste()
     if ok and restore_clipboard:
         _paste_settled()
         # Restore only if the user is still in the same window: a slow app can
         # paste after the restore, and the swap must not leak old clipboard
         # content into whatever took focus.
-        if same_target(target, foreground_id()):
+        if previous is not None and same_target(target, foreground_id()):
             try:
-                pyperclip.copy(previous or "")
+                # A copy made while the target handles the paste belongs to
+                # the user. Never replace it with our saved clipboard.
+                if pyperclip.paste() == text:
+                    pyperclip.copy(previous)
             except Exception:
                 pass
     return "pasted" if ok else "fail"
 
 
-def undo_last() -> None:
-    _send_keys_combo(ctrl=True, key="z")
+def undo_last() -> bool:
+    return _send_keys_combo(ctrl=True, key="z")
 
 
 def _send_paste() -> bool:
@@ -123,15 +150,13 @@ def _send_paste() -> bool:
     return _linux_paste()
 
 
-def _send_keys_combo(*, ctrl: bool = False, meta: bool = False, key: str) -> None:
+def _send_keys_combo(*, ctrl: bool = False, meta: bool = False, key: str) -> bool:
     if sys.platform == "win32":
-        _windows_combo(ctrl=ctrl, key=key)
-        return
+        return _windows_combo(ctrl=ctrl, key=key)
     if sys.platform == "darwin":
         which = "command down" if meta or ctrl else "control down"
         script = f'tell application "System Events" to keystroke "{key}" using {{{which}}}'
-        subprocess.run(["osascript", "-e", script], check=False)
-        return
+        return subprocess.run(["osascript", "-e", script], check=False).returncode == 0
     for helper in linux_helpers():
         if not shutil.which(helper):
             continue
@@ -153,7 +178,7 @@ def _send_keys_combo(*, ctrl: bool = False, meta: bool = False, key: str) -> Non
             codes = {"v": "47", "z": "44"}
             vk = codes.get(key)
             if vk is None:
-                return
+                return False
             args = ["ydotool", "key"]
             if ctrl:
                 args += ["29:1", f"{vk}:1", f"{vk}:0", "29:0"]
@@ -161,7 +186,8 @@ def _send_keys_combo(*, ctrl: bool = False, meta: bool = False, key: str) -> Non
                 args += [f"{vk}:1", f"{vk}:0"]
         result = subprocess.run(args, check=False)
         if result.returncode == 0:
-            return
+            return True
+    return False
 
 
 def _windows_foreground() -> str:
@@ -272,19 +298,16 @@ def _windows_combo(*, ctrl: bool, key: str) -> bool:
 
 
 def _windows_paste() -> bool:
-    time.sleep(0.05)
     return _windows_combo(ctrl=True, key="v")
 
 
 def _mac_paste() -> bool:
-    time.sleep(0.05)
     script = 'tell application "System Events" to keystroke "v" using {command down}'
     result = subprocess.run(["osascript", "-e", script], check=False)
     return result.returncode == 0
 
 
 def _linux_paste() -> bool:
-    time.sleep(0.05)
     for helper in linux_helpers():
         if not shutil.which(helper):
             continue
@@ -299,4 +322,3 @@ def _linux_paste() -> bool:
             return True
     log.warning("No paste helper found (install xdotool, wtype, or ydotool)")
     return False
-

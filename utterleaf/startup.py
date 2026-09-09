@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from utterleaf.config import atomic_write_text
 
 
 LAUNCH_AGENT_LABEL = "com.utterleaf.agent"
@@ -63,15 +64,13 @@ def install() -> Path:
         tray = tray_exe()
         if tray is not None:
             target = str(tray).replace("\\", "\\\\")
-            dest.write_text(
+            atomic_write_text(dest,
                 f'CreateObject("Wscript.Shell").Run """{target}""", 0\n',
-                encoding="utf-8",
             )
             return dest
         pythonw = str(pythonw_path()).replace("\\", "\\\\")
-        dest.write_text(
+        atomic_write_text(dest,
             f'CreateObject("Wscript.Shell").Run """{pythonw}"" -m utterleaf", 0\n',
-            encoding="utf-8",
         )
         return dest
 
@@ -81,7 +80,7 @@ def install() -> Path:
     assert launch_exe is not None
 
     if sys.platform == "darwin":
-        dest.write_text(plist_text(launch_exe, frozen=frozen), encoding="utf-8")
+        atomic_write_text(dest, plist_text(launch_exe, frozen=frozen))
         # Best effort: without this the agent only starts at the next login.
         try:
             subprocess.run(
@@ -96,14 +95,13 @@ def install() -> Path:
     command = _desktop_quote(str(launch_exe))
     if not frozen:
         command += " -m utterleaf"
-    dest.write_text(
+    atomic_write_text(dest,
         "[Desktop Entry]\n"
         "Type=Application\n"
         "Name=Utterleaf\n"
         "Comment=Push-to-talk dictation\n"
         f"Exec={command}\n"
         "X-GNOME-Autostart-enabled=true\n",
-        encoding="utf-8",
     )
     return dest
 

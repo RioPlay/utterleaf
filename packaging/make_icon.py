@@ -1,4 +1,4 @@
-"""Generate packaging/utterleaf.ico from the leaf badge renderer.
+"""Generate packaging/utterleaf.ico from the leaf/waveform renderer.
 
 Run before packaging (build.ps1 does): python packaging/make_icon.py
 The committed .ico keeps the repository browsable; regeneration keeps it in

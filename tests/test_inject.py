@@ -19,7 +19,7 @@ def test_same_target_rejects_other_window() -> None:
 
 def test_paste_restores_clipboard_when_send_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
     copies = []
-    monkeypatch.setattr(inject.pyperclip, "paste", lambda: "old")
+    monkeypatch.setattr(inject.pyperclip, "paste", lambda: copies[-1] if copies else "old")
     monkeypatch.setattr(inject.pyperclip, "copy", lambda text: copies.append(text))
     monkeypatch.setattr(inject.time, "sleep", lambda _s: None)
     monkeypatch.setattr(inject, "_send_paste", lambda: True)
@@ -27,14 +27,70 @@ def test_paste_restores_clipboard_when_send_succeeds(monkeypatch: pytest.MonkeyP
     assert copies == ["hello", "old"]
 
 
+def test_paste_preserves_copy_made_during_delivery(monkeypatch):
+    clipboard = ["old"]
+    monkeypatch.setattr(inject.pyperclip, "paste", lambda: clipboard[-1])
+    monkeypatch.setattr(inject.pyperclip, "copy", clipboard.append)
+    monkeypatch.setattr(inject, "_send_paste", lambda: True)
+    monkeypatch.setattr(inject, "_paste_settled", lambda: clipboard.append("new user copy"))
+    assert inject.paste("dictation") == "pasted"
+    assert clipboard == ["old", "dictation", "new user copy"]
+
+
+def test_paste_does_not_erase_text_when_old_clipboard_unreadable(monkeypatch):
+    copies = []
+    def unavailable():
+        if copies:
+            return copies[-1]
+        raise RuntimeError("Clipboard busy")
+    monkeypatch.setattr(inject.pyperclip, "paste", unavailable)
+    monkeypatch.setattr(inject.pyperclip, "copy", copies.append)
+    monkeypatch.setattr(inject, "_send_paste", lambda: True)
+    monkeypatch.setattr(inject, "_paste_settled", lambda: None)
+    assert inject.paste("dictation") == "pasted"
+    assert copies == ["dictation"]
+
+
 def test_paste_keeps_clipboard_when_send_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     copies = []
-    monkeypatch.setattr(inject.pyperclip, "paste", lambda: "old")
+    monkeypatch.setattr(inject.pyperclip, "paste", lambda: copies[-1] if copies else "old")
     monkeypatch.setattr(inject.pyperclip, "copy", lambda text: copies.append(text))
     monkeypatch.setattr(inject.time, "sleep", lambda _s: None)
     monkeypatch.setattr(inject, "_send_paste", lambda: False)
     assert inject.paste("hello") == "fail"
     assert copies == ["hello"]
+
+
+def test_paste_rechecks_focus_after_settling(monkeypatch):
+    clipboard = ["old"]
+    focus = [123]
+    monkeypatch.setattr(inject, "foreground_id", lambda: focus[0])
+    monkeypatch.setattr(inject.pyperclip, "paste", lambda: clipboard[-1])
+    monkeypatch.setattr(inject.pyperclip, "copy", clipboard.append)
+    monkeypatch.setattr(inject.time, "sleep", lambda _: focus.__setitem__(0, 456))
+    monkeypatch.setattr(inject, "_send_paste", lambda: pytest.fail("Wrong-window paste"))
+    assert inject.paste("dictation", target=123) == "clipboard"
+    assert clipboard == ["old", "dictation"]
+
+
+def test_paste_cancels_if_user_copies_during_settling(monkeypatch):
+    clipboard = ["old"]
+    monkeypatch.setattr(inject.pyperclip, "paste", lambda: clipboard[-1])
+    monkeypatch.setattr(inject.pyperclip, "copy", clipboard.append)
+    monkeypatch.setattr(inject.time, "sleep", lambda _: clipboard.append("user copy"))
+    monkeypatch.setattr(inject, "_send_paste", lambda: pytest.fail("Pasted unrelated content"))
+    assert inject.paste("dictation") == "fail"
+    assert clipboard == ["old", "dictation", "user copy"]
+
+
+def test_paste_cancels_when_clipboard_cannot_be_verified(monkeypatch):
+    def unavailable():
+        raise RuntimeError("Clipboard busy")
+    monkeypatch.setattr(inject.pyperclip, "paste", unavailable)
+    monkeypatch.setattr(inject.pyperclip, "copy", lambda _: None)
+    monkeypatch.setattr(inject.time, "sleep", lambda _: None)
+    monkeypatch.setattr(inject, "_send_paste", lambda: pytest.fail("Unverified paste"))
+    assert inject.paste("dictation") == "fail"
 
 
 def test_windows_paste_returns_combo_result(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -43,6 +99,23 @@ def test_windows_paste_returns_combo_result(monkeypatch: pytest.MonkeyPatch) -> 
     assert inject._windows_paste() is False
     monkeypatch.setattr(inject, "_windows_combo", lambda **_kw: True)
     assert inject._windows_paste() is True
+
+
+@pytest.mark.parametrize("returncode, expected", [(0, True), (1, False)])
+def test_macos_paste_reports_osascript_result(monkeypatch, returncode, expected):
+    monkeypatch.setattr(inject.sys, "platform", "darwin")
+    calls = []
+
+    def run(args, check=False):
+        calls.append(args)
+        return subprocess.CompletedProcess(args, returncode)
+
+    monkeypatch.setattr(inject.subprocess, "run", run)
+    assert inject._send_paste() is expected
+    assert calls == [[
+        "osascript", "-e",
+        'tell application "System Events" to keystroke "v" using {command down}',
+    ]]
 
 
 def test_linux_undo_uses_ydotool_when_that_is_the_helper(

@@ -67,6 +67,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Test with a virtual X11 display
         run: xvfb-run -a ./.venv/bin/python -m pytest -q -ra
+      - name: Test Wayland session decisions with a virtual X11 display
+        env:
+          XDG_SESSION_TYPE: wayland
+        run: xvfb-run -a ./.venv/bin/python -m pytest -q -ra
       - name: CLI smoke test
         run: ./.venv/bin/python -m utterleaf --help
 

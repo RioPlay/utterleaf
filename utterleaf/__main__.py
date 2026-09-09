@@ -18,6 +18,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--doctor", action="store_true", help="Check mic, hotkey, paste helper, and paths")
     parser.add_argument("--cuda-setup", action="store_true", help="Print how to enable the NVIDIA GPU for this build")
     parser.add_argument("--toggle", action="store_true", help="Toggle recording on a running instance")
+    parser.add_argument("--copy-last", action="store_true", help="Copy the latest dictation while its two-minute recovery slot is available")
+    parser.add_argument("--forget-last", action="store_true", help="Clear recent dictation and edit context from memory")
     parser.add_argument("--stop", action="store_true", help="Stop a running instance")
     parser.add_argument("--quit", action="store_true", dest="quit_app", help="Quit a running instance")
     parser.add_argument("--polish", metavar="TEXT", help="Polish text on stdout (no mic)")
@@ -57,10 +59,11 @@ def main(argv: list[str] | None = None) -> int:
 
         return run_pill()
 
-    if args.toggle or args.stop or args.quit_app:
+    if args.toggle or args.stop or args.quit_app or args.copy_last or args.forget_last:
         from utterleaf import ipc
 
-        command = "toggle" if args.toggle else "stop" if args.stop else "quit"
+        command = ("copy-last" if args.copy_last else "forget-last" if args.forget_last
+                   else "toggle" if args.toggle else "stop" if args.stop else "quit")
         reply = ipc.send(command)
         if reply is None:
             print("Utterleaf is not running.", file=sys.stderr)

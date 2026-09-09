@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from utterleaf.config import dictionary_path
+from utterleaf.config import atomic_write_text, dictionary_path
 
 
 FILLERS = (
@@ -184,10 +184,7 @@ def dictionary_text() -> str:
 
 
 def save_dictionary(text: str) -> Path:
-    path = dictionary_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
-    return path
+    return atomic_write_text(dictionary_path(), text)
 
 
 def _collapse(text: str) -> str:
@@ -620,7 +617,10 @@ def polish_local(
     vocab: list[tuple[str, str]] | None = None,
     remove_fillers: bool = True,
     fix_corrections: bool = True,
+    text_cleanup: bool = True,
 ) -> PolishResult:
+    if not text_cleanup:
+        return PolishResult(raw or "")
     text = (raw or "").strip()
     if not text:
         return PolishResult("")
@@ -721,6 +721,7 @@ def polish(
     vocab: list[tuple[str, str]] | None = None,
     remove_fillers: bool = True,
     fix_corrections: bool = True,
+    text_cleanup: bool = True,
 ) -> PolishResult:
     return polish_local(
         raw,
@@ -728,4 +729,5 @@ def polish(
         vocab=vocab,
         remove_fillers=remove_fillers,
         fix_corrections=fix_corrections,
+        text_cleanup=text_cleanup,
     )

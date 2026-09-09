@@ -39,6 +39,9 @@ utterleaf-tray = "utterleaf.__main__:main"
 [tool.setuptools.packages.find]
 include = ["utterleaf*"]
 
+[tool.setuptools.package-data]
+utterleaf = ["assets/*.png"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

@@ -1,5 +1,9 @@
 # Utterleaf
 
+![Utterleaf — Let ideas speak](docs/assets/brand/wordmark.svg)
+
+Development priorities and completion criteria: [roadmap](docs/roadmap.md).
+
 Hold a hotkey, speak, release. Clean text lands in whatever app is focused.
 
 A small speech model runs on your machine. GPU if you have one, otherwise CPU. First launch downloads the selected speech model once. After that Utterleaf stays offline. No account. Speech stays on the device.
@@ -10,9 +14,24 @@ A small speech model runs on your machine. GPU if you have one, otherwise CPU. F
 
 Utterleaf lives in the system tray (a teal mic). There is no main window.
 
-1. Hold the hotkey, talk, release. Default is **Ctrl+Win** on Windows, **Ctrl+Shift+Space** on macOS and Linux.
+1. Hold the hotkey, wait for **Listening** or the start sound, talk, then release. Default is **Ctrl+Win** on Windows, **Ctrl+Shift+Space** on macOS and Linux.
 2. A pill says **Listening**, then **Transcribing**.
 3. The sentence lands in the app you were already in. Esc cancels a take.
+
+The microphone opens for a take and is released after its short ending buffer;
+it is not kept listening while idle. Microphone checks in Settings open it only
+for the check. Audio stays in memory for processing and is not saved as a
+recording history. Takes stop automatically at 120 seconds by default, with a
+notice to start another take. Up to four takes can wait behind a slow decode;
+Utterleaf asks you to wait before accepting more.
+
+If a result does not reach your text field, open the tray menu and choose
+**Copy last dictation (2 min)**. Only the latest output is kept in this recovery
+slot, in memory, for two minutes. **Forget last dictation** clears it and the
+previous edit context immediately; quitting also clears it. Copying deliberately
+puts the text on your system clipboard, where your OS clipboard history may
+retain it. You can also bind a desktop shortcut to `utterleaf --copy-last` or
+clear it with `utterleaf --forget-last`.
 
 Click the tray icon (or right-click → **Settings…**) to open the Utterleaf control center. First launch opens it automatically.
 
@@ -21,6 +40,8 @@ Click the tray icon (or right-click → **Settings…**) to open the Utterleaf c
 - **Voice commands:** browse the built-in editing and punctuation commands.
 - **Engine:** choose a model, processing device, language, noise reduction, and clipboard behavior. Missing model downloads can be disabled.
 - **Help & diagnostics:** check whether the app is running, generate a device report, and save it wherever you choose.
+
+Utterling appears in Dictation and Help, and reacts to the microphone check. The artwork is bundled locally. **Help ? Icons & artwork** explains every icon and mascot, previews them on light and dark surfaces, and exports a complete asset pack with transparent PNG cutouts.
 
 The window resizes and scrolls, with Save always accessible. **Ctrl+S** (or **Command+S** on macOS) saves without closing; closing with unsaved changes asks before discarding them. Device checks run in the background.
 
@@ -90,7 +111,7 @@ A binary release on Linux uses the distro's NVIDIA toolkit instead: install `cud
 
 Don't know the exact command for your distro? Run `utterleaf --cuda-setup` (or open **Settings → Help & diagnostics → Set up NVIDIA GPU…**) for steps matched to this machine, or run the helper script `scripts/cuda-setup.sh` from the repo, which detects the package manager and installs CUDA for you.
 
-First launch downloads Whisper `small.en` into the app data folder (~500 MB). The pill says **Downloading the speech model (~500 MB)…**. After that it is offline.
+First launch downloads Whisper `small.en` into the app data folder (~500 MB). The pill says **Downloading your speech model… First use only.** After that it is offline.
 
 - Windows: `%APPDATA%\Utterleaf\models`
 - macOS: `~/Library/Application Support/Utterleaf/models`
@@ -100,13 +121,17 @@ First launch downloads Whisper `small.en` into the app data folder (~500 MB). Th
 
 Start at login is off until you enable it in Settings.
 
+For a one-key workflow, choose **F8** and **Press to start / stop** in Dictation
+settings. Esc stays reserved for cancelling, so it cannot be assigned as the
+recording shortcut.
+
 ## Commands
 
 These also appear in Settings so you do not need this table to start.
 
 | You say | What happens |
 |---|---|
-| `scratch that` | Discard this take (or undo the last paste if said alone) |
+| `scratch that` | Discard this take (or remove the last dictation in a verified text field if said alone) |
 | `new paragraph` / `new line` | Insert a break |
 | `make this shorter` | Drop hedges, keep the point |
 | `make it more professional` | Expand slang/contractions, tighten |
@@ -114,9 +139,23 @@ These also appear in Settings so you do not need this table to start.
 
 You can say **“make a bulleted list one two three”** in a longer take. Utterleaf also recognizes “bullet list” and the common transcription “bolded list.” Digits such as `1 2 3` become separate items. For longer lists, say **“end list”** before returning to prose, for example: “Make a bulleted list first open the ticket second assign it end list That is all.”
 
-If you only say an editing command, Utterleaf can undo and reapply the last paste. Use it within 20 seconds, in the same window and text field; switching windows prevents the edit.
+If you only say an editing command, use it within 20 seconds in the same field.
+Utterleaf changes an earlier dictation only when it can verify the field, its
+contents, and the caret. Currently this supports standard native Windows Edit
+controls; browsers, rich editors, macOS, and Linux use manual recovery. Revised
+text is copied for you to select and replace the original yourself. Standalone
+“scratch that” asks you to delete manually when the field cannot be verified.
+Utterleaf does not send a blind Undo command into your document. Temporary field
+snapshots expire after 20 seconds and are never written to logs.
 
 ## Names
+
+**Vocabulary → Clean up dictated text** is on by default. Turn it off to insert
+the speech model's transcript without Utterleaf's vocabulary replacements,
+editing commands, grammar cleanup, or extra punctuation between takes. The
+preview follows this setting. This preserves model output, not a guarantee of
+word-perfect speech recognition; command phrases such as “scratch that” become
+literal text in this mode.
 
 In Settings, one line per name:
 
@@ -155,6 +194,11 @@ Start at login: Windows Startup folder, macOS LaunchAgent, Linux `~/.config/auto
 ## Dev
 
 The interface uses native Tk widgets with no web runtime. UI tests use sample settings and mocked devices. On headless Linux, run the UI tests under a virtual display (such as Xvfb).
+
+Settings, vocabulary, and login registration use atomic file replacement. If a
+later save step fails, the error identifies what saved and what was not
+attempted, and keeps your form entries for retry. The three steps are not a
+single transaction.
 
 For visual review on Windows: `python tests/capture_settings.py` writes screenshots to `artifacts/screenshots` without recording audio or changing personal settings.
 

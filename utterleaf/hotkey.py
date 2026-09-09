@@ -41,21 +41,22 @@ SPECIAL = {
 
 def parse_hotkey(spec: str) -> set[object]:
     raw = spec.strip().lower()
-    if raw in SPECIAL:
-        return {SPECIAL[raw]}
-    if raw.startswith("f") and raw[1:].isdigit():
-        return {getattr(keyboard.Key, raw)}
     parts = [part.strip() for part in raw.replace("-", "+").split("+") if part.strip()]
     keys: set[object] = set()
     for part in parts:
         if part in SPECIAL:
+            if SPECIAL[part] == keyboard.Key.esc:
+                raise ValueError("Esc is reserved for cancelling a take. Choose another key, such as F8.")
             keys.add(SPECIAL[part])
             continue
         if part in MOD_ALIASES:
             keys.add(getattr(keyboard.Key, MOD_ALIASES[part]))
             continue
         if part.startswith("f") and part[1:].isdigit():
-            keys.add(getattr(keyboard.Key, part))
+            key = getattr(keyboard.Key, part, None)
+            if key is None:
+                raise ValueError(f"Unsupported function key: {part.upper()}. Try F8.")
+            keys.add(key)
             continue
         if len(part) == 1:
             keys.add(keyboard.KeyCode.from_char(part))
@@ -137,8 +138,9 @@ class HotkeyWatcher:
         token = _normalize_char(key)
         if token in self._down:
             return
+        was_down = self._combo_down()
         self._down.add(token)
-        if not self._combo_down():
+        if was_down or not self._combo_down():
             return
         if self.mode == "toggle":
             if self._active:
@@ -216,6 +218,12 @@ class HotkeyWatcher:
                 return
             self._active = True
         self.on_start()
+
+    def reset_active(self) -> None:
+        """An automatic recording stop must leave toggle ready for a new take."""
+        with self._lock:
+            self._active = False
+            self._win_for_ptt = False
 
     def force_stop(self) -> None:
         with self._lock:

@@ -167,3 +167,40 @@ def test_failed_stream_start_closes_device(monkeypatch):
         recorder.prepare()
     assert recorder._stream is None
     assert closed == [True]
+
+
+def test_capture_limit_bounds_buffer_even_when_stop_callback_is_delayed(monkeypatch):
+    recorder = Recorder()
+    monkeypatch.setattr(recorder, "prepare", lambda: None)
+    block = np.ones((1600, 1), dtype=np.float32)
+    recorder._on_audio(block, len(block), None, None)  # pre-roll
+    recorder.start(max_seconds=0.25)
+    for _ in range(100):
+        recorder._on_audio(block, len(block), None, None)
+    assert recorder.limit_reached.is_set()
+    assert sum(len(chunk) for chunk in recorder._chunks) == 1600 + 4000
+    assert recorder.stop().size == 5600
+    recorder.start(max_seconds=1)
+    assert not recorder.limit_reached.is_set()
+
+
+@pytest.mark.parametrize("limit", [0, -1, float("inf"), float("nan")])
+def test_invalid_capture_limit_does_not_open_microphone(monkeypatch, limit):
+    recorder = Recorder()
+    monkeypatch.setattr(recorder, "prepare", lambda: pytest.fail("Must validate before opening"))
+    with pytest.raises(ValueError):
+        recorder.start(max_seconds=limit)
+
+
+def test_close_releases_stream_even_when_stop_fails():
+    recorder = Recorder()
+    closed = []
+    class Stream:
+        def stop(self):
+            raise RuntimeError("Device disconnected")
+        def close(self):
+            closed.append(True)
+    recorder._stream = Stream()
+    recorder.close()
+    assert closed == [True]
+    assert recorder._stream is None

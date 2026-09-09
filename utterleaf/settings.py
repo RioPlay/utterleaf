@@ -37,6 +37,21 @@ MODE_PRESETS = (
 SYSTEM_DEFAULT = "System default"
 
 
+class SettingsSaveError(RuntimeError):
+    """Report durable progress without claiming a multi-file transaction."""
+
+    def __init__(self, saved, failed, pending, cause):
+        self.saved = tuple(saved)
+        self.failed = failed
+        self.pending = tuple(pending)
+        details = [f"Saved: {', '.join(saved)}." if saved else "No changes were saved.",
+                   f"Could not save {failed}: {cause}"]
+        if pending:
+            details.append(f"Not attempted: {', '.join(pending)}.")
+        details.append("Your form entries are kept. Fix the problem and try Save again.")
+        super().__init__("\n\n".join(details))
+
+
 def microphone_choices(current: str = "") -> list[str]:
     try:
         from utterleaf.audio import list_input_names
@@ -71,6 +86,7 @@ def apply_form(
     fix_corrections: bool | None = None,
     restore_clipboard: bool | None = None,
     allow_network: bool | None = None,
+    text_cleanup: bool | None = None,
 ) -> Config:
     hotkey = hotkey.strip().lower()
     parse_hotkey(hotkey)
@@ -109,11 +125,19 @@ def apply_form(
         "fix_corrections": cfg.fix_corrections if fix_corrections is None else fix_corrections,
         "restore_clipboard": cfg.restore_clipboard if restore_clipboard is None else restore_clipboard,
         "allow_network": cfg.allow_network if allow_network is None else allow_network,
+        "text_cleanup": cfg.text_cleanup if text_cleanup is None else text_cleanup,
     }})
-    save(updated)
+    steps = [("dictation settings", lambda: save(updated))]
     if names is not None:
-        save_dictionary(names)
-    set_startup(start_at_login)
+        steps.append(("vocabulary", lambda: save_dictionary(names)))
+    steps.append(("start at login", lambda: set_startup(start_at_login)))
+    saved = []
+    for index, (label, action) in enumerate(steps):
+        try:
+            action()
+        except Exception as exc:
+            raise SettingsSaveError(saved, label, [item[0] for item in steps[index + 1:]], exc) from exc
+        saved.append(label)
     return updated
 
 

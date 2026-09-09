@@ -11,7 +11,7 @@ from utterleaf import theme
 from utterleaf.config import Config, load
 from utterleaf.host import login_label, settings_blurb, ui_font, is_wayland
 from utterleaf.polish import dictionary_text, polish_local
-from utterleaf.settings import SYSTEM_DEFAULT, apply_form, hotkey_presets
+from utterleaf.settings import SYSTEM_DEFAULT, SettingsSaveError, apply_form, hotkey_presets
 from utterleaf.startup import enabled as startup_enabled
 
 
@@ -25,11 +25,15 @@ class SettingsWindow:
         self.mic_stop = threading.Event()
         self.pages: dict[str, ttk.Frame] = {}
         self.nav: dict[str, ttk.Button] = {}
+        self.mascots = {}
+        self.mascot_labels = {}
+        self._mascot_heading_labels = set()
+        self.appearance_guide = None
         self.report = ""
         self.vars = {}
         for key in ("hotkey", "mode", "model", "device", "language", "denoise", "microphone",
                     "beep", "indicator", "live_preview", "remove_fillers", "fix_corrections",
-                    "restore_clipboard", "allow_network"):
+                    "restore_clipboard", "allow_network", "text_cleanup"):
             value = getattr(cfg, key)
             cls = tk.BooleanVar if isinstance(value, bool) else tk.StringVar
             self.vars[key] = cls(root, value=value)
@@ -57,7 +61,7 @@ class SettingsWindow:
         sidebar.grid_propagate(False)
         tk.Label(sidebar, text="utterleaf", font=(ui_font(), 24, "bold"),
                  bg=theme.SURFACE_LOW, fg=theme.ON_SURFACE).pack(anchor="w", padx=22, pady=(28, 0))
-        tk.Label(sidebar, text="SPACE TO THINK.", font=(ui_font(), 8, "bold"),
+        tk.Label(sidebar, text="LET IDEAS SPEAK.", font=(ui_font(), 8, "bold"),
                  bg=theme.SURFACE_LOW, fg=theme.ON_VARIANT).pack(anchor="w", padx=24, pady=(4, 22))
         for name in ("Dictation", "Vocabulary", "Voice commands", "Engine", "Help & diagnostics"):
             button = ttk.Button(sidebar, text=name, style="Nav.TButton",
@@ -119,10 +123,36 @@ class SettingsWindow:
     def _page(self, name, eyebrow, title, subtitle):
         frame = ttk.Frame(self.body)
         self.pages[name] = frame
-        ttk.Label(frame, text=eyebrow.upper(), style="Eyebrow.TLabel").pack(anchor="w")
-        ttk.Label(frame, text=title, style="Title.TLabel", wraplength=560).pack(anchor="w", pady=(6, 8))
-        ttk.Label(frame, text=subtitle, style="Hint.TLabel", wraplength=540).pack(anchor="w", pady=(0, 24))
+        header = ttk.Frame(frame)
+        header.pack(fill="x")
+        header.columnconfigure(0, weight=1)
+        words = ttk.Frame(header)
+        words.grid(row=0, column=0, sticky="ew")
+        eyebrow_label = ttk.Label(words, text=eyebrow.upper(), style="Eyebrow.TLabel", wraplength=560)
+        eyebrow_label.pack(anchor="w")
+        title_label = ttk.Label(words, text=title, style="Title.TLabel", wraplength=560)
+        title_label.pack(anchor="w", pady=(6, 8))
+        if name in {"Dictation", "Help & diagnostics"}:
+            label = ttk.Label(header, takefocus=False)
+            label.grid(row=0, column=1, sticky="ne", padx=(12, 0))
+            self.mascot_labels[name] = label
+            if self._set_mascot(name, "default" if name == "Dictation" else "thinking"):
+                self._mascot_heading_labels.update((eyebrow_label, title_label))
+        if subtitle:
+            ttk.Label(frame, text=subtitle, style="Hint.TLabel", wraplength=540).pack(anchor="w", pady=(0, 24))
         return frame
+
+    def _set_mascot(self, page, expression):
+        """Decorative only: instructions and microphone feedback stay in text."""
+        from PIL import ImageTk
+        from utterleaf.brand import mascot_image
+        try:
+            photo = ImageTk.PhotoImage(mascot_image(expression), master=self.root)
+        except (OSError, tk.TclError):
+            return False
+        self.mascots[page] = photo
+        self.mascot_labels[page].configure(image=photo)
+        return True
 
     def _section(self, parent, title, hint=""):
         ttk.Separator(parent).pack(fill="x", pady=(10, 18))
@@ -157,23 +187,25 @@ class SettingsWindow:
         return box
 
     def _dictation(self):
-        p = self._page("Dictation", "Make room for your ideas", "Think it. Say it. Done.",
-                       "Speak naturally. Utterleaf turns your words into clean text in the app you’re using.")
+        p = self._page("Dictation", "On-device dictation", "Think it. Say it. Done.", "")
         card = tk.Frame(p, bg=theme.PRIMARY_CONTAINER, padx=20, pady=18)
+        self.shortcut_card = card
         card.pack(fill="x", pady=(0, 12))
         self.shortcut_hint = tk.StringVar(self.root)
         tk.Label(card, textvariable=self.shortcut_hint, bg=theme.PRIMARY_CONTAINER,
                  fg=theme.ON_PRIMARY_CONTAINER, font=(ui_font(), 15, "bold"), wraplength=490,
                  justify="left").pack(anchor="w")
-        tk.Label(card, text="1  Click a text field    →    2  Speak    →    3  Keep going",
+        self.shortcut_steps = tk.StringVar(self.root)
+        tk.Label(card, textvariable=self.shortcut_steps,
                  bg=theme.PRIMARY_CONTAINER, fg=theme.ON_PRIMARY_CONTAINER,
-                 font=(ui_font(), 10)).pack(anchor="w", pady=(10, 0))
-        self._section(p, "Your shortcut", "Esc cancels a take. Utterleaf stays in your system tray when this window closes.")
+                 font=(ui_font(), 10), wraplength=490, justify="left").pack(anchor="w", pady=(10, 0))
         self._choice(p, "Keyboard shortcut", "hotkey", [v for _, v in hotkey_presets() if v], editable=True)
         modes = ttk.Frame(p)
         modes.pack(fill="x", pady=(6, 12))
         ttk.Radiobutton(modes, text="Hold to talk", variable=self.vars["mode"], value="hold").pack(side="left", padx=(0, 24))
         ttk.Radiobutton(modes, text="Press to start / stop", variable=self.vars["mode"], value="toggle").pack(side="left")
+        ttk.Label(p, text=f"Esc cancels a take. Stops automatically after {self.cfg.max_seconds:g} seconds.",
+                  style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=(0, 8))
         self._section(p, "Microphone", "Check that Utterleaf can hear you. Audio from this check is discarded.")
         self.mic_box = self._choice(p, "Input device", "microphone", [SYSTEM_DEFAULT])
         actions = ttk.Frame(p)
@@ -195,6 +227,9 @@ class SettingsWindow:
     def _vocabulary(self):
         p = self._page("Vocabulary", "Words, your way", "A little more you.",
                        "Teach Utterleaf names, terms, and phrases you use every day.")
+        self._check(p, "Clean up dictated text", "text_cleanup",
+                    "Turn off to keep the model transcript unchanged. Vocabulary replacements and spoken commands "
+                    "are also paused. Speech recognition can still make mistakes.")
         self._section(p, "Personal vocabulary", "One replacement per line: spoken = written. For example: utter leaf = Utterleaf")
         self.names = self._text(p, 8)
         self.names.insert("1.0", dictionary_text())
@@ -213,14 +248,15 @@ class SettingsWindow:
                        "Say a command as part of your dictation. These run locally, just like your speech model.")
         for title, description in (
             ("“New paragraph”", "Start a new paragraph. Say “new line” for a single line break."),
-            ("“Scratch that”", "Discard this take. Said alone, it can undo the last Utterleaf paste."),
+            ("“Scratch that”", "Discard this take. Said alone, it removes the last dictation when its text field can be verified."),
             ("“Make this shorter”", "Remove hedges and tighten the wording."),
             ("“Make it more professional”", "Expand slang and contractions with local text rules."),
             ("“Make a bulleted list …”", "Say “one two three” for three items, or use “first”, “second”, and “third”. Say “end list” to return to prose. You can also ask for a numbered list."),
             ("“Comma” / “question mark”", "Add punctuation as you speak."),
         ):
             self._section(p, title, description)
-        ttk.Label(p, text="Use edits immediately after dictating, in the same text field.\n"
+        ttk.Label(p, text="Use edits immediately after dictating, in the same text field. If the field cannot be verified, "
+                  "revised text is copied for you to replace manually. Your document is left alone.\n"
                   "Cleanup uses text rules; it does not generate new ideas or rewrite meaning.",
                   style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=10)
 
@@ -237,7 +273,9 @@ class SettingsWindow:
         ttk.Label(p, text="Use auto to detect the language, or enter a language code. English-only models require English.",
                   style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=8)
         self._choice(p, "Noise reduction", "denoise", ["auto", "on", "off"])
-        self._section(p, "Privacy & clipboard", "Speech is processed on this device. No account is required.")
+        self._section(p, "Privacy & clipboard", "Your microphone is released after each take. Audio is processed on this device "
+                      "and is not saved to a recording history. The latest output has a two-minute recovery slot in memory. "
+                      "Use Forget last dictation in the tray menu to clear it sooner. No account is required.")
         self._check(p, "Allow missing model downloads", "allow_network",
                     "Only model files are downloaded. Turn off to require an already installed model.")
         self._check(p, "Restore my clipboard after pasting", "restore_clipboard")
@@ -245,9 +283,11 @@ class SettingsWindow:
     def _help(self):
         p = self._page("Help & diagnostics", "A clear path forward", "Keep things running.",
                        "Check your setup and get a report when something needs attention.")
+        ttk.Button(p, text="Icons & artwork…", command=self.show_appearance).pack(anchor="w", pady=(0, 14))
         ttk.Label(p, textvariable=self.connection, style="Section.TLabel").pack(anchor="w", pady=(0, 12))
         ttk.Label(p, text=settings_blurb(), style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=(0, 14))
         self._section(p, "Quick checks", "No text? Click an editable text field before dictating.\n"
+                      "Lost a result? Use Copy last dictation in the tray menu within two minutes.\n"
                       "No audio? Choose a microphone on the Dictation page and run a check.\n"
                       "First launch? Allow the speech model to finish downloading and loading.")
         self.diagnostic_button = ttk.Button(p, text="Check this device", command=self.diagnostics)
@@ -259,6 +299,13 @@ class SettingsWindow:
         self.export_button.pack(anchor="w", pady=(0, 8))
         self.cuda_button = ttk.Button(p, text="Set up NVIDIA GPU…", command=self.cuda_setup)
         self.cuda_button.pack(anchor="w")
+
+    def show_appearance(self):
+        if self.appearance_guide is not None and self.appearance_guide.root.winfo_exists():
+            self.appearance_guide.root.lift()
+            return
+        from .appearance import AppearanceGuide
+        self.appearance_guide = AppearanceGuide(self.root)
 
     def show_page(self, name):
         if name != "Dictation":
@@ -286,7 +333,10 @@ class SettingsWindow:
         def wrap(widget):
             for child in widget.winfo_children():
                 if isinstance(child, (ttk.Label, tk.Label)) and int(child.cget("wraplength") or 0):
-                    child.configure(wraplength=max(220, event.width - 90))
+                    inset = 140 if child.master is self.shortcut_card else 90
+                    if child in self._mascot_heading_labels:
+                        inset += 116
+                    child.configure(wraplength=max(180, event.width - inset))
                 wrap(child)
         wrap(self.body)
 
@@ -324,6 +374,11 @@ class SettingsWindow:
             "Use your desktop shortcut to start / stop"
             if is_wayland()
             else f"{verb}  {self.vars['hotkey'].get().replace('+', ' + ').title()}  to talk"
+        )
+        self.shortcut_steps.set(
+            "Click a text field. Press your shortcut, wait for Listening, then speak. Press again to paste."
+            if is_wayland() or self.vars["mode"].get() == "toggle"
+            else "Click a text field. Hold your shortcut, wait for Listening, then speak. Release to paste."
         )
 
     def _names_changed(self, _event):
@@ -380,7 +435,8 @@ class SettingsWindow:
         device = self.vars["microphone"].get()
         self.mic_stop.clear()
         self.mic_button.configure(text="Stop check")
-        self.mic_message.set("Speak now… checking for five seconds.")
+        self._set_mascot("Dictation", "thinking")
+        self.mic_message.set("Opening your microphone…")
         def check():
             import numpy as np
             from utterleaf.audio import Recorder
@@ -388,6 +444,7 @@ class SettingsWindow:
             peak = 0.0
             try:
                 recorder.start()
+                self.events.put((lambda _: self._mic_check_listening(), None))
                 for _ in range(50):
                     if self.mic_stop.wait(0.1):
                         break
@@ -402,13 +459,20 @@ class SettingsWindow:
             self.mic_button.configure(text="Test microphone")
             self.meter.configure(value=0)
             if isinstance(result, Exception):
+                self._set_mascot("Dictation", "error")
                 self.mic_message.set(f"Could not open the microphone: {result}")
             elif self.mic_stop.is_set():
+                self._set_mascot("Dictation", "default")
                 self.mic_message.set("Microphone check stopped.")
             else:
+                self._set_mascot("Dictation", "success" if result > 0.003 else "thinking")
                 self.mic_message.set("Audio detected. You’re ready to dictate." if result > 0.003
                                      else "Very little audio detected. Check your input device and microphone level.")
         self._worker(check, done)
+
+    def _mic_check_listening(self):
+        self._set_mascot("Dictation", "listening")
+        self.mic_message.set("Speak now… checking for five seconds.")
 
     def preview(self):
         pairs = []
@@ -420,7 +484,8 @@ class SettingsWindow:
         pairs.sort(key=lambda item: len(item[0]), reverse=True)
         result = polish_local(self.sample.get("1.0", "end-1c"), vocab=pairs,
                               remove_fillers=self.vars["remove_fillers"].get(),
-                              fix_corrections=self.vars["fix_corrections"].get())
+                              fix_corrections=self.vars["fix_corrections"].get(),
+                              text_cleanup=self.vars["text_cleanup"].get())
         self.preview_result.set(result.text or "No text to keep.")
 
     def diagnostics(self):
@@ -450,6 +515,7 @@ class SettingsWindow:
             self.diagnostic_text.delete("1.0", "end")
             self.diagnostic_text.insert("1.0", f"Could not check: {result}" if isinstance(result, Exception) else result)
             self.diagnostic_text.configure(state="disabled")
+            self.export_button.configure(state="normal" if self.report else "disabled")
         self._worker(steps, done)
 
     def export_report(self):
@@ -471,20 +537,29 @@ class SettingsWindow:
         self.status.set("Saving changes…")
         def commit():
             from utterleaf import ipc
-            cfg = apply_form(load(), **snapshot)
+            try:
+                cfg = apply_form(load(), **snapshot)
+            except SettingsSaveError as exc:
+                if exc.saved:
+                    ipc.send("reload")
+                raise
             return cfg, ipc.send("reload")
         def done(result):
             self.saving = False
             if isinstance(result, Exception):
                 self._dirty()
-                self.status.set("Could not finish saving. Review the error and try again.")
+                self.status.set(
+                    "Some changes saved · Review the error and retry Save"
+                    if isinstance(result, SettingsSaveError) and result.saved
+                    else "Could not finish saving. Review the error and try again."
+                )
                 messagebox.showerror("Could not save changes", str(result), parent=self.root)
                 return
             self.cfg, reply = result
             self.baseline = snapshot
             self._dirty()
             if self._snapshot() == snapshot:
-                self.status.set("Saved · Applied to Utterleaf" if reply == "ok" else "Saved · Start Utterleaf to use these settings")
+                self.status.set("Changes saved" if reply == "ok" else "Saved · Start Utterleaf to use these settings")
         self._worker(commit, done)
 
     def close(self):

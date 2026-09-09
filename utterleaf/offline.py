@@ -7,10 +7,10 @@ import os
 
 def apply_offline_defaults() -> None:
     """Disable Hub telemetry. Never phone home."""
-    os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
-    os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")
+    os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
+    os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
     os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
-    os.environ.setdefault("DO_NOT_TRACK", "1")
+    os.environ["DO_NOT_TRACK"] = "1"
 
 
 def stay_offline() -> None:

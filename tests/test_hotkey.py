@@ -1,4 +1,5 @@
 from pynput import keyboard
+import pytest
 
 from utterleaf.hotkey import HotkeyWatcher, combo_is_down, parse_hotkey
 
@@ -20,6 +21,18 @@ def test_parse_ctrl_super_alias() -> None:
 
 def test_parse_function_key() -> None:
     assert parse_hotkey("f8") == {keyboard.Key.f8}
+
+
+@pytest.mark.parametrize("spec", ["f0", "f99", "ctrl+f99"])
+def test_invalid_function_key_has_actionable_validation(spec):
+    with pytest.raises(ValueError, match="Try F8"):
+        parse_hotkey(spec)
+
+
+@pytest.mark.parametrize("spec", ["esc", "escape", "ctrl+esc"])
+def test_cancel_key_cannot_be_saved_as_recording_shortcut(spec):
+    with pytest.raises(ValueError, match="reserved for cancelling"):
+        parse_hotkey(spec)
 
 
 def test_right_ctrl_does_not_match_left_ctrl() -> None:
@@ -128,6 +141,23 @@ def test_toggle_ignores_key_repeat() -> None:
     watcher._on_release(keyboard.Key.f8)
     watcher._on_press(keyboard.Key.f8)
     assert stops == [1]
+
+
+def test_toggle_requires_a_new_shortcut_press():
+    events = []
+    watcher = HotkeyWatcher(
+        "ctrl+space", mode="toggle", suppress=False,
+        on_start=lambda: events.append("start"),
+        on_stop=lambda: events.append("stop"), on_cancel=lambda: None,
+    )
+    watcher._on_press(keyboard.Key.ctrl)
+    watcher._on_press(keyboard.Key.space)
+    watcher._on_press(keyboard.KeyCode.from_char("a"))
+    watcher._on_press(keyboard.Key.shift)
+    assert events == ["start"]
+    watcher._on_release(keyboard.Key.space)
+    watcher._on_press(keyboard.Key.space)
+    assert events == ["start", "stop"]
 
 
 def test_wayland_uses_ipc_toggle_without_starting_xorg_listener(monkeypatch):

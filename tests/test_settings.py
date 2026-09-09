@@ -146,3 +146,42 @@ def test_frozen_settings_relaunch_uses_gui_and_hides_console(tmp_path, monkeypat
     settings._relaunch("--settings")
     assert calls[0][0] == [str(gui), "--settings"]
     assert calls[0][1]["creationflags"] & 0x08000000
+
+
+@pytest.mark.parametrize("failure_index", [0, 1, 2])
+def test_save_failure_reports_completed_and_unattempted_steps(monkeypatch, failure_index):
+    from utterleaf import settings
+    labels = ["dictation settings", "vocabulary", "start at login"]
+    calls = []
+    def action(index):
+        def run(*args):
+            calls.append(index)
+            if index == failure_index:
+                raise OSError("Disk is full")
+        return run
+    monkeypatch.setattr(settings, "save", action(0))
+    monkeypatch.setattr(settings, "save_dictionary", action(1))
+    monkeypatch.setattr(settings, "set_startup", action(2))
+    with pytest.raises(settings.SettingsSaveError) as caught:
+        settings.apply_form(Config(), hotkey="f8", mode="hold", model="small", device="auto",
+                            language="en", denoise="auto", beep=True, indicator=True,
+                            start_at_login=False, names="utter leaf = Utterleaf")
+    assert calls == list(range(failure_index + 1))
+    assert caught.value.saved == tuple(labels[:failure_index])
+    assert caught.value.failed == labels[failure_index]
+    assert caught.value.pending == tuple(labels[failure_index + 1:])
+    assert "Disk is full" in str(caught.value)
+
+
+def test_failed_atomic_write_preserves_old_file_and_removes_temporary(tmp_path, monkeypatch):
+    from pathlib import Path
+    from utterleaf.config import atomic_write_text
+    path = tmp_path / "dictionary.txt"
+    path.write_text("old vocabulary", encoding="utf-8")
+    def fail(*args):
+        raise OSError("Destination locked")
+    monkeypatch.setattr(Path, "replace", fail)
+    with pytest.raises(OSError):
+        atomic_write_text(path, "new vocabulary")
+    assert path.read_text(encoding="utf-8") == "old vocabulary"
+    assert list(tmp_path.iterdir()) == [path]
