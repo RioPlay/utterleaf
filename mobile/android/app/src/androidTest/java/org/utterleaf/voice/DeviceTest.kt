@@ -30,6 +30,16 @@ class DeviceTest {
         assertFalse(VoiceIme.safeField(InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD))
         assertTrue(VoiceIme.safeField(InputType.TYPE_CLASS_TEXT))
     }
+    @Test fun systemRecognizesAnAuxiliaryVoiceInputMethod() {
+        val manager = app.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+        val ime = manager.inputMethodList.single { it.packageName == app.packageName }
+        assertEquals(1, ime.subtypeCount)
+        val subtype = ime.getSubtypeAt(0)
+        assertEquals("voice", subtype.mode)
+        assertTrue(subtype.isAuxiliary)
+        assertTrue(subtype.overridesImplicitlyEnabledSubtype())
+        assertEquals("android.permission.BIND_INPUT_METHOD", ime.serviceInfo.permission)
+    }
     @Test fun deniedPermissionCannotStartCapture() {
         assertEquals(PackageManager.PERMISSION_DENIED, app.checkSelfPermission("android.permission.RECORD_AUDIO"))
         instrumentation.runOnMainSync {
