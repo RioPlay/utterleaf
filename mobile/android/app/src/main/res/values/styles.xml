@@ -8,7 +8,6 @@
         <item name="android:statusBarColor">#171E20</item>
         <item name="android:navigationBarColor">#171E20</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
     </style>
     <style name="VoiceDialog" parent="android:style/Theme.Material.Dialog.NoActionBar">
         <item name="android:colorAccent">#83DA9A</item>
