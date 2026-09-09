@@ -4,7 +4,7 @@
 
 An experimental, offline voice companion. Keep a compatible keyboard, or select
 the compact Utterleaf voice panel through Android's keyboard switcher.
-**0.1.0-alpha01 is a development preview, not a production keyboard replacement.**
+**0.1.0-alpha02 is a development preview, not a production keyboard replacement.**
 
 ## What is implemented
 
@@ -21,7 +21,7 @@ the compact Utterleaf voice panel through Android's keyboard switcher.
 
 ## Try it
 
-1. Install the **debug APK** from the [Android alpha release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha01).
+1. Install the **debug APK** from the [Android alpha release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha02).
    Development builds and reports are also available from [Android CI](https://github.com/RioPlay/utterleaf/actions/workflows/android.yml).
    The unsigned release APK is for developers and cannot be installed until signed.
    CI debug certificates are disposable; a later preview may require uninstalling

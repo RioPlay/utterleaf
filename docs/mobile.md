@@ -10,7 +10,7 @@ it does not replace or add dependencies to the desktop Python application.
 
 ## Android — compact voice companion first
 
-[Download the Android alpha](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha01) ·
+[Download the Android alpha](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha02) ·
 [Setup and current limits](../mobile/android/README.md)
 
 The initial implementation uses Kotlin, Android's input-method framework, and

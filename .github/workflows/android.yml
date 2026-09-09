@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['mobile/android/**', '.github/workflows/android.yml']
+    paths: ['mobile/android/**', '!mobile/android/**/*.md', '.github/workflows/android.yml']
   pull_request:
-    paths: ['mobile/android/**', '.github/workflows/android.yml']
+    paths: ['mobile/android/**', '!mobile/android/**/*.md', '.github/workflows/android.yml']
 permissions:
   contents: read
 jobs:
@@ -55,8 +55,8 @@ jobs:
       - name: Checksums
         run: |
           mkdir -p preview
-          cp app/build/outputs/apk/debug/app-debug.apk preview/Utterleaf-Voice-0.1.0-alpha01-debug.apk
-          cp app/build/outputs/apk/release/app-release-unsigned.apk preview/Utterleaf-Voice-0.1.0-alpha01-unsigned.apk
+          cp app/build/outputs/apk/debug/app-debug.apk preview/Utterleaf-Voice-0.1.0-alpha02-debug.apk
+          cp app/build/outputs/apk/release/app-release-unsigned.apk preview/Utterleaf-Voice-0.1.0-alpha02-unsigned.apk
           cd preview && sha256sum *.apk > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         if: always()
