@@ -89,7 +89,7 @@ class VoiceSession(private val context: Context, private val state: (String) -> 
             update("Microphone off · transcribing on this device…")
             val samples = audio.copyOf(count)
             val bytes = try { NativeEngine.decode(ModelStore.file(context.noBackupFilesDir).absolutePath, samples) }
-                        finally { samples.fill(0) }
+                        finally { samples.fill(0f) }
             if (cancelled.get()) { bytes?.fill(0); return }
             check(bytes != null) { "Could not transcribe. Try a shorter take or restart the app." }
             val text = bytes.toString(Charsets.UTF_8).trim()
@@ -104,7 +104,7 @@ class VoiceSession(private val context: Context, private val state: (String) -> 
         } finally {
             try { recorder?.stop() } catch (_: Exception) { }
             recorder?.release()
-            audio.fill(0)
+            audio.fill(0f)
             main.post { ownsLease = false; WorkLease.release() }
         }
     }

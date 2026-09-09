@@ -53,6 +53,6 @@ class DeviceTest {
         assertTrue("Known speech was not recognized", text.contains("country"))
         NativeEngine.reset(); NativeEngine.cancel()
         assertNull(NativeEngine.decode(ModelStore.file(app.noBackupFilesDir).absolutePath, audio))
-        audio.fill(0); result.fill(0)
+        audio.fill(0f); result.fill(0)
     }
 }
