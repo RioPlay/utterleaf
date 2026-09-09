@@ -27,6 +27,16 @@ class DeviceTest {
         assertFalse(VoiceIme.safeField(InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD))
         assertTrue(VoiceIme.safeField(InputType.TYPE_CLASS_TEXT))
     }
+    @Test fun deniedPermissionCannotStartCapture() {
+        assertEquals(PackageManager.PERMISSION_DENIED, app.checkSelfPermission("android.permission.RECORD_AUDIO"))
+        instrumentation.runOnMainSync {
+            val errors = mutableListOf<String>()
+            val session = VoiceSession(app, { fail("Unexpected capture state") }, { fail("Unexpected transcript") }, { errors.add(it) })
+            session.start()
+            assertTrue(errors.single().contains("permission"))
+            session.cancel()
+        }
+    }
     @Test fun realPanelRejectsLateSpeechAndInsertsOnlyOnce() {
         instrumentation.runOnMainSync {
             val callbacks = mutableListOf<(String) -> Unit>()

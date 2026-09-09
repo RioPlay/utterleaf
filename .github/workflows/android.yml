@@ -48,6 +48,7 @@ jobs:
           disable-animations: true
           script: |
             cd mobile/android && bash gradlew --no-daemon connectedDebugAndroidTest
+            adb install -r mobile/android/app/build/outputs/apk/debug/app-debug.apk
             adb shell am start -n org.utterleaf.voice/.SetupActivity
             sleep 3
             adb exec-out screencap -p > mobile/android/app/build/reports/setup-emulator.png

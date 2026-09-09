@@ -67,6 +67,8 @@ Set `ANDROID_HOME` to your SDK or create an untracked `local.properties`.
 The checked-in Gradle wrapper verifies its distribution hash. Native dependencies
 are fetched at build time from whisper.cpp commit
 `2eeeba56e9edd762b4b38467bab96c2517163158` (v1.8.3); there is no runtime fetch.
+The source archive is verified against SHA-256
+`089b898aa83b24a8321e0fd554eeb0967fb03dd687e27f6374c72d3363b5b429`.
 
 ```sh
 ./gradlew testDebugUnitTest lintDebug assembleDebug assembleRelease

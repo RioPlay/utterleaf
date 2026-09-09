@@ -56,6 +56,7 @@ class VoicePanel(context: Context, private val insert: (String) -> Boolean, priv
     fun clear() {
         gate.invalidate(); session?.cancel(); session = null
         transcript = ""; preview.text = "Tap Speak when you are ready."
+        status.text = "Microphone off · English · local processing"
         handler.removeCallbacks(expire)
         speak.isEnabled = true; stop.isEnabled = false; send.isEnabled = false
     }
