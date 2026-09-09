@@ -21,9 +21,10 @@ the compact Utterleaf voice panel through Android's keyboard switcher.
 
 ## Try it
 
-1. Install the **debug APK** from the [Android alpha release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha02).
+1. [Download and install Utterleaf Voice](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha02/Utterleaf-Voice-0.1.0-alpha02-debug.apk)
+   on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
+   This is the signed **debug APK** from the [Android alpha release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha02).
    Development builds and reports are also available from [Android CI](https://github.com/RioPlay/utterleaf/actions/workflows/android.yml).
-   The unsigned release APK is for developers and cannot be installed until signed.
    CI debug certificates are disposable; a later preview may require uninstalling
    the old one, which removes the imported model. Stable release signing is pending.
 2. Open **Utterleaf Voice**. Use the confirmed browser link to download the 77.7 MB
@@ -46,6 +47,21 @@ Speech-intent callers must use an activity result. PendingIntent result delivery
 hands-free/background invocation, and non-English requests are not supported.
 The caller chooses its destination; unlike our IME, this route cannot inspect
 whether the eventual destination is a password field.
+
+## If Android says “App not installed”
+
+Check the filename first. An earlier release download list included
+`Utterleaf-Voice-0.1.0-alpha02-unsigned.apk`. That developer build cannot be
+installed; download the signed APK linked above instead. Enabling unknown sources
+does not make an unsigned APK installable. Public release downloads now contain
+only the installable APK and its checksum file.
+
+If a signed preview fails when replacing an earlier installed preview, its debug
+certificate may differ. Uninstalling the previous preview removes its imported
+model and permits a fresh installation; only do this if you accept that reset.
+If installation still fails, report the filename, Android version, phone model,
+and whether a previous preview is installed. Do not disable device protections to
+work around an unexplained installation failure.
 
 ## Privacy boundaries
 
@@ -78,7 +94,10 @@ The source archive is verified against SHA-256
 On Windows, use `gradlew.bat`. CI also downloads a hash-verified model and the
 pinned upstream JFK speech fixture **into the test APK only**, then runs
 `connectedDebugAndroidTest` on an API 35 emulator. The ordinary APK does not bundle
-either fixture. Reports and APK checksums accompany successful builds.
+either fixture. CI verifies the packaged APK with Android's `apksigner` and installs
+it on the emulator without test-only installation flags. Reports and APK checksums
+accompany successful builds. `assembleRelease` also checks release compilation,
+but its unsigned output stays in the build directory and is not distributed.
 
 ## Acceptance work before a stable mobile release
 

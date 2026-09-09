@@ -52,11 +52,11 @@ jobs:
             adb shell am start -n org.utterleaf.voice/.SetupActivity
             sleep 3
             adb exec-out screencap -p > mobile/android/app/build/reports/setup-emulator.png
-      - name: Checksums
+      - name: Verify and package installable APK
         run: |
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/debug/app-debug.apk
           mkdir -p preview
           cp app/build/outputs/apk/debug/app-debug.apk preview/Utterleaf-Voice-0.1.0-alpha02-debug.apk
-          cp app/build/outputs/apk/release/app-release-unsigned.apk preview/Utterleaf-Voice-0.1.0-alpha02-unsigned.apk
           cd preview && sha256sum *.apk > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         if: always()
