@@ -11,7 +11,7 @@ from utterleaf import theme
 from utterleaf.config import Config, load
 from utterleaf.host import login_label, settings_blurb, ui_font, is_wayland
 from utterleaf.polish import dictionary_text, polish_local
-from utterleaf.settings import SYSTEM_DEFAULT, SettingsSaveError, apply_form, hotkey_presets
+from utterleaf.settings import SYSTEM_DEFAULT, FormValidationError, SettingsSaveError, apply_form, hotkey_presets
 from utterleaf.startup import enabled as startup_enabled
 
 
@@ -32,6 +32,7 @@ class SettingsWindow:
         self.appearance_guide = None
         self.report = ""
         self.vars = {}
+        self.fields = {}
         for key in ("hotkey", "mode", "model", "device", "language", "denoise", "microphone",
                     "beep", "indicator", "live_preview", "remove_fillers", "fix_corrections",
                     "restore_clipboard", "allow_network", "text_cleanup"):
@@ -107,10 +108,13 @@ class SettingsWindow:
         footer = ttk.Frame(root, padding=(20, 14))
         footer.grid(row=1, column=0, columnspan=2, sticky="ew")
         footer.columnconfigure(0, weight=1)
-        ttk.Label(footer, textvariable=self.status, style="Hint.TLabel", wraplength=450).grid(row=0, column=0, sticky="w")
-        ttk.Button(footer, text="Close", command=self.close).grid(row=0, column=1, padx=10)
+        self.footer_status = ttk.Label(footer, textvariable=self.status, style="Hint.TLabel", wraplength=350)
+        self.footer_status.grid(row=0, column=0, sticky="w")
+        self.close_button = ttk.Button(footer, text="Close", command=self.close)
+        self.close_button.grid(row=0, column=1, padx=10)
         self.save_button = ttk.Button(footer, text="Save changes", style="Primary.TButton", command=self.save)
         self.save_button.grid(row=0, column=2)
+        footer.bind("<Configure>", self._resize_footer)
         self.baseline = self._snapshot()
         for var in self.vars.values():
             var.trace_add("write", self._dirty)
@@ -156,7 +160,7 @@ class SettingsWindow:
         from PIL import ImageTk
         from utterleaf.brand import mascot_image
         try:
-            photo = ImageTk.PhotoImage(mascot_image(expression), master=self.root)
+            photo = ImageTk.PhotoImage(mascot_image(expression, size=80), master=self.root)
         except (OSError, tk.TclError):
             return False
         self.mascots[page] = photo
@@ -174,14 +178,22 @@ class SettingsWindow:
             ttk.Label(panel, text=hint, style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=(0, 8))
         return panel
 
-    def _choice(self, parent, label, key, values, *, editable=False):
+    def _choice(self, parent, label, key, values, *, editable=False, labels=None):
         row = ttk.Frame(parent)
         row.pack(fill="x", pady=6)
         row.columnconfigure(1, weight=1)
         ttk.Label(row, text=label, width=17).grid(row=0, column=0, sticky="w", padx=(0, 10))
-        box = ttk.Combobox(row, textvariable=self.vars[key], values=values, width=24,
+        display = self.vars[key]
+        if labels:
+            display = tk.StringVar(self.root, value=labels.get(self.vars[key].get(), self.vars[key].get()))
+            self.vars[key].trace_add("write", lambda *_: display.set(labels.get(self.vars[key].get(), self.vars[key].get())))
+        box = ttk.Combobox(row, textvariable=display, values=list(labels.values()) if labels else values, width=24,
                            state="normal" if editable else "readonly")
+        if labels:
+            reverse = {value: key for key, value in labels.items()}
+            box.bind("<<ComboboxSelected>>", lambda _: self.vars[key].set(reverse[display.get()]))
         box.grid(row=0, column=1, sticky="ew")
+        self.fields[key] = box
         return box
 
     def _check(self, parent, title, key, hint=""):
@@ -203,14 +215,14 @@ class SettingsWindow:
         return box
 
     def _dictation(self):
-        page = self._page("Dictation", "Your everyday setup", "Make it flow.", "")
+        page = self._page("Dictation", "Settings", "Dictation", "")
         p = page
-        card = tk.Frame(p, bg=theme.PRIMARY_CONTAINER, padx=20, pady=18)
+        card = tk.Frame(p, bg=theme.PRIMARY_CONTAINER, padx=16, pady=12)
         self.shortcut_card = card
         card.pack(fill="x", pady=(0, 12))
         self.shortcut_hint = tk.StringVar(self.root)
         tk.Label(card, textvariable=self.shortcut_hint, bg=theme.PRIMARY_CONTAINER,
-                 fg=theme.ON_PRIMARY_CONTAINER, font=(ui_font(), 15, "bold"), wraplength=490,
+                 fg=theme.ON_PRIMARY_CONTAINER, font=(ui_font(), 13, "bold"), wraplength=490,
                  justify="left").pack(anchor="w")
         self.shortcut_steps = tk.StringVar(self.root)
         tk.Label(card, textvariable=self.shortcut_steps,
@@ -247,14 +259,14 @@ class SettingsWindow:
         ttk.Radiobutton(p, text="Tray + floating indicator", variable=self.vars["indicator"], value=True).pack(anchor="w", pady=4)
         ttk.Label(p, text="The floating indicator includes your remaining recording time.",
                   style="Hint.TLabel", wraplength=510).pack(anchor="w", pady=(0, 4))
-        self.preview_toggle = self._check(p, "Show live captions in the floating indicator", "live_preview",
+        self.preview_toggle = self._check(p, "Preview dictation while recording", "live_preview",
                                          "Optional draft words while you speak. Uses additional processing power.")
         self._check(p, "Play start / stop sounds", "beep")
         p = self._section(page, "Startup")
         self._check(p, login_label(), "start_at_login")
 
     def _vocabulary(self):
-        page = self._page("Vocabulary", "Words, your way", "A little more you.",
+        page = self._page("Vocabulary", "Settings", "Vocabulary",
                        "Teach Utterleaf names, terms, and phrases you use every day.")
         p = self._section(page, "Your words")
         self._check(p, "Clean up dictated text", "text_cleanup",
@@ -262,6 +274,7 @@ class SettingsWindow:
                     "are also paused. Speech recognition can still make mistakes.")
         p = self._section(page, "Personal vocabulary", "One replacement per line: spoken = written. For example: utter leaf = Utterleaf")
         self.names = self._text(p, 8)
+        self.fields["names"] = self.names
         self.names.insert("1.0", dictionary_text())
         p = self._section(page, "Text cleanup")
         self._check(p, "Remove filler words", "remove_fillers", "Clean up “um” and “uh” automatically.")
@@ -274,7 +287,7 @@ class SettingsWindow:
         ttk.Label(p, textvariable=self.preview_result, wraplength=520).pack(anchor="w", pady=8)
 
     def _commands(self):
-        p = self._page("Voice commands", "Less editing. More flow.", "Let your voice do it.",
+        p = self._page("Voice commands", "Reference", "Voice commands",
                        "Say a command as part of your dictation. These run locally, just like your speech model.")
         for title, description in (
             ("“New paragraph”", "Start a new paragraph. Say “new line” for a single line break."),
@@ -291,18 +304,18 @@ class SettingsWindow:
                   style="Subtitle.TLabel", wraplength=520).pack(anchor="w", pady=10)
 
     def _engine(self):
-        page = self._page("Engine", "Speech & privacy", "Your voice stays here.",
+        page = self._page("Engine", "Settings", "Speech & privacy",
                        "The default model balances speed and accuracy. Smaller models use less memory and generally finish sooner.")
         p = self._section(page, "Speech model", "tiny: lightest  ·  base: faster  ·  small: balanced  ·  medium: larger\n"
                       "Changing models may require a one-time download. Custom model names and paths are supported.")
         self._choice(p, "Model", "model", ["tiny", "base", "small", "medium", "large-v3", "distil-small.en"], editable=True)
-        self._choice(p, "Processing device", "device", ["auto", "cpu", "gpu", "npu"])
-        ttk.Label(p, text="auto selects available acceleration. Unsupported selections fall back to a working device.",
+        self._choice(p, "Processing device", "device", [], labels={"auto": "Automatic", "cpu": "CPU", "gpu": "NVIDIA GPU", "npu": "NPU"})
+        ttk.Label(p, text="Automatic selects available acceleration. Unsupported selections fall back to a working device.",
                   style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=8)
         self._choice(p, "Language", "language", ["en", "auto", "es", "fr", "de", "it", "pt", "ja", "zh"], editable=True)
         ttk.Label(p, text="Use auto to detect the language, or enter a language code. English-only models require English.",
                   style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=8)
-        self._choice(p, "Noise reduction", "denoise", ["auto", "on", "off"])
+        self._choice(p, "Noise reduction", "denoise", [], labels={"auto": "Automatic", "on": "On", "off": "Off"})
         p = self._section(page, "Privacy & clipboard", "Your microphone is released after each take. Audio is processed on this device "
                       "and is not saved to a recording history. The latest output has a two-minute recovery slot in memory. "
                       "Use Forget last dictation in the tray menu to clear it sooner. No account is required.")
@@ -311,10 +324,10 @@ class SettingsWindow:
         self._check(p, "Restore my clipboard after pasting", "restore_clipboard")
 
     def _help(self):
-        page = self._page("Help & diagnostics", "A little help", "Let's get you unstuck.",
+        page = self._page("Help & diagnostics", "Support", "Help",
                          "Recover your words, check your setup, or start fresh.")
         p = self._section(page, "App status")
-        ttk.Label(p, textvariable=self.connection, style="Section.TLabel").pack(anchor="w", pady=(0, 12))
+        ttk.Label(p, textvariable=self.connection, wraplength=520).pack(anchor="w", pady=(0, 12))
         ttk.Label(p, text=settings_blurb(), style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=(0, 14))
         p = self._section(page, "Quick checks", "No text? Click an editable text field before dictating.\n"
                       "Lost a result? Use Copy last dictation in the tray menu within two minutes.\n"
@@ -372,10 +385,14 @@ class SettingsWindow:
                 if isinstance(child, (ttk.Label, tk.Label)) and int(child.cget("wraplength") or 0):
                     inset = 140 if child.master is self.shortcut_card else 104
                     if child in self._mascot_heading_labels:
-                        inset += 116
+                        inset += 92
                     child.configure(wraplength=max(180, event.width - inset))
                 wrap(child)
         wrap(self.body)
+
+    def _resize_footer(self, event):
+        available = event.width - self.close_button.winfo_reqwidth() - self.save_button.winfo_reqwidth() - 68
+        self.footer_status.configure(wraplength=max(120, min(450, available)))
 
     def _wheel(self, event, direction=None):
         if isinstance(event.widget, (tk.Text, ttk.Combobox)):
@@ -406,18 +423,20 @@ class SettingsWindow:
             return
         if not messagebox.askyesno(
             "Restore default settings?",
-            "Replace preferences with the app defaults, including advanced settings?\n\n"
+            "Restore app defaults, including advanced settings?\n\n"
             "This selects the system microphone, automatic hardware, English, and the small model; "
-            "allows missing model downloads; and turns off start at login and the floating indicator.\n\n"
-            "Your vocabulary and downloaded models stay. Nothing changes on disk until you choose Save changes.",
+            "and turns off start at login and the floating indicator.\n\n"
+            "Your download and clipboard preferences are kept, along with vocabulary and models. "
+            "Nothing changes on disk until you choose Save changes.",
             parent=self.root,
         ):
             return
         defaults = Config()
+        privacy = {key: self.vars[key].get() for key in ("allow_network", "restore_clipboard")}
         self._reset_pending = True
         self.mic_stop.set()
         for key, var in self.vars.items():
-            value = False if key == "start_at_login" else getattr(defaults, key)
+            value = privacy[key] if key in privacy else False if key == "start_at_login" else getattr(defaults, key)
             var.set(SYSTEM_DEFAULT if key == "microphone" else value)
         self._dirty()
         self.status.set("Defaults ready to review · Save changes to apply")
@@ -616,6 +635,9 @@ class SettingsWindow:
             self.reset_button.configure(state="normal")
             if isinstance(result, Exception):
                 self._dirty()
+                if isinstance(result, FormValidationError):
+                    self._show_invalid_field(result)
+                    return
                 self.status.set(
                     "Some changes saved · Review the error and retry Save"
                     if isinstance(result, SettingsSaveError) and result.saved
@@ -628,8 +650,32 @@ class SettingsWindow:
             self.baseline = snapshot
             self._dirty()
             if self._snapshot() == snapshot:
-                self.status.set("Changes saved" if reply == "ok" else "Saved · Start Utterleaf to use these settings")
+                self.status.set("Saved · Quit and reopen Utterleaf to apply this update" if reply == "restart-required"
+                                else "Changes saved" if reply == "ok" else "Saved · Start Utterleaf to use these settings")
         self._worker(commit, done)
+
+    def _show_invalid_field(self, error):
+        page = ("Vocabulary" if error.field == "names" else "Dictation"
+                if error.field in {"hotkey", "mode"} else "Engine")
+        self.show_page(page)
+        if self._page_reset is not None:
+            self.root.after_cancel(self._page_reset)
+            self._page_reset = None
+        field = self.fields.get(error.field)
+        self.status.set(str(error))
+        messagebox.showerror("Check your settings", str(error), parent=self.root)
+        if field is not None:
+            field.focus_set()
+            if isinstance(field, tk.Text):
+                line = error.line or 1
+                field.tag_remove("sel", "1.0", "end")
+                field.tag_add("sel", f"{line}.0", f"{line}.end")
+                field.mark_set("insert", f"{line}.0")
+                field.see(f"{line}.0")
+            else:
+                field.selection_range(0, "end")
+            from types import SimpleNamespace
+            self._reveal_focus(SimpleNamespace(widget=field))
 
     def close(self):
         if self.saving:

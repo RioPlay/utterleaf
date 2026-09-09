@@ -21,6 +21,9 @@ features are kept in the roadmap.
 [Interface guidelines](interface.md) · [Brand & assets](branding.md) ·
 [Product principles](consumer-experience.md)
 
+[Product design & usability audit](product-quality.md) tracks findings, fixes,
+and unverified release-quality scenarios.
+
 ## Research and historical notes
 
 These records explain earlier investigations. Their test counts, screenshots,

@@ -2,7 +2,7 @@
 
 [Back to Utterleaf](../README.md) · [User guide](user-guide.md)
 
-Real Windows screenshots of the v0.3.6 interface, captured with sample vocabulary.
+Real Windows screenshots of the v0.3.7 interface, captured with sample vocabulary.
 The app uses bundled artwork and local fonts; no remote content is loaded by Settings.
 
 ## Dictation

@@ -845,9 +845,11 @@ class Utterleaf:
                 continue
             conn.settimeout(2.0)
             with conn:
-                line = conn.makefile().readline()
-                reply = self._handle_ipc(line)
                 try:
+                    with conn.makefile("rb") as reader:
+                        line = reader.readline(1025)
+                    command = ipc.authenticated_command(line)
+                    reply = self._handle_ipc(command) if command is not None else "unauthorized"
                     conn.sendall((reply + "\n").encode("utf-8"))
                 except OSError:
                     pass

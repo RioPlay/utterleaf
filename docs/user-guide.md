@@ -2,6 +2,10 @@
 
 [Back to Utterleaf](../README.md) · [Installation](installation.md)
 
+After upgrading to v0.3.7, quit the older running instance and reopen the updated
+app. Local recording and Settings commands now use an authenticated protocol;
+updated clients will not send control commands to the older protocol.
+
 Microphone busy or missing? Follow the [microphone recovery guide](microphone-troubleshooting.md).
 
 ## Dictate and recover text
@@ -48,11 +52,14 @@ Controls are grouped by task, with Save and Close visible while you scroll.
 and dark surfaces, and exports a complete asset pack with transparent PNG cutouts.
 
 The window resizes and scrolls, with Save always accessible. **Ctrl+S** (or **Command+S** on macOS) saves without closing; closing with unsaved changes asks before discarding them. Device checks run in the background.
+If a field is invalid, Settings opens its page and focuses it. Invalid vocabulary
+lines are selected for correction; validation happens before any files are saved.
 
 To recover from unwanted configuration changes, use **Help → Restore default
 settings…**. Confirm, review the form, then choose **Save changes**. This resets
 advanced preferences as well as the visible controls, turns off start at login,
-and restores the default model/hardware and missing-model download preference.
+and restores the default model/hardware. Download and clipboard preferences are
+preserved, including an offline-only choice.
 Vocabulary entries and downloaded models are preserved. Closing without saving
 discards the staged reset. See the [Help screenshot](screenshots.md#help-and-recovery).
 

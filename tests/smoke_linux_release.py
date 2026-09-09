@@ -90,9 +90,10 @@ def run(release):
                             time.sleep(.1)
                         else:
                             raise AssertionError("Frozen app did not finish startup")
-                        port = json.loads((profile / "instance.json").read_text())["port"]
+                        endpoint = json.loads((profile / "instance.json").read_text())
+                        port = endpoint["port"]
                         with socket.create_connection(("127.0.0.1", port), timeout=5) as connection:
-                            connection.sendall(b"ping\n")
+                            connection.sendall((json.dumps({"token": endpoint["token"], "command": "ping"}) + "\n").encode())
                             assert connection.recv(128).strip() == b"ok"
                         assert command(exe, env, "--stop") == "ok"
                         if session == "wayland":

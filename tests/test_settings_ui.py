@@ -55,7 +55,7 @@ def test_mascots_are_loaded_from_package_and_fit_compact_header(window):
         window.show_page(name)
         window.root.update()
         label = window.mascot_labels[name]
-        assert label.winfo_width() >= 104
+        assert label.winfo_width() >= 80
         assert label.winfo_rootx() >= window.canvas.winfo_rootx()
         assert label.winfo_rootx() + label.winfo_width() <= window.canvas.winfo_rootx() + window.canvas.winfo_width()
 
@@ -221,3 +221,62 @@ def test_partial_save_reloads_completed_settings_and_keeps_form_for_retry(window
     assert window.baseline == baseline
     assert window.vars["hotkey"].get() == "f8"
     assert str(window.save_button.cget("state")) == "normal"
+
+
+def test_validation_returns_to_vocabulary_and_selects_bad_line(window, monkeypatch):
+    from utterleaf.settings import FormValidationError
+    window.names.delete("1.0", "end")
+    window.names.insert("1.0", "valid = replacement\nmissing separator")
+    window.show_page("Help & diagnostics")
+    monkeypatch.setattr("utterleaf.settings_ui.messagebox.showerror", lambda *a, **k: None)
+    window._show_invalid_field(FormValidationError("names", "Vocabulary line 2: use spoken = written.", 2))
+    assert window.pages["Vocabulary"].grid_info()
+    assert window.names.get("sel.first", "sel.last") == "missing separator"
+    assert "line 2" in window.status.get()
+
+
+def test_long_status_keeps_footer_actions_inside_compact_window(window):
+    window.root.deiconify()
+    window.root.geometry("760x560")
+    window.status.set("Some changes could not be saved. Review your vocabulary and settings, then try saving again.")
+    window.root.update()
+    for button in (window.close_button, window.save_button):
+        assert button.winfo_rootx() + button.winfo_width() <= window.root.winfo_rootx() + window.root.winfo_width()
+    assert window.footer_status.winfo_rootx() + window.footer_status.winfo_width() < window.close_button.winfo_rootx()
+
+
+def test_friendly_device_labels_keep_config_values_and_reset_in_sync(window):
+    field = window.fields["device"]
+    assert field.get() == "Automatic"
+    field.set("NVIDIA GPU")
+    field.event_generate("<<ComboboxSelected>>")
+    assert window._snapshot()["device"] == "gpu"
+    window.vars["device"].set("auto")
+    assert field.get() == "Automatic"
+
+
+def test_tab_order_excludes_hidden_pages_and_reaches_close(window):
+    window.root.deiconify()
+    window.root.update()
+    current = window.nav["Dictation"]
+    visited = set()
+    for _ in range(100):
+        current = current.tk_focusNext()
+        if str(current) in visited:
+            break
+        visited.add(str(current))
+    assert str(window.close_button) in visited
+    assert str(window.mic_button) in visited
+    assert str(window.names) not in visited
+    assert str(window.fields["model"]) not in visited
+
+
+def test_reset_preserves_offline_and_clipboard_preferences(window, monkeypatch):
+    monkeypatch.setattr("utterleaf.settings_ui.messagebox.askyesno", lambda *a, **k: True)
+    window.vars["allow_network"].set(False)
+    window.vars["restore_clipboard"].set(False)
+    window.vars["device"].set("gpu")
+    window.restore_defaults()
+    assert not window.vars["allow_network"].get()
+    assert not window.vars["restore_clipboard"].get()
+    assert window.vars["device"].get() == "auto"

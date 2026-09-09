@@ -1,9 +1,17 @@
-A quieter, friendlier Utterleaf. **v0.3.6** refreshes Settings and the documentation without adding a UI framework or changing the speech engine.
+**v0.3.7** improves Settings usability following a product design and QA audit. The speech engine and dependencies are unchanged.
 
-- Charcoal surfaces, grouped controls, softer field borders, and the approved wordmark in the sidebar.
-- Clearer headings and Help organized around recovery, device checks, and optional artwork.
-- A simpler GitHub download table, theme-aware branding, a documentation index, and refreshed real-app screenshots.
-- Historical reviews are clearly marked. The existing single Settings window, staged defaults reset, and Wayland recovery fixes are retained.
+**Privacy and security:** local control commands now require a per-launch secret,
+oversized requests are rejected, and stalled clients no longer terminate the
+listener. Quit the older app and reopen the updated version after extracting;
+updated clients refuse to send control commands using the old protocol.
+
+- Direct task headings and smaller mascots leave more space for controls.
+- Contrasting selection marks and keyboard focus colors improve control visibility.
+- Long status messages wrap without crowding Save and Close.
+- Invalid settings return you to the relevant field; an invalid vocabulary line is selected for correction before anything is saved.
+- Restoring defaults preserves your download and clipboard preferences, including offline mode.
+- Hardware and noise controls show readable labels. Draft captions are clearly labeled as dictation preview.
+- Updated screenshots and a documented quality audit distinguish verified checks from remaining native-platform, accessibility, and display-scaling work.
 
 ## Download and open
 

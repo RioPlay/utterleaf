@@ -68,12 +68,13 @@ def apply(root) -> None:
         background=SURFACE,
         foreground=ON_SURFACE,
         font=font_body,
-        focuscolor=SURFACE,
+        focuscolor=PRIMARY,
     )
     style.map("TCheckbutton", background=[("active", SURFACE)])
     for control in ("TCheckbutton", "TRadiobutton"):
         style.configure(control, background=SURFACE, foreground=ON_SURFACE,
-                        indicatorbackground=SURFACE_CONTAINER, indicatorforeground=PRIMARY)
+                        focuscolor=PRIMARY,
+                        indicatorbackground=SURFACE_CONTAINER, indicatorforeground=ON_PRIMARY)
         style.map(control, background=[("active", SURFACE)],
                   foreground=[("disabled", OUTLINE)],
                   indicatorbackground=[("selected", PRIMARY), ("active", SURFACE_CONTAINER)])
@@ -126,6 +127,7 @@ def apply(root) -> None:
         padding=(16, 8),
         relief="flat",
         borderwidth=0,
+        focuscolor=PRIMARY,
     )
     style.map("TButton", background=[("active", OUTLINE_VARIANT)],
               foreground=[("disabled", OUTLINE)])
@@ -137,6 +139,7 @@ def apply(root) -> None:
         padding=(20, 8),
         relief="flat",
         borderwidth=0,
+        focuscolor=ON_PRIMARY,
     )
     style.map("Primary.TButton", background=[("disabled", SURFACE_CONTAINER), ("active", PRIMARY_HOVER)],
               foreground=[("disabled", OUTLINE), ("!disabled", ON_PRIMARY)])

@@ -2,6 +2,16 @@
 
 ## Current validation — September 9, 2026
 
+Version 0.3.7 design/QA changes: Windows **336 passed, 1 skipped**;
+AlmaLinux/WSL **335 passed, 2 skipped**, plus CLI help. Added real-widget checks
+cover invalid vocabulary selection, compact footer containment, config/label
+synchronization, and tab order excluding hidden pages. Selection marks and all
+five page screenshots were visually reviewed on Windows. See the
+[product quality audit](product-quality.md) for scope and unverified scenarios.
+Security checks reject unauthenticated/oversized commands, recover after a stalled
+socket client, refuse legacy control-command downgrade, check POSIX endpoint
+permissions, and preserve offline/clipboard preferences during defaults reset.
+
 Version 0.3.6 interface refresh: Windows **328 passed, 1 skipped**;
 AlmaLinux/WSL **327 passed, 2 skipped**, plus CLI help. Real Windows screenshots
 were reviewed at default and compact size. Local documentation links resolve,

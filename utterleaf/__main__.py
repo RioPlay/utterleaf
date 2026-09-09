@@ -68,6 +68,9 @@ def main(argv: list[str] | None = None) -> int:
         if reply is None:
             print("Utterleaf is not running.", file=sys.stderr)
             return 1
+        if reply == "restart-required":
+            print("Quit the older Utterleaf instance and reopen the updated app before using this command.", file=sys.stderr)
+            return 1
         print(reply)
         return 0 if reply == "ok" else 1
 

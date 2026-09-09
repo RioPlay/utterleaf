@@ -16,6 +16,9 @@ out of that everyday path until they serve a clear user need.
   preserves the same window and unsaved form. Defaults remain a staged action.
 - Use the approved inverse wordmark on the dark sidebar. Utterling decorates
   page headings and microphone feedback; text must explain every meaningful state.
+- Page titles name the task directly. Keep the mascot secondary at 80 pixels,
+  focus and selection marks visible, and control labels readable without knowing
+  config tokens. Validation should return users to the field needing attention.
 - Keep the five navigation destinations stable: Dictation, Vocabulary, Voice
   commands, Speech & privacy, and Help. Recovery comes before artwork in Help.
 - Retain keyboard navigation, focus indication, readable contrast, and system
@@ -26,6 +29,9 @@ The current UI is Tkinter/ttk, styled in `utterleaf/theme.py`, with layout in
 artwork. This refresh adds no UI package, web runtime, remote fonts, or animation
 loop. A future toolkit change should be justified by accessibility or platform
 integration needs and validated against the same behavior.
+
+The [product quality audit](product-quality.md) records scrutinized decisions,
+regression evidence, and remaining native-platform/accessibility work.
 
 ## Documentation and screenshots
 

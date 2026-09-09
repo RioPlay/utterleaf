@@ -37,6 +37,14 @@ MODE_PRESETS = (
 SYSTEM_DEFAULT = "System default"
 
 
+class FormValidationError(ValueError):
+    """Identify the editable field without parsing user-facing error text."""
+
+    def __init__(self, field: str, message: str, line: int | None = None):
+        self.field, self.line = field, line
+        super().__init__(message)
+
+
 class SettingsSaveError(RuntimeError):
     """Report durable progress without claiming a multi-file transaction."""
 
@@ -89,24 +97,27 @@ def apply_form(
     text_cleanup: bool | None = None,
 ) -> Config:
     hotkey = hotkey.strip().lower()
-    parse_hotkey(hotkey)
+    try:
+        parse_hotkey(hotkey)
+    except ValueError as exc:
+        raise FormValidationError("hotkey", str(exc)) from exc
     if mode not in {"hold", "toggle"}:
-        raise ValueError("Mode must be hold or toggle")
+        raise FormValidationError("mode", "Mode must be hold or toggle")
     if not model.strip():
-        raise ValueError("Choose a speech model.")
+        raise FormValidationError("model", "Choose a speech model.")
     if device.strip() not in {"auto", "cpu", "gpu", "npu"}:
-        raise ValueError("Choose Automatic, CPU, GPU, or NPU.")
+        raise FormValidationError("device", "Choose Automatic, CPU, GPU, or NPU.")
     if denoise.strip() not in {"auto", "on", "off"}:
-        raise ValueError("Noise reduction must be auto, on, or off.")
+        raise FormValidationError("denoise", "Noise reduction must be auto, on, or off.")
     if not language.strip():
-        raise ValueError("Enter a language code, such as en, or auto.")
+        raise FormValidationError("language", "Enter a language code, such as en, or auto.")
     if names is not None:
         for number, line in enumerate(names.splitlines(), 1):
             if not line.strip() or line.lstrip().startswith("#"):
                 continue
             parts = line.split("=", 1)
             if len(parts) != 2 or not all(part.strip() for part in parts):
-                raise ValueError(f"Vocabulary line {number}: use spoken = written.")
+                raise FormValidationError("names", f"Vocabulary line {number}: use spoken = written.", line=number)
     mic = microphone.strip()
     if mic in {SYSTEM_DEFAULT, ""}:
         mic = ""

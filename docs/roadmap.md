@@ -23,6 +23,15 @@ intended field, with understandable local processing and minimal interruption.
 
 ## Current delivery status
 
+**Version 0.3.7 usability audit:** direct task headings, compact decorative art,
+visible selection/focus marks, responsive footer messages, readable hardware
+choices, and validation that returns to the invalid field. The
+[quality audit](product-quality.md) records evidence and outstanding platform,
+accessibility, and display-scaling checks.
+The same release authenticates local control commands and preserves offline and
+clipboard preferences during defaults recovery. Privacy and security take
+precedence over convenience for remaining roadmap decisions.
+
 **Version 0.3.6 interface and documentation refresh:** grouped Settings controls,
 charcoal surfaces, the approved sidebar wordmark, recovery-first Help, and updated
 screenshots. A [documentation index](README.md) separates current guides from
