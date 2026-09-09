@@ -17,7 +17,7 @@ class DeviceTest {
     private val app = instrumentation.targetContext
     @Test fun packagedPermissionsAndBackupsAreRestricted() {
         val info = app.packageManager.getPackageInfo(app.packageName, PackageManager.GET_PERMISSIONS)
-        assertEquals(setOf("android.permission.RECORD_AUDIO"), info.requestedPermissions.toSet())
+        assertEquals(setOf("android.permission.RECORD_AUDIO"), info.requestedPermissions.orEmpty().toSet())
         assertEquals(0, app.applicationInfo.flags and ApplicationInfo.FLAG_ALLOW_BACKUP)
     }
     @Test fun passwordFieldsAreBlocked() {

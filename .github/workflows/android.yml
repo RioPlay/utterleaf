@@ -26,7 +26,7 @@ jobs:
       - name: Install build tools
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.0.13004108' 'cmake;3.22.1'
       - name: Build, unit tests, and lint
-        run: bash gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug assembleRelease
+        run: bash gradlew --no-daemon testDebugUnitTest lintDebug compileDebugAndroidTestKotlin assembleDebug assembleRelease
       - name: Prepare reviewed inference fixtures (test APK only)
         run: |
           mkdir -p app/src/androidTest/assets
