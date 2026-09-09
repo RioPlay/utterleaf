@@ -16,7 +16,7 @@ class VoiceIme : InputMethodService() {
         panel = VoicePanel(this, { text ->
             allowed && currentInputConnection?.commitText(text, 1) == true
         }, {
-            if (!switchToPreviousInputMethod())
+            if (android.os.Build.VERSION.SDK_INT < 28 || !switchToPreviousInputMethod())
                 (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
         })
         return panel!!.view

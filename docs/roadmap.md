@@ -58,6 +58,10 @@ These are implemented capabilities, not proof of end-to-end quality on every pla
 
 ## Privacy-first convenience milestones
 
+Mobile is a separate workstream: [Android voice companion and iOS feasibility](mobile.md).
+The Android alpha implements a compact voice IME and local recognition; phone
+compatibility and stable distribution remain acceptance gates, not completed claims.
+
 Each milestone must preserve explicit capture, bounded retention, offline use,
 and actionable recovery. No accounts, passive listening, automatic transcript
 archives, or background reading of other apps are required.

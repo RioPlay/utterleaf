@@ -46,7 +46,11 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: cd mobile/android && bash gradlew --no-daemon connectedDebugAndroidTest
+          script: |
+            cd mobile/android && bash gradlew --no-daemon connectedDebugAndroidTest
+            adb shell am start -n org.utterleaf.voice/.SetupActivity
+            sleep 3
+            adb exec-out screencap -p > mobile/android/app/build/reports/setup-emulator.png
       - name: Checksums
         run: |
           mkdir -p preview

@@ -10,4 +10,9 @@
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
     </style>
+    <style name="VoiceDialog" parent="android:style/Theme.Material.Dialog.NoActionBar">
+        <item name="android:colorAccent">#83DA9A</item>
+        <item name="android:windowMinWidthMajor">90%</item>
+        <item name="android:windowMinWidthMinor">95%</item>
+    </style>
 </resources>

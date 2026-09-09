@@ -17,6 +17,7 @@ features are kept in the roadmap.
 | Set up Wayland shortcuts and paste | [Wayland help](wayland.md) |
 | Restore default preferences | [Settings and recovery](user-guide.md#settings-and-recovery) |
 | Find out what's coming next | [Roadmap](roadmap.md) · [Feature plan](feature-plan.md) |
+| Try mobile voice input | [Android preview and iOS plans](mobile.md) |
 
 ## For contributors
 

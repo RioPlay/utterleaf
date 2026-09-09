@@ -10,7 +10,6 @@ import android.os.Bundle
 import android.provider.Settings
 import android.widget.ScrollView
 import android.widget.TextView
-import java.util.concurrent.Executors
 
 class SetupActivity : Activity() {
     private lateinit var status: TextView

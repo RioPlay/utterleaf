@@ -11,7 +11,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".RecognizeActivity" android:exported="true" android:excludeFromRecents="true">
+        <activity android:name=".RecognizeActivity" android:exported="true" android:excludeFromRecents="true" android:theme="@style/VoiceDialog">
             <intent-filter>
                 <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
                 <category android:name="android.intent.category.DEFAULT" />

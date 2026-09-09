@@ -12,6 +12,11 @@ class RecognizeActivity : Activity() {
         super.onCreate(savedInstanceState)
         setResult(RESULT_CANCELED)
         if (intent.action != RecognizerIntent.ACTION_RECOGNIZE_SPEECH || callingPackage == null) { finish(); return }
+        val language = intent.getStringExtra(RecognizerIntent.EXTRA_LANGUAGE)
+        if (language != null && !language.equals("en", true) && !language.startsWith("en-", true) && !language.startsWith("en_", true)) {
+            android.widget.Toast.makeText(this, "This preview supports English only.", android.widget.Toast.LENGTH_LONG).show()
+            finish(); return
+        }
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         panel = VoicePanel(this, { text ->
             setResult(RESULT_OK, Intent().putStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS, arrayListOf(text)))
