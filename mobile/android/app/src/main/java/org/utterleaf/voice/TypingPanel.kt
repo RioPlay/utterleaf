@@ -275,7 +275,10 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
             .apply { isEnabled = voiceAllowed }
         if (toolsOpen) {
             val tools = row()
-            capsKey = key(tools, "Caps", "Caps lock off", utility = true, height = 48) { caps = !caps; updateCase() }
+            capsKey = key(tools, "Caps", "Caps lock off", utility = true, height = 48) {
+                caps = !caps
+                if (alternateKey != null) render() else updateCase()
+            }
             key(tools, "←", "Move cursor left", utility = true, height = 48) { move(true) }
             key(tools, "→", "Move cursor right", utility = true, height = 48) { move(false) }
             key(tools, "Accents", "Accents and alternate characters", utility = true, height = 48) {
@@ -286,7 +289,7 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
             key(tools, "Settings", "Keyboard settings", utility = true, height = 48) { settings() }
             key(tools, "Switch", "Switch keyboard", utility = true, height = 48) { switchKeyboard() }
         }
-        alternateKey?.let { alternateRows(it); return }
+        alternateKey?.let { alternateRows(it); updateCase(); return }
         if (options.terminal) terminalRows()
         if ((options.numberRow || options.terminal) && !symbols && !functionKeys) characters(row(), "1234567890")
         if (options.terminal && functionKeys) {

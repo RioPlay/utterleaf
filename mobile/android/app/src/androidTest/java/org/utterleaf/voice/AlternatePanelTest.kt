@@ -59,6 +59,19 @@ class AlternatePanelTest {
         assertEquals(listOf("1"), inserted)
     }
 
+    @Test fun capsChangesAnOpenPickerAndRemainsEnabledAfterSelection() = instrumentation.runOnMainSync {
+        val inserted = mutableListOf<String>(); val panel = panel(inserted)
+        key(panel, "Keyboard tools").performClick()
+        key(panel, "e").performLongClick()
+        val lower = key(panel, "é")
+        key(panel, "Caps lock off").performClick()
+        lower.performClick()
+        assertTrue(inserted.isEmpty())
+        key(panel, "É").performClick()
+        key(panel, "E").performClick()
+        assertEquals(listOf("É", "E"), inserted)
+    }
+
     @Test fun rejectedAlternateDoesNotFallbackOrDismissPicker() = instrumentation.runOnMainSync {
         val attempts = mutableListOf<String>()
         val panel = TypingPanel(context, KeyboardOptions(), { attempts.add(it); false }, {}, {}, {}, {}, {}, {})

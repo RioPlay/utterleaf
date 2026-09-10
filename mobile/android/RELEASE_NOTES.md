@@ -53,4 +53,3 @@ single supported ASCII character; unsupported combinations are not inserted as
 plain text. Small-model speed, memory use and accuracy still need physical-phone
 validation; its larger download is not a promise of a better result for every user.
 Installation and upgrade checks run separately before publication.
-

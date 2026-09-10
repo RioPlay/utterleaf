@@ -220,6 +220,19 @@ class DeviceTest {
                 .filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD }
                 .mapNotNull { it.root?.let(::find) }.firstOrNull()
         }
+        fun findNativeKey(description: String): android.widget.Button? {
+            fun find(view: android.view.View): android.widget.Button? {
+                if (view is android.widget.Button && view.contentDescription?.toString() == description) return view
+                if (view is android.view.ViewGroup) {
+                    for (index in 0 until view.childCount) find(view.getChildAt(index))?.let { return it }
+                }
+                return null
+            }
+            return android.view.inspector.WindowInspector.getGlobalWindowViews().asSequence()
+                .filter { (it.layoutParams as? android.view.WindowManager.LayoutParams)?.type ==
+                    android.view.WindowManager.LayoutParams.TYPE_INPUT_METHOD }
+                .mapNotNull(::find).firstOrNull()
+        }
         fun press(description: String) {
             awaitCondition("Keyboard key unavailable: $description") { findKey(description)?.isEnabled == true }
             assertTrue("Could not press $description", findKey(description)!!.performAction(
@@ -293,6 +306,21 @@ class DeviceTest {
                     }
                     press("Delete")
                     press("Keyboard tools")
+
+                    press("Keyboard tools")
+                    press("Accents and alternate characters")
+                    press("e")
+                    val detachedAlternate = onMain {
+                        findNativeKey("é") ?: fail("Alternate character button unavailable")
+                    }
+                    show(screen.password)
+                    onMain { detachedAlternate.performClick() }
+                    instrumentation.waitForIdleSync()
+                    assertEquals("Detached alternate button changed the old editor", "acd",
+                        onMain { screen.editor.text.toString() })
+                    assertEquals("Detached alternate button changed the new field", "",
+                        onMain { screen.password.text.toString() })
+                    show(screen.editor)
                 } finally {
                     flags(originalFlags)
                 }
