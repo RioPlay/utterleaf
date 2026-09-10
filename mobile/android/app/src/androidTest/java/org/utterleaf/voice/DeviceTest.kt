@@ -311,7 +311,7 @@ class DeviceTest {
                     press("Accents and alternate characters")
                     press("e")
                     val detachedAlternate = onMain {
-                        findNativeKey("é") ?: fail("Alternate character button unavailable")
+                        findNativeKey("é") ?: error("Alternate character button unavailable")
                     }
                     show(screen.password)
                     onMain { detachedAlternate.performClick() }
