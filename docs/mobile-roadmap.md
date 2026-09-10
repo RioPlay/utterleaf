@@ -15,8 +15,10 @@ Desktop changes are tracked separately in the [desktop roadmap](desktop-roadmap.
   APKs. See [validation evidence](mobile.md#android-validation--september-9-2026).
 - **User feedback:** functions on a Pixel 8 Pro; setup and voice-only interaction
   are not intuitive enough. This does not establish broader phone compatibility.
-- **In progress:** keyboard/accessibility design and local prototype work. A full
-  typing keyboard is not integrated, tested, or included in the published APK.
+- **Implemented / acceptance in progress:** native English typing keyboard with
+  integrated voice, sizing/theme/feedback preferences, and accessible preview extension.
+  The initial 9-test emulator pass is verified; expanded screenshot and release checks
+  are running. These source changes are not in the published alpha02 APK.
 - **Not implemented:** iOS app or keyboard extension.
 
 ## Android milestones
@@ -50,6 +52,10 @@ coverage. Automated checks complement that work. No single accessibility preset
 works for everyone, and selecting preferences must not require disclosing a diagnosis.
 
 ## Security and device gates
+
+[Security design](mobile-security.md) records the initial foundation decision and
+trust boundaries. [Obtainium support](mobile-obtainium.md) defines the signed release
+channel, certificate identity and update acceptance work.
 
 - No surrounding-text collection beyond a documented editing need; no text in logs,
   telemetry, crash attachments or preference files. Review any later prediction context.

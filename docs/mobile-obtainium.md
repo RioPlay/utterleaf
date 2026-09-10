@@ -20,7 +20,10 @@ Alternatively, add `https://github.com/RioPlay/utterleaf` in Obtainium and set:
 | Filter release titles by regular expression | `^Utterleaf Android ` (including the trailing space) |
 | Filter APKs by regular expression | `^Utterleaf-Android-.*\.apk$` |
 | Verify latest tag | Off — the repository's stable latest release belongs to desktop |
-| Fallback to older releases | Off |
+| Fallback to older releases | On — scan past newer desktop releases to the newest matching Android release |
+| Version extraction / trim version string | `^android-v(.+)$` |
+| Match group | `1` |
+| Version detection | On |
 
 The exact import data is [obtainium.json](../mobile/android/app/src/main/assets/obtainium.json).
 Filters deliberately exclude desktop releases and the old debug APKs. No GitHub
