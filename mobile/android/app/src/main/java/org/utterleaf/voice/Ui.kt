@@ -28,11 +28,23 @@ object Ui {
                 // These simple native-view subtrees do not need another inset consumer.
                 WindowInsets.CONSUMED
             } else {
-                val cutout = if (Build.VERSION.SDK_INT >= 28) insets.displayCutout else null
-                target.setPadding(left + maxOf(insets.systemWindowInsetLeft, cutout?.safeInsetLeft ?: 0),
-                    top + if (navigationOnly) 0 else maxOf(insets.systemWindowInsetTop, cutout?.safeInsetTop ?: 0),
-                    right + maxOf(insets.systemWindowInsetRight, cutout?.safeInsetRight ?: 0),
-                    bottom + maxOf(insets.systemWindowInsetBottom, cutout?.safeInsetBottom ?: 0))
+                var safeLeft = insets.systemWindowInsetLeft
+                var safeTop = insets.systemWindowInsetTop
+                var safeRight = insets.systemWindowInsetRight
+                var safeBottom = insets.systemWindowInsetBottom
+                if (Build.VERSION.SDK_INT >= 28) {
+                    // Keep all DisplayCutout API calls inside the SDK guard.
+                    // A nullable cutout does not establish API availability for lint.
+                    val cutout = insets.displayCutout
+                    if (cutout != null) {
+                        safeLeft = maxOf(safeLeft, cutout.safeInsetLeft)
+                        safeTop = maxOf(safeTop, cutout.safeInsetTop)
+                        safeRight = maxOf(safeRight, cutout.safeInsetRight)
+                        safeBottom = maxOf(safeBottom, cutout.safeInsetBottom)
+                    }
+                }
+                target.setPadding(left + safeLeft, top + if (navigationOnly) 0 else safeTop,
+                    right + safeRight, bottom + safeBottom)
                 val consumed = insets.consumeSystemWindowInsets().consumeStableInsets()
                 if (Build.VERSION.SDK_INT >= 28) consumed.consumeDisplayCutout() else consumed
             }
