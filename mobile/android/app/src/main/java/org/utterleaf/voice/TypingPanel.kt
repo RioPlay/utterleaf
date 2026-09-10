@@ -81,7 +81,7 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
             val row = row()
             sequence.forEach { character ->
                 val button = key(row, character.toString()) {
-                    val value = if (!symbols && (shift || caps)) character.uppercaseChar() else character
+                    val value = if (!symbols && (shift xor caps)) character.uppercaseChar() else character
                     if (commit(value.toString()) && shift) { shift = false; updateCase() }
                 }
                 if (!symbols) letters.add(button)
@@ -98,7 +98,7 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     }
     private fun updateCase() {
         letters.forEach { button ->
-            button.text = if (shift || caps) button.text.toString().uppercase() else button.text.toString().lowercase()
+            button.text = if (shift xor caps) button.text.toString().uppercase() else button.text.toString().lowercase()
             button.contentDescription = button.text
         }
         shiftKey.isSelected = shift; shiftKey.contentDescription = if (shift) "Shift on" else "Shift off"
