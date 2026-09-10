@@ -24,6 +24,10 @@ you do not need Python or a source installation for these formats.
 
 ## Enable common audio and video files
 
+![Local decoder setup with download instructions and executable selection](assets/screenshots/desktop-more-formats.png)
+
+Actual Windows setup window, captured with an empty synthetic configuration.
+
 1. Open **Tools → Transcribe a file → More formats…**.
 2. Install FFmpeg using the instructions for your computer below.
 3. Choose **Choose FFmpeg…**, select its executable, and confirm that you want

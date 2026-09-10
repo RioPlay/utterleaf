@@ -1,15 +1,15 @@
-**v0.4.0** adds local file transcription, selective backup, and safer recovery when a microphone stops mid-take.
+**v0.4.1** makes common audio and video files usable in the compiled app through guided local decoder setup.
 
-- **Transcribe a file:** use Tools → Transcribe a file in the tray, review the transcript, then export TXT, SRT, or VTT. Includes progress, cancellation, discard, and one window per profile. Nothing is saved automatically; this flow never downloads missing models.
-- **Selective backup:** export portable preferences and vocabulary from Settings, preview an import, select changes, and keep, merge, or replace vocabulary. Network, clipboard protections, devices, shortcuts, models, audio, transcripts, logs, and control tokens are excluded. Failed multi-file imports attempt rollback and report incomplete recovery.
-- **Interrupted microphones:** detect a stopped stream or three seconds without audio callbacks. Stop capture and retain available speech in the two-minute recovery slot for explicit Copy last dictation. Quiet audio alone is not an interruption; no alternate microphone is selected automatically.
-- **Clipboard protection:** Windows sequence checks detect intervening copies even when text matches. Shortcut failures keep recovery available. Rich-format preservation and fully atomic native restoration remain open work.
+- Open **Tools ? Transcribe a file ? More formats?** for platform-specific FFmpeg installation instructions, the official download page, and an executable picker.
+- Select a local FFmpeg installation once to decode MP3, M4A, AAC, FLAC, OGG/Opus, MP4, MOV, WebM and MKV. Format support depends on that installation. Files remain local; Utterleaf does not download or bundle the decoder.
+- Ordinary PCM WAV continues to work without setup, including when an optional decoder is moved or updated. A changed decoder requires selecting it again before use.
+- Decoding has bounded output, a deadline, and cancellation that stops the child process. No FFmpeg report or recording file is created. Review and explicitly export TXT, SRT or VTT as before.
 
-Packaged file input supports mono/stereo integer PCM WAV, 8–32-bit at 8–48 kHz, up to 10 minutes and 256 MiB. Broader media requires a source installation with PyAV. Timestamped recognition requires CPU or CUDA and an already installed model. Cancellation waits for an active native model operation to return.
+File input remains limited to 10 minutes and 256 MiB. CPU/CUDA timestamped recognition requires an already installed model. Decoding cancellation is prompt; active native recognition must return before cancellation completes. FFmpeg is a user-selected trusted executable, not a sandboxed codec service.
 
-Some microphone backends require restarting after reconnecting. Identical names cannot distinguish physical devices. Native hotplug, assistive-technology, and broad editor/device acceptance checks remain open. Desktop and Android releases remain independent.
+[Common-format setup](https://github.com/RioPlay/utterleaf/blob/main/docs/desktop-file-transcription.md#enable-common-audio-and-video-files) includes exact instructions. The selective backup, microphone recovery and clipboard safeguards from v0.4.0 remain included. Desktop and Android releases are independent.
 
-Quit the older app before extracting and reopening the update. Local control authentication and the privacy-preserving defaults reset from v0.3.7 remain included.
+Quit the older app before extracting and reopening this update.
 
 ## Download and open
 
