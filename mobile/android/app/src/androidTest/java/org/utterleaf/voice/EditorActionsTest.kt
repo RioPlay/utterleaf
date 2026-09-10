@@ -68,7 +68,7 @@ class EditorActionsTest {
                 key("Redo").performClick(); assertEquals("cats", editor.text.toString())
                 key("Select all").performClick()
                 assertEquals(0, editor.selectionStart); assertEquals(4, editor.selectionEnd)
-                key("Copy").performClick(); key("Cut").performClick()
+                key("Copy").performClick(); key("Select all").performClick(); key("Cut").performClick()
                 assertEquals("", editor.text.toString())
                 key("Paste").performClick(); assertEquals("cats", editor.text.toString())
                 val stale = key("Cut")
@@ -78,6 +78,10 @@ class EditorActionsTest {
                 key("Edit actions").performClick()
                 check(context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0)
                 activity.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+            }
+            instrumentation.waitForIdleSync()
+            instrumentation.runOnMainSync {
+                descendants(activity.window.decorView).filterIsInstance<android.widget.ScrollView>().first().fullScroll(View.FOCUS_DOWN)
             }
             instrumentation.waitForIdleSync()
             android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(
