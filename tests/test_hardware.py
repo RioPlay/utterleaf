@@ -173,6 +173,7 @@ def test_linux_toolkit_scan_includes_opt_cuda(monkeypatch) -> None:
 def test_cuda_missing_hint_names_the_toolkit_when_frozen(monkeypatch) -> None:
     import utterleaf.hardware as hardware
 
+    monkeypatch.setattr(hardware.sys, "platform", "linux")
     monkeypatch.setattr(hardware.sys, "frozen", True, raising=False)
     assert "UTTERLEAF_BUNDLE_CUDA" in hardware._cuda_missing_hint()
 
@@ -215,8 +216,58 @@ def test_cuda_setup_plan_reports_working_gpu(monkeypatch) -> None:
 
     monkeypatch.setattr(hardware.sys, "platform", "linux")
     monkeypatch.setattr(hardware, "cuda_runtime_ok", lambda: True)
+    monkeypatch.setattr(hardware, "probe", lambda: [Accelerator("gpu", "NVIDIA", "ctranslate2", True)])
     plan = hardware.cuda_setup_plan()
-    assert plan[0].startswith("NVIDIA acceleration is already working")
+    assert plan[0].startswith("NVIDIA acceleration passed")
+    assert "cuDNN" in plan[1]
+
+
+def test_windows_frozen_setup_never_gives_linux_or_build_commands(monkeypatch):
+    import utterleaf.hardware as hardware
+
+    monkeypatch.setattr(hardware.sys, "platform", "win32")
+    monkeypatch.setattr(hardware.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(hardware, "cuda_runtime_ok", lambda: False)
+    monkeypatch.setattr(hardware, "nvidia_gpu_label", lambda: "RTX 3090 (24576 MiB)")
+    hint = hardware._cuda_missing_hint()
+    plan = "\n".join(hardware.cuda_setup_plan())
+    for forbidden in ("pacman", "sudo", "UTTERLEAF_BUNDLE_CUDA", "pip install"):
+        assert forbidden not in hint + plan
+    assert "Settings > Set up NVIDIA GPU" in hint
+    assert "CUDA 12.x" in plan and "cuDNN 9" in plan
+    assert "PATH" in plan and "CPU" in plan
+    assert "does not prove GPU readiness" in plan
+
+
+def test_cublas_alone_does_not_claim_gpu_ready(monkeypatch):
+    import utterleaf.hardware as hardware
+
+    monkeypatch.setattr(hardware, "cuda_runtime_ok", lambda: True)
+    monkeypatch.setattr(hardware, "probe", lambda: [Accelerator("cpu", "CPU", "ctranslate2", True)])
+    plan = "\n".join(hardware.cuda_setup_plan())
+    assert "no usable CUDA device" in plan
+    assert "CPU remains available" in plan
+
+
+def test_windows_diagnostic_contains_actionable_setup(monkeypatch):
+    import utterleaf.hardware as hardware
+
+    monkeypatch.setattr(hardware.sys, "platform", "win32")
+    monkeypatch.setattr(hardware.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(hardware, "probe", lambda: [
+        Accelerator("gpu", "RTX 3090 (24576 MiB), cublas not found", "ctranslate2", False),
+        Accelerator("cpu", "CPU", "ctranslate2", True)])
+    monkeypatch.setattr(hardware, "cuda_runtime_ok", lambda: False)
+    monkeypatch.setattr(hardware, "nvidia_gpu_label", lambda: "RTX 3090")
+    monkeypatch.setattr(hardware, "openvino_available", lambda: False)
+    monkeypatch.setattr(hardware, "cuda_library_dirs", lambda: [])
+    report = hardware.generate_diagnostic_report(Config())
+    assert "Picked Accelerator: cpu" in report
+    assert "RTX 3090" in report and "CUDA 12.x" in report
+    assert "Runtime OK: False" in report
+    assert "cuBLAS loading check" in report
+    assert "failed GPU attempt" in report
+    assert "pacman" not in report and "UTTERLEAF_BUNDLE_CUDA" not in report
 
 
 def test_cuda_setup_plan_reports_no_gpu(monkeypatch) -> None:

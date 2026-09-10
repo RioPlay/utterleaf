@@ -337,13 +337,14 @@ def stitch_to_previous(previous: str, incoming: str) -> str:
         return incoming
     if incoming[0].islower():
         incoming = incoming[0].upper() + incoming[1:]
-    prev = (previous or "").rstrip()
+    previous = previous or ""
+    prev = previous.rstrip()
     if not prev:
         return incoming
-    if prev.endswith(("\n", "\n\n")):
+    if "\n" in previous[len(prev):] or "\r" in previous[len(prev):]:
         return incoming
-    if prev.endswith((".", "!", "?", ":")):
-        return " " + incoming
+    if prev.rstrip("\"'’”)]").endswith((".", "!", "?", ":")):
+        return ("" if previous[-1:].isspace() else " ") + incoming
     return ". " + incoming
 
 
@@ -352,20 +353,67 @@ def _strip_hallucinations(text: str) -> str:
     return cleaned if cleaned.strip() else text
 
 
+def _quoted_at(text: str, position: int) -> bool:
+    """Recognize command references in quotes, without treating contractions as quotes."""
+    closing = None
+    for index, char in enumerate(text[:position]):
+        if closing:
+            if char == closing:
+                closing = None
+        elif char in {"'", "’"} and index and text[index - 1].isalnum():
+            continue
+        elif char in {'"', "'", "“", "‘", "`"}:
+            closing = {"“": "”", "‘": "’"}.get(char, char)
+    return closing is not None
+
+
+def _command_reference_at(text: str, position: int) -> bool:
+    return _quoted_at(text, position) or bool(re.search(
+        r"\b(?:say|said|saying|phrase|words?|command|called|means?)\s*[:;,]?\s*$",
+        text[:position], re.IGNORECASE))
+
+
+def _inline_breaks(text: str) -> str:
+    """Replace exact standalone break commands, retaining original quote context."""
+    pieces: list[str] = []
+    cursor = 0
+    for match in re.finditer(r"\bnew[ \t]+(?P<kind>line|paragraph)\b", text, re.IGNORECASE):
+        if _command_reference_at(text, match.start()):
+            continue
+        # Require a complete sentence or physical line, never an ordinary phrase
+        # such as "a new line of business" or "Cats new line Dogs".
+        if not re.search(r"(?:^|[.!?\r\n])[ \t]*$", text[:match.start()]):
+            continue
+        tail = re.match(r"[ \t]*(?:[.!?]+(?=[ \t\r\n]|$)|(?=[\r\n]|$))", text[match.end():])
+        if tail is None:
+            continue
+        start = match.start()
+        while start > cursor and text[start - 1].isspace():
+            start -= 1
+        end = match.end() + tail.end()
+        while end < len(text) and text[end].isspace():
+            end += 1
+        pieces.extend((text[cursor:start], "\n\n" if match.group("kind").lower() == "paragraph" else "\n"))
+        cursor = end
+    pieces.append(text[cursor:])
+    return "".join(pieces)
+
+
 def _apply_corrections(text: str) -> str:
     # Repeated word: "the the" -> "the"
     text = re.sub(r"\b(\w+)(?:\s+\1)+\b",
                   lambda m: m.group(0) if m.group(1).lower() in _SPOKEN_SYMBOLS else m.group(1),
                   text, flags=re.IGNORECASE)
     others = [marker for marker in CORRECTION_MARKERS if marker != r"\bi mean\b"]
-    parts = re.split("|".join(others), text, flags=re.IGNORECASE)
-    if len(parts) > 1:
-        kept = parts[-1].strip(" ,;:-")
+    matches = [m for m in re.finditer("|".join(others), text, flags=re.IGNORECASE)
+               if not _command_reference_at(text, m.start())]
+    if matches:
+        kept = text[matches[-1].end():].strip(" ,;:-")
         if kept:
             text = kept
     # "I mean" is a correction only when there is text on both sides.
     match = re.search(r"\bi mean\b", text, flags=re.IGNORECASE)
-    if match:
+    if match and not _quoted_at(text, match.start()):
         before = text[: match.start()].strip(" ,;:-")
         after = text[match.end() :].strip(" ,;:-")
         if before and after:
@@ -381,6 +429,13 @@ def _apply_vocabulary(text: str, vocab: list[tuple[str, str]]) -> str:
 
 def _split_command(text: str) -> tuple[str, str | None]:
     original = text
+    scratch = re.match(r"^scratch(?:\s*,\s*|\s+)that\b", text, re.IGNORECASE)
+    if scratch:
+        tail = text[scratch.end():]
+        if not tail.strip(" \t.!?,:;"):
+            return "", "discard"
+        if re.match(r"\s*[,;:.!?]\s*\S", tail):
+            return tail.lstrip(" \t,;:.!?"), "replace"
     # Whisper normally adds sentence punctuation, including to command-only takes.
     text = text.rstrip(" .!?:;")
     lowered = text.lower().strip()
@@ -389,6 +444,8 @@ def _split_command(text: str) -> tuple[str, str | None]:
             return "", name
         if lowered.endswith(phrase):
             start = len(lowered) - len(phrase)
+            if _command_reference_at(text, start):
+                continue
             if start and lowered[start - 1].isalnum():
                 continue
             body = text[: len(text) - len(phrase)].rstrip(" ,.;:-")
@@ -411,6 +468,8 @@ LIST_REQUEST = re.compile(
 
 def _list_request_is_command(text: str, request: re.Match[str]) -> bool:
     """Avoid turning a sentence about making a list into a list command."""
+    if _quoted_at(text, request.start()):
+        return False
     before = text[:request.start()].rstrip()
     if not before:
         return True
@@ -489,6 +548,13 @@ def split_items(text: str) -> list[str]:
         return []
     # Explicit item boundaries take priority over words inside an item (for
     # example "research and development" or "first aid supplies").
+    lines = [line.strip(" .,:;\t") for line in text.splitlines() if line.strip(" .,:;\t")]
+    if len(lines) > 1:
+        # A recognizer can combine physical lines with spoken bullet markers.
+        # Strip only a leading marker; words within each item remain intact.
+        lines = [re.sub(r"^(?:next[ \t]+)?bullet[ \t]+point\b[ \t]*[:,-]?[ \t]*", "", line,
+                        flags=re.IGNORECASE) for line in lines]
+        return [line for line in lines if line]
     marked = re.split(r"\b(?:next\s+)?bullet\s+point\b\s*[:,-]?\s*", text,
                       flags=re.IGNORECASE)
     if len(marked) > 1 and not marked[0].strip(" .,:;"):
@@ -632,7 +698,8 @@ def polish_local(
     if not text:
         return PolishResult("")
 
-    request = LIST_REQUEST.search(text)
+    style = infer_style(app_name)
+    request = LIST_REQUEST.search(text) if style != "code" else None
     if request is not None and _list_request_is_command(text, request):
         tail = text[request.end():].lstrip(" ,:;").rstrip(" .!?")
         if tail:
@@ -655,14 +722,16 @@ def polish_local(
             return PolishResult("\n\n".join(part for part in sections if part),
                                 command="numbered" if numbered else "bullets")
 
-    body, command = _split_command(text)
+    body, command = _split_command(text) if style != "code" else (text, None)
     command_only = bool(command) and not body.strip()
     if command == "discard" and command_only:
         return PolishResult("", command=command, command_only=True, discarded=True)
 
+    if style != "code":
+        body = _inline_breaks(body)
     if remove_fillers:
         body = _remove_fillers(body)
-    if fix_corrections:
+    if fix_corrections and style != "code":
         body = _apply_corrections(body)
     body = _spoken_punct(body)
     # Pronouns before letter runs: "a p i" still merges (run is case-insensitive)

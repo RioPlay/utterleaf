@@ -12,12 +12,20 @@ from utterleaf.file_ui import FileWindow
 from utterleaf.transcript import Segment, Transcript
 
 
-@pytest.fixture
-def window():
+@pytest.fixture(scope="module")
+def tk_root():
     try:
         root = tk.Tk()
     except tk.TclError as exc:
         pytest.skip(f"Tk needs a working display: {exc}")
+    root.withdraw()
+    yield root
+    root.destroy()
+
+
+@pytest.fixture
+def window(tk_root):
+    root = tk.Toplevel(tk_root)
     root.withdraw()
     app = FileWindow(root, Config())
     yield app

@@ -24,7 +24,8 @@ from utterleaf.config import Config, config_path, dictionary_path, log_path
 from utterleaf.hotkey import HotkeyWatcher, parse_hotkey
 from utterleaf.indicator import Indicator, recording_caption
 from utterleaf.inject import copy_text, foreground_app, foreground_id, paste
-from utterleaf.polish import polish, stitch_to_previous
+from utterleaf.polish import polish, infer_style
+from utterleaf.dictation_spacing import prepare_delivery
 from utterleaf.recovery import RecentDictation
 from utterleaf.hardware import describe, ov_model_id, pick, probe
 from utterleaf.models import ct2_dir, ct2_ready, ov_dir, ov_ready, status_lines
@@ -146,6 +147,7 @@ class Utterleaf:
         self.last_paste_at = 0.0
         self._edit_receipt = None
         self._last_prefix = ""
+        self._last_suffix = ""
         self._edit_expiry: threading.Timer | None = None
         self._edit_generation = 0
         self._queued_audio = None
@@ -514,10 +516,35 @@ class Utterleaf:
                 text_cleanup=self.cfg.text_cleanup,
             )
             log.info("Dictation timing: formatting=%.3fs", time.perf_counter() - format_started)
+            if result.command == "replace":
+                replacement = prepare_delivery(result.text, text_cleanup=self.cfg.text_cleanup,
+                                               code_mode=infer_style(app_name) == "code")
+                self._remember_result(replacement.text)
+                if (not self.last_text or not self.last_target or foreground_id() != self.last_target
+                        or (time.time() - self.last_paste_at) >= self.recent_dictation.ttl):
+                    self._after_job("no_paste", "Replacement ready. Select the old entry, then use Copy last dictation and paste.")
+                    return
+                outcome, self._edit_receipt = edit_target.replace(
+                    self._edit_receipt, self._last_prefix + replacement.payload)
+                if outcome != "replaced":
+                    message = ("Replacement ready. Select the old entry, then use Copy last dictation and paste."
+                               if outcome == "unavailable" else
+                               "Could not verify the replacement. Check the field; Copy last dictation still has your correction.")
+                    self._after_job("no_paste", message)
+                    return
+                self.last_text = replacement.text
+                self._last_suffix = replacement.suffix
+                self.last_app = app_name
+                self.last_target = target
+                self.last_paste_at = time.time()
+                self._schedule_edit_expiry()
+                beep("ok", self.cfg.beep)
+                self._after_job("pasted", replacement.payload)
+                return
             if result.command_only and self.last_text and (
                 not self.last_target
                 or foreground_id() != self.last_target
-                or (time.time() - self.last_paste_at) >= 20
+                or (time.time() - self.last_paste_at) >= self.recent_dictation.ttl
             ):
                 self._after_job("no_paste", "Return to your last dictation to use an edit command.")
                 return
@@ -531,6 +558,8 @@ class Utterleaf:
                     self.last_app = ""
                     self.last_target = None
                     self.last_paste_at = 0.0
+                    self._last_prefix = ""
+                    self._last_suffix = ""
                     self.recent_dictation.clear()
                 log.info("Discarded")
                 self._after_job("hide")
@@ -542,8 +571,10 @@ class Utterleaf:
                 if result.command == "professional":
                     text = polish_local(text, app_name="outlook").text or text
                 if text and text != self.last_text:
-                    self._remember_result(text)
-                    outcome, self._edit_receipt = edit_target.replace(self._edit_receipt, self._last_prefix + text)
+                    revision = prepare_delivery(text, text_cleanup=self.cfg.text_cleanup,
+                                                code_mode=infer_style(app_name) == "code")
+                    self._remember_result(revision.text)
+                    outcome, self._edit_receipt = edit_target.replace(self._edit_receipt, self._last_prefix + revision.payload)
                     if outcome != "replaced":
                         beep("err", self.cfg.beep)
                         if outcome == "unavailable" and copy_text(text):
@@ -552,6 +583,7 @@ class Utterleaf:
                             self._after_job("no_paste", "Could not verify the edit. Check your text before trying again.")
                         return
                     self.last_text = text
+                    self._last_suffix = revision.suffix
                     self.last_app = app_name
                     self.last_target = target
                     self.last_paste_at = time.time()
@@ -576,16 +608,14 @@ class Utterleaf:
                     target == continuation_target == self.last_target
                     and app_name == continuation_app == self.last_app
                 )
-            previous = self.last_text if same_place else ""
-            if not self.cfg.text_cleanup:
-                to_paste = text
-            elif result.command in {"bullets", "numbered", "paragraph", "newline"}:
-                to_paste = ("\n" + text) if previous else text
-            else:
-                to_paste = stitch_to_previous(previous, text)
+            previous = self.last_text + self._last_suffix if same_place else ""
+            delivery = prepare_delivery(text, previous_delivered=previous,
+                                        text_cleanup=self.cfg.text_cleanup,
+                                        code_mode=infer_style(app_name) == "code", command=result.command)
+            to_paste = delivery.payload
             delivery_started = time.perf_counter()
             before = edit_target.read_field()
-            self._remember_result(to_paste)
+            self._remember_result(delivery.prefix + delivery.text)
             outcome = paste(
                 to_paste,
                 restore_clipboard=self.cfg.restore_clipboard,
@@ -595,8 +625,9 @@ class Utterleaf:
                      time.perf_counter() - delivery_started, outcome)
             if outcome == "pasted":
                 self._edit_receipt = edit_target.capture(before, to_paste)
-                self._last_prefix = to_paste[:-len(text)] if text and to_paste.endswith(text) else ""
-                self.last_text = text.strip()
+                self._last_prefix = delivery.prefix
+                self._last_suffix = delivery.suffix
+                self.last_text = delivery.text
                 self.last_app = app_name
                 self.last_target = target
                 self.last_paste_at = time.time()
@@ -652,6 +683,7 @@ class Utterleaf:
         self.last_paste_at = 0.0
         self._edit_receipt = None
         self._last_prefix = ""
+        self._last_suffix = ""
 
     def _schedule_edit_expiry(self) -> None:
         if self._edit_expiry is not None:
@@ -662,7 +694,7 @@ class Utterleaf:
             if self._edit_generation == generation:
                 self._edit_receipt = None
                 self._edit_expiry = None
-        timer = threading.Timer(20, expire)
+        timer = threading.Timer(self.recent_dictation.ttl, expire)
         timer.daemon = True
         self._edit_expiry = timer
         timer.start()

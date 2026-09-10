@@ -22,6 +22,8 @@ class SettingsWindow:
         self.closed = False
         self._page_reset = None
         self.saving = False
+        self.model_downloading = False
+        self.model_download_cancel = threading.Event()
         self._reset_pending = False
         self.mic_stop = threading.Event()
         self.pages: dict[str, ttk.Frame] = {}
@@ -118,6 +120,9 @@ class SettingsWindow:
         self.baseline = self._snapshot()
         for var in self.vars.values():
             var.trace_add("write", self._dirty)
+        for key in ("model", "language", "device"):
+            self.vars[key].trace_add("write", self.refresh_model_status)
+        self.refresh_model_status()
         self.names.bind("<<Modified>>", self._names_changed)
         self.names.edit_modified(False)
         root.bind("<Control-s>", lambda _e: self.save())
@@ -298,22 +303,36 @@ class SettingsWindow:
             ("“Comma” / “question mark”", "Add punctuation as you speak."),
         ):
             self._section(p, title, description)
-        ttk.Label(p, text="Use edits immediately after dictating, in the same text field. If the field cannot be verified, "
-                  "revised text is copied for you to replace manually. Your document is left alone.\n"
+        self._section(p, "“Scratch that, [replacement]”", "Replace the previous dictated entry with your new words. Pauses inside “scratch, that” are accepted.")
+        ttk.Label(p, text="Use edits within two minutes, in the same unchanged text field. Automatic replacement requires a verified entry. "
+                  "If a correction cannot be applied, follow the status message: select the old entry, use Copy last dictation, and paste.\n"
                   "Cleanup uses text rules; it does not generate new ideas or rewrite meaning.",
                   style="Subtitle.TLabel", wraplength=520).pack(anchor="w", pady=10)
 
     def _engine(self):
         page = self._page("Engine", "Settings", "Speech & privacy",
                        "The default model balances speed and accuracy. Smaller models use less memory and generally finish sooner.")
-        p = self._section(page, "Speech model", "tiny: lightest  ·  base: faster  ·  small: balanced  ·  medium: larger\n"
-                      "Changing models may require a one-time download. Custom model names and paths are supported.")
+        p = self._section(page, "Model & installation", "tiny: lightest  ·  base: faster  ·  small: balanced  ·  medium: larger\n"
+                      "Choose a model and language, then check its local installation. Downloading does not save other edits.")
         self._choice(p, "Model", "model", ["tiny", "base", "small", "medium", "large-v3", "distil-small.en"], editable=True)
-        self._choice(p, "Processing device", "device", [], labels={"auto": "Automatic", "cpu": "CPU", "gpu": "NVIDIA GPU", "npu": "NPU"})
-        ttk.Label(p, text="Automatic selects available acceleration. Unsupported selections fall back to a working device.",
-                  style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=8)
         self._choice(p, "Language", "language", ["en", "auto", "es", "fr", "de", "it", "pt", "ja", "zh"], editable=True)
         ttk.Label(p, text="Use auto to detect the language, or enter a language code. English-only models require English.",
+                  style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=8)
+        self.model_status = tk.StringVar(self.root)
+        ttk.Label(p, textvariable=self.model_status, wraplength=520).pack(anchor="w", pady=(8, 4))
+        self.model_action_status = tk.StringVar(self.root)
+        ttk.Label(p, textvariable=self.model_action_status, style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=4)
+        actions = ttk.Frame(p)
+        actions.pack(anchor="w", pady=(6, 8))
+        self.model_download_button = ttk.Button(actions, text="Download selected model…", command=self.download_model)
+        self.model_download_button.pack(side="left")
+        self.model_cancel_button = ttk.Button(actions, text="Cancel download", command=self.cancel_model_download, state="disabled")
+        self.model_cancel_button.pack(side="left", padx=8)
+        ttk.Button(p, text="Refresh model status", command=self.refresh_model_status).pack(anchor="w")
+        p = self._section(page, "Processing", "Device selection changes how speech is processed; it does not install hardware support.")
+        self._choice(p, "Processing device", "device", [], labels={"auto": "Automatic", "cpu": "CPU", "gpu": "NVIDIA GPU", "npu": "NPU"})
+        ttk.Label(p, text="Automatic selects available acceleration and may need a separate NPU model. "
+                  "Choose CPU for the most portable setup and file transcription. Check hardware support under Help.",
                   style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=8)
         self._choice(p, "Noise reduction", "denoise", [], labels={"auto": "Automatic", "on": "On", "off": "Off"})
         p = self._section(page, "Privacy & clipboard", "Your microphone is released after each take. Audio is processed on this device "
@@ -322,6 +341,64 @@ class SettingsWindow:
         self._check(p, "Allow missing model downloads", "allow_network",
                     "Only model files are downloaded. Turn off to require an already installed model.")
         self._check(p, "Restore my clipboard after pasting", "restore_clipboard")
+
+    def _selected_model(self):
+        from dataclasses import replace
+        from utterleaf.model_setup import model_name
+        cfg = replace(self.cfg, model=self.vars["model"].get(), language=self.vars["language"].get())
+        return model_name(cfg), "openvino" if self.vars["device"].get() == "npu" else "ctranslate2"
+
+    def refresh_model_status(self, *_):
+        from utterleaf.model_setup import inspect_model
+        name, backend = self._selected_model()
+        state = inspect_model(name, backend)
+        engine = "NPU / OpenVINO" if backend == "openvino" else "CPU / NVIDIA"
+        messages = {"installed": "Installed — required files found locally. Loading has not been tested.",
+                    "missing": "Missing — download this model before using it offline.",
+                    "incomplete": "Incomplete — required files are missing or invalid. Download to finish setup.",
+                    "unsupported": "Guided setup is unavailable for this model/device. Choose a listed model or CPU."}
+        self.model_status.set(f"{name or 'No model selected'} · {engine}\n{messages[state.state]}")
+        self.model_download_button.configure(state="normal" if not self.model_downloading and state.state in {"missing", "incomplete"} else "disabled")
+
+    def download_model(self):
+        if self.model_downloading or self.closed:
+            return
+        from utterleaf.model_setup import inspect_model, run_download
+        name, backend = self._selected_model()
+        if inspect_model(name, backend).state not in {"missing", "incomplete"}:
+            self.refresh_model_status()
+            return
+        engine = "NPU / OpenVINO" if backend == "openvino" else "CPU / NVIDIA"
+        if not messagebox.askyesno("Download this speech model?",
+            f"Download {name} for {engine} from Hugging Face now?\n\n"
+            "This may use hundreds of MB or several GB of data and disk space. Only required missing or invalid files are fetched.\n\n"
+            "This permits this download once. Your ongoing network preference and unsaved settings stay unchanged.", parent=self.root):
+            return
+        self.model_downloading = True
+        self.model_download_cancel = threading.Event()
+        cancel = self.model_download_cancel
+        self.model_action_status.set(f"Downloading {name}… Keep this window open; Cancel stops the download.")
+        self.model_cancel_button.configure(state="normal")
+        self.refresh_model_status()
+        def done(result):
+            if self.closed:
+                return
+            self.model_downloading = False
+            self.model_cancel_button.configure(state="disabled")
+            self.refresh_model_status()
+            if cancel.is_set():
+                self.model_action_status.set("Download cancelled. Partial files are kept so you can retry.")
+            elif isinstance(result, Exception):
+                self.model_action_status.set(str(result))
+            else:
+                self.model_action_status.set(f"{name} installed. Save changes to use a changed selection; reopen file transcription to reload its settings.")
+        # Keep the cancellation/reaping worker alive when closing the last Tk window.
+        self._worker(lambda: run_download(name, backend, cancel=cancel), done, daemon=False)
+
+    def cancel_model_download(self):
+        self.model_download_cancel.set()
+        self.model_cancel_button.configure(state="disabled")
+        self.model_action_status.set("Cancelling model download…")
 
     def _help(self):
         page = self._page("Help & diagnostics", "Support", "Help",
@@ -508,14 +585,14 @@ class SettingsWindow:
             self.names.edit_modified(False)
             self._dirty()
 
-    def _worker(self, action, done):
+    def _worker(self, action, done, *, daemon=True):
         def work():
             try:
                 value = action()
             except Exception as exc:
                 value = exc
             self.events.put((done, value))
-        threading.Thread(target=work, daemon=True).start()
+        threading.Thread(target=work, daemon=daemon).start()
 
     def _poll(self):
         if self.closed:
@@ -728,6 +805,7 @@ class SettingsWindow:
             if not messagebox.askyesno("Discard unsaved changes?", "Close without saving your changes?", parent=self.root):
                 return
         self.closed = True
+        self.model_download_cancel.set()
         self.mic_stop.set()
         self.root.after_cancel(self.poll_id)
         if self._page_reset is not None:
@@ -763,9 +841,8 @@ def run() -> int:
                 return
             if requests.is_set():
                 requests.clear()
-                root.deiconify()
-                root.lift()
-                root.focus_force()
+                from utterleaf.window_activation import raise_window
+                raise_window(root)
             root.after(100, poll_activation)
 
         poll_activation()

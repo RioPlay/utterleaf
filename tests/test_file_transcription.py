@@ -138,7 +138,8 @@ def test_decoder_blocks_external_io(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def packaged_decoder(monkeypatch):
+def packaged_decoder(monkeypatch, tmp_path):
+    monkeypatch.setattr("utterleaf.file_decoder._settings_path", lambda: tmp_path / "decoder.json")
     stub_path = Path(__file__).resolve().parents[1] / "packaging" / "stubs" / "av" / "__init__.py"
     spec = importlib.util.spec_from_file_location("av", stub_path)
     stub = importlib.util.module_from_spec(spec)
@@ -166,7 +167,7 @@ def test_packaged_pcm_widths_and_unicode_path(tmp_path, packaged_decoder, width)
 def test_packaged_rejects_other_media_and_truncation(tmp_path, packaged_decoder):
     path = tmp_path / "other.mp3"
     path.write_bytes(b"not wave")
-    with pytest.raises(RuntimeError, match="PCM WAV files only"):
+    with pytest.raises(RuntimeError, match="More formats"):
         decode_local_file(path)
     path = wav_file(tmp_path)
     path.write_bytes(path.read_bytes()[:-100])
@@ -182,3 +183,26 @@ def test_packaged_limits_and_cancels(tmp_path, packaged_decoder, monkeypatch):
     monkeypatch.setattr("utterleaf.file_transcription.MAX_AUDIO_SECONDS", 0.25)
     with pytest.raises(ValueError, match="10-minute"):
         decode_local_file(path)
+
+
+def test_native_wav_does_not_need_selected_decoder(tmp_path, packaged_decoder, monkeypatch):
+    monkeypatch.setattr("utterleaf.file_decoder.decoder_selection", lambda: {"path": "missing-ffmpeg", "sha256": "changed"})
+    monkeypatch.setattr("utterleaf.file_decoder.decode_with_ffmpeg", lambda *a, **k: pytest.fail("PCM WAV needs no external program"))
+    assert decode_local_file(wav_file(tmp_path)).shape == (16000,)
+
+
+def test_unsupported_wav_uses_explicit_optional_decoder(tmp_path, packaged_decoder, monkeypatch):
+    path = tmp_path / "compressed.wav"
+    path.write_bytes(b"RIFF unsupported fixture")
+    calls = []
+    monkeypatch.setattr("utterleaf.file_decoder.decode_with_ffmpeg", lambda selected, **kw: calls.append(selected) or np.zeros(16000))
+    assert decode_local_file(path).shape == (16000,)
+    assert calls == [path]
+
+
+def test_explicit_decoder_used_in_source_install_too(tmp_path, monkeypatch):
+    path = tmp_path / "clip.mp3"
+    path.write_bytes(b"sample")
+    monkeypatch.setattr("utterleaf.file_decoder.decoder_selection", lambda: {"path": "selected-ffmpeg", "sha256": "identity"})
+    monkeypatch.setattr("utterleaf.file_decoder.decode_with_ffmpeg", lambda selected, **kw: np.zeros(8000))
+    assert decode_local_file(path).shape == (8000,)

@@ -30,6 +30,17 @@ NVIDIA GPU (driver alone is not enough):
 .\.venv\Scripts\python -m pip install -e ".[cuda]"
 ```
 
+For GPU use in the **packaged Windows release**, open **Settings → Help → Set up
+NVIDIA GPU…**, or run `./utterleaf-cli.exe --cuda-setup` from its extracted folder.
+The standard archive works on CPU without the optional NVIDIA math libraries.
+Its CTranslate2 runtime needs compatible CUDA 12.x and cuDNN 9 for CUDA 12:
+use the [CUDA 12.9 archive](https://developer.nvidia.com/cuda-12-9-0-download-archive)
+and [NVIDIA's Windows cuDNN instructions](https://docs.nvidia.com/deeplearning/cudnn/installation/latest/windows.html).
+Follow the Windows DLL/PATH setup, restart Utterleaf and check the diagnostic, then
+try a dictation. A detected card or a loaded cuBLAS DLL alone does not prove that
+cuDNN and model inference work. Installing packages in another Python environment
+does not modify the packaged app.
+
 For a packaged Windows build, open `utterleaf.exe` (or the compatibility entry `utterleafw.exe`). Both are windowless. `utterleaf-cli.exe` is only for terminal diagnostics. When developing from Python, use `pythonw.exe` for normal app launches; the `utterleaf` terminal command is for debugging.
 
 ### macOS

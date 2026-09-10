@@ -18,6 +18,10 @@ MAX_AUDIO_SECONDS = 600
 SAMPLE_RATE = 16000
 
 
+class WavFormatUnsupported(RuntimeError):
+    """A WAV variant needs an optional decoder, rather than the PCM reader."""
+
+
 def _check_cancel(cancel):
     if cancel is not None and cancel.is_set():
         raise TranscriptionCancelled("File transcription cancelled")
@@ -36,7 +40,7 @@ def _decode_pcm_wav(path, *, cancel=None, progress=None):
             with wave.open(source, "rb") as stream:
                 channels, width, rate, frames, compression, _ = stream.getparams()
                 if channels not in (1, 2) or width not in (1, 2, 3, 4) or not 8000 <= rate <= 48000 or compression != "NONE":
-                    raise ValueError("Packaged WAV support requires mono/stereo integer PCM, 8–32 bit, 8–48 kHz")
+                    raise WavFormatUnsupported("This WAV variant needs FFmpeg. Open More formats to choose its local installation.")
                 if frames > MAX_AUDIO_SECONDS * rate:
                     raise ValueError("File audio exceeds the current 10-minute limit; select a shorter clip")
                 chunks = []
@@ -66,7 +70,7 @@ def _decode_pcm_wav(path, *, cancel=None, progress=None):
                     raise ValueError("The selected file contains no decodable audio")
                 return np.concatenate(chunks)
         except (wave.Error, EOFError) as exc:
-            raise RuntimeError("This build supports integer PCM WAV files only; other media requires a source installation with PyAV") from exc
+            raise WavFormatUnsupported("This WAV variant needs FFmpeg. Open More formats to choose its local installation.") from exc
 
 
 def decode_local_file(path: str | Path, *, cancel=None, progress=None) -> np.ndarray:
@@ -75,12 +79,26 @@ def decode_local_file(path: str | Path, *, cancel=None, progress=None) -> np.nda
     path = Path(path)
     if not path.is_file():
         raise ValueError("Select an existing local audio or video file")
+    from utterleaf.file_decoder import decoder_selection, decode_with_ffmpeg
+    if path.suffix.lower() != ".wav" and decoder_selection() is not None:
+        return decode_with_ffmpeg(path, max_bytes=MAX_FILE_BYTES, max_seconds=MAX_AUDIO_SECONDS,
+                                  cancel=cancel, progress=progress)
+
+    def packaged_decode():
+        if path.suffix.lower() == ".wav":
+            try:
+                return _decode_pcm_wav(path, cancel=cancel, progress=progress)
+            except WavFormatUnsupported:
+                pass
+        return decode_with_ffmpeg(path, max_bytes=MAX_FILE_BYTES, max_seconds=MAX_AUDIO_SECONDS,
+                                  cancel=cancel, progress=progress)
+
     try:
         import av
     except ImportError:
-        return _decode_pcm_wav(path, cancel=cancel, progress=progress)
+        return packaged_decode()
     if av.__dict__.get("UTTERLEAF_MEDIA_STUB", False):
-        return _decode_pcm_wav(path, cancel=cancel, progress=progress)
+        return packaged_decode()
 
     def deny_external(*args, **kwargs):
         raise ValueError("Media referencing external files or network sources is unsupported")
