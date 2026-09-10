@@ -9,6 +9,11 @@ New in alpha12: **Edit** opens Undo, Redo, Select all, Cut, Copy, Paste and
 navigation in a panel that replaces the letters. **ABC** returns to typing.
 [Validation and editor limits](../../docs/android-quick-actions.md).
 
+Local QA follow-up (not released): tuning sliders include their current value in
+accessible descriptions, and quick toggles refresh other saved preferences.
+Added slider, gesture and live-IME action checks await Android CI; alpha12's
+existing pass does not validate these changes. See the [design notes](../../docs/android-keyboard-design.md#local-qa-follow-up-not-released).
+
 Alpha11 added the single-row toolbar with **123** (number row),
 **>_** (terminal controls) and the Utterleaf dictation icon. Quick toggles save
 locally and stay synchronized with the Settings preview. Voice review supports

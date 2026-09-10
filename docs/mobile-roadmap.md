@@ -20,6 +20,18 @@ roadmap without claiming those capabilities are already released.
 
 ## Current status
 
+- **Released alpha12:** compact [quick editing actions](android-quick-actions.md).
+  Revision `aec275b` passed [Android CI 34498263015](https://github.com/RioPlay/utterleaf/actions/runs/34498263015):
+  74 emulator tests with zero failures/skips, JVM tests, lint and 3 release contracts.
+  [Signed publication 34499446037](https://github.com/RioPlay/utterleaf/actions/runs/34499446037)
+  verified signing continuity and emulator install/upgrade. Physical-device and
+  accessibility acceptance remain open. Earlier entries below are release history.
+
+- **QA follow-up, implemented locally / unverified:** slider accessibility values,
+  preference snapshot synchronization, condition-based gesture tests and live-IME
+  editing-action coverage. These changes still require Android compile/lint and
+  API 35 instrumentation; they are not part of the alpha12 evidence above.
+
 - **Released alpha10:** held Ctrl/Alt chords, independently configurable
   delete repetition and retained model imports with between-take selection.
   [67 emulator tests passed](https://github.com/RioPlay/utterleaf/actions/runs/34480299407),
@@ -165,10 +177,11 @@ and primary platform references are in [the mobile guide](mobile.md).
 
 ## Before each mobile release
 
-Android alpha11 publishes the compact quick toolbar, expandable transcript review
-and automatic processing-state fix. Its release revision `55e7173` passed 71
-emulator tests, 8 JVM tests, lint and release contracts. See
-[release evidence and screenshots](android-keyboard-design.md#released-in-alpha11).
+The current released baseline is Android alpha12, revision `aec275b`: 74 emulator
+tests with zero failures/skips, JVM tests, lint and 3 release contracts passed in
+[CI 34498263015](https://github.com/RioPlay/utterleaf/actions/runs/34498263015).
+See [signed publication and APK checksum](android-quick-actions.md) and the
+historical [alpha11 evidence](android-keyboard-design.md#released-in-alpha11).
 
 Track the [Android responsiveness and acceleration pass](android-performance.md)
 separately from feature completeness; hardware speedups require physical-device

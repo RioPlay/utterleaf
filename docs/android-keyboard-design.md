@@ -1,5 +1,20 @@
 # Android typing surface
 
+## Released in alpha12
+
+**Edit** opens editor actions and navigation in place of the letters; **ABC**
+returns to typing. [Quick-action design, release evidence and editor limits](android-quick-actions.md)
+record revision `aec275b`, its 74-test emulator pass and signed publication.
+The alpha11 and earlier sections below describe those releases unchanged.
+
+## Local QA follow-up (not released)
+
+Height and bottom-space sliders now expose their displayed value in the accessible
+description, including after Reset. Added tests cover description updates,
+accessibility-driven persistence and reset cancellation/confirmation. Quick toggles
+also refresh in-memory options from the same saved snapshot they persist. These
+changes await Android CI and do not establish TalkBack or physical-device acceptance.
+
 ## Released in alpha11
 
 The single-row toolbar provides **123** for the number row, **>_** for terminal
