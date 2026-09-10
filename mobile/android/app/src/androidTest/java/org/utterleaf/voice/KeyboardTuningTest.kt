@@ -10,6 +10,33 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class KeyboardTuningTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
+    @Test fun quickToolbarTogglesPersistWithoutChangingOtherPreferences() {
+        val context = instrumentation.targetContext
+        val original = KeyboardOptions.load(context)
+        try {
+            val initial = KeyboardOptions(keyHeightDp = 60, bottomPaddingDp = 12, deleteRepeat = false)
+            initial.save(context)
+            instrumentation.runOnMainSync {
+                fun buttons(view: View): List<android.widget.Button> =
+                    (if (view is android.widget.Button) listOf(view) else emptyList()) +
+                    if (view is android.view.ViewGroup) (0 until view.childCount).flatMap { buttons(view.getChildAt(it)) } else emptyList()
+                val panel = TypingPanel(context, initial, { true }, {}, {}, {}, {}, {}, {})
+                panel.reset(true, false, "Enter")
+                fun key(description: String) = buttons(panel.view).single { it.contentDescription == description }
+                key("Number row off").performClick()
+                assertEquals(initial.copy(numberRow = true), KeyboardOptions.load(context))
+                key("Terminal controls off").performClick()
+                assertEquals(initial.copy(numberRow = true, terminal = true), KeyboardOptions.load(context))
+                key("Terminal controls on").performClick()
+                key("Number row on").performClick()
+                assertEquals(initial, KeyboardOptions.load(context))
+                assertEquals("", key("Dictate").text.toString())
+                assertTrue(key("Dictate").isEnabled)
+                panel.reset(false, true, "Enter")
+                assertFalse(key("Dictate").isEnabled)
+            }
+        } finally { original.save(context) }
+    }
     @Test fun dimensionsAreIndependentBoundedAndResettable() {
         val context = instrumentation.targetContext
         val original = KeyboardOptions.load(context)

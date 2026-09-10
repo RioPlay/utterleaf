@@ -23,10 +23,20 @@ import android.widget.TextView
 
 /** Secondary hints are visual; the button keeps its primary spoken key label. */
 internal class HintedKey(context: Context) : Button(context) {
+    var primaryIcon: android.graphics.drawable.Drawable? = null
     var secondaryHint: String? = null
         set(value) { field = value; invalidate() }
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     override fun onDraw(canvas: Canvas) {
+        primaryIcon?.let { icon ->
+            super.onDraw(canvas)
+            val size = minOf(Ui.dp(context, 28), width, height)
+            val left = (width - size) / 2; val top = (height - size) / 2
+            icon.setBounds(left, top, left + size, top + size)
+            icon.alpha = if (isEnabled) 255 else 90
+            icon.draw(canvas)
+            return
+        }
         val hint = secondaryHint
         if (hint != null) {
             hintPaint.color = currentTextColor
@@ -50,7 +60,7 @@ internal class HintedKey(context: Context) : Button(context) {
 }
 
 /** Independent keyboard layout; native buttons retain accessibility and focus semantics. */
-class TypingPanel(private val context: Context, private val options: KeyboardOptions,
+class TypingPanel(private val context: Context, private var options: KeyboardOptions,
     private val commit: (String) -> Boolean, private val erase: () -> Unit,
     private val enter: () -> Unit, private val move: (Boolean) -> Unit,
     private val dictate: () -> Unit, private val settings: () -> Unit,
@@ -115,6 +125,18 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     private var alternateKey: Char? = null
     private var layoutGeneration = 0
 
+    private fun saveQuickOption(numberRow: Boolean? = null, terminal: Boolean? = null) {
+        val current = KeyboardOptions.load(context)
+        current.copy(
+            numberRow = numberRow ?: current.numberRow,
+            terminal = terminal ?: current.terminal,
+        ).save(context)
+        options = options.copy(
+            numberRow = numberRow ?: options.numberRow,
+            terminal = terminal ?: options.terminal,
+        )
+    }
+
     fun reset(allowVoice: Boolean, numeric: Boolean, action: String) {
         gestures.cancel()
         shift = false; selecting = false; caps = false; symbols = numeric; moreSymbols = false; toolsOpen = false
@@ -170,7 +192,8 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
         }
         row.addView(button, LinearLayout.LayoutParams(0, Ui.dp(context, height), weight))
         if (description !in listOf("Keyboard tools", "Dictate", "Keyboard settings", "Switch keyboard",
-                "Function keys", "Caps lock off", "Accents and alternate characters", "Select text"))
+                "Function keys", "Caps lock off", "Accents and alternate characters", "Select text",
+                "Number row on", "Number row off", "Terminal controls on", "Terminal controls off"))
             view.modifiers.key(button)
         if (description in listOf("Delete", "Forward delete", "Delete to right")) {
             deleteRepeater.attach(button, options.deleteRepeat && !options.repeatGuard) {
@@ -269,19 +292,20 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
         releaseModifiers()
         selecting = false
         selectKey?.isSelected = false
-        if (!accepted) unavailable() else toolbarStatus?.text = "English · offline"
+        if (!accepted) unavailable() else toolbarStatus?.apply { text = ""; visibility = View.GONE }
         return accepted
     }
     private fun unavailable() {
         toolbarStatus?.apply {
             text = "Key unavailable"
+            visibility = View.VISIBLE
             announceForAccessibility("This key is not supported in the current field")
         }
     }
     private fun special(code: Int) {
         val accepted = terminalKey(code, ctrl, alt, shift)
         shift = false; releaseModifiers()
-        if (!accepted) unavailable() else toolbarStatus?.text = "English · offline"
+        if (!accepted) unavailable() else toolbarStatus?.apply { text = ""; visibility = View.GONE }
     }
     private fun delete() {
         if (ctrl || alt || (options.terminal && shift)) special(KeyEvent.KEYCODE_DEL) else erase()
@@ -324,13 +348,32 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
         key(toolbar, if (toolsOpen) "Close" else "Tools", "Keyboard tools", 2f, utility = true, height = 48) {
             toolsOpen = !toolsOpen; alternateMode = false; alternateKey = null; render()
         }.apply { isSelected = toolsOpen }
+        key(toolbar, "123", if (options.numberRow) "Number row on" else "Number row off",
+            1.7f, utility = true, height = 48) {
+            saveQuickOption(numberRow = !options.numberRow); render()
+        }.apply { isSelected = options.numberRow }
+        key(toolbar, ">_", if (options.terminal) "Terminal controls on" else "Terminal controls off",
+            1.7f, utility = true, height = 48) {
+            val enabled = !options.terminal
+            saveQuickOption(terminal = enabled)
+            if (!enabled) {
+                heldCtrl = false; heldAlt = false; armedCtrl = false; armedAlt = false
+                functionKeys = false
+            }
+            render()
+        }.apply { isSelected = options.terminal }
         toolbarStatus = TextView(context).apply {
-            text = if (alternateKey != null) "Choose a character" else if (alternateMode) "Choose a letter" else "English · offline"
+            text = if (alternateKey != null) "Choose a character" else if (alternateMode) "Choose a letter" else ""
             textSize = 13f; setTextColor(ink); gravity = Gravity.CENTER
-            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            visibility = if (alternateKey != null || alternateMode) View.VISIBLE else View.GONE
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
         }
-        toolbar.addView(toolbarStatus, LinearLayout.LayoutParams(0, Ui.dp(context, 48), 5.5f))
-        key(toolbar, "Voice", "Dictate", 2.5f, utility = true, height = 48) { dictate() }
+        toolbar.addView(toolbarStatus, LinearLayout.LayoutParams(0, Ui.dp(context, 48), 1.6f))
+        key(toolbar, "", "Dictate", 2.5f, utility = true, height = 48) {
+            dictate()
+        }.apply {
+            (this as HintedKey).primaryIcon = context.getDrawable(R.drawable.voice_idle)?.mutate()
+        }
             .apply { isEnabled = voiceAllowed }
         if (toolsOpen) {
             val tools = row()

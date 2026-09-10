@@ -571,7 +571,7 @@ class DeviceTest {
         lateinit var session: VoiceSession
         try {
             instrumentation.runOnMainSync {
-                session = VoiceSession(app, { if (it.startsWith("Listening")) listening.countDown() },
+                session = VoiceSession(app, { if (it.message.startsWith("Listening")) listening.countDown() },
                     { failure.set("Cancelled capture produced text") }, { failure.set(it); listening.countDown() })
                 session.start()
             }

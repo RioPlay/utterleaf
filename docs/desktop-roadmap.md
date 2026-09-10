@@ -16,6 +16,18 @@ intended field, with understandable local processing and minimal interruption.
 
 ## Foundation implemented
 
+### Later: optional on-screen keyboard
+
+User-requested exploration, lower priority than current dictation reliability and
+Android usability. Provide a comfortable touch keyboard with local dictation,
+editing/navigation utilities, optional terminal modifiers and accessible controls.
+Keep advanced controls out of everyday typing and preserve native OS keyboards.
+Evaluate Windows, macOS and Linux separately for secure-field behavior, input
+delivery, focus, screen readers, switch access and touch sizing. Reuse product
+principles and assets; do not assume Android input code is portable or request
+broad permissions merely for convenience. No desktop on-screen keyboard is
+implemented or promised as part of the current Android release.
+
 ### Responsiveness audit follow-up — September 10
 
 A scoped Aden/source review confirmed that settings work and IPC dispatch run
