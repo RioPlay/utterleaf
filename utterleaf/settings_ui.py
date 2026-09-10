@@ -642,7 +642,7 @@ class SettingsWindow:
         self.mic_message.set("Opening your microphone…")
         def check():
             import numpy as np
-            from utterleaf.audio import Recorder
+            from utterleaf.audio import Recorder, MicrophoneCaptureInterrupted
             recorder = Recorder(device="" if device == SYSTEM_DEFAULT else device)
             peak = 0.0
             try:
@@ -651,6 +651,8 @@ class SettingsWindow:
                 for _ in range(50):
                     if self.mic_stop.wait(0.1):
                         break
+                    if recorder.capture_error():
+                        raise MicrophoneCaptureInterrupted()
                     audio = recorder.snapshot(max_seconds=0.15)
                     rms = float(np.sqrt(np.mean(audio * audio))) if audio.size else 0.0
                     peak = max(peak, rms)

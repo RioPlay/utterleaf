@@ -19,6 +19,35 @@ not mean audio is being captured. An opening failure is not evidence that a
 particular app is responsible: disconnects, driver errors, and permissions can
 produce similar symptoms.
 
+## Windows: using Discord or another voice app
+
+Shared-mode capture allows more than one application to use a microphone. Utterleaf
+requests WASAPI shared mode when that backend is available; another app being open
+does not by itself establish an exclusive-access conflict.
+
+1. Select the same intended microphone explicitly in Utterleaf and your voice app.
+   Avoid switching to a different physical input just to make the error disappear.
+2. Press **Win+R**, enter `mmsys.cpl`, and open **Recording → your microphone →
+   Properties → Advanced**. If exclusive access is enabled and you do not need it
+   for recording software, clear **Allow applications to take exclusive control
+   of this device**, then Apply. Reopen the affected voice applications. Some
+   drivers do not expose this setting. This is a user-controlled Windows setting;
+   Utterleaf does not change it automatically.
+3. Under **Windows Settings → Privacy & security → Microphone**, check microphone
+   access and **Let desktop apps access your microphone**. Permission failures
+   require permission changes; repeated capture attempts cannot bypass them.
+4. Run Utterleaf's **Test microphone** before joining a call, then again during
+   the call. If it fails only during the call, note the exact status and whether
+   leaving the call restores it. With Bluetooth headsets, also note whether the
+   input device changes when the call starts.
+
+If the device stops responding after a call or reconnect, finish/discard any take
+and restart Utterleaf to refresh the audio backend. Do not restart Windows Audio
+or disable unrelated microphones as a first troubleshooting step.
+
+See Microsoft's [shared audio overview](https://learn.microsoft.com/en-us/windows/win32/coreaudio/user-mode-audio-components)
+and [exclusive-mode controls](https://learn.microsoft.com/en-us/windows/win32/coreaudio/exclusive-mode-streams).
+
 ## If recording stops unexpectedly (v0.4.0)
 
 Utterleaf checks whether the stream stopped or has sent no audio callbacks for
@@ -70,8 +99,15 @@ after reconnecting; some audio backends may require restarting Utterleaf before
 a newly connected device appears. Identical device names cannot distinguish
 physical microphones; stable hardware identifiers remain future work.
 
-Only PortAudio's device-unavailable error receives one retry, after 150 ms.
-Failed streams are closed first. Format and other errors are reported directly;
+Since v0.4.2, PortAudio device-unavailable and recognized Windows WASAPI
+device-in-use, device-invalidated and resources-invalidated errors receive one
+retry after 150 ms. Failed streams are closed first. Windows permission and
+unsupported-format errors have separate guidance and are not retried. Unknown
+host errors are not treated as permission or sharing failures by guesswork.
+The Settings microphone check also detects a stopped or stalled stream instead
+of reporting success from audio received earlier in the check.
+
+Format and other errors are reported directly;
 Utterleaf does not change OS settings. Robust device hotplug re-enumeration remains
 future work; interrupted-recording recovery is described above.
 

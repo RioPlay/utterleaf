@@ -47,6 +47,48 @@ def test_pages_preserve_edits_and_preview(window):
     assert "um" not in window.preview_result.get().lower()
 
 
+@pytest.mark.parametrize("interrupted", [False, True])
+def test_microphone_check_cannot_report_ready_after_stream_loss(window, monkeypatch, interrupted):
+    import numpy as np
+    from utterleaf import audio
+    probes = []
+    class Probe:
+        def __init__(self, **kwargs):
+            self.checks = 0
+            self.closed = False
+            probes.append(self)
+        def start(self):
+            pass
+        def capture_error(self):
+            self.checks += 1
+            return "Stream stopped" if interrupted and self.checks > 1 else None
+        def snapshot(self, **kwargs):
+            return np.ones(160, dtype=np.float32) * .1
+        def close(self):
+            self.closed = True
+    def run_worker(action, done):
+        try:
+            result = action()
+        except Exception as exc:
+            result = exc
+        while not window.events.empty():
+            callback, value = window.events.get_nowait()
+            callback(value)
+        done(result)
+    monkeypatch.setattr(audio, "Recorder", Probe)
+    monkeypatch.setattr(window.mic_stop, "wait", lambda duration: False)
+    monkeypatch.setattr(window, "_worker", run_worker)
+    window.test_mic()
+    assert probes[0].closed
+    if interrupted:
+        assert "interrupted" in window.mic_message.get().lower()
+        assert "ready" not in window.mic_message.get().lower()
+        assert probes[0].checks == 2
+    else:
+        assert "ready" in window.mic_message.get().lower()
+    assert window.mic_button.cget("text") == "Test microphone"
+
+
 def test_model_status_updates_without_saving_or_downloading(window, tmp_path, monkeypatch):
     monkeypatch.setattr("utterleaf.models.models_dir", lambda: tmp_path)
     monkeypatch.setattr("utterleaf.model_setup.run_download", lambda *a, **k: pytest.fail("Status must not download"))

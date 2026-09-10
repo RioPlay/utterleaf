@@ -100,7 +100,7 @@ class Recorder:
             host = sd.query_hostapis(info["hostapi"])
             if host["name"] == "Windows WASAPI":
                 extra["extra_settings"] = sd.WasapiSettings(exclusive=False)
-        # Retry only PortAudio's device-unavailable error. A permission or format
+        # Retry only known transient device errors. A permission or format
         # error needs a different action, and must not turn into a retry loop.
         for attempt in range(2):
             stream = None
@@ -267,19 +267,66 @@ class Recorder:
         return float(len(audio)) / SAMPLE_RATE
 
 
+def _wasapi_hresult(exc: BaseException) -> int | None:
+    """Decode only PortAudio's documented WASAPI host-error tuple, fail closed."""
+    if (sys.platform != "win32" or not isinstance(exc, sd.PortAudioError)
+            or len(exc.args) != 3 or type(exc.args[1]) is not int or exc.args[1] != -9999):
+        return None
+    host_error = exc.args[2]
+    if not isinstance(host_error, tuple) or len(host_error) != 3:
+        return None
+    host_index, error_code, message = host_error
+    if (type(host_index) is not int or not 0 <= host_index <= 0x7FFFFFFF
+            or type(error_code) is not int or not -0x80000000 <= error_code <= 0xFFFFFFFF
+            or not isinstance(message, str)):
+        return None
+    try:
+        if sd.query_hostapis(host_index)["name"] != "Windows WASAPI":
+            return None
+    except Exception:
+        return None
+    return error_code & 0xFFFFFFFF
+
+
 def device_unavailable(exc: BaseException) -> bool:
-    return isinstance(exc, sd.PortAudioError) and len(exc.args) > 1 and exc.args[1] == -9985
+    if isinstance(exc, sd.PortAudioError) and len(exc.args) > 1 and exc.args[1] == -9985:
+        return True
+    # AUDCLNT_E_DEVICE_IN_USE, DEVICE_INVALIDATED, RESOURCES_INVALIDATED.
+    return _wasapi_hresult(exc) in {0x8889000A, 0x88890004, 0x88890026}
 
 
 class SelectedMicrophoneUnavailable(RuntimeError):
     """The explicitly selected input is absent; capture must not fall back."""
 
 
+class MicrophoneCaptureInterrupted(RuntimeError):
+    """A microphone check lost its capture stream before completing."""
+
+
 def microphone_error_hint(exc: BaseException) -> str:
+    if isinstance(exc, MicrophoneCaptureInterrupted):
+        return ("Microphone capture was interrupted. Check your input and any voice app's exclusive-access settings, "
+                "reconnect the microphone if needed, then retry the microphone check. "
+                "If it continues, check the selected input in Settings → Dictation and restart Utterleaf.")
     if isinstance(exc, SelectedMicrophoneUnavailable):
         return ("Your selected microphone is unavailable. Reconnect it, then try again. "
                 "To use another input, open Settings → Dictation, refresh devices, "
                 "choose an input and Save. If it still does not appear, restart Utterleaf.")
+    native_error = _wasapi_hresult(exc)
+    if native_error == 0x80070005:
+        return ("Windows denied microphone access. Open Windows Settings → Privacy & security → Microphone "
+                "and enable microphone access and access for desktop apps, then try again.")
+    if native_error == 0x88890008:
+        return ("Windows rejected this microphone's audio format. Check its default format in Windows Sound "
+                "settings and update the audio driver if needed, then restart Utterleaf and try again.")
+    if native_error == 0x8889000A:
+        return ("Windows reports the microphone is in use. Utterleaf requests shared access, but another app "
+                "may hold exclusive access. Stop that app's microphone capture or review the microphone's "
+                "exclusive-mode options in Windows Sound settings, then try again.")
+    if native_error in {0x88890004, 0x88890026}:
+        return ("Windows invalidated the microphone or its audio resources. Reconnect the microphone, "
+                "check the selected input in Settings → Dictation, then try again. "
+                "If it continues, restart Utterleaf.")
     if device_unavailable(exc):
         return ("Microphone unavailable. Another app may have exclusive access, or the device may be disconnected. "
                 "Release it in that app, reconnect it, or choose an input in Settings → Dictation, then try again.")

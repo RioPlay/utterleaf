@@ -1,21 +1,13 @@
-**v0.4.1** improves file support, model setup, window activation and repeated dictation.
+**v0.4.2** improves microphone recovery and makes the microphone check report interruptions accurately.
 
-- **Model readiness:** Settings → Speech & privacy separates model installation, processing and privacy. See Missing/Incomplete/Installed status and explicitly download or repair the selected model without changing the ongoing network preference.
-- **Bring windows forward:** tray activation reuses the existing Settings window, restores minimized windows and requests foreground permission on Windows. Modal dialogs and unsaved edits remain intact.
-- **Separate takes:** completed prose includes a separating space so pauses or window-title changes do not produce `sentence.Next`. Literal/code output and explicit line breaks retain their formatting.
-- **Spoken corrections:** “scratch, that” recognizes a paused command; “scratch that, [replacement]” replaces a verified prior insertion. The edit window is two minutes. Unsupported or changed fields are not blindly deleted; the correction remains available through Copy last dictation.
+- Windows WASAPI device-busy and invalidated-device/resource errors now receive the existing single retry after the failed stream closes. Retries remain bounded and keep the selected input.
+- Permission and unsupported-format failures receive specific recovery guidance instead of a generic microphone error. They are not retried.
+- **Test microphone** checks stream liveness throughout the check. Earlier audio no longer produces a misleading success result after capture stops.
+- [Windows microphone sharing help](https://github.com/RioPlay/utterleaf/blob/main/docs/microphone-troubleshooting.md#windows-using-discord-or-another-voice-app) explains shared access, exclusive-mode settings and call/reconnect troubleshooting.
 
-- **Windows GPU diagnostics:** missing runtime guidance now links to Windows CUDA/cuDNN setup, without Linux commands or claiming that device detection proves successful GPU inference.
+A brief native Windows test accepted two simultaneous shared capture streams while Discord was running, without saving or transcribing audio. That does not reproduce a Discord voice-call conflict or establish its cause. Utterleaf cannot override another application's exclusive microphone access. No OS permissions, audio settings or Discord configuration are changed automatically.
 
-- **List boundaries:** explicit item lines preserve multiword entries; clearly separated “new line”/“new paragraph” commands work inside a take. Completed prose after a list keeps a separator before the next take.
-- Open **Tools → Transcribe a file → More formats…** for platform-specific FFmpeg installation instructions, the official download page, and an executable picker.
-- Select a local FFmpeg installation once to decode MP3, M4A, AAC, FLAC, OGG/Opus, MP4, MOV, WebM and MKV. Format support depends on that installation. Files remain local; Utterleaf does not download or bundle the decoder.
-- Ordinary PCM WAV continues to work without setup, including when an optional decoder is moved or updated. A changed decoder requires selecting it again before use.
-- Decoding has bounded output, a deadline, and cancellation that stops the child process. No FFmpeg report or recording file is created. Review and explicitly export TXT, SRT or VTT as before.
-
-File input remains limited to 10 minutes and 256 MiB. CPU/CUDA timestamped recognition requires an already installed model. Decoding cancellation is prompt; active native recognition must return before cancellation completes. FFmpeg is a user-selected trusted executable, not a sandboxed codec service.
-
-[Common-format setup](https://github.com/RioPlay/utterleaf/blob/main/docs/desktop-file-transcription.md#enable-common-audio-and-video-files) includes exact instructions. The selective backup, microphone recovery and clipboard safeguards from v0.4.0 remain included. Desktop and Android releases are independent.
+Includes the file-format, model setup, list/paragraph and Windows GPU diagnostic improvements from [v0.4.1](https://github.com/RioPlay/utterleaf/releases/tag/v0.4.1). The planned self-updater is not included.
 
 Quit the older app before extracting and reopening this update.
 

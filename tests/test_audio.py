@@ -261,7 +261,8 @@ def test_windows_shared_host_selection_preserves_named_mic(monkeypatch):
 
 
 @pytest.mark.parametrize("failures", [1, 2])
-def test_unavailable_stream_retries_once_and_closes_failures(monkeypatch, failures):
+@pytest.mark.parametrize("native_code", [None, 0x8889000A, 0x88890004, 0x88890026, -2004287478])
+def test_unavailable_stream_retries_once_and_closes_failures(monkeypatch, failures, native_code):
     from utterleaf import audio
     monkeypatch.setattr(audio.sys, "platform", "win32")
     monkeypatch.setattr(audio.sd, "query_devices", lambda *a, **k: {
@@ -272,7 +273,10 @@ def test_unavailable_stream_retries_once_and_closes_failures(monkeypatch, failur
     sentinel = object()
     modes, streams, waits = [], [], []
     monkeypatch.setattr(audio.sd, "WasapiSettings", lambda **kw: modes.append(kw) or sentinel)
-    monkeypatch.setattr(audio.time, "sleep", lambda delay: waits.append(delay))
+    def wait(delay):
+        assert streams[-1].closed
+        waits.append(delay)
+    monkeypatch.setattr(audio.time, "sleep", wait)
     class Stream:
         def __init__(self, **kwargs):
             assert kwargs["extra_settings"] is sentinel
@@ -280,6 +284,8 @@ def test_unavailable_stream_retries_once_and_closes_failures(monkeypatch, failur
             streams.append(self)
         def start(self):
             if len(streams) <= failures:
+                if native_code is not None:
+                    raise audio.sd.PortAudioError("Host error", -9999, (0, native_code, "native message"))
                 raise audio.sd.PortAudioError("Device unavailable", -9985)
         def close(self):
             self.closed = True
@@ -299,3 +305,85 @@ def test_unavailable_stream_retries_once_and_closes_failures(monkeypatch, failur
     assert waits == [.15]
     assert modes == [{"exclusive": False}]
     recorder.close()
+
+
+@pytest.mark.parametrize("code,transient,hint", [
+    (0x8889000A, True, "exclusive"), (0x88890004, True, "invalidated"),
+    (0x88890026, True, "invalidated"), (0x80070005, False, "desktop apps"),
+    (0x88890008, False, "audio format"),
+])
+@pytest.mark.parametrize("signed", [False, True])
+def test_wasapi_known_hresult_classification(monkeypatch, code, transient, hint, signed):
+    from utterleaf import audio
+    monkeypatch.setattr(audio.sys, "platform", "win32")
+    queried = []
+    monkeypatch.setattr(audio.sd, "query_hostapis", lambda index: queried.append(index) or {"name": "Windows WASAPI"})
+    error = audio.sd.PortAudioError("Host error", -9999, (2, code - 2**32 if signed else code, "details"))
+    assert audio.device_unavailable(error) is transient
+    assert hint in audio.microphone_error_hint(error)
+    assert queried and set(queried) == {2}
+
+
+@pytest.mark.parametrize("host_error", [
+    None, (), (0, 0x8889000A), [0, 0x8889000A, "text"],
+    (True, 0x8889000A, "text"), (-1, 0x8889000A, "text"),
+    (0, True, "text"), (0, "0x8889000A", "text"), (0, float(0x8889000A), "text"),
+    (0, 0x18889000A, "text"), (0, -0x80000001, "text"), (0, 0x8889000A, None),
+])
+def test_malformed_host_error_fails_closed(monkeypatch, host_error):
+    from utterleaf import audio
+    monkeypatch.setattr(audio.sys, "platform", "win32")
+    monkeypatch.setattr(audio.sd, "query_hostapis", lambda *a: pytest.fail("Malformed input must not query host"))
+    assert not audio.device_unavailable(audio.sd.PortAudioError("error", -9999, host_error))
+
+
+@pytest.mark.parametrize("platform,host", [("linux", "Windows WASAPI"), ("win32", "MME"), ("win32", "Windows DirectSound")])
+def test_native_code_never_classifies_other_platform_or_host(monkeypatch, platform, host):
+    from utterleaf import audio
+    monkeypatch.setattr(audio.sys, "platform", platform)
+    monkeypatch.setattr(audio.sd, "query_hostapis", lambda *a: {"name": host})
+    assert not audio.device_unavailable(audio.sd.PortAudioError("error", -9999, (0, 0x8889000A, "text")))
+
+
+def test_native_host_query_failure_fails_closed(monkeypatch):
+    from utterleaf import audio
+    monkeypatch.setattr(audio.sys, "platform", "win32")
+    def unavailable(*args):
+        raise audio.sd.PortAudioError("host disappeared")
+    monkeypatch.setattr(audio.sd, "query_hostapis", unavailable)
+    error = audio.sd.PortAudioError("error", -9999, (0, 0x8889000A, "text"))
+    assert not audio.device_unavailable(error)
+    assert "Could not open" in audio.microphone_error_hint(error)
+
+
+def test_capture_interruption_hint_is_actionable_and_does_not_echo_exception():
+    from utterleaf import audio
+    hint = audio.microphone_error_hint(audio.MicrophoneCaptureInterrupted("private device details"))
+    assert "Microphone capture was interrupted" in hint
+    assert "retry the microphone check" in hint
+    assert "private device details" not in hint
+
+
+@pytest.mark.parametrize("code", [0x80070005, 0x88890008, 0x88890001])
+def test_permission_format_unknown_errors_close_without_retry(monkeypatch, code):
+    from utterleaf import audio
+    monkeypatch.setattr(audio.sys, "platform", "win32")
+    monkeypatch.setattr(audio, "resolve_input_device", lambda *a: 0)
+    monkeypatch.setattr(audio.sd, "query_devices", lambda *a, **kw: {"name": "mic", "default_samplerate": 48000})
+    monkeypatch.setattr(audio, "shared_input_device", lambda chosen, info, preferred: (chosen, info))
+    monkeypatch.setattr(audio.sd, "query_hostapis", lambda *a: {"name": "Windows WASAPI"})
+    monkeypatch.setattr(audio.time, "sleep", lambda *a: pytest.fail("Must not retry"))
+    events = []
+    class Stream:
+        def __init__(self, **kwargs):
+            events.append("open")
+        def start(self):
+            raise audio.sd.PortAudioError("error", -9999, (0, code, "text"))
+        def close(self):
+            events.append("close")
+    monkeypatch.setattr(audio.sd, "InputStream", Stream)
+    recorder = Recorder()
+    with pytest.raises(audio.sd.PortAudioError):
+        recorder.prepare()
+    assert events == ["open", "close"]
+    assert recorder._stream is None
