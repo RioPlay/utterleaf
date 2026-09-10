@@ -2,7 +2,7 @@
 
 <img src="assets/brand/utterling-thinking.png" width="88" alt="Utterling considering the next improvements" />
 
-[Documentation](README.md) ? [Development boundaries](development-boundaries.md)
+[Documentation](README.md) · [Development boundaries](development-boundaries.md) · [Execution plan](execution-plan.md)
 
 Updated September 9, 2026. This is the planning hub, not a list of released features.
 **Security first, privacy second, convenience third.** Accessibility and reliability
@@ -17,10 +17,15 @@ are requirements throughout development, not finishing touches.
 | iOS | A separately implemented keyboard and local speech experience within platform restrictions | [iOS feasibility and milestones](mobile-roadmap.md#ios-track) |
 | Shared product direction | Security, privacy, accessibility principles, branding, and candidate ideas | [Ideas and decisions](ideas.md) ? [Development boundaries](development-boundaries.md) |
 
-Desktop v0.3.8 and Android 0.1.0-alpha02 have independent release histories.
-Android alpha02 is still a **voice companion**, not the planned full keyboard.
-A user has reported successful operation on a Pixel 8 Pro, with usability friction;
-that is not broad device or accessibility certification. No iOS app is released.
+Desktop v0.3.8 and [Android 0.1.0-alpha03](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha03)
+have independent release histories. Android alpha03 includes an **English typing
+keyboard with local dictation**, preferences, preview extension and Obtainium setup,
+published as a signed APK. It is an early foundation; physical device, accessibility
+and real Obtainium update acceptance remain open. Earlier voice-companion feedback
+from a Pixel 8 Pro does not certify this keyboard. No iOS app is released.
+
+The [execution plan](execution-plan.md) assigns ordered work packages, file ownership,
+security gates and external validation requirements across these workstreams.
 
 ## How work moves forward
 
