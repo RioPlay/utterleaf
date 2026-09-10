@@ -302,6 +302,55 @@ class DeviceTest {
                     flags(originalFlags and android.view.WindowManager.LayoutParams.FLAG_SECURE.inv())
                     instrumentation.waitForIdleSync()
                     shell("screencap -p /data/local/tmp/utterleaf-keyboard-live.png")
+                    var gestureStart = 0L
+                    fun touch(action: Int, x: Float, y: Float) {
+                        val now = android.os.SystemClock.uptimeMillis()
+                        if (action == android.view.MotionEvent.ACTION_DOWN) gestureStart = now
+                        val event = android.view.MotionEvent.obtain(gestureStart, now, action, x, y, 0)
+                        event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                        try { assertTrue("Touch injection failed", automation.injectInputEvent(event, true)) }
+                        finally { event.recycle() }
+                        instrumentation.waitForIdleSync()
+                    }
+                    fun center(label: String): Pair<Float, Float> = onMain {
+                        val key = findNativeKey(label) ?: error("Missing touch key: $label")
+                        val position = IntArray(2); key.getLocationOnScreen(position)
+                        Pair(position[0] + key.width / 2f, position[1] + key.height / 2f)
+                    }
+                    val space = center("Space")
+                    val distance = Ui.dp(app, 32).toFloat()
+                    for (direction in listOf(-1, 1)) {
+                        touch(android.view.MotionEvent.ACTION_DOWN, space.first, space.second)
+                        touch(android.view.MotionEvent.ACTION_MOVE, space.first + direction * distance, space.second)
+                        touch(android.view.MotionEvent.ACTION_UP, space.first + direction * distance, space.second)
+                        awaitCondition("Space swipe did not move the real editor cursor") {
+                            onMain { screen.editor.selectionStart == if (direction < 0) 1 else 3 }
+                        }
+                        assertEquals("Space swipe inserted text", "acd", onMain { screen.editor.text.toString() })
+                    }
+                    val letter = center("e")
+                    val imeHeight = onMain { imeRoot.height }
+                    touch(android.view.MotionEvent.ACTION_DOWN, letter.first, letter.second)
+                    Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 100)
+                    instrumentation.waitForIdleSync()
+                    val choice = onMain {
+                        fun find(view: android.view.View): AlternateStrip? {
+                            if (view is AlternateStrip) return view
+                            if (view is android.view.ViewGroup) for (i in 0 until view.childCount) find(view.getChildAt(i))?.let { return it }
+                            return null
+                        }
+                        val strip = find(imeRoot) ?: error("Live hold strip did not appear")
+                        assertEquals("Hold resized the IME", imeHeight, imeRoot.height)
+                        val position = IntArray(2); strip.getLocationOnScreen(position)
+                        Pair(position[0] + strip.cells[0].centerX(), position[1] + strip.cells[0].centerY())
+                    }
+                    touch(android.view.MotionEvent.ACTION_MOVE, choice.first, choice.second)
+                    shell("screencap -p /data/local/tmp/utterleaf-keyboard-hold.png")
+                    touch(android.view.MotionEvent.ACTION_UP, choice.first, choice.second)
+                    awaitCondition("Hold-slide-release did not insert into the editor") {
+                        onMain { screen.editor.text.toString() == "acdé" }
+                    }
+                    press("Delete")
                     press("Keyboard tools")
                     press("Accents and alternate characters")
                     press("e")

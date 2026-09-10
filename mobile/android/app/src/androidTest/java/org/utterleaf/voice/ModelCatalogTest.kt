@@ -185,7 +185,8 @@ class ModelCatalogTest {
         assertTrue("Another capture or import is active", WorkLease.acquire())
         try {
             val base = ModelStore.catalog.single { it.id == "base.en" }
-            assets.open("ggml-base.en.bin").use { ModelStore.install(it, directory, base) }
+            val detected = assets.open("ggml-base.en.bin").use { ModelStore.install(it, directory) }
+            assertEquals("Import should identify base.en without a selection", base, detected)
             assertEquals(base, ModelStore.installed(directory))
             val wav = assets.open("jfk.wav").use { it.readBytes() }
             val buffer = ByteBuffer.wrap(wav).order(ByteOrder.LITTLE_ENDIAN)
@@ -237,7 +238,7 @@ class ModelCatalogTest {
                 for (spec in ModelStore.catalog) {
                     choices.single { it.text.startsWith(spec.id) }.performClick()
                     assertTrue(texts.any { it.text.toString() == "Download ${spec.id} in browser" })
-                    assertTrue(texts.any { it.text.toString() == "Import ${spec.id} file" })
+                    assertTrue(texts.any { it.text.toString() == "Import a model" })
                     assertEquals(1, choices.count { it.isChecked })
                 }
                 // Merely choosing an option must not request permission, download or import.

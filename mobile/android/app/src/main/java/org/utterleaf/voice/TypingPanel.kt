@@ -17,6 +17,7 @@ import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.View
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -63,11 +64,21 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     private val accent = Color.parseColor(if (options.light) "#25643D" else "#A2DFB3")
     private val accentInk = Color.parseColor(if (options.light) "#FFFFFF" else "#10291B")
     private val keyHeight = if (options.large) 66 else 54
-    val view = LinearLayout(context).apply {
+    val view = FrameLayout(context).apply { isMotionEventSplittingEnabled = false }
+    private val content = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
+        isMotionEventSplittingEnabled = false
         setPadding(Ui.dp(context, 3), 0, Ui.dp(context, 3), Ui.dp(context, 4))
         setBackgroundColor(surface)
         layoutDirection = View.LAYOUT_DIRECTION_LTR
+    }
+    private val gestures = KeyboardGestures(view)
+    init {
+        view.addView(content, FrameLayout.LayoutParams(-1, -2))
+        view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: View) = Unit
+            override fun onViewDetachedFromWindow(v: View) = gestures.cancel()
+        })
     }
     private var shift = false
     private var caps = false
@@ -92,6 +103,7 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     private var layoutGeneration = 0
 
     fun reset(allowVoice: Boolean, numeric: Boolean, action: String) {
+        gestures.cancel()
         shift = false; caps = false; symbols = numeric; moreSymbols = false; toolsOpen = false
         ctrl = false; alt = false; functionKeys = false
         alternateMode = false; alternateKey = null
@@ -148,8 +160,9 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     }
     private fun row() = LinearLayout(context).also {
         it.orientation = LinearLayout.HORIZONTAL
+        it.isMotionEventSplittingEnabled = false
         it.isBaselineAligned = false
-        view.addView(it, LinearLayout.LayoutParams(-1, -2))
+        content.addView(it, LinearLayout.LayoutParams(-1, -2))
     }
     private fun spacer(row: LinearLayout, weight: Float) {
         row.addView(View(context).apply { importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO },
@@ -175,6 +188,13 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
                             openAlternates(character); true
                         }
                     }
+                    gestures.attachLetter(button,
+                        { if (generation == layoutGeneration) AlternateCharacters.choices(character, shift xor caps) else emptyList() },
+                        { value ->
+                            if (generation == layoutGeneration && type(value)) {
+                                shift = false; alternateKey = null; alternateMode = false; updateCase()
+                            }
+                        })
                 }
             }
         }
@@ -192,7 +212,7 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
             setTextColor(ink); gravity = Gravity.CENTER; minHeight = Ui.dp(context, 40)
             accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         }
-        view.addView(heading)
+        content.addView(heading)
         choices.chunked(5).forEach { group ->
             val line = row()
             group.forEach { value ->
@@ -261,13 +281,15 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     }
     private fun render() {
         layoutGeneration++
-        view.removeAllViews(); letters.clear(); shiftKey = null; capsKey = null; ctrlKey = null; altKey = null
+        gestures.cancel()
+        content.removeAllViews(); letters.clear(); shiftKey = null; capsKey = null; ctrlKey = null; altKey = null
         val toolbar = row()
         key(toolbar, if (toolsOpen) "Close" else "Tools", "Keyboard tools", 2f, utility = true, height = 48) {
             toolsOpen = !toolsOpen; alternateMode = false; alternateKey = null; render()
         }.apply { isSelected = toolsOpen }
         toolbarStatus = TextView(context).apply {
-            text = if (alternateMode) "Choose a letter" else "English · offline"; textSize = 13f; setTextColor(ink); gravity = Gravity.CENTER
+            text = if (alternateKey != null) "Choose a character" else if (alternateMode) "Choose a letter" else "English · offline"
+            textSize = 13f; setTextColor(ink); gravity = Gravity.CENTER
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         toolbar.addView(toolbarStatus, LinearLayout.LayoutParams(0, Ui.dp(context, 48), 5.5f))
@@ -332,7 +354,10 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
             alternateMode = false; alternateKey = null; render()
         }
         key(bottom, ",") { type(",") }
-        key(bottom, "space", "Space", 5f) { type(" ") }
+        key(bottom, "space", "Space", 5f) { type(" ") }.also { space ->
+            val generation = layoutGeneration
+            gestures.attachSpace(space) { left -> if (generation == layoutGeneration) move(left) }
+        }
         key(bottom, ".") { type(".") }
         key(bottom, if (actionLabel == "Enter") "↵" else actionLabel, actionLabel, 1.5f, primary = true) {
             if (ctrl || alt || (options.terminal && shift)) special(KeyEvent.KEYCODE_ENTER) else enter()

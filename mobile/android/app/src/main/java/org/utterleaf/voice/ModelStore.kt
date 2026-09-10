@@ -36,7 +36,7 @@ object ModelStore {
     }
     fun ready(directory: File) = installed(directory) != null
     @Synchronized
-    fun install(input: InputStream, directory: File, selected: Spec? = null) {
+    fun install(input: InputStream, directory: File, selected: Spec? = null): Spec {
         require(selected == null || selected in catalog) { "Choose a supported English model." }
         directory.mkdirs()
         val pending = File(directory, "model-import.tmp")
@@ -62,6 +62,7 @@ object ModelStore {
             }
             java.nio.file.Files.move(pending.toPath(), file(directory).toPath(),
                 java.nio.file.StandardCopyOption.ATOMIC_MOVE, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            return spec
         } finally { pending.delete() }
     }
 }

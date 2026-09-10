@@ -25,13 +25,13 @@ class SetupActivity : Activity() {
     private lateinit var downloadModel: Button
     private lateinit var importModel: Button
     private var selectedModel = ModelStore.catalog.first()
-    private var importingModel: ModelStore.Spec? = null
+    private var importPending = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         selectedModel = ModelStore.catalog.firstOrNull { it.id == savedInstanceState?.getString("model") }
             ?: ModelStore.installed(noBackupFilesDir) ?: ModelStore.catalog.first()
-        importingModel = ModelStore.catalog.firstOrNull { it.id == savedInstanceState?.getString("import") }
+        importPending = savedInstanceState?.getBoolean("importPending") ?: false
         val column = Ui.column(this)
         column.addView(Ui.mascot(this))
         column.addView(Ui.title(this, "Make yourself at home."))
@@ -58,8 +58,19 @@ class SetupActivity : Activity() {
         voiceStatus = Ui.text(this, "")
         column.addView(voiceStatus)
         column.addView(Ui.text(this, "Choose an English model, import its verified file, then allow your microphone. Use the keyboard's Voice button to dictate; no extra keyboard is required."))
-        column.addView(Ui.text(this, "1 · Choose your speech model", 19f))
+        column.addView(Ui.text(this, "1 · Add a speech model", 19f))
         column.addView(Ui.text(this, "One model is kept at a time. Larger models need more storage, RAM and processing time; speed and accuracy depend on your phone and speech. All three options are English only."))
+        importModel = Ui.button(this, "Import a model") {
+            importPending = true
+            try { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"
+            }, 10) } catch (_: android.content.ActivityNotFoundException) {
+                importPending = false
+                status.text = "No document picker is available."
+            }
+        }
+        column.addView(importModel)
+        column.addView(Ui.text(this, "Already downloaded a model? Import identifies tiny.en, base.en or small.en automatically and verifies the file. Need a download? Choose an option below; this only changes the browser link."))
         val choices = RadioGroup(this)
         ModelStore.catalog.forEach { spec ->
             choices.addView(RadioButton(this).apply {
@@ -88,16 +99,6 @@ class SetupActivity : Activity() {
                 }.show()
         }
         column.addView(downloadModel)
-        importModel = Ui.button(this, "") {
-            importingModel = selectedModel
-            try { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"
-            }, 10) } catch (_: android.content.ActivityNotFoundException) {
-                importingModel = null
-                status.text = "No document picker is available."
-            }
-        }
-        column.addView(importModel)
         refreshModelChoice()
         column.addView(Ui.text(this, "2 · Allow your microphone", 19f))
         column.addView(Ui.button(this, "Allow microphone") {
@@ -154,7 +155,6 @@ class SetupActivity : Activity() {
         if (!::modelDetails.isInitialized || !::downloadModel.isInitialized || !::importModel.isInitialized) return
         modelDetails.text = "${selectedModel.filename}\nDownload: ${megabytes(selectedModel.size)} MB. Allow about ${megabytes(selectedModel.size * 2)} MB free for the browser download and verified import. Your current model stays installed until verification succeeds. You can remove the browser's downloaded copy afterwards."
         downloadModel.text = "Download ${selectedModel.id} in browser"
-        importModel.text = "Import ${selectedModel.id} file"
     }
     private fun microphoneAllowed() = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
     private fun refreshReadiness() {
@@ -190,28 +190,28 @@ class SetupActivity : Activity() {
     }
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString("model", selectedModel.id)
-        outState.putString("import", importingModel?.id)
+        outState.putBoolean("importPending", importPending)
         super.onSaveInstanceState(outState)
     }
     @Deprecated("Platform callback")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != 10) return
-        val spec = importingModel
-        importingModel = null
-        if (resultCode != RESULT_OK || spec == null) return
+        val pending = importPending
+        importPending = false
+        if (resultCode != RESULT_OK || !pending) return
         val uri = data?.data ?: return
         if (!WorkLease.acquire()) { status.text = "Wait for the current take or import to finish."; return }
-        status.text = "Importing and verifying ${spec.id} locally…"
+        status.text = "Identifying and verifying the model locally…"
         val app = applicationContext
         Thread({
             val message = try {
-                app.contentResolver.openInputStream(uri).use { input ->
+                val installed = app.contentResolver.openInputStream(uri).use { input ->
                     requireNotNull(input) { "Could not open the selected file." }
-                    ModelStore.install(input, app.noBackupFilesDir, spec)
+                    ModelStore.install(input, app.noBackupFilesDir)
                 }
-                "${spec.id} verified and installed. The downloaded copy can now be removed from Downloads."
-            } catch (_: Exception) { "Import failed. Choose the original ${spec.filename} file and check free storage. Existing model kept." }
+                "${installed.id} verified and installed. The downloaded copy can now be removed from Downloads."
+            } catch (_: Exception) { "Import failed. Use an original tiny.en, base.en or small.en file from the download links and check free storage. Existing model kept." }
             finally { WorkLease.release() }
             runOnUiThread { if (!isDestroyed) { status.text = message; refreshReadiness() } }
         }, "utterleaf-import").start()

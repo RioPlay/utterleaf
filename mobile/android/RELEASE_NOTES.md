@@ -1,11 +1,19 @@
-# Utterleaf Android 0.1.0-alpha06
+# Utterleaf Android 0.1.0-alpha07
 
-Secondary key hints and common Latin accents join the optional terminal layer. This is still an
+Touch gestures and automatic model identification improve everyday input. This is still an
 alpha keyboard; suggestions, autocorrection, swipe typing, multilingual layouts
 and emoji remain roadmap work.
 
+- **Import a model** identifies supported tiny.en, base.en and small.en files by
+  verified size and SHA-256. The download choice no longer restricts import.
+  A failed import preserves the previous model; the app still has no Internet permission.
+- Slide the spacebar left/right to move the cursor; tap it to type a space.
+- Hold a letter, slide to the highlighted accent/symbol and release to insert it.
+  Slide away to cancel. The compact strip stays inside the protected keyboard window.
+- Cancellation, multitouch, panel changes and dismissal clear active gestures.
+
 - Secondary symbols are visible on letter keys by default; hide them in keyboard settings.
-- Hold a letter to choose an accent or its secondary symbol. For a tap-only route,
+- For a tap-only route to an accent or secondary symbol,
   choose Tools → Accents, then a letter. Cancel returns without inserting anything.
 - Shift and Caps apply to accents. Unsupported terminal combinations show an error
   without silently inserting plain text. Common Latin accents are not full language support.
@@ -32,8 +40,8 @@ Dictation is explicit and remains disabled in password fields.
 
 ## Install and updates
 
-Use **Utterleaf-Android-0.1.0-alpha06.apk**, version code 6. It uses the persistent
-alpha03–alpha05 signing identity and supports installing over those releases.
+Use **Utterleaf-Android-0.1.0-alpha07.apk**, version code 7. It uses the persistent
+alpha03–alpha06 signing identity and supports installing over those releases.
 Do not uninstall first: Android removes app settings and the model on uninstall.
 Alpha01/alpha02 used disposable debug keys and require a one-time uninstall.
 
