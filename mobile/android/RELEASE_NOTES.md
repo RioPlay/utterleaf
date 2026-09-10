@@ -1,4 +1,19 @@
-# Utterleaf Android 0.1.0-alpha11
+# Utterleaf Android 0.1.0-alpha12
+
+- Tap Edit in the toolbar for Undo, Redo, Select all, Cut, Copy, Paste,
+  four-way cursor movement, selection mode, Home and End. ABC returns to typing.
+  The action panel replaces the letters instead of adding height above them.
+- Actions work through the current editor's Android API, including the practice
+  editor and local transcript editor. Unsupported commands show Key unavailable.
+  Undo/redo depend on the receiving editor's history and command support.
+- No clipboard monitoring or history: Copy/Cut/Paste happen only on explicit taps
+  through the editor. Copy/Cut are blocked for password fields. Raw terminal
+  fields receive no context-menu or fallback Ctrl commands from these actions;
+  use Terminal controls for terminal shortcuts.
+- Switching fields, leaving the panel or resetting it invalidates old action
+  controls. Error feedback has room below the toolbar when needed.
+
+## Included from alpha11
 
 - A compact toolbar provides number-row and terminal-mode toggles without opening
   Settings. Toggles preserve other preferences and stay synchronized with the
