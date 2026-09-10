@@ -126,9 +126,12 @@ class KeyboardGesturesTest {
         assertTrue(f.inserted.isEmpty()); assertTrue(f.moves.isEmpty())
     }
 
-    @Test fun letterTapAndHoldReleaseChooseExactlyOnce() = withPanel { f ->
+    @Test fun letterDriftWithinKeyAndHoldReleaseChooseExactlyOnce() = withPanel { f ->
         val key = f.key("a")
-        f.send(key, MotionEvent.ACTION_DOWN); f.send(key, MotionEvent.ACTION_UP)
+        val drift = ViewConfiguration.get(key.context).scaledTouchSlop + 1f
+        f.send(key, MotionEvent.ACTION_DOWN)
+        f.send(key, MotionEvent.ACTION_MOVE, drift)
+        f.send(key, MotionEvent.ACTION_UP, drift)
         val height = main { f.panel.view.height }
         f.hold(key)
         val expected = AlternateCharacters.choices('a', false)[main { f.strip().selectedIndex }]

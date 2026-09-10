@@ -96,7 +96,13 @@ internal class KeyboardGestures(private val root: FrameLayout) {
             val dx = x - downX; val dy = y - downY
             if (move == null) {
                 if (abs(dx) > slop || abs(dy) > slop) {
-                    cancelled = true; button.removeCallbacks(open); button.isPressed = false
+                    button.removeCallbacks(open)
+                    // Finger drift inside a key cancels the hold timer, not the tap.
+                    val origin = IntArray(2); button.getLocationOnScreen(origin)
+                    if (x < origin[0] - slop || x > origin[0] + button.width + slop ||
+                        y < origin[1] - slop || y > origin[1] + button.height + slop) {
+                        cancelled = true; button.isPressed = false
+                    }
                 }
                 return
             }
