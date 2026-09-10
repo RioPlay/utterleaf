@@ -145,6 +145,24 @@ class VoicePanelControlsTest {
         f.touch(button, MotionEvent.ACTION_UP); main { f.results.single()("wrong field") }
         assertTrue(f.inserted.isEmpty()); assertEquals(1, main { f.fake.cancelled })
     }
+    @Test fun transcriptExpandsAndEditsWithoutRecordingPreferences() = withPanel { f ->
+        f.click("Speak"); f.click("Stop")
+        val transcript = (1..30).joinToString("\n") { "Line $it of the transcript." }
+        main { f.results.single()(transcript) }
+        val preview = main { descendants(f.panel.view).filterIsInstance<android.widget.EditText>().single() }
+        val collapsed = main { preview.layoutParams.height }
+        assertTrue(main { preview.isEnabled && preview.keyListener == null && preview.isTextSelectable })
+        assertEquals(View.GONE, main { descendants(f.panel.view).filterIsInstance<CheckBox>().single().visibility })
+        f.click("Expand transcript")
+        assertTrue(main { preview.layoutParams.height > collapsed })
+        assertEquals(transcript, main { preview.text.toString() })
+        f.click("Edit transcript")
+        assertEquals(collapsed, main { preview.layoutParams.height })
+        assertNotNull(main { preview.keyListener })
+        main { preview.setSelection(preview.length()) }
+        f.click("s"); f.click("Use edits"); f.click("Insert")
+        assertEquals(listOf(transcript + "s"), f.inserted)
+    }
     @Test fun shortTapDoesNotCaptureAndExtraFingerCancelsHold() = withPanel { f ->
         f.holdMode(); val primary = f.key("Hold to speak")
         f.touch(primary, MotionEvent.ACTION_DOWN); f.touch(primary, MotionEvent.ACTION_UP)
