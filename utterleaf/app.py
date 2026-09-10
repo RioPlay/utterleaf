@@ -516,11 +516,22 @@ class Utterleaf:
                 text_cleanup=self.cfg.text_cleanup,
             )
             log.info("Dictation timing: formatting=%.3fs", time.perf_counter() - format_started)
+            # Formatting/vocabulary work can outlast an Esc or shutdown request.
+            # The post-decode check alone does not cover this stage.
+            if self._cancel_job or self._stop.is_set():
+                self._cancel_job = False
+                self._queued_audio = None
+                self._queued_target = None
+                self._queued_continuation = None
+                self._queued_takes.clear()
+                self._after_job()
+                return
             if result.command == "replace":
                 replacement = prepare_delivery(result.text, text_cleanup=self.cfg.text_cleanup,
                                                code_mode=infer_style(app_name) == "code")
                 self._remember_result(replacement.text)
-                if (not self.last_text or not self.last_target or foreground_id() != self.last_target
+                if (not self.last_text or not self.last_target or target != self.last_target
+                        or foreground_id() != self.last_target
                         or (time.time() - self.last_paste_at) >= self.recent_dictation.ttl):
                     self._after_job("no_paste", "Replacement ready. Select the old entry, then use Copy last dictation and paste.")
                     return
@@ -543,6 +554,7 @@ class Utterleaf:
                 return
             if result.command_only and self.last_text and (
                 not self.last_target
+                or target != self.last_target
                 or foreground_id() != self.last_target
                 or (time.time() - self.last_paste_at) >= self.recent_dictation.ttl
             ):

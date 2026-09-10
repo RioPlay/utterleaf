@@ -202,6 +202,55 @@ def test_cancel_during_decode_never_pastes(monkeypatch):
     assert not app._job_running
 
 
+@pytest.mark.parametrize("raw", ["New prose.", "scratch that", "scratch that, new information", "make this shorter"])
+@pytest.mark.parametrize("stopping", [False, True])
+def test_cancel_during_formatting_prevents_delivery_and_edits(monkeypatch, raw, stopping):
+    from utterleaf.polish import polish_local
+    app = _app(monkeypatch)
+    app.state = "busy"
+    app.last_text = "I think this is previous text."
+    app.last_target = 123
+    app.last_paste_at = time.time()
+    monkeypatch.setattr("utterleaf.app.foreground_id", lambda: 123)
+    monkeypatch.setattr("utterleaf.app.foreground_app", lambda: "chat")
+    monkeypatch.setattr("utterleaf.app.transcribe", lambda *a: raw)
+    def format_text(*a, **kw):
+        if stopping:
+            app._stop.set()
+        else:
+            app.cancel_recording()
+        return polish_local(raw, vocab=[])
+    monkeypatch.setattr("utterleaf.app.polish", format_text)
+    changes = []
+    monkeypatch.setattr("utterleaf.app.paste", lambda *a, **kw: changes.append("paste") or "pasted")
+    monkeypatch.setattr("utterleaf.app.edit_target.replace", lambda *a: (changes.append("edit") or "replaced", None))
+    monkeypatch.setattr(app, "_schedule_edit_expiry", lambda: None)
+    app._finish(np.ones(16000, dtype=np.float32), target=123)
+    assert not changes
+    assert app.recent_dictation.get() == ""
+    assert app.last_text == "I think this is previous text."
+
+
+@pytest.mark.parametrize("raw", ["scratch that", "scratch that, new information", "make this shorter"])
+def test_command_cannot_retarget_earlier_take_by_switching_windows_during_decode(monkeypatch, raw):
+    app = _app(monkeypatch)
+    app.last_text = "I think this is previous text."
+    app.last_target = 123
+    app.last_paste_at = time.time()
+    # This command was released in window 456, then focus moved back to 123.
+    monkeypatch.setattr("utterleaf.app.foreground_id", lambda: 123)
+    monkeypatch.setattr("utterleaf.app.foreground_app", lambda: "chat")
+    monkeypatch.setattr("utterleaf.app.transcribe", lambda *a: raw)
+    changes = []
+    monkeypatch.setattr("utterleaf.app.edit_target.replace", lambda *a: (changes.append("edit") or "replaced", None))
+    monkeypatch.setattr("utterleaf.app.paste", lambda *a, **kw: changes.append("paste") or "pasted")
+    monkeypatch.setattr(app, "_schedule_edit_expiry", lambda: None)
+    app._finish(np.ones(16000, dtype=np.float32), target=456)
+    assert not changes
+    assert app.last_target == 123
+    app.recent_dictation.clear()
+
+
 def test_edit_command_never_undoes_another_window(monkeypatch):
     app = _app(monkeypatch)
     app.last_text = "Previous text."

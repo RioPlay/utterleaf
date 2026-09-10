@@ -1,15 +1,12 @@
-**v0.4.4** fixes a sentence-spacing gap when dictation includes a spoken new line, new paragraph, bullet-list or numbered-list command.
+**v0.4.5** fixes two delivery-boundary bugs found during the correctness pass.
 
-For example, `That is wrong.Maybe say no.I have an idea.Whatever works new paragraph` now produces separated sentences followed by the requested paragraph break.
+- Canceling or shutting down during formatting now discards the take before it can paste, replace or edit previous text.
+- Spoken edit commands must belong to the same captured target window as the earlier dictation. Switching away and back during decoding cannot retarget a command recorded for another window.
+- Eleven regression cases cover cancellation during formatting and window changes for scratch, replacement and shortening commands.
 
-- Keeps intentional line breaks and list formatting while repairing likely fused sentence openings.
-- Preserves recognizable URLs, email addresses, paths, decimals, code spans and common member-access expressions. Unmarked prose and identifiers can be ambiguous; literal/code modes bypass this repair.
-- Includes regression coverage for multiple dictation passes, expired continuation context, layout commands and technical tokens.
-- Retains the Windows microphone startup fix from [v0.4.3](https://github.com/RioPlay/utterleaf/releases/tag/v0.4.3).
+Retains the sentence-spacing repair from v0.4.4 and Windows microphone startup fix from v0.4.3. Ordinary paste is still guarded at the window level; verified destructive edits also check the native field receipt. This does not claim that every text field in every application exposes a verifiable identity.
 
-This fixes a reproduced layout-command path. It does not establish the cause of every reported spacing problem. No transcript logging, network processing or preference changes are added. The planned self-updater is not included.
-
-Quit the older app before extracting and reopening this update.
+No transcript logging, network processing or preference changes are added. Quit the older app before extracting and reopening this update.
 
 ## Download and open
 
