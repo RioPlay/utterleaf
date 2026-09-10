@@ -457,24 +457,36 @@ class DeviceTest {
                     show(screen.editor)
 
                     // Exercise toolbar actions through the real IME InputConnection.
-                    onMain { screen.editor.setText("cat"); screen.editor.setSelection(3) }
-                    press("s")
+                    fun livePress(label: String) {
+                        UiAwait.until("Live IME key unavailable: $label") {
+                            val button = findNativeKey(label)
+                            button != null && button.isAttachedToWindow && button.isShown && button.isEnabled && button.performClick()
+                        }
+                        instrumentation.waitForIdleSync()
+                    }
+                    val beforeRestart = onMain { findNativeKey("a") ?: error("Missing live letter") }
+                    onMain {
+                        screen.editor.setText("cat"); screen.editor.setSelection(3)
+                        manager.restartInput(screen.editor)
+                    }
+                    UiAwait.until("Editor restart did not replace the IME panel") { !beforeRestart.isAttachedToWindow }
+                    livePress("s")
                     awaitCondition("Live action fixture did not type") { onMain { screen.editor.text.toString() == "cats" } }
-                    press("Edit actions"); press("Undo")
+                    livePress("Edit actions"); livePress("Undo")
                     awaitCondition("Live Undo did not reach editor history") { onMain { screen.editor.text.toString() == "cat" } }
-                    press("Select all")
+                    livePress("Select all")
                     awaitCondition("Live Select all did not select the editor") { onMain {
                         screen.editor.selectionStart == 0 && screen.editor.selectionEnd == 3
                     } }
-                    press("Copy")
+                    livePress("Copy")
                     onMain { screen.editor.setSelection(3) }
-                    press("Paste")
+                    livePress("Paste")
                     awaitCondition("Live Copy/Paste did not duplicate the selected text") { onMain { screen.editor.text.toString() == "catcat" } }
                     val leftPanelPaste = onMain { findNativeKey("Paste") ?: error("Missing live Paste") }
-                    press("Return to typing")
+                    livePress("Return to typing")
                     onMain { leftPanelPaste.performClick() }
                     UiAwait.remains("Old action changed text after leaving Edit") { screen.editor.text.toString() == "catcat" }
-                    press("Edit actions")
+                    livePress("Edit actions")
                     val oldFieldPaste = onMain { findNativeKey("Paste") ?: error("Missing live Paste") }
                     show(screen.password)
                     onMain { oldFieldPaste.performClick() }
