@@ -32,13 +32,50 @@ class DeviceTest {
     }
     @Test fun systemRecognizesAnAuxiliaryVoiceInputMethod() {
         val manager = app.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
-        val ime = manager.inputMethodList.single { it.packageName == app.packageName }
+        val ime = manager.inputMethodList.single { it.serviceName == VoiceIme::class.java.name }
         assertEquals(1, ime.subtypeCount)
         val subtype = ime.getSubtypeAt(0)
         assertEquals("voice", subtype.mode)
         assertTrue(subtype.isAuxiliary)
         assertTrue(subtype.overridesImplicitlyEnabledSubtype())
         assertEquals("android.permission.BIND_INPUT_METHOD", ime.serviceInfo.permission)
+    }
+    @Test fun typingKeyboardIsSeparateAndProtected() {
+        val manager = app.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+        val ime = manager.inputMethodList.single { it.serviceName == KeyboardIme::class.java.name }
+        assertEquals("android.permission.BIND_INPUT_METHOD", ime.serviceInfo.permission)
+        assertEquals("keyboard", ime.getSubtypeAt(0).mode)
+        assertFalse(ime.getSubtypeAt(0).isAuxiliary)
+        assertTrue(ime.getSubtypeAt(0).isAsciiCapable)
+    }
+    @Test fun typingKeysWorkWithoutSpeechAndResetSensitiveState() {
+        instrumentation.runOnMainSync {
+            val inserted = mutableListOf<String>()
+            var deletes = 0
+            var enters = 0
+            val panel = TypingPanel(app, KeyboardOptions(), { inserted.add(it); true },
+                { deletes++ }, { enters++ }, {}, { fail("Speech must be disabled") }, {}, {})
+            fun buttons(view: android.view.View): List<android.widget.Button> = when (view) {
+                is android.widget.Button -> listOf(view)
+                is android.view.ViewGroup -> (0 until view.childCount).flatMap { buttons(view.getChildAt(it)) }
+                else -> emptyList()
+            }
+            fun key(label: String) = buttons(panel.view).single { it.contentDescription == label }
+            panel.reset(false, false, "Done")
+            assertFalse(key("Dictate").isEnabled)
+            key("Shift off").performClick(); key("A").performClick(); key("a").performClick()
+            key("Caps lock off").performClick(); key("B").performClick(); key("B").performClick()
+            key("Delete").performClick(); key("Done").performClick()
+            assertEquals(listOf("A", "a", "B", "B"), inserted)
+            assertEquals(1, deletes); assertEquals(1, enters)
+            panel.reset(false, true, "Next") // A new numeric/password field cannot retain case state.
+            key("1").performClick(); key("$").performClick()
+            key("Switch letters and symbols").performClick()
+            key("a").performClick()
+            assertEquals(listOf("A", "a", "B", "B", "1", "$", "a"), inserted)
+            assertTrue(buttons(panel.view).all { !it.contentDescription.isNullOrBlank() })
+            assertTrue(key("Shift off").isFocusable)
+        }
     }
     @Test fun deniedPermissionCannotStartCapture() {
         assertEquals(PackageManager.PERMISSION_DENIED, app.checkSelfPermission("android.permission.RECORD_AUDIO"))
