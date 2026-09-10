@@ -1,4 +1,17 @@
-# Utterleaf Android 0.1.0-alpha12
+# Utterleaf Android 0.1.0-alpha13
+
+- Key-height and bottom-space sliders expose their displayed values to
+  accessibility services, including after Reset.
+- Quick toolbar toggles synchronize in-memory preferences with the saved
+  snapshot, preserving unrelated saved options.
+- QA now covers live-IME editing actions and stale controls, slider value
+  updates, accessibility-driven persistence, reset cancellation/confirmation,
+  and gesture cancellation without fixed success delays. Physical-device and
+  TalkBack acceptance remain open.
+- Updates retain the existing signing identity. Install over the signed preview;
+  no uninstall is required.
+
+## Included from alpha12
 
 - Tap Edit in the toolbar for Undo, Redo, Select all, Cut, Copy, Paste,
   four-way cursor movement, selection mode, Home and End. ABC returns to typing.
