@@ -16,7 +16,7 @@ class VoiceIme : InputMethodService() {
         panel = VoicePanel(this, { text ->
             allowed && currentInputConnection?.commitText(text, 1) == true
         }, { returnKeyboard() })
-        return panel!!.view
+        return panel!!.view.also { Ui.applySystemInsets(it, navigationOnly = true) }
     }
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
