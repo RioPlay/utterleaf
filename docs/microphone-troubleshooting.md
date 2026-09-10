@@ -21,6 +21,19 @@ produce similar symptoms.
 
 ## Windows: using Discord or another voice app
 
+**Update to v0.4.3 if v0.4.2 still reports an error when opening the microphone.**
+A Windows capture-thread initialization defect was reproduced with an AT2020 USB
+microphone: opening on the main thread worked, while background-thread startup
+failed with `PaErrorCode -9999`. The attached WDM-KS error text could be stale and
+did not establish which backend or application caused the failure.
+
+v0.4.3 opens, starts and releases Windows streams on a dedicated COM-initialized
+thread. It closes that thread after releasing the microphone. This fixes the
+reproduced thread-initialization path without changing Windows or Discord settings;
+it does not claim to resolve every driver, permission or exclusive-access conflict.
+See [Microsoft's COM threading requirements](https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-coinitializeex)
+and [capture-interface ownership](https://learn.microsoft.com/en-us/windows/win32/api/audioclient/nn-audioclient-iaudiocaptureclient).
+
 Shared-mode capture allows more than one application to use a microphone. Utterleaf
 requests WASAPI shared mode when that backend is available; another app being open
 does not by itself establish an exclusive-access conflict.

@@ -1,11 +1,18 @@
 """Device liveness contracts using synthetic PCM and a controllable clock."""
 
 from types import SimpleNamespace
+from contextlib import nullcontext
+import threading
 
 import numpy as np
 import pytest
 
 from utterleaf import audio
+
+
+@pytest.fixture(autouse=True)
+def synthetic_com(monkeypatch):
+    monkeypatch.setattr("utterleaf.audio_owner._com_scope", nullcontext)
 
 
 @pytest.fixture
@@ -52,6 +59,45 @@ def test_silence_callbacks_are_healthy_for_a_long_take(capture):
         capture.callback(.5, 0)
         assert capture.recorder.capture_error() is None
     assert capture.recorder.stop().size == 30 * 16000
+
+
+def test_windows_native_stream_lifecycle_stays_on_owner(capture, monkeypatch):
+    capture.recorder.close()
+    monkeypatch.setattr(audio.sys, "platform", "win32")
+    calls = []
+    stream_type = type(capture.streams[-1])
+
+    class OwnedStream(stream_type):
+        def __init__(self, **kwargs):
+            calls.append(("open", threading.get_ident()))
+            super().__init__(**kwargs)
+
+        def start(self):
+            calls.append(("start", threading.get_ident()))
+            super().start()
+
+        def stop(self):
+            calls.append(("stop", threading.get_ident()))
+            super().stop()
+
+        def close(self):
+            calls.append(("close", threading.get_ident()))
+            super().close()
+
+    monkeypatch.setattr(audio.sd, "InputStream", OwnedStream)
+    recorder = capture.recorder
+    recorder.start()
+    capture.callback(.1, .25)
+    assert recorder.capture_error() is None
+    assert recorder.stop().size == 1600
+    other = threading.Thread(target=recorder.close)
+    other.start()
+    other.join(timeout=5)
+    assert not other.is_alive()
+    assert [name for name, _ in calls] == ["open", "start", "stop", "close"]
+    assert len({ident for _, ident in calls}) == 1
+    assert calls[0][1] != threading.get_ident()
+    assert recorder._owner is None
 
 
 def test_no_first_callback_has_a_bounded_grace_period(capture):

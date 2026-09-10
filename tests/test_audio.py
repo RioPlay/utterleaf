@@ -2,6 +2,13 @@ from utterleaf.audio import Recorder, SelectedMicrophoneUnavailable, list_input_
 import numpy as np
 import pytest
 from utterleaf.audio import resample_audio
+from contextlib import nullcontext
+
+
+@pytest.fixture(autouse=True)
+def synthetic_com(monkeypatch):
+    # These tests simulate devices, including Windows hosts on Linux CI.
+    monkeypatch.setattr("utterleaf.audio_owner._com_scope", nullcontext)
 
 
 def _devices() -> list[dict]:
