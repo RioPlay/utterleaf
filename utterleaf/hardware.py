@@ -423,7 +423,7 @@ def probe() -> list[Accelerator]:
         else:
             label = f"CUDA ({cuda_count} device{'s' if cuda_count != 1 else ''})"
         if cuda_count > 0 and not usable:
-            label += ", cublas not found"
+            label += ", CUDA runtime unavailable (libraries missing or disabled after a GPU error)"
         elif cuda_count == 0 and gpu_label:
             label += ", CTranslate2 sees no CUDA device"
             usable = False
@@ -528,7 +528,7 @@ def generate_diagnostic_report(cfg: Config) -> str:
     lines.append("")
     lines.append("CUDA Status:")
     lines.append(f"  Runtime OK: {cuda_runtime_ok()}")
-    lines.append("  Runtime OK checks cuBLAS loading only; GPU detection and cuDNN/model loading are separate checks.")
+    lines.append("  Runtime OK starts with a cuBLAS loading check; a failed GPU attempt also disables it until restart. GPU detection and cuDNN/model loading are separate checks.")
     lines.append(f"  Library Dirs: {', '.join(map(str, cuda_library_dirs()))}")
     if any(item.kind == "gpu" and item.backend == "ctranslate2" and not item.ready for item in accels):
         lines.append("")

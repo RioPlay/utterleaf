@@ -27,6 +27,15 @@ intended field, with understandable local processing and minimal interruption.
 
 ## Current delivery status
 
+**Version 0.4.1:** model installation status and explicit download/repair, grouped
+speech/privacy controls, common audio/video decoding through a selected FFmpeg,
+existing-window activation, separators between completed dictation takes, and
+paused ?scratch that? with verified replacement. Windows GPU setup gives
+platform-specific runtime instructions. Automatic correction still requires a
+supported native Windows Edit field; browsers and other unsupported fields use
+manual recovery. See the [user guide](user-guide.md) for the exact behavior.
+
+
 **Version 0.3.7 usability audit:** direct task headings, compact decorative art,
 visible selection/focus marks, responsive footer messages, readable hardware
 choices, and validation that returns to the invalid field. The

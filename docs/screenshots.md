@@ -2,7 +2,8 @@
 
 [Back to Utterleaf](../README.md) · [User guide](user-guide.md)
 
-Real Windows screenshots of the v0.3.7 interface, captured with sample vocabulary.
+Real Windows screenshots captured with sample settings and vocabulary.
+Speech & privacy shows the v0.4.1 model setup; other screens show v0.3.7.
 The app uses bundled artwork and local fonts; no remote content is loaded by Settings.
 
 ## Dictation

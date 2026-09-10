@@ -265,7 +265,8 @@ def test_windows_diagnostic_contains_actionable_setup(monkeypatch):
     assert "Picked Accelerator: cpu" in report
     assert "RTX 3090" in report and "CUDA 12.x" in report
     assert "Runtime OK: False" in report
-    assert "cuBLAS loading only" in report
+    assert "cuBLAS loading check" in report
+    assert "failed GPU attempt" in report
     assert "pacman" not in report and "UTTERLEAF_BUNDLE_CUDA" not in report
 
 
