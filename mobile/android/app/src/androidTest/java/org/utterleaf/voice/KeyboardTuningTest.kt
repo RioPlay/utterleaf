@@ -22,18 +22,18 @@ class KeyboardTuningTest {
         KeyboardOptions(keyHeightDp = 64, bottomPaddingDp = 12).save(context)
         val activity = instrumentation.startActivitySync(android.content.Intent(context, KeyboardSettingsActivity::class.java)
             .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        fun sliders() = descendants(activity.window.decorView).filterIsInstance<android.widget.SeekBar>()
+        fun reset() = descendants(activity.window.decorView).filterIsInstance<android.widget.Button>()
+            .single { it.text == "Reset keyboard preferences" }.performClick()
+        fun dialogButtons(id: Int) = android.view.inspector.WindowInspector.getGlobalWindowViews()
+            .mapNotNull { it.findViewById<android.widget.Button>(id) }.filter { it.isAttachedToWindow && it.isShown }
+        val changed = KeyboardOptions(keyHeightDp = 61, bottomPaddingDp = 29)
         try {
             instrumentation.runOnMainSync {
-                fun sliders() = descendants(activity.window.decorView).filterIsInstance<android.widget.SeekBar>()
-                fun reset() = descendants(activity.window.decorView).filterIsInstance<android.widget.Button>()
-                    .single { it.text == "Reset keyboard preferences" }.performClick()
-                fun dialogButton(id: Int) = android.view.inspector.WindowInspector.getGlobalWindowViews()
-                    .mapNotNull { it.findViewById<android.widget.Button>(id) }.single()
                 val currentSliders = sliders()
                 assertEquals(listOf("Key height: 64 dp", "Bottom space: 12 dp"), currentSliders.map { it.contentDescription.toString() })
                 currentSliders[0].progress = 13; currentSliders[1].progress = 28
                 assertEquals(listOf("Key height: 60 dp", "Bottom space: 28 dp"), currentSliders.map { it.contentDescription.toString() })
-                // Accessibility progress changes follow the same persistence path as a user drag.
                 for ((slider, value) in currentSliders.zip(listOf(14f, 29f))) {
                     val arguments = android.os.Bundle().apply {
                         putFloat(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE, value)
@@ -41,12 +41,22 @@ class KeyboardTuningTest {
                     assertTrue(slider.performAccessibilityAction(
                         android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.id, arguments))
                 }
-                val changed = KeyboardOptions(keyHeightDp = 61, bottomPaddingDp = 29)
                 assertEquals(changed, KeyboardOptions.load(context))
-                reset(); dialogButton(android.R.id.button2).performClick()
+                reset()
+            }
+            UiAwait.until("Reset dialog did not appear") { dialogButtons(android.R.id.button2).size == 1 }
+            instrumentation.runOnMainSync { dialogButtons(android.R.id.button2).single().performClick() }
+            // AlertDialog posts dismissal; let the main looper remove it before opening another.
+            UiAwait.until("Cancelled reset dialog did not close") { dialogButtons(android.R.id.button2).isEmpty() }
+            instrumentation.runOnMainSync {
                 assertEquals(changed, KeyboardOptions.load(context))
                 assertEquals(listOf("Key height: 61 dp", "Bottom space: 29 dp"), sliders().map { it.contentDescription.toString() })
-                reset(); dialogButton(android.R.id.button1).performClick()
+                reset()
+            }
+            UiAwait.until("Reset confirmation did not appear") { dialogButtons(android.R.id.button1).size == 1 }
+            instrumentation.runOnMainSync { dialogButtons(android.R.id.button1).single().performClick() }
+            UiAwait.until("Confirmed reset dialog did not close") { dialogButtons(android.R.id.button1).isEmpty() }
+            instrumentation.runOnMainSync {
                 assertEquals(KeyboardOptions(), KeyboardOptions.load(context))
                 assertEquals(listOf(0, 0), sliders().map { it.progress })
                 assertEquals(listOf("Key height: default", "Bottom space: 0 dp"), sliders().map { it.contentDescription.toString() })
