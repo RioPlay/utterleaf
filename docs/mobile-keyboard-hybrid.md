@@ -9,6 +9,12 @@ public documentation was consulted for interaction research; no implementation
 code or imported layout/artwork is used. These are requirements to implement and
 validate, not a claim that alpha05 already provides them.
 
+[Alpha06](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha06)
+adds optional secondary hints and common Latin accent/symbol selection by long press
+or Tools → Accents → letter. Cancel, case and session guards passed automated checks; see the
+[release evidence](android-keyboard-design.md). Adjustable hold timing, broad language support and
+physical/TalkBack/Switch Access validation remain open.
+
 ## Recommended interaction model
 
 | Surface | Primary purpose | Proposed behavior |
@@ -41,7 +47,7 @@ and that applications may ignore special keys. These are design constraints; the
 | Correction | Conservative, visible and immediately reversible once its acceptance gates pass | Separate suggestions, automatic replacement, capitalization and spacing controls; explicit literal mode |
 | Learning | No implicit personal learning | User-added vocabulary first; later inspectable, erasable local learning with a separate switch |
 | Clipboard | Read only for an explicit paste action | History requires a separate retention design; keep it off by default |
-| Touch | Comfortable daily geometry and stable key positions | Independent height/labels, left/right alignment, repeat and hold timing, optional hints and number row |
+| Touch | Comfortable daily geometry and stable key positions | Independent height/labels, left/right alignment, repeat and hold timing, optional hints and number row; alpha06 adds common Latin accent/symbol selection through long press or Tools → Accents → letter |
 | Accessibility | Selectable alternatives to essential gestures and chords | Screen-reader, switch and motor-accommodation settings validated independently |
 | Speech | Ordinary typing works without a model or microphone permission | Local voice with a clear model/language, Stop/Cancel and recovery path |
 | Power keys | Compact daily surface | Deliberately enabled terminal layer with explicit modifier states and tested host support |

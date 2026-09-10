@@ -3,7 +3,7 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha05 is released as a signed development preview.**
+**0.1.0-alpha06 is released as a signed development preview.**
 Typing works without microphone permission or a speech
 model. A separate voice-only option remains available for compatible keyboards.
 
@@ -11,7 +11,12 @@ This is the foundation for a complete customizable keyboard. Broader language,
 prediction, accessibility and device coverage remain on the
 [mobile roadmap](../../docs/mobile-roadmap.md). Desktop development is tracked separately.
 
-## Alpha05
+## Alpha06
+
+- Visible secondary symbols on letters; hide hints in preferences if desired.
+- Hold a letter for common Latin accents/symbols, or use **Tools → Accents → letter**.
+  Cancel inserts nothing; Shift/Caps affect the choices. Old picker callbacks cannot
+  insert into a later field. Adjustable hold timing and full language support remain planned.
 
 - Staggered English letter rows, a wide spacebar, direct punctuation, symbols,
   deletion, Enter actions and integrated **Voice** and **Tools** controls.
@@ -43,11 +48,11 @@ prediction, accessibility and device coverage remain on the
 
 ## Try it
 
-1. [Download and install Utterleaf Android alpha05](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha05/Utterleaf-Android-0.1.0-alpha05.apk)
+1. [Download and install Utterleaf Android alpha06](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha06/Utterleaf-Android-0.1.0-alpha06.apk)
    on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Use `Utterleaf-Android-0.1.0-alpha05.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha05).
+   Use `Utterleaf-Android-0.1.0-alpha06.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha06).
    If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
-   then install alpha05. Uninstalling removes the imported model and other app data.
+   then install alpha06. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
    the same release identity and should be updated in place rather than uninstalled.
 2. Open **Utterleaf Voice**. Under **Your keyboard**, enable **Utterleaf Keyboard**
@@ -105,10 +110,14 @@ on real phones before recommending a larger model for a particular device.
 
 ## Screenshots and optional voice integration
 
-<img src="../../docs/assets/screenshots/android-setup.png" width="300" alt="Alpha05 setup showing separate keyboard activation and optional English voice readiness" />
-<img src="../../docs/assets/screenshots/android-keyboard-live.png" width="300" alt="Alpha05 keyboard in a synthetic editor with staggered letters, wide spacebar and Voice control" />
+[Alpha06 validation](../../docs/android-keyboard-design.md#released-in-alpha06)
+records 8 JVM, 38 emulator and 3 release-contract tests plus signed installation checks.
 
-Actual alpha05 f74b862 on the API 35 CI emulator. The setup page scrolls;
+<img src="../../docs/assets/screenshots/android-setup.png" width="300" alt="Alpha06 setup showing separate keyboard activation and optional English voice readiness" />
+<img src="../../docs/assets/screenshots/android-keyboard-live.png" width="300" alt="Alpha06 keyboard in a synthetic editor with staggered letters, wide spacebar and Voice control" />
+<img src="../../docs/assets/screenshots/android-keyboard-accents.png" width="300" alt="Alpha06 common Latin accents with visible Cancel action" />
+
+Actual alpha06 cdf29cd on the API 35 CI emulator. The setup page scrolls;
 the live keyboard is in a synthetic editor, with no personal text or recording.
 Status and navigation bars no longer overlap the controls in these captures.
 Instrumentation temporarily allows the debug screenshot and restores the secure

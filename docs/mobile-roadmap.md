@@ -39,6 +39,11 @@ roadmap without claiming those capabilities are already released.
   import, sizing/theme/feedback/repeat preferences, preview expiry warning/extension,
   and an Obtainium setup button. Alpha04 fixes Shift/Caps case handling and adds
   live-IME regression coverage. The separate voice companion remains available.
+- **Released alpha06:** [release evidence](android-keyboard-design.md#released-in-alpha06)
+  adds visible optional secondary hints, common Latin accent/symbol selection through
+  long press or Tools → Accents → letter, and cancel/case/session guards. Automated
+  release checks passed; adjustable hold timing, broad language support and
+  physical/TalkBack/Switch Access acceptance remain open.
 - **Verified in CI:** [4 JVM, 32 API 35 emulator and 3 Python release-contract tests](https://github.com/RioPlay/utterleaf/actions/runs/34432378047),
   with zero emulator failures or skips; tiny.en/base.en real fixture inference,
   model bounds/rollback, terminal event contracts, number row, Fn and inset checks;
@@ -63,16 +68,17 @@ and P5 advanced customization. It records current limits, editor contracts and
 measurable gates.
 The alpha05 layout, number-row preference, terminal dispatch and one-shot modifiers
 are released with controlled CI coverage; broader phone/editor acceptance remains
-open. Secondary hints and optional
-long-press characters with single-tap alternatives, an editing toolbar with verified
-undo/redo behavior, and a functional suggestion strip remain explicit follow-up work.
+open. Released alpha06 adds optional secondary hints and common Latin accent/symbol
+selection with long-press and Tools routes; physical and assistive-tech
+validation remains open. Adjustable hold timing, broader languages, verified
+undo/redo behavior and a functional suggestion strip remain follow-up work.
 Visible toolbar space does not establish implemented suggestions or correction.
 
 | ID / status | Deliverable | Completion gate |
 | --- | --- | --- |
 | M1 — In progress | Select and document keyboard foundation; threat model and licensing review | Record provenance, required notices, license compatibility, permissions, input-data lifetime, import boundaries, and update trust. Do not import restricted code merely because its source is visible. |
 | M2 — Partial implementation released; broader everyday/terminal acceptance open | Polished everyday typing, integrated voice and optional power layout | Complete [P1/P2 editing and modifier gates](android-keyboard-capabilities.md#prioritized-capability-and-acceptance-matrix): selection/Unicode/Enter plus Ctrl/Alt, Esc/Tab, navigation and Fn/function keys. Meta and further power features remain planned. Verify text/composition versus raw-key dispatch in named editors/terminals. Type → dictate → correct → type without switching IMEs. Password typing stays available; speech/learning stay disabled there. No stale edit or modifier reaches a new field. |
-| M3 — Partial implementation; number row and guided setup in alpha05 | Accessibility and useful customization | Verify enabled/selected keyboard status independently from model/microphone readiness; optional companion steps must not block typing. Validate number row, adjustable key/label sizing, contrast, reachable layouts and independent feedback/repeat preferences. Secondary hints and optional long presses with single-tap alternatives remain planned. Complete setup, typing, correction, dictation, cancellation and reset using TalkBack and Switch Access. Test system-bar/cutout bounds, large fonts, landscape and stable geometry across symbol pages. |
+| M3 — Partial implementation; alpha06 released | Accessibility and useful customization | Verify enabled/selected keyboard status independently from model/microphone readiness; optional companion steps must not block typing. Validate number row, adjustable key/label sizing, contrast, reachable layouts and independent feedback/repeat preferences. Alpha06 provides optional secondary hints and common Latin accent/symbol selection by long press or Tools → Accents → letter; physical, TalkBack and Switch Access validation remains open. Adjustable hold timing and broader languages remain planned. Complete setup, typing, correction, dictation, cancellation and reset using TalkBack and Switch Access. Test system-bar/cutout bounds, large fonts, landscape and stable geometry across symbol pages. |
 | M4 — Partial implementation; three English model choices in alpha05 | Comfortable offline speech | Keep one active model; exact selected size/hash and atomic replacement preserve the previous model on failure. Tiny.en/base.en fixture inference passed CI; small.en inference remains unverified. Measure memory, quality and latency on real hardware. Clear mic/loading/error state, tap start/stop, pause tolerance and accessible preview warning/extension; optional hold mode, longer takes and fuller correction remain work. No promise of recognition for every speech pattern. |
 | M5 — Planned | Languages, correction, composition and optional swipe | Follow [P3/P4 language gates](android-keyboard-capabilities.md#prioritized-capability-and-acceptance-matrix): reviewed layouts/dictionaries, accents/compose/emoji/snippets, reversible correction, then bounded prediction and licensed swipe. Complex scripts need separate composition evidence. Learning is explicit, local and erasable; no password learning or automatic clipboard history. Power mode preserves literal typing. |
 | M6 — In progress; persistent signed channel began with alpha03 | Broad compatibility and sustainable distribution | Defined Android/API and ABI support, diverse physical-device matrix, stable protected signing, install/update/rollback-policy testing, reproducible build inputs and release checksums. No forced downgrade or unsigned consumer APK. |

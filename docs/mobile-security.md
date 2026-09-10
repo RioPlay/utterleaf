@@ -40,6 +40,13 @@ and can be captured for documentation. No screenshot or log should contain actua
 user input. The app cannot prevent a receiving editor, a compromised OS, or an
 authorized third-party accessibility service from observing input at their boundary.
 
+Screen-capture protection has no user-facing disable switch. The live keyboard
+screenshots in these docs come from a synthetic debug editor: instrumentation
+temporarily clears the secure flag and restores it in a `finally` block. That test
+code and editor are excluded from release APKs. Capturing a keyboard for QA does
+not require weakening the shipped keyboard's protection. See Android's
+[window-security guidance](https://developer.android.com/security/fraud-prevention/activities).
+
 ## Model and terminal boundaries
 
 The [model catalog](../mobile/android/README.md#english-speech-models) records direct

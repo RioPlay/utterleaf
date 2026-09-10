@@ -1,6 +1,6 @@
 # Android typing surface
 
-## Alpha06 changes awaiting release validation
+## Released in alpha06
 
 Letter keys show secondary symbol hints, with a setting to hide them. Hold a letter
 for common Latin accents and its symbol, or use **Tools → Accents → letter** without
@@ -11,7 +11,17 @@ do not add dictionaries, prediction or full multilingual composition.
 Picker and panel callbacks are scoped to their layout and input session, so stale
 controls cannot insert into a later field. Instrumentation covers selection,
 cancellation, rejected input, stale controls, narrow layouts and real editor insertion.
-Compilation and emulator acceptance for this revision are pending.
+Revision cdf29cd passed [CI run 34440735943](https://github.com/RioPlay/utterleaf/actions/runs/34440735943):
+8 JVM, 38 API 35 emulator and 3 release-contract tests. The live editor test includes
+successful accent insertion and a retained old picker button rejected after a
+password-field switch. Actual hints and picker captures were visually reviewed.
+[Signing run 34441330864](https://github.com/RioPlay/utterleaf/actions/runs/34441330864)
+passed installation, upgrade and stable-certificate checks before publishing the
+[signed alpha06 APK](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha06).
+Physical-phone, TalkBack and Switch Access acceptance remains open.
+
+<img src="assets/screenshots/android-keyboard-live.png" width="280" alt="Alpha06 secondary symbols above letter labels in a synthetic editor" />
+<img src="assets/screenshots/android-keyboard-accents.png" width="280" alt="Alpha06 accent picker with separate character choices and Cancel" />
 
 ## Released foundation
 
