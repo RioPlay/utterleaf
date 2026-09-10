@@ -266,6 +266,7 @@ class DeviceTest {
             instrumentation.waitForIdleSync()
         }
         var activity: KeyboardTestActivity? = null
+        var dismissedLauncherAnr = false
         try {
             automation.serviceInfo = automation.serviceInfo.apply {
                 flags = flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
@@ -281,7 +282,20 @@ class DeviceTest {
             activity = screen
             instrumentation.waitForIdleSync()
             fun show(field: android.widget.EditText) {
-                awaitCondition("Synthetic editor window did not acquire focus") { onMain { screen.hasWindowFocus() } }
+                awaitCondition("Synthetic editor window did not acquire focus") {
+                    val focused = onMain { screen.hasWindowFocus() }
+                    if (!focused && !dismissedLauncherAnr) {
+                        // API 35 CI occasionally opens the platform launcher's ANR dialog.
+                        // Recover that named fixture failure once; never dismiss an app ANR.
+                        val launcherDialog = automation.windows.firstOrNull { it.title?.toString() == "Quickstep isn't responding" }
+                        val close = launcherDialog?.root?.findAccessibilityNodeInfosByText("Close app")?.firstOrNull { it.isClickable }
+                        if (close?.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK) == true) {
+                            dismissedLauncherAnr = true
+                            println("Recovered the emulator Quickstep launcher dialog before editor validation")
+                        }
+                    }
+                    focused
+                }
                 onMain { field.requestFocus() }
                 awaitCondition("Synthetic ${if (field === screen.editor) "text" else "password"} field did not acquire its input connection") {
                     onMain { manager.isActive(field) }
