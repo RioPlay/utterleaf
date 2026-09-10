@@ -79,4 +79,6 @@ Revision `c2247d6478d4da341a8753bc1793cbcc139915a0` passed
 [Desktop CI](https://github.com/RioPlay/utterleaf/actions/runs/34483917033)
 also passed. Emulator screenshots of review, editing and the live typing toolbar
 were inspected. These checks do not establish physical-device latency or complete
-small-screen/accessibility coverage. No new signed APK was published by this pass.
+small-screen/accessibility coverage. These changes subsequently shipped in
+[signed Android alpha11](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha11),
+release revision `55e7173`; GPU/NPU acceleration remains planned.

@@ -5,6 +5,15 @@ This is a focused engineering pass, not a complete audit.
 
 ## Current pass
 
+- **Android alpha11:** revision `55e7173` passed
+  [71 API 35 emulator tests, 8 JVM tests, lint and release contracts](https://github.com/RioPlay/utterleaf/actions/runs/34486083030).
+  [Signed publishing checks](https://github.com/RioPlay/utterleaf/actions/runs/34487215244)
+  verified the persistent signing identity, increasing version code 11, signed
+  alpha03-to-alpha11 upgrade, reinstallation and setup launch. The downloaded APK
+  matched published SHA-256 `110361e5fd1e0ff33b2cb46da725d9a83b1560cf608b49f3b593e6d3559c804d`.
+  This does not establish physical-device behavior or model/preference retention
+  during upgrade. [Current UI and limits](android-keyboard-design.md#released-in-alpha11).
+
 - **Desktop v0.4.5:** cancellation during formatting and edit-window retargeting
   are covered by the 11-case regression set. Windows, macOS and Linux CI are
   green; the release is fully published. The local archive checksum and contents

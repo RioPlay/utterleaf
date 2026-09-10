@@ -1,5 +1,29 @@
 # Android typing surface
 
+## Released in alpha11
+
+The single-row toolbar provides **123** for the number row, **>_** for terminal
+controls, and the Utterleaf dictation icon. Quick toggles save locally and stay
+synchronized with the Settings practice keyboard. Advanced editing controls
+remain behind Tools; error and accent-selection feedback still appears when needed.
+
+Voice review supports **Expand transcript**, scrolling and selection, with
+**Edit transcript** beside expansion. Entering editing restores the smaller
+preview to leave room for keys. Model choices and recording preferences are
+hidden during review. Automatic capture completion now switches to processing
+without a Stop tap; stale status updates cannot affect a later take.
+
+<img src="assets/screenshots/android-voice-review-alpha11.png" width="230" alt="Android transcript review with Expand transcript, Edit transcript and Insert controls" />
+<img src="assets/screenshots/android-voice-edit-alpha11.png" width="230" alt="Android transcript editor with the compact quick-toggle toolbar" />
+
+These are actual API 35 debug-emulator screenshots with synthetic text. Revision
+`55e7173` passed [Android CI](https://github.com/RioPlay/utterleaf/actions/runs/34486083030):
+71 emulator tests with zero failures/skips, 8 JVM tests, lint and 3 release-contract
+tests. [Signing and installation checks](https://github.com/RioPlay/utterleaf/actions/runs/34487215244)
+cover the [alpha11 APK](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha11).
+Physical-phone comfort, small-screen/landscape and assistive-technology acceptance
+remain open. GPU/NPU acceleration is not included in this release.
+
 ## Released in alpha10
 
 Enable **Terminal controls** to use Ctrl and Alt. Hold either modifier, then

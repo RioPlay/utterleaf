@@ -6,8 +6,8 @@ Obtainium checks GitHub and installs Android updates. Utterleaf itself keeps **n
 Internet permission** and does not add an updater service. The signed channel
 begins with Android alpha03; alpha01/alpha02 used disposable debug keys.
 
-Current release: [Android alpha10](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha10) ·
-[Signed APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha10/Utterleaf-Android-0.1.0-alpha10.apk).
+Current release: [Android alpha11](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha11) ·
+[Signed APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha11/Utterleaf-Android-0.1.0-alpha11.apk).
 
 ## Set up
 

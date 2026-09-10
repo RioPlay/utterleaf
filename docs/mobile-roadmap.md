@@ -165,6 +165,11 @@ and primary platform references are in [the mobile guide](mobile.md).
 
 ## Before each mobile release
 
+Android alpha11 publishes the compact quick toolbar, expandable transcript review
+and automatic processing-state fix. Its release revision `55e7173` passed 71
+emulator tests, 8 JVM tests, lint and release contracts. See
+[release evidence and screenshots](android-keyboard-design.md#released-in-alpha11).
+
 Track the [Android responsiveness and acceleration pass](android-performance.md)
 separately from feature completeness; hardware speedups require physical-device
 measurements and safe CPU fallback.

@@ -3,14 +3,16 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha10 is released as a signed development preview.**
+**0.1.0-alpha11 is released as a signed development preview.**
 
-On `main`, for the next release: the single-row toolbar has **123** (number row),
+New in alpha11: the single-row toolbar has **123** (number row),
 **>_** (terminal controls) and the Utterleaf dictation icon. Quick toggles save
 locally and stay synchronized with the Settings preview. Voice review supports
 **Expand transcript**, scrolling, selection and **Edit transcript**; recording
-preferences hide while reviewing. These changes passed 71 emulator tests but are
-not included in the alpha10 APK linked below.
+preferences hide while reviewing. These changes passed 71 emulator tests;
+physical-device and accessibility acceptance remain open. See
+[alpha11 validation and screenshots](../../docs/android-keyboard-design.md#released-in-alpha11).
+
 Typing works without microphone permission or a speech
 model. A separate voice-only option remains available for compatible keyboards.
 
@@ -67,11 +69,11 @@ prediction, accessibility and device coverage remain on the
 
 ## Try it
 
-1. [Download and install Utterleaf Android alpha10](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha10/Utterleaf-Android-0.1.0-alpha10.apk)
+1. [Download and install Utterleaf Android alpha11](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha11/Utterleaf-Android-0.1.0-alpha11.apk)
    on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Use `Utterleaf-Android-0.1.0-alpha10.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha10).
+   Use `Utterleaf-Android-0.1.0-alpha11.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha11).
    If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
-   then install alpha10. Uninstalling removes the imported model and other app data.
+   then install alpha11. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
    the same release identity and should be updated in place rather than uninstalled.
 2. Open **Utterleaf Voice**. Under **Your keyboard**, enable **Utterleaf Keyboard**
@@ -86,7 +88,7 @@ prediction, accessibility and device coverage remain on the
    below, open its download in your browser, then return and **Import** that file.
    Allow microphone permission. The voice status shows what is still missing;
    granting permission does not start recording.
-5. In a non-password field, tap **Voice** to start, talk, **Stop**, review, and
+5. In a non-password field, tap the **Utterleaf dictation icon** to start, talk, **Stop**, review, and
    **Insert**. Use **Edit transcript** to correct locally before insertion.
    Speak/Stop/Insert share one primary control. From the idle panel, optionally
    enable **Hold to speak and insert on release**; hold until recording starts,
