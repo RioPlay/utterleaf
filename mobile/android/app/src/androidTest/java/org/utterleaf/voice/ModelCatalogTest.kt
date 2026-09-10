@@ -1,8 +1,11 @@
 package org.utterleaf.voice
 
 import android.content.Intent
+import android.graphics.Rect
+import android.os.Build
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsets
 import android.widget.RadioButton
 import android.widget.TextView
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -22,6 +25,71 @@ class ModelCatalogTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val app = instrumentation.targetContext
     private fun temporaryDirectory() = Files.createTempDirectory(app.cacheDir.toPath(), "model-catalog-").toFile()
+
+    @Suppress("DEPRECATION")
+    @Test fun systemInsetsPreservePaddingWithoutAccumulation() {
+        instrumentation.runOnMainSync {
+            val insets = if (Build.VERSION.SDK_INT >= 30) WindowInsets.Builder()
+                .setInsets(WindowInsets.Type.statusBars(), android.graphics.Insets.of(0, 23, 0, 0))
+                .setInsets(WindowInsets.Type.navigationBars(), android.graphics.Insets.of(7, 0, 11, 29))
+                .build()
+            else WindowInsets(Rect(7, 23, 11, 29))
+            for (navigationOnly in listOf(false, true)) {
+                val view = View(app).apply { setPadding(2, 3, 5, 7) }
+                Ui.applySystemInsets(view, navigationOnly)
+                repeat(2) {
+                    val remaining = view.dispatchApplyWindowInsets(insets)
+                    assertEquals(9, view.paddingLeft)
+                    assertEquals(if (navigationOnly) 3 else 26, view.paddingTop)
+                    assertEquals(16, view.paddingRight)
+                    assertEquals(36, view.paddingBottom)
+                    assertEquals(0, remaining.systemWindowInsetBottom)
+                }
+                // Hidden bars or a later inset change must restore the original padding.
+                val none = if (Build.VERSION.SDK_INT >= 30) WindowInsets.CONSUMED else WindowInsets(Rect())
+                view.dispatchApplyWindowInsets(none)
+                assertEquals(listOf(2, 3, 5, 7), listOf(view.paddingLeft, view.paddingTop, view.paddingRight, view.paddingBottom))
+            }
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    @Test fun activityContentStaysWithinSystemBarsWithoutDoublePadding() {
+        for (type in listOf(SetupActivity::class.java, KeyboardSettingsActivity::class.java, KeyboardTestActivity::class.java)) {
+            val activity = instrumentation.startActivitySync(Intent(app, type).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            try {
+                val laidOut = java.util.concurrent.CountDownLatch(1)
+                instrumentation.runOnMainSync {
+                    val decor = activity.window.decorView
+                    decor.post { decor.requestApplyInsets(); decor.postOnAnimation { laidOut.countDown() } }
+                }
+                assertTrue("Activity never laid out", laidOut.await(5, java.util.concurrent.TimeUnit.SECONDS))
+                instrumentation.waitForIdleSync()
+                instrumentation.runOnMainSync {
+                    val decor = activity.window.decorView
+                    val root = activity.findViewById<ViewGroup>(android.R.id.content).getChildAt(0)
+                    assertTrue(root.width > 0 && root.height > 0)
+                    val insets = decor.rootWindowInsets
+                    assertNotNull(insets)
+                    val safe = if (Build.VERSION.SDK_INT >= 30) {
+                        val bars = insets!!.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+                        Rect(bars.left, bars.top, bars.right, bars.bottom)
+                    } else Rect(insets!!.systemWindowInsetLeft, insets.systemWindowInsetTop,
+                        insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
+                    val windowOrigin = IntArray(2); decor.getLocationOnScreen(windowOrigin)
+                    val origin = IntArray(2); root.getLocationOnScreen(origin)
+                    // Root may already be fitted by the platform on older Android versions.
+                    assertEquals("Left content edge", maxOf(origin[0], windowOrigin[0] + safe.left), origin[0] + root.paddingLeft)
+                    assertEquals("Top content edge", maxOf(origin[1], windowOrigin[1] + safe.top), origin[1] + root.paddingTop)
+                    assertEquals("Right content edge", minOf(origin[0] + root.width, windowOrigin[0] + decor.width - safe.right), origin[0] + root.width - root.paddingRight)
+                    assertEquals("Bottom content edge", minOf(origin[1] + root.height, windowOrigin[1] + decor.height - safe.bottom), origin[1] + root.height - root.paddingBottom)
+                    // The app never owns the decor's status/navigation-bar presentation.
+                    assertEquals(0, decor.paddingTop)
+                    assertEquals(0, decor.paddingBottom)
+                }
+            } finally { instrumentation.runOnMainSync { activity.finish() } }
+        }
+    }
 
     @Test fun catalogIdentifiesLegacyPathAndEveryReviewedSize() {
         val directory = temporaryDirectory()

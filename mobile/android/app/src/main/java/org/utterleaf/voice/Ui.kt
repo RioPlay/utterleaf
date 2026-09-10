@@ -4,13 +4,48 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
+import android.os.Build
 import android.view.View
+import android.view.WindowInsets
 import android.widget.*
 
 object Ui {
     val ink = Color.rgb(229, 238, 232)
     val green = Color.rgb(131, 218, 154)
     fun dp(context: Context, n: Int) = (n * context.resources.displayMetrics.density).toInt()
+    /** Call once on a new app content root, never the window decor. Owns its subtree's insets. */
+    @Suppress("DEPRECATION")
+    fun applySystemInsets(view: View, navigationOnly: Boolean = false) {
+        val left = view.paddingLeft; val top = view.paddingTop
+        val right = view.paddingRight; val bottom = view.paddingBottom
+        view.setOnApplyWindowInsetsListener { target, insets ->
+            if (Build.VERSION.SDK_INT >= 30) {
+                val types = (if (navigationOnly) WindowInsets.Type.navigationBars() else WindowInsets.Type.systemBars()) or
+                    WindowInsets.Type.displayCutout()
+                val safe = insets.getInsets(types)
+                target.setPadding(left + safe.left, top + if (navigationOnly) 0 else safe.top,
+                    right + safe.right, bottom + safe.bottom)
+                // These simple native-view subtrees do not need another inset consumer.
+                WindowInsets.CONSUMED
+            } else {
+                val cutout = if (Build.VERSION.SDK_INT >= 28) insets.displayCutout else null
+                target.setPadding(left + maxOf(insets.systemWindowInsetLeft, cutout?.safeInsetLeft ?: 0),
+                    top + if (navigationOnly) 0 else maxOf(insets.systemWindowInsetTop, cutout?.safeInsetTop ?: 0),
+                    right + maxOf(insets.systemWindowInsetRight, cutout?.safeInsetRight ?: 0),
+                    bottom + maxOf(insets.systemWindowInsetBottom, cutout?.safeInsetBottom ?: 0))
+                val consumed = insets.consumeSystemWindowInsets().consumeStableInsets()
+                if (Build.VERSION.SDK_INT >= 28) consumed.consumeDisplayCutout() else consumed
+            }
+        }
+        if (view.isAttachedToWindow) view.requestApplyInsets()
+        else view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(attached: View) {
+                attached.removeOnAttachStateChangeListener(this)
+                attached.requestApplyInsets()
+            }
+            override fun onViewDetachedFromWindow(detached: View) = Unit
+        })
+    }
     fun column(context: Context) = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
         setBackgroundColor(Color.rgb(23, 30, 32))

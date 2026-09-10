@@ -13,10 +13,6 @@ class KeyboardSettingsActivity : Activity() {
         super.onCreate(savedInstanceState)
         options = KeyboardOptions.load(this)
         render()
-        window.decorView.setOnApplyWindowInsetsListener { view, insets ->
-            view.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop,
-                insets.systemWindowInsetRight, insets.systemWindowInsetBottom); insets
-        }
     }
     private fun render() {
         val column = Ui.column(this)
@@ -54,6 +50,6 @@ class KeyboardSettingsActivity : Activity() {
         column.addView(Ui.button(this, "Done") { finish() })
         column.addView(Ui.text(this, "Keyboard preview · does not enter or save text", 18f))
         column.addView(preview); updatePreview()
-        setContentView(ScrollView(this).apply { addView(column) })
+        setContentView(ScrollView(this).apply { addView(column); Ui.applySystemInsets(this) })
     }
 }

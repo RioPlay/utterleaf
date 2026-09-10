@@ -19,7 +19,7 @@ class KeyboardIme : InputMethodService() {
     override fun onEvaluateFullscreenMode() = false
     override fun onCreateInputView(): View {
         window.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        return FrameLayout(this).also { root = it }
+        return FrameLayout(this).also { root = it; Ui.applySystemInsets(it, navigationOnly = true) }
     }
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)

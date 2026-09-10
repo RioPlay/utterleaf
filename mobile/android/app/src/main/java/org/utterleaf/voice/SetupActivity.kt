@@ -146,11 +146,7 @@ class SetupActivity : Activity() {
                 }
                 .setPositiveButton("Close", null).show()
         })
-        setContentView(ScrollView(this).apply { addView(column) })
-        window.decorView.setOnApplyWindowInsetsListener { view, insets ->
-            view.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop,
-                insets.systemWindowInsetRight, insets.systemWindowInsetBottom); insets
-        }
+        setContentView(ScrollView(this).apply { addView(column); Ui.applySystemInsets(this) })
         refreshReadiness()
     }
     private fun megabytes(size: Long) = String.format(Locale.US, "%.1f", size / 1_000_000.0)

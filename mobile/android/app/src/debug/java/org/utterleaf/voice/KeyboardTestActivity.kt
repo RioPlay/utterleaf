@@ -36,6 +36,7 @@ class KeyboardTestActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             addView(editor)
             addView(password)
+            Ui.applySystemInsets(this)
         })
     }
 }
