@@ -7,7 +7,7 @@ implementation plan, not a claim of hardware acceleration or completed device QA
 
 | Priority | Evidence | Next acceptance check |
 | --- | --- | --- |
-| First | `VoiceSession` can finish capture at its limit without a Stop tap. The old text-only callback left `VoicePanel` in capture mode during inference. | Typed capture status now drives the processing controls. Run the new emulator regression for automatic completion and stale callbacks before merging. |
+| Fixed on main | `VoiceSession` can finish capture at its limit without a Stop tap. The old text-only callback left `VoicePanel` in capture mode during inference. | Typed capture status now drives the processing controls. Automatic completion and stale callback regressions passed in the emulator. |
 | First | `bridge.cpp` loads and frees a Whisper context for every take. Model loading is part of every post-recording wait. | Measure model load separately from decode with public test audio. Compare cold and repeated takes before deciding whether a bounded model cache is worthwhile. |
 | Next | Native inference uses four CPU threads and explicitly disables GPU. | Benchmark thread counts on physical devices, including thermal throttling and keyboard responsiveness during a take. More threads are not automatically faster. |
 | Next | Capture reserves 120 seconds of float audio, then copies the used portion into another array and into native storage. | Measure peak memory for short and long takes. Evaluate bounded buffer growth without adding allocation jitter or weakening cleanup. |
@@ -65,10 +65,18 @@ and appropriate tests. Do not equate fewer lines with lower latency or security.
 
 ## Transcript review follow-up
 
-The pending review change adds explicit expansion, preserves scrolling and
+The merged review change adds explicit expansion, preserves scrolling and
 selection in read-only review, and keeps Edit alongside the expansion control.
 Recording preferences and model choices are hidden while reviewing. Entering
 editing restores the smaller preview so the typing keys have more room. Test
 long transcripts, large fonts, landscape and small displays before declaring
 the layout finished. Advanced typing and terminal rows remain separate concerns;
 this change does not redesign the whole keyboard.
+
+Revision `c2247d6478d4da341a8753bc1793cbcc139915a0` passed
+[Android CI](https://github.com/RioPlay/utterleaf/actions/runs/34483917076):
+71 emulator tests, zero failures/skips, plus unit tests, lint and release contracts.
+[Desktop CI](https://github.com/RioPlay/utterleaf/actions/runs/34483917033)
+also passed. Emulator screenshots of review, editing and the live typing toolbar
+were inspected. These checks do not establish physical-device latency or complete
+small-screen/accessibility coverage. No new signed APK was published by this pass.

@@ -4,6 +4,13 @@
 
 An experimental English typing keyboard with integrated offline dictation.
 **0.1.0-alpha10 is released as a signed development preview.**
+
+On `main`, for the next release: the single-row toolbar has **123** (number row),
+**>_** (terminal controls) and the Utterleaf dictation icon. Quick toggles save
+locally and stay synchronized with the Settings preview. Voice review supports
+**Expand transcript**, scrolling, selection and **Edit transcript**; recording
+preferences hide while reviewing. These changes passed 71 emulator tests but are
+not included in the alpha10 APK linked below.
 Typing works without microphone permission or a speech
 model. A separate voice-only option remains available for compatible keyboards.
 
