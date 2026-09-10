@@ -101,6 +101,21 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: Verify first signed release for upgrade testing
+        # Public artifacts only; the signing key was removed by the signing step.
+        if: env.VERSION != '0.1.0-alpha03'
+        run: |
+          set -euo pipefail
+          mkdir -p predecessor
+          gh release download android-v0.1.0-alpha03 --pattern Utterleaf-Android-0.1.0-alpha03.apk --dir predecessor
+          tools="$ANDROID_HOME/build-tools/36.0.0"
+          previous=predecessor/Utterleaf-Android-0.1.0-alpha03.apk
+          "$tools/apksigner" verify --print-certs "$previous" > predecessor/certificate.txt
+          expected=$(tr -d '\r\n' < expected-certificate.txt)
+          grep -F "Signer #1 certificate SHA-256 digest: $expected" predecessor/certificate.txt
+          "$tools/aapt" dump badging "$previous" > predecessor/badging.txt
+          grep -F "package: name='org.utterleaf.voice' versionCode='3' versionName='0.1.0-alpha03'" predecessor/badging.txt
+          if grep -q '^application-debuggable' predecessor/badging.txt; then exit 1; fi
       - name: Signed APK installation smoke test
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -108,7 +123,8 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: |
-            adb install release/Utterleaf-Android-${{ env.VERSION }}.apk
+            if [ -f predecessor/Utterleaf-Android-0.1.0-alpha03.apk ]; then adb install predecessor/Utterleaf-Android-0.1.0-alpha03.apk; fi
+            adb install -r release/Utterleaf-Android-${{ env.VERSION }}.apk
             adb install -r release/Utterleaf-Android-${{ env.VERSION }}.apk
             adb shell am start -W -n org.utterleaf.voice/.SetupActivity
       - name: Publish Android prerelease independently of desktop
@@ -119,5 +135,5 @@ jobs:
             gh release create "$RELEASE_TAG" --verify-tag --draft --prerelease --latest=false \
               --title "Utterleaf Android $VERSION" --notes-file release-notes.md
           fi
-          gh release upload "$RELEASE_TAG" release/* --clobber
+          gh release upload "$RELEASE_TAG" "release/Utterleaf-Android-$VERSION.apk" release/SHA256SUMS.txt release/signing-certificate.txt release/version.json --clobber
           gh release edit "$RELEASE_TAG" --draft=false --prerelease --latest=false
