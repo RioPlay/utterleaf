@@ -184,6 +184,24 @@ screenshots supplement, and cannot replace, this acceptance evidence.
 
 ## Implementation ownership and completion rule
 
+### Required defaults and customization contract
+
+Every new interaction must have a documented default, a predictable cancellation
+path and a tap-accessible alternative where applicable. Expose meaningful choices
+for gesture/repeat behavior, layout, feedback and model selection. Keep related
+preferences together; do not turn each internal implementation detail into a switch.
+
+Persist only explicit preferences locally. Verify save/reopen, process restart,
+upgrade migration, bounded invalid values and Reset to defaults. Reset preferences
+must not delete imported models, dictionaries or other user data; deletion stays
+an explicit separate action. The practice area should demonstrate the selected
+behavior immediately. Input sequences must behave consistently across repeated
+takes and editor changes, with no leftover modifiers or pending timers.
+
+Security boundaries such as no passive capture and no unverified model import are
+not convenience toggles. New platform limitations must be stated rather than
+hidden behind a preference.
+
 ### Reduce editing and voice friction
 
 The acceptance target is a continuous path: hold a letter or period, slide and

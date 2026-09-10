@@ -6,6 +6,13 @@ This guide covers desktop development. Android has its own [build guide](../mobi
 See [development boundaries](development-boundaries.md) for source ownership,
 independent dependencies, CI routing and release conventions.
 
+When Aden CLI/MCP is available, use a scoped symbol tree, bounded search and
+symbol understanding to locate callers and affected code before editing. Give
+subagents the same navigation guidance and the relevant source ownership limits.
+Verify returned anchors against source: heuristic or missing graph relationships
+are not proof of behavior. Git history, actual source and tests remain the
+authority for changes and validation.
+
 ## Local checks
 
 The interface uses native Tk widgets with no web runtime. UI tests use sample settings and mocked devices. On headless Linux, run the UI tests under a virtual display (such as Xvfb).

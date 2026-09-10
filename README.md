@@ -5,7 +5,7 @@
   </picture>
 </p>
 <p align="center"><img src="docs/assets/brand/utterling-default.png" width="88" alt="Utterling, your leafy dictation companion" /></p>
-<p align="center"><strong>A little leaf. A lot less typing.</strong><br />Private, on-device dictation for Windows, macOS, and Linux.</p>
+<p align="center"><strong>A little leaf. A lot less typing.</strong><br />Private, on-device dictation for Windows, macOS, and Linux, with an Android keyboard preview.</p>
 <p align="center">
   <a href="#download"><strong>Download</strong></a> ·
   <a href="docs/user-guide.md">How to use it</a> ·
@@ -17,26 +17,35 @@ Speak into the app you're already using. Utterleaf turns your words into text,
 then gets out of the way. No account, no cloud transcription, and no saved audio
 history. Your microphone closes between takes.
 
-![Utterleaf Settings: a quiet dark interface, shortcut controls, microphone check, and Utterling](docs/assets/screenshots/dictation-dark.png)
+## Desktop and Android
 
-*Real Windows app, with sample settings. [More screens](docs/screenshots.md).*
+| Desktop dictation | Android keyboard preview |
+| --- | --- |
+| <img src="docs/assets/screenshots/dictation-dark.png" width="460" alt="Utterleaf desktop dictation settings on Windows" /> | <img src="docs/assets/screenshots/android-keyboard-live.png" width="230" alt="Utterleaf Android keyboard in a synthetic editor" /> |
+| Hold a shortcut and speak naturally; the local result goes to your selected text field. | Type directly with the Android keyboard, then add optional offline English voice when you choose. |
+
+The desktop capture is from the Windows app. The Android capture is a synthetic
+editor on an API 35 emulator from alpha07, revision `ee47aa7`. [Android preview
+and current limits](docs/mobile.md) · [Keyboard roadmap](docs/mobile-roadmap.md)
 
 ## Download
 
-Python is included. Extract the **whole archive**, then open Utterleaf.
+Desktop archives include Python. Extract the **whole archive**, then open Utterleaf.
+On Android, install the signed APK and follow its keyboard setup.
 
 | Your computer | Download | Setup |
 | --- | --- | --- |
 | Windows x64 | [Windows ZIP](https://github.com/RioPlay/utterleaf/releases/latest/download/Utterleaf-windows-x64-cpu.zip) | Open `Utterleaf/utterleaf.exe` |
 | macOS Apple Silicon | [macOS archive](https://github.com/RioPlay/utterleaf/releases/latest/download/Utterleaf-macos-arm64.tar.gz) | [Permissions & launch](docs/installation.md#macos) |
 | Linux x64 | [Linux archive](https://github.com/RioPlay/utterleaf/releases/latest/download/Utterleaf-linux-x64.tar.gz) | [X11 setup](docs/installation.md#linux) · [Wayland setup](docs/wayland.md) |
+| Android ARM64 preview | [Signed Android alpha09 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha09/Utterleaf-Android-0.1.0-alpha09.apk) | [Setup & current limits](docs/mobile.md) |
 
 Linux builds target Ubuntu 24.04 or compatible distributions. Downloads are
-unsigned; macOS is not notarized. Wayland needs manual shortcut/paste setup and
+unsigned on desktop; the Android APK is signed. macOS is not notarized. Wayland needs manual shortcut/paste setup and
 XWayland; native desktop dictation is still being validated.
 [Release notes & checksums](https://github.com/RioPlay/utterleaf/releases/latest).
 
-## Your first words
+## Your first words on desktop
 
 1. **Open Utterleaf.** The speech model downloads on first launch. Once installed,
    recognition works offline; you can disable further model downloads in Settings.
