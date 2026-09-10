@@ -4,7 +4,7 @@
 
 Scope: Windows, macOS, and Linux desktop application only.
 
-Updated September 9, 2026. Priorities follow the
+Updated September 10, 2026. Priorities follow the
 [offline STT user research](offline-stt-user-research-2026-09-08.md).
 This is an ordered development plan, not a promise of release dates.
 
@@ -14,7 +14,7 @@ the real-device checklist, including macOS testing.
 The product goal is simple: press a key, speak, and get dependable text in the
 intended field, with understandable local processing and minimal interruption.
 
-## Foundation implemented
+## Planned follow-up
 
 ### Later: optional on-screen keyboard
 
@@ -38,6 +38,8 @@ Add bounded helper execution and delivery cancellation tests before changing
 these paths; a timed-out helper must not trigger an automatic duplicate paste.
 This is an initial audit, not proof that every state or framework entry point has
 been covered or that the repository contains no unused code.
+
+## Foundation implemented
 
 - Local recognition and cleanup, with an option to preserve model output.
 - One-key toggle recording; microphone released between takes.

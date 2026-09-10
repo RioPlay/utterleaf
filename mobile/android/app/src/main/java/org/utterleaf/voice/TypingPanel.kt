@@ -66,7 +66,8 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private val dictate: () -> Unit, private val settings: () -> Unit,
     private val switchKeyboard: () -> Unit,
     private val terminalKey: (Int, Boolean, Boolean, Boolean) -> Boolean = { _, _, _, _ -> false },
-    private val modifiedCommit: (String, Boolean, Boolean) -> Boolean = { _, _, _ -> false }) {
+    private val modifiedCommit: (String, Boolean, Boolean) -> Boolean = { _, _, _ -> false },
+    private val quickOptionsChanged: () -> Unit = {}) {
     private val surface = Color.parseColor(if (options.light) "#E8EEEB" else "#171E20")
     private val keyColor = Color.parseColor(if (options.light) "#FFFFFF" else "#303A3D")
     private val utilityColor = Color.parseColor(if (options.light) "#D1DFD6" else "#24322D")
@@ -350,7 +351,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         }.apply { isSelected = toolsOpen }
         key(toolbar, "123", if (options.numberRow) "Number row on" else "Number row off",
             1.7f, utility = true, height = 48) {
-            saveQuickOption(numberRow = !options.numberRow); render()
+            saveQuickOption(numberRow = !options.numberRow); render(); quickOptionsChanged()
         }.apply { isSelected = options.numberRow }
         key(toolbar, ">_", if (options.terminal) "Terminal controls on" else "Terminal controls off",
             1.7f, utility = true, height = 48) {
@@ -361,6 +362,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
                 functionKeys = false
             }
             render()
+            quickOptionsChanged()
         }.apply { isSelected = options.terminal }
         toolbarStatus = TextView(context).apply {
             text = if (alternateKey != null) "Choose a character" else if (alternateMode) "Choose a letter" else ""

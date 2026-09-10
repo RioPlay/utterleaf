@@ -61,7 +61,8 @@ class KeyboardSettingsActivity : Activity() {
                     android.view.KeyEvent.KEYCODE_MOVE_HOME, android.view.KeyEvent.KEYCODE_MOVE_END))
                         TerminalInput.select(practiceConnection(generation), code)
                     else TerminalInput.send(practiceConnection(generation), code, ctrl, alt, shift) },
-                { value, ctrl, alt -> TerminalInput.printable(practiceConnection(generation), value, ctrl, alt) }).apply {
+                { value, ctrl, alt -> TerminalInput.printable(practiceConnection(generation), value, ctrl, alt) },
+                quickOptionsChanged = { options = KeyboardOptions.load(this); render() }).apply {
                 reset(false, false, "Enter")
             }.view)
         }
