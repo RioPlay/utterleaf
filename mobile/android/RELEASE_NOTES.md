@@ -1,4 +1,23 @@
-# Utterleaf Android 0.1.0-alpha10
+# Utterleaf Android 0.1.0-alpha11
+
+- A compact toolbar provides number-row and terminal-mode toggles without opening
+  Settings. Toggles preserve other preferences and stay synchronized with the
+  Settings practice keyboard. Utterleaf artwork replaces the Voice text button,
+  with a full-size touch target and a Dictate accessibility label.
+- Expand or collapse the transcript before inserting. Review supports scrolling
+  and selection, with Edit transcript beside the expansion control. Recording
+  preferences and model selection stay out of review; entering editing restores
+  a smaller preview to leave room for the keys.
+- Reaching the recording limit now changes the controls to Transcribing without
+  requiring a Stop tap. Late status callbacks cannot overwrite review or affect
+  the next take.
+
+Updates use the existing signing identity and an increased version code. Install
+over an existing signed release; no uninstall is needed. Processing remains local
+and CPU-only. GPU/NPU support and an optional desktop on-screen keyboard remain
+planned work, not features of this APK.
+
+## Included from alpha10
 
 - Hold Ctrl or Alt and press another key with a second finger. Ctrl+Backspace
   sends word deletion to compatible editors. The modifier remains active for
