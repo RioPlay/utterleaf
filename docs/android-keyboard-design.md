@@ -1,5 +1,12 @@
 # Android typing surface
 
+Released in **alpha05**. Revision f74b862 passed
+[CI run 34432378047](https://github.com/RioPlay/utterleaf/actions/runs/34432378047):
+4 JVM, 32 API 35 emulator and 3 release-contract tests, with zero emulator failures
+or skips. Actual setup and synthetic live-IME screenshots were reviewed; see
+[current images and release evidence](mobile.md#android--typing-and-local-dictation-preview).
+Physical, landscape and assistive-technology acceptance remains open.
+
 The alpha05 layout addresses feedback that the original keyboard felt like a grid
 of application buttons. This is an independent implementation. We inspected the
 [official FUTO keyboard visual](https://keyboard.futo.tech/assets/decoration-hero.webp)
@@ -21,6 +28,9 @@ imported into the app.
 - Neutral keycaps carry the letters; green marks the editor action and selected
   modifiers. Dark is the default, with light and larger-key preferences retained.
   Insets separate the visible keycaps without creating gaps in their touch areas.
+- App content roots handle system bars and cutouts; the IME reserves navigation-bar
+  space. Verify actual setup and keyboard captures after the inset regression gate,
+  including the Fn layer, landscape and both navigation modes.
 
 Native Android buttons retain spoken labels, focus and click actions. Keys fit
 their labels to available width; larger mode increases row height and label size.

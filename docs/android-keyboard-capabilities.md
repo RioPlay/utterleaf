@@ -37,14 +37,31 @@ suggestion strip must not imply that prediction exists.
 
 ## Current implementation and evidence boundary
 
-Alpha04 provides English letters/symbols, Shift/Caps, left/right cursor movement,
+Alpha04 introduced English letters/symbols, Shift/Caps, left/right cursor movement,
 deletion and editor actions; local speech with explicit insertion; basic appearance,
 feedback and repeat preferences; private model import and signed distribution.
-The alpha05 staggered-layout/toolbar revision, optional number-row preference and
-initial terminal controls/`TerminalInput` dispatch are in progress; acceptance is
-pending. Planned controls in this pass include Esc/Tab/Ctrl/Alt, navigation and an
-F1–F12 layer with one-shot modifiers. This does not establish completed power-mode
-compatibility or add suggestions. Current status belongs in the [layout design](android-keyboard-design.md)
+Released alpha05 implements the staggered layout/toolbar, optional number row,
+Esc/Tab, one-shot Ctrl/Alt, navigation, and `TerminalInput` dispatch. Its Fn layer
+replaces letters with F1–F12, Insert and forward Delete. Guided setup separates
+keyboard enabled/selected status from optional voice readiness and offers reviewed
+tiny.en/base.en/small.en imports. One active model is replaced only after selected
+size/hash verification; failed import preserves the previous file. This remains
+English-only speech. Revision [f74b862](https://github.com/RioPlay/utterleaf/commit/f74b862)
+passed [CI run 34432378047](https://github.com/RioPlay/utterleaf/actions/runs/34432378047):
+4 JVM, 32 API 35 emulator and 3 release-contract tests, with zero emulator failures
+or skips. Coverage includes real tiny.en/base.en inference, import bounds/rollback,
+terminal event contracts, one-shot modifiers, number-row independence, the replacing
+Fn layer and system-bar bounds. Actual setup and synthetic live-keyboard captures
+were reviewed. Small.en inference and physical model performance remain unverified.
+
+[Alpha05 is published](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha05).
+Its [signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34432995380)
+verified the stable certificate, signed alpha03-to-alpha05 emulator upgrade,
+same-version reinstall and setup launch. Preference/model retention and physical
+Obtainium updates were not established by these checks.
+
+Implemented controls do not establish completed power-mode compatibility or add
+suggestions. Current status belongs in the [layout design](android-keyboard-design.md)
 and [mobile guide](mobile.md). Do not treat source or screenshots as a published APK.
 
 The recorded alpha04 CI baseline is 4 JVM, 11 API 35 emulator and 3 release-contract
@@ -57,23 +74,26 @@ those results. [Recorded evidence](mobile.md#android-validation--september-9-202
 The alpha04 implementation uses `commitText` for text, key events for deletion/arrows,
 and `performEditorAction` for supported Enter actions. It rejects `TYPE_NULL` fields;
 its four-option settings and basic dispatch do not establish terminal support.
-Alpha05 expands this foundation. Utility key labels and an event dispatcher still
-need the compatibility and lifecycle gates below.
+Alpha05 explicitly permits raw ASCII key events in `TYPE_NULL` fields only when
+terminal controls are enabled; speech stays disabled there. Alpha05 settings add
+independent number-row and terminal booleans. Utility key labels and an event
+dispatcher still need the compatibility and lifecycle gates below.
 
 ## Prioritized capability and acceptance matrix
 
-**Implemented** describes the foundation above. **Next** is active implementation
+**Implemented** describes source behavior above, with release status stated
+separately. **Next** is active implementation
 or acceptance work. **Later** requires the listed preceding foundation. None
 of these labels asserts every physical/editor/accessibility acceptance gate passed.
 
 | Phase / priority | Capability and status | Acceptance gate |
 | --- | --- | --- |
 | P0 / security, continuous | **Implemented foundation; next hardening:** editor sessions, capture/import boundaries | Zero late commits across 100 synthetic field/hide/restart/lock transitions. Cancel releases capture and clears speech/composition/modifiers; password and unknown-sensitive contexts never learn, predict, read back or dictate. Denied permission never blocks ordinary typing. No input in logs, telemetry or preference files. |
-| P1 / next, alpha05 layout | **In progress:** everyday geometry, symbols, toolbar and optional number row | Staggered letters, wide spacebar, direct comma/period and obvious Voice/Tools. Number-row preference persists and does not collapse key widths. Keep letter/symbol pages' utility positions stable. Verify all layers in both orientations, smallest supported width, largest supported labels and both themes. No clipped essential control or forced scroll during ordinary typing. Preserve typing/voice/switch access when expanded. Validate real IME screenshots separately from settings previews. |
+| P1 / broader acceptance | **Implemented in alpha05:** everyday geometry, symbols, toolbar and optional number row | Staggered letters, wide spacebar, direct comma/period and obvious Voice/Tools. Number-row preference persists and does not collapse key widths. Keep letter/symbol pages' utility positions stable. Verify all layers in both orientations, smallest supported width, largest supported labels and both themes. No clipped essential control or forced scroll during ordinary typing. Preserve typing/voice/switch access when expanded. Validate real IME screenshots separately from settings previews, including status/navigation bars and cutouts. |
 | P1 / next refinement | **Planned:** secondary hints and alternate characters | Small secondary symbol/number hints remain legible without competing with letter labels. Optional long-press character selection has configurable timing and a visible single-tap symbols/accent route for every character. Test cancel, slide-off, repeat filtering and assistive exploration; no essential character is gesture-only. |
 | P1 / next | **Implemented basic editing; next completion:** selection, Unicode, Enter and touch behavior | Real-IME tests for selected-text replacement, forward/back delete, cursor boundaries, combining marks, emoji/ZWJ and multiline text; all supported Enter actions and no-enter-action flags. Direct-panel and live-IME Shift/Caps tests remain separate. Script 1,000 actions with zero duplicates or reordered characters; verify intended double letters with repeat filtering off/on. |
-| P2 / alongside P1; release after P0/P1 gates | **In progress subset:** terminal/power controls and dispatch | Alpha05 work includes Esc, Tab, Ctrl, Alt, four arrows, Home/End, PgUp/PgDn and Fn/F1–F12 with `TerminalInput`. Meta, forward Delete, Insert and numpad remain additional acceptance work. Every displayed key needs an explicit contract and named editor evidence. No hidden automatic command submission or global key injection. |
-| P2 / next | **In progress:** one-shot modifiers; **planned:** latch/multi-touch and advanced editing | Provide explicit modifier release. Test Ctrl+C/D/Z/A, Alt combinations, Shift+arrows, tab versus focus navigation, repeats and cancel. Clear all local modifiers on mode/language/field changes and dismissal; never send cleanup keys to a newly bound editor. Distinguish Caps Lock, Shift and Shift Lock if offered. |
+| P2 / alongside P1; broader acceptance | **Implemented subset in alpha05:** terminal/power controls and dispatch | Esc, Tab, Ctrl, Alt, four arrows, Home/End, PgUp/PgDn and Fn/F1–F12/Insert/forward Delete use `TerminalInput`. Fn replaces letters rather than growing the panel; verify every key remains reachable. Meta and numpad remain planned. Every displayed key needs an explicit contract and named editor evidence. No hidden automatic command submission or global key injection. |
+| P2 / broader acceptance, then expansion | **Implemented one-shot Ctrl/Alt; planned:** latch/multi-touch and advanced editing | Provide explicit modifier release. Test Ctrl+C/D/Z/A, Alt combinations, Shift+arrows, tab versus focus navigation, repeats and cancel. Clear all local modifiers on mode/language/field changes and dismissal; never send cleanup keys to a newly bound editor. Distinguish Caps Lock, Shift and Shift Lock if offered. |
 | P2 / next | **Planned:** select/copy/cut/paste/undo/redo toolbar | Named editor actions where supported; no automatic clipboard reading/history. Verify undo/redo separately in native, browser, terminal and rich-text editors; do not assume Ctrl+Z/Y always edits text. Explicit paste reads current clipboard only, handles empty/oversized content, and never appends Enter in terminals. Provide a visible select-mode alternative to Shift+arrows. Refused/unsupported actions do not trigger blind retries or duplicate fallback edits. |
 | P3 / next after editor foundation | **Planned:** language layouts, accents, compose/dead keys and emoji | Start with a named, reviewed alphabetic-layout set, including QWERTY/QWERTZ/AZERTY alternatives; publish per-language layout/dictionary/speech status. Visible accent/compose picker and language switch work without holds. Test uppercase accents, RTL mixing, Unicode sequences and field changes mid-compose. Emoji search stays local; optional recents have off/clear controls. |
 | P3 / next | **Planned:** local vocabulary, snippets and conservative correction | Explicit vocabulary additions and inspect/delete/export. Suggestions and auto-correction have separate switches; direct replacement requires a valid composing range and immediately reversible correction. Test names, negation, URLs, email, code and rejected corrections. Preserve a literal typing mode in power layout. Snippets insert explicit user-selected text, never executable scripts or automatic submit actions. |
@@ -101,7 +121,7 @@ special-key path for power mode. [Android InputConnection](https://developer.and
 | Text versus command | Keep typed Unicode, composing text, editor actions and physical-style key chords as distinct operations. Decide Tab/Enter behavior by explicit mode plus editor contract. Never substitute `commitText("c")` when Ctrl+C failed. |
 | Modifier lifecycle | Keep one-shot/latch state in the active session only. Prefer complete down/up chord transactions per tap to leaving a remote modifier held. For hold/repeat, bind events to one connection generation and cancel immediately on lifecycle loss. Test cancel between every event and zero modifier leakage into the next editor. |
 | Key-event metadata | Specify action order, key code, meta-state, timestamps/repeats and soft-keyboard identification in the contract; compare event traces with observed application effects. Do not infer success merely from a true API return. |
-| Raw terminals | Review `TYPE_NULL` as a separate explicit raw-key capability; current Utterleaf rejects it. Raw mode keeps speech, learning and surrounding-text reads off because field sensitivity cannot be established. A label such as “terminal” does not imply passwords typed there are non-sensitive. |
+| Raw terminals | Alpha04 rejects `TYPE_NULL`; alpha05 enables ASCII key dispatch only with the explicit terminal preference. Verify that boundary and refused non-ASCII input independently. Raw mode keeps speech, learning and surrounding-text reads off because field sensitivity cannot be established. A label such as “terminal” does not imply passwords typed there are non-sensitive. |
 | Selection/composition | Track editor-provided selection and composing ranges; invalidate pending edits on changes. Request only bounded context needed for the selected feature. No full-document extraction or clipboard capture as an editing workaround. Balance every batch edit, including failures. |
 | Failure and compatibility | An invalid connection fails closed. Do not replay a chord in a new field or send a second speculative fallback. A terminal-specific escape/Tab mapping needs explicit configuration and versioned evidence; never infer it from private text or an app title. |
 
@@ -139,7 +159,7 @@ screenshots supplement, and cannot replace, this acceptance evidence.
 - **Layout owner:** `TypingPanel.kt`, `KeyboardOptions.kt`,
   `KeyboardSettingsActivity.kt` and direct-panel tests. Validate everyday and
   optional power surfaces separately; release only after their P0/P1 gates.
-- **Editor/security owner:** `KeyboardIme.kt`, the in-progress `TerminalInput.kt`,
+- **Editor/security owner:** `KeyboardIme.kt`, `TerminalInput.kt`,
   future editing/modifier helpers, session gates and live-IME tests. Agree operation contracts
   with the layout owner before either changes constructor/callback interfaces.
 - **Language owner, after P1:** new data-only layout/composition/dictionary modules,

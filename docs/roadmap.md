@@ -12,26 +12,26 @@ are requirements throughout development, not finishing touches.
 
 | Workstream | Product | Plan and current evidence |
 | --- | --- | --- |
-| Desktop | Quiet local dictation on Windows, macOS, and Linux | [Desktop roadmap](desktop-roadmap.md) ? [Detailed feature plan](feature-plan.md) ? [Platform testing](platform-testing.md) |
-| Android | A complete, customizable keyboard with integrated local dictation | [Mobile roadmap](mobile-roadmap.md) ? [Current Android preview](mobile.md) |
+| Desktop | Quiet local dictation on Windows, macOS, and Linux | [Desktop roadmap](desktop-roadmap.md) · [Detailed feature plan](feature-plan.md) · [Platform testing](platform-testing.md) |
+| Android | A complete, customizable keyboard with integrated local dictation | [Mobile roadmap](mobile-roadmap.md) · [Current Android preview](mobile.md) |
 | iOS | A separately implemented keyboard and local speech experience within platform restrictions | [iOS feasibility and milestones](mobile-roadmap.md#ios-track) |
-| Shared product direction | Security, privacy, accessibility principles, branding, and candidate ideas | [Ideas and decisions](ideas.md) ? [Development boundaries](development-boundaries.md) |
+| Shared product direction | Security, privacy, accessibility principles, branding, and candidate ideas | [Ideas and decisions](ideas.md) · [Development boundaries](development-boundaries.md) |
 
-Desktop v0.4.0 and [Android 0.1.0-alpha04](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha04)
-have independent release histories. Android alpha04 includes an **English typing
-keyboard with local dictation**, preferences, preview extension, Obtainium setup
-and corrected Shift/Caps behavior, published as a signed APK. It is an early
-foundation; physical device, accessibility
+Desktop and [Android 0.1.0-alpha05](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha05)
+have independent release histories. Android alpha05 includes an **English typing
+keyboard with local dictation**, a staggered layout, optional number/terminal rows,
+guided model setup, preferences, preview extension and Obtainium setup, published
+as a signed APK. It is an early foundation; physical device, accessibility
 and real Obtainium update acceptance remain open. Earlier voice-companion feedback
 from a Pixel 8 Pro does not certify this keyboard. No iOS app is released.
 
-Android's [passed CI run](https://github.com/RioPlay/utterleaf/actions/runs/34427672686)
-covers 4 JVM, 11 emulator and 3 release-contract tests; the [mobile guide](mobile.md#android-validation--september-9-2026)
+Android's [passed CI run](https://github.com/RioPlay/utterleaf/actions/runs/34432378047)
+covers 4 JVM, 32 emulator and 3 release-contract tests; the [mobile guide](mobile.md#android-validation--september-9-2026)
 distinguishes live-IME editing checks from direct-panel Shift/Caps checks and open
 selection-replacement acceptance.
 
-The [successful Android signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34428171272)
-also verified an emulator upgrade from signed alpha03 to alpha04 and same-version
+The [successful Android signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34432995380)
+also verified an emulator upgrade from signed alpha03 to alpha05 and same-version
 reinstallation with the unchanged certificate. Physical and real Obtainium update
 checks remain open.
 

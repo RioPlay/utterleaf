@@ -10,17 +10,35 @@ it does not replace or add dependencies to the desktop Python application.
 
 ## Android — typing and local dictation preview
 
-[Download the signed Android alpha04 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha04/Utterleaf-Android-0.1.0-alpha04.apk) ·
-[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha04) ·
+[Download the signed Android alpha05 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha05/Utterleaf-Android-0.1.0-alpha05.apk) ·
+[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha05) ·
 [Setup and current limits](../mobile/android/README.md)
 
-Android **0.1.0-alpha04 is released** with an English typing keyboard and integrated
-local dictation. Typing works without a speech model or microphone permission.
-Preferences offer larger keys/labels, light or dark keys, optional vibration and
-repeat filtering; speech previews have an expiry warning and **Keep reviewing**.
-Setup includes an [Obtainium configuration button](mobile-obtainium.md).
-Alpha04 fixes Shift/Caps behavior so entered letters follow the displayed case,
-including one-shot Shift and Shift with Caps Lock, and adds live-IME regression coverage.
+Android **0.1.0-alpha05 is released as a signed preview**. Setup
+separates the two keyboard activation steps from optional voice setup, reports
+whether the keyboard is enabled and selected, and shows model and microphone
+permission status independently.
+
+Alpha05 adds a staggered everyday layout with a wide spacebar,
+direct punctuation and **Voice**/**Tools** controls. Preferences offer an optional
+number row and terminal controls alongside larger keys/labels, light/dark keys,
+vibration and repeat filtering. Terminal controls include Esc, Tab, one-shot
+Ctrl/Alt, arrows, Home/End and Page Up/Down. The Fn layer replaces letters with
+F1–F12, Insert and forward Delete. Editors can handle
+these keys differently; real-terminal and phone compatibility remain acceptance
+work. Suggestions, correction and swipe typing are still planned.
+
+Typing works without microphone permission or a speech model. For optional
+English dictation, choose **tiny.en (77.7 MB)**,
+**base.en (148.0 MB)** or **small.en (487.6 MB)**. Use the browser download and then
+import the selected file; only exact reviewed sizes and SHA-256 hashes are
+accepted. One model is active, and a failed import keeps the existing model.
+See [direct model links, hashes and setup](../mobile/android/README.md#english-speech-models).
+Small.en inference and phone performance are not yet verified.
+
+Speech previews have an expiry warning and **Keep reviewing**. Setup retains
+the [Obtainium configuration button](mobile-obtainium.md); using a separate
+voice-only input method is now explained under optional advanced setup.
 
 The native Kotlin app uses Android's input-method framework and local whisper.cpp
 inference. A separate voice-only IME and speech-recognition activity remain available
@@ -30,25 +48,41 @@ prediction and broader accessibility/device coverage remain on the
 
 Existing alpha01/alpha02 users need a one-time uninstall because those builds used
 different debug signing keys. Uninstalling removes app data and the imported model;
-install alpha04 and import the model again. Alpha03 began the persistent signing
-channel; it is the signed predecessor for alpha04. See [migration details](mobile-obtainium.md#migrating-from-the-old-alpha).
+install alpha05 and import the model again. Alpha03 began the persistent signing
+channel, which alpha05 retains. See [migration details](mobile-obtainium.md#migrating-from-the-old-alpha).
 
 See the [Android guide](../mobile/android/README.md) for exact implemented scope,
 setup, permissions, test evidence and remaining native-device acceptance work.
 Build success alone does not establish keyboard compatibility or phone usability.
 Desktop vocabulary and spoken-command behavior have not yet been ported.
 
-<img src="assets/screenshots/android-setup.png" width="300" alt="Android alpha03 setup with keyboard activation, preferences, Obtainium updates and optional speech-model import" />
-<img src="assets/screenshots/android-keyboard-preferences.png" width="300" alt="Keyboard preferences for key size, light theme, vibration and repeat filtering, with a typing-layout preview" />
+<img src="assets/screenshots/android-setup.png" width="300" alt="Alpha05 setup showing separate keyboard activation and optional English voice readiness" />
+<img src="assets/screenshots/android-keyboard-live.png" width="300" alt="Alpha05 keyboard in a synthetic editor with staggered letters, wide spacebar and Voice control" />
 
-Actual alpha03 CI app on an API 35 emulator. The setup and preferences pages scroll;
-the keyboard shown is the preferences preview, which does not enter or save text.
-No recording or personal transcript is shown. IME windows protect their contents
-from screenshots. These images do not establish physical accessibility coverage.
+Actual alpha05 f74b862 on the API 35 CI emulator. Setup scrolls; the
+keyboard is shown in a synthetic test editor with no personal text or recording.
+Status and navigation bars are clear of the app controls. Instrumentation temporarily
+allows the debug capture and restores the secure flag; release IME windows remain
+protected. These images do not establish phone or accessibility acceptance.
 
 ### Android validation — September 9, 2026
 
-Alpha04 passed **4 JVM tests, 11 API 35 emulator tests and 3 Python release-contract
+Alpha05 **f74b862 passed 4 JVM tests, 32 API 35 emulator tests and
+3 Python release-contract tests** in [CI run 34432378047](https://github.com/RioPlay/utterleaf/actions/runs/34432378047).
+The emulator report has **zero failures and zero skips**. Both tiny.en and base.en
+completed real local inference on the pinned JFK speech fixture. New checks cover
+model selection/bounds/rollback, setup choices, terminal key-event contracts,
+one-shot modifiers, number-row independence, the replacing Fn layer and system-bar
+bounds. The reviewed screenshots above come from that run. Terminal dispatch tests
+use controlled editor connections; they do not certify Termux, SSH or remote editors.
+Small.en inference remains unverified.
+
+The [successful alpha05 signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34432995380)
+verified the stable signing certificate, upgraded signed alpha03 to alpha05 on an
+emulator, reinstalled the same alpha05 version and launched setup. It did not test
+preference or imported-model retention. Physical and real Obtainium updates remain open.
+
+The historical alpha04 baseline passed **4 JVM tests, 11 API 35 emulator tests and 3 Python release-contract
 tests** in the [verified CI run](https://github.com/RioPlay/utterleaf/actions/runs/34427672686).
 Coverage includes
 hash rejection for same-size untrusted models, packaged permission/backup checks,

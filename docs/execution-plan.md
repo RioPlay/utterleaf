@@ -32,6 +32,20 @@ and independent of desktop releases.
 
 ## Implementation checkpoint
 
+Android alpha05 adds the staggered layout, optional number/terminal controls,
+guided verified tiny.en/base.en/small.en model setup and system-bar inset handling.
+[The final build](https://github.com/RioPlay/utterleaf/actions/runs/34432378047)
+passed 32 emulator, 4 JVM and 3 release-contract tests; actual live-keyboard/setup
+screenshots were reviewed. [Signed publication](https://github.com/RioPlay/utterleaf/actions/runs/34432995380)
+verified alpha03-to-alpha05 upgrade and same-version reinstall. Small.en inference,
+physical terminal/assistive technology and real Obtainium acceptance remain open.
+
+The desktop 0.4.1 work adds model readiness and explicit repair, common-format
+file decoding, existing-window activation, multi-take separators, conservative
+spoken replacement and clear list/break handling. Windows GPU guidance is platform
+specific. Native browser editing, long sessions and broader physical-device
+acceptance remain separate work; these changes do not close the full roadmap.
+
 Desktop v0.4.0 implements D2 interruption recovery, D4 structured
 recognition, D6 selective backup with its Settings flow, and a bounded D8 file
 review/export window. D1 has Windows clipboard identity guards; rich formats and
