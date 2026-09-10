@@ -219,9 +219,9 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     }
 
     private fun alternateRows(character: Char) {
-        val choices = AlternateCharacters.choices(character, shift xor caps)
+        val choices = if (character == '.') AlternateCharacters.punctuation else AlternateCharacters.choices(character, shift xor caps)
         val heading = TextView(context).apply {
-            text = "Alternates for ${displayed(character)}"; textSize = 16f
+            text = if (character == '.') "Punctuation" else "Alternates for ${displayed(character)}"; textSize = 16f
             setTextColor(ink); gravity = Gravity.CENTER; minHeight = Ui.dp(context, 40)
             accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         }
@@ -397,7 +397,15 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
                 }
             }
         }
-        key(bottom, ".") { type(".") }
+        key(bottom, ".") { type(".") }.also { period ->
+            val generation = layoutGeneration
+            period.setOnLongClickListener {
+                if (generation != layoutGeneration) false else { openAlternates('.'); true }
+            }
+            gestures.attachLetter(period, { AlternateCharacters.punctuation }) { value ->
+                if (generation == layoutGeneration) type(value)
+            }
+        }
         key(bottom, if (actionLabel == "Enter") "↵" else actionLabel, actionLabel, 1.5f, primary = true) {
             if (ctrl || alt || (options.terminal && shift)) special(KeyEvent.KEYCODE_ENTER) else enter()
         }

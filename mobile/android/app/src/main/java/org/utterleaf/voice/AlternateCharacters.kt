@@ -10,6 +10,7 @@ import java.util.Locale
  * returned as strings because uppercase ß expands to SS.
  */
 object AlternateCharacters {
+    val punctuation = listOf(",", "?", "!", "'", "\"", ":", ";", "…", "—")
     private val accents = mapOf(
         'a' to listOf("á", "à", "ä", "â", "å", "ā", "æ", "ã"),
         'e' to listOf("é", "è", "ë", "ê", "ē", "ė"),

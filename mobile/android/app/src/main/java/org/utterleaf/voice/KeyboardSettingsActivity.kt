@@ -19,6 +19,7 @@ class KeyboardSettingsActivity : Activity() {
     private lateinit var practiceEditor: EditText
     private var practiceActive = false
     private var practiceGeneration = 0
+    private var previewContainer: LinearLayout? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
@@ -44,6 +45,7 @@ class KeyboardSettingsActivity : Activity() {
         column.addView(Ui.title(this, "Keyboard preferences"))
         column.addView(Ui.text(this, "Changes save on this device and apply when you reopen the keyboard. No typing history is stored."))
         val preview = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        previewContainer = preview
         fun updatePreview() {
             val generation = ++practiceGeneration
             preview.removeAllViews()
@@ -86,6 +88,7 @@ class KeyboardSettingsActivity : Activity() {
         toggle("Number row", options.numberRow) { options = options.copy(numberRow = it) }
         toggle("Secondary character hints", options.secondaryHints) { options = options.copy(secondaryHints = it) }
         column.addView(Ui.text(this, "Hold a letter, slide to a highlighted accent or symbol, then release. Slide away to cancel. For tap selection, choose Tools → Accents and a letter. Hiding hints keeps both routes available."))
+        column.addView(Ui.text(this, "Hold the period key for quick punctuation, slide to a mark and release. A tap still types a period; symbol pages also provide tap access."))
         column.addView(Ui.text(this, "Slide the spacebar to move the cursor. Hold Shift first, then slide the spacebar with another finger to select text. Release either finger to stop. For taps, use Tools → Select and the cursor arrows. Tools also provides Delete to right, Home and End."))
         toggle("Terminal controls", options.terminal) { options = options.copy(terminal = it) }
         column.addView(Ui.text(this, "Adds Esc, Tab, Ctrl, Alt, navigation and F1–F12. Ctrl and Alt apply to the next key, then release. Terminal apps decide which shortcuts they support."))
@@ -118,6 +121,7 @@ class KeyboardSettingsActivity : Activity() {
 
     override fun onStop() {
         practiceActive = false; practiceGeneration++
+        previewContainer?.removeAllViews()
         practiceEditor.setText("")
         super.onStop()
     }

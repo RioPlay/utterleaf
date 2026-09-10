@@ -198,6 +198,16 @@ class KeyboardGesturesTest {
         assertFalse(f.hasStrip())
     }
 
+    @Test fun periodTapAndPunctuationHoldReleaseStayDistinct() = withPanel { f ->
+        val period = f.key(".")
+        f.send(period, MotionEvent.ACTION_DOWN); f.send(period, MotionEvent.ACTION_UP)
+        f.hold(period); f.atCell(period, 1, MotionEvent.ACTION_MOVE); f.atCell(period, 1, MotionEvent.ACTION_UP)
+        assertEquals(listOf(".", "?"), f.inserted)
+        f.hold(period)
+        f.send(period, MotionEvent.ACTION_UP, f.dp(-500), f.dp(-500))
+        assertEquals(listOf(".", "?"), f.inserted)
+    }
+
     @Test fun shiftSpaceChordSelectsAndReversesWithoutTypingOrLatchingShift() = withPanel { f ->
         val shift = f.key("Shift off"); val space = f.key("Space")
         f.chord(MotionEvent.ACTION_DOWN, shift)

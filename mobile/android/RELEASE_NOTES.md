@@ -4,6 +4,9 @@ Selection and held deletion improve everyday editing. This is still an
 alpha keyboard; suggestions, autocorrection, swipe typing, multilingual layouts
 and emoji remain roadmap work.
 
+- Hold the period key for common punctuation, slide to a highlighted mark and
+  release. A normal tap still types a period; slide away to cancel.
+
 - Tune key height and bottom spacing independently, with a live practice area.
   Practice text is bounded, protected from screenshots, never saved and cleared
   when leaving settings. Reset restores default height and spacing.
