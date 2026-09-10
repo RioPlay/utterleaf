@@ -6,6 +6,9 @@ and emoji remain roadmap work.
 
 - One primary voice button stays in place: Speak, Stop, then Insert. A short
   post-insertion delay prevents a rapid second tap starting another capture.
+- Tapping Dictate on the typing keyboard immediately starts a reviewable take.
+  Returning to a field never starts recording automatically. The voice heading
+  reuses the desktop's transparent idle, recording and processing icons.
 - Edit transcript opens a local typing surface. Use edits returns to review;
   Insert sends the edited text. Edits stay in the protected panel, are not saved,
   and are cleared on expiry, discard, dismissal or input-session changes.

@@ -106,6 +106,7 @@ class KeyboardIme : InputMethodService() {
             currentUiSession(generation) && current != null && VoiceIme.safeField(current.inputType) && commit(text)
         }, { if (currentUiSession(generation)) showTyping() })
         show(voice!!.view)
+        voice?.startFromMicTap()
     }
     private fun show(content: View) {
         root?.removeAllViews()

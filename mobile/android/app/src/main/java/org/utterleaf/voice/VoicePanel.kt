@@ -31,6 +31,11 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     private var activeHold = false
     private var inhibitUntil = 0L
     private var rearm: Runnable? = null
+    private var micEntryUsed = false
+    private val stateIcon = ImageView(context).apply {
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        scaleType = ImageView.ScaleType.FIT_CENTER
+    }
     private val status = Ui.text(context, "Microphone off · English · local processing")
     private val preview = EditText(context).apply {
         hint = "Your transcript"
@@ -79,7 +84,12 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     private val expire = Runnable { clear(); status.text = "Preview expired · microphone off" }
 
     init {
-        view.addView(Ui.text(context, "Utterleaf Voice", 20f)); view.addView(status)
+        val heading = LinearLayout(context).apply { gravity = android.view.Gravity.CENTER_VERTICAL }
+        heading.addView(stateIcon, LinearLayout.LayoutParams(Ui.dp(context, 32), Ui.dp(context, 32)).apply {
+            marginEnd = Ui.dp(context, 8)
+        })
+        heading.addView(Ui.text(context, "Utterleaf Voice", 20f))
+        view.addView(heading); view.addView(status)
         view.addView(preview, LinearLayout.LayoutParams(-1, Ui.dp(context, 96)))
         view.addView(editingKeys); view.addView(edit); view.addView(keep)
         // Keep the primary action the same distance above the bottom of the panel.
@@ -131,6 +141,14 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     }
     private fun inside(event: MotionEvent) = event.x.isFinite() && event.y.isFinite() &&
         event.x >= 0 && event.x < primary.width && event.y >= 0 && event.y < primary.height
+
+    /** Called only by an explicit keyboard mic action, never by an IME lifecycle callback. */
+    fun startFromMicTap() {
+        if (disposed || micEntryUsed || mode != Mode.IDLE) return
+        micEntryUsed = true
+        // A tap opens a review take, even if the separate hold control is enabled.
+        begin(false)
+    }
 
     private fun begin(automatic: Boolean) {
         if (disposed || mode != Mode.IDLE) return
@@ -193,6 +211,11 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         updateControls(); preview.requestFocus()
     }
     private fun updateControls() {
+        stateIcon.setImageResource(when (mode) {
+            Mode.CAPTURE -> R.drawable.voice_recording
+            Mode.PROCESSING -> R.drawable.voice_busy
+            else -> R.drawable.voice_idle
+        })
         primary.text = when (mode) { Mode.IDLE -> if (holdMode.isChecked) "Hold to speak" else "Speak"; Mode.CAPTURE -> "Stop"; Mode.PROCESSING -> "Transcribing…"; Mode.REVIEW -> "Insert"; Mode.EDIT -> "Use edits" }
         primary.contentDescription = primary.text
         primary.isEnabled = !disposed && mode != Mode.PROCESSING && android.os.SystemClock.uptimeMillis() >= inhibitUntil

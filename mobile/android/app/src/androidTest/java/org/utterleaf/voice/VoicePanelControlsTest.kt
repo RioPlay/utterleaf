@@ -82,6 +82,17 @@ class VoicePanelControlsTest {
             test(fixture)
         } finally { main { activity.finish() }; instrumentation.waitForIdleSync(); prefs.edit().putBoolean("voiceHoldToInsert", old).commit() }
     }
+    @Test fun micEntryStartsOneReviewTakeAndNeverRestartsOnClear() = withPanel { f ->
+        f.holdMode()
+        main { f.panel.startFromMicTap(); f.panel.startFromMicTap() }
+        assertEquals(1, main { f.fake.started })
+        f.click("Stop"); main { f.results.single()("review first") }
+        assertTrue(f.inserted.isEmpty())
+        f.click("Discard"); main { f.panel.startFromMicTap() }
+        assertEquals(1, main { f.fake.started })
+        main { (f.panel.view.parent as ViewGroup).removeView(f.panel.view); f.panel.startFromMicTap() }
+        assertEquals(1, main { f.fake.started })
+    }
     @Test fun primaryControlAndLocalEditingInsertExactlyOnce() = withPanel { f ->
         val primary = f.key("Speak"); f.click("Speak"); assertSame(primary, f.key("Stop"))
         f.click("Stop"); assertEquals(1, main { f.fake.stopped })

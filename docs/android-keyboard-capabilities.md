@@ -184,6 +184,31 @@ screenshots supplement, and cannot replace, this acceptance evidence.
 
 ## Implementation ownership and completion rule
 
+### Reduce editing and voice friction
+
+The acceptance target is a continuous path: hold a letter or period, slide and
+release; navigate or select with the spacebar; correct locally; insert when
+ready. Preserve tap alternatives for every gesture. Test cancellation, direction
+reversal and stale callbacks as carefully as successful input.
+
+The upcoming voice panel uses one primary action and a local transcript editor.
+An explicit tap on the typing keyboard's Dictate control starts a review take;
+IME reopening and field changes never start capture. Optional hold-to-insert is
+a separate deliberate gesture. Desktop state cutouts provide consistent feedback
+alongside text without displacing controls.
+
+**Still planned:** explicit Copy/Cut/Paste/Select all actions with host-editor
+semantics and no clipboard history; undo/redo scoped to the current editor;
+one-handed placement tests; and optional silence endpoint detection. Silence
+detection must distinguish thinking pauses, quiet speech and background noise,
+stop capture before review, and offer adjustable timing. Automatic insertion
+must be a separate opt-in, never the default consequence of a pause. No ambient
+listening or cloud service is part of this plan. These are acceptance requirements,
+not claims that clipboard tools or voice activity detection are implemented.
+
+Evaluate the [keyboard foundation decision](android-keyboard-foundation-decision.md)
+before committing to a new prediction/composition engine.
+
 - **Layout owner:** `TypingPanel.kt`, `KeyboardOptions.kt`,
   `KeyboardSettingsActivity.kt` and direct-panel tests. Validate everyday and
   optional power surfaces separately; release only after their P0/P1 gates.

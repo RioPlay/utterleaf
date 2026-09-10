@@ -109,7 +109,7 @@ class SetupActivity : Activity() {
             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
         })
         column.addView(Ui.text(this, "3 · Try it in a text field", 19f))
-        column.addView(Ui.text(this, "Open your keyboard's Voice panel, tap Speak, then stop to review. Each take has a 120-second limit. Preview clears after two minutes unless you choose Keep reviewing, and immediately when you leave or change fields. Nothing is copied automatically. Password typing works; dictation is disabled in password fields."))
+        column.addView(Ui.text(this, "Tap Dictate on Utterleaf Keyboard to start recording, then Stop to review. In the separate voice provider, tap Speak first. Edit transcript lets you make changes before Insert. Optional hold mode inserts after release and recognition. Each take has a 120-second limit. Preview clears after two minutes unless you choose Keep reviewing, and immediately when you leave or change fields. Password typing works; dictation is disabled in password fields."))
         column.addView(Ui.button(this, "Delete imported model") {
             AlertDialog.Builder(this).setTitle("Delete the model?").setMessage("Typing will still work. Import a model again whenever you want to dictate.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Delete") { _, _ ->

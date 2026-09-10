@@ -365,7 +365,6 @@ class DeviceTest {
                         }
                         assertEquals("Space swipe inserted text", "acd", onMain { screen.editor.text.toString() })
                     }
-                    val letter = center("e")
                     val backspace = center("Delete")
                     touch(android.view.MotionEvent.ACTION_DOWN, backspace.first, backspace.second)
                     Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 320)
@@ -406,6 +405,7 @@ class DeviceTest {
                     onMain { screen.editor.setText("acd"); screen.editor.setSelection(3) }
                     instrumentation.waitForIdleSync()
                     val imeHeight = onMain { imeRoot.height }
+                    val letter = center("e")
                     touch(android.view.MotionEvent.ACTION_DOWN, letter.first, letter.second)
                     Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 100)
                     instrumentation.waitForIdleSync()
@@ -457,11 +457,11 @@ class DeviceTest {
                 }
             }
 
-            // Enter the real voice panel, then change fields. No microphone capture is started.
+            // Enter the real voice panel through the explicit microphone action, then change fields.
             press("Dictate")
             awaitCondition("Voice panel did not appear") {
                 automation.windows.filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD }
-                    .any { it.root?.findAccessibilityNodeInfosByText("Speak")?.isNotEmpty() == true }
+                    .any { it.root?.findAccessibilityNodeInfosByText("Utterleaf Voice")?.isNotEmpty() == true }
             }
             show(screen.password)
             assertFalse("Password field allowed dictation", findKey("Dictate")!!.isEnabled)
