@@ -52,6 +52,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     // This connection dispatches only to our own transcript, never to the host app.
     private val localEditor = object : BaseInputConnection(preview, true) {
         override fun getEditable(): Editable = preview.text
+        override fun performContextMenuAction(id: Int): Boolean = preview.onTextContextMenuItem(id)
         override fun sendKeyEvent(event: KeyEvent): Boolean = when (event.action) {
             KeyEvent.ACTION_DOWN -> preview.onKeyDown(event.keyCode, event)
             KeyEvent.ACTION_UP -> preview.onKeyUp(event.keyCode, event)
@@ -227,7 +228,8 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
                 if (shift && !ctrl && !alt && code in listOf(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
                         KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_MOVE_HOME, KeyEvent.KEYCODE_MOVE_END))
                     TerminalInput.select(localEditor, code) else TerminalInput.send(localEditor, code, ctrl, alt, shift) },
-            { text, ctrl, alt -> current() && TerminalInput.printable(localEditor, text, ctrl, alt) })
+            { text, ctrl, alt -> current() && TerminalInput.printable(localEditor, text, ctrl, alt) },
+            editorAction = { command -> current() && EditorActions.perform(localEditor, command, preview.inputType) })
         panel.reset(false, false, "Enter"); editingKeys.addView(panel.view)
         updateControls(); preview.requestFocus()
     }

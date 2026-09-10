@@ -62,7 +62,8 @@ class KeyboardSettingsActivity : Activity() {
                         TerminalInput.select(practiceConnection(generation), code)
                     else TerminalInput.send(practiceConnection(generation), code, ctrl, alt, shift) },
                 { value, ctrl, alt -> TerminalInput.printable(practiceConnection(generation), value, ctrl, alt) },
-                quickOptionsChanged = { options = KeyboardOptions.load(this); render() }).apply {
+                quickOptionsChanged = { options = KeyboardOptions.load(this); render() },
+                editorAction = { command -> EditorActions.perform(practiceConnection(generation), command, practiceEditor.inputType) }).apply {
                 reset(false, false, "Enter")
             }.view)
         }

@@ -89,7 +89,9 @@ class KeyboardIme : InputMethodService() {
                 else TerminalInput.send(currentInputConnection, code, ctrl, alt, shift) },
             { text, ctrl, alt -> currentUiSession(generation) &&
                 TerminalInput.printable(currentInputConnection, text, ctrl, alt,
-                    forceKeyEvents = currentInputEditorInfo?.inputType == InputType.TYPE_NULL) })
+                    forceKeyEvents = currentInputEditorInfo?.inputType == InputType.TYPE_NULL) },
+            editorAction = { command -> currentUiSession(generation) &&
+                EditorActions.perform(currentInputConnection, command, currentInputEditorInfo?.inputType) })
         val cls = (info?.inputType ?: 0) and InputType.TYPE_MASK_CLASS
         panel.reset(active && info != null && VoiceIme.safeField(info.inputType),
             cls in listOf(InputType.TYPE_CLASS_NUMBER, InputType.TYPE_CLASS_PHONE, InputType.TYPE_CLASS_DATETIME), label)
