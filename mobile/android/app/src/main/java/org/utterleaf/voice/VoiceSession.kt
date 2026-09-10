@@ -17,14 +17,18 @@ interface CaptureSession {
     fun cancel()
 }
 
-class VoiceSession(private val context: Context, private val state: (String) -> Unit,
+enum class CapturePhase { RECORDING, PROCESSING }
+data class CaptureStatus(val phase: CapturePhase, val message: String)
+
+class VoiceSession(private val context: Context, private val state: (CaptureStatus) -> Unit,
                    private val result: (String) -> Unit, private val error: (String) -> Unit) : CaptureSession {
     private val main = Handler(Looper.getMainLooper())
     private val stopped = AtomicBoolean(false)
     private val cancelled = AtomicBoolean(false)
     private var started = false
     private var ownsLease = false
-    private fun update(text: String) = main.post { if (!cancelled.get()) state(text) }
+    private fun update(text: String, phase: CapturePhase = CapturePhase.RECORDING) =
+        main.post { if (!cancelled.get()) state(CaptureStatus(phase, text)) }
     override fun start() {
         if (started) return
         started = true
@@ -93,7 +97,7 @@ class VoiceSession(private val context: Context, private val state: (String) -> 
             var energy = 0.0
             for (i in 0 until count) energy += audio[i] * audio[i]
             check(energy / count > 0.000001) { "Very little audio detected. Check your microphone and try again." }
-            update("Microphone off · transcribing on this device…")
+            update("Microphone off · transcribing on this device…", CapturePhase.PROCESSING)
             val samples = audio.copyOf(count)
             val bytes = try { NativeEngine.decode(ModelStore.file(context.noBackupFilesDir).absolutePath, samples) }
                         finally { samples.fill(0f) }

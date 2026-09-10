@@ -165,6 +165,10 @@ and primary platform references are in [the mobile guide](mobile.md).
 
 ## Before each mobile release
 
+Track the [Android responsiveness and acceleration pass](android-performance.md)
+separately from feature completeness; hardware speedups require physical-device
+measurements and safe CPU fallback.
+
 Record source revision, version, signed artifact, test/device evidence, known limits,
 dependency/license changes and upgrade behavior. Update the user guide and real
 screenshots when visible behavior changes. Keep desktop releases and download links

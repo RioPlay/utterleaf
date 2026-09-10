@@ -14,7 +14,7 @@ import android.view.inputmethod.BaseInputConnection
 import android.widget.*
 
 class VoicePanel(private val context: Context, private val insert: (String) -> Boolean, private val leave: () -> Unit,
-    private val createSession: ((String) -> Unit, (String) -> Unit, (String) -> Unit) -> CaptureSession =
+    private val createSession: ((CaptureStatus) -> Unit, (String) -> Unit, (String) -> Unit) -> CaptureSession =
         { state, result, error -> VoiceSession(context.applicationContext, state, result, error) }) {
     private enum class Mode { IDLE, CAPTURE, PROCESSING, REVIEW, EDIT }
     val view = Ui.column(context)
@@ -158,7 +158,12 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         val token = gate.next()
         autoInsert = automatic; released = false; mode = Mode.CAPTURE; updateControls()
         val candidate = createSession(
-            { message -> if (gate.accepts(token)) status.text = message },
+            { update -> if (gate.accepts(token) && (mode == Mode.CAPTURE || mode == Mode.PROCESSING)) {
+                // Capture can end at its limit without a Stop tap. Never infer phase from UI copy.
+                if (update.phase == CapturePhase.PROCESSING) {
+                    mode = Mode.PROCESSING; updateControls(); status.text = update.message
+                } else if (mode == Mode.CAPTURE) status.text = update.message
+            } },
             { text -> if (gate.accepts(token) && (mode == Mode.CAPTURE || mode == Mode.PROCESSING)) {
                 session = null
                 if (text.length > 16000 || text.isBlank()) {

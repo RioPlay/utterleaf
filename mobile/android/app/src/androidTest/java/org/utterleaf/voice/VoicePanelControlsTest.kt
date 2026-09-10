@@ -27,6 +27,7 @@ class VoicePanelControlsTest {
         if (view is ViewGroup) (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) } else emptyList()
     private class Fake : CaptureSession {
         var started = 0; var stopped = 0; var cancelled = 0
+        var status: (CaptureStatus) -> Unit = {}
         override fun start() { started++ }; override fun stop() { stopped++ }; override fun cancel() { cancelled++ }
     }
     private inner class Fixture(val activity: android.app.Activity, val panel: VoicePanel, val fake: Fake, val results: MutableList<(String) -> Unit>, val inserted: MutableList<String>) {
@@ -75,7 +76,9 @@ class VoicePanelControlsTest {
             val laidOut = java.util.concurrent.CountDownLatch(1)
             val fixture = main {
                 val fake = Fake(); val results = mutableListOf<(String) -> Unit>(); val inserted = mutableListOf<String>()
-                val panel = VoicePanel(activity, { inserted.add(it); accept }, {}, { _, result, _ -> results.add(result); fake })
+                val panel = VoicePanel(activity, { inserted.add(it); accept }, {}, { state, result, _ ->
+                    fake.status = state; results.add(result); fake
+                })
                 Ui.applySystemInsets(panel.view)
                 panel.view.addOnLayoutChangeListener { _, l, t, r, b, _, _, _, _ -> if (r > l && b > t) laidOut.countDown() }
                 activity.setContentView(panel.view)
@@ -84,6 +87,21 @@ class VoicePanelControlsTest {
             assertTrue(laidOut.await(5, java.util.concurrent.TimeUnit.SECONDS)); instrumentation.waitForIdleSync()
             test(fixture)
         } finally { main { activity.finish() }; instrumentation.waitForIdleSync(); prefs.edit().putBoolean("voiceHoldToInsert", old).commit() }
+    }
+    @Test fun captureLimitTransitionsToProcessingAndRejectsLateStatus() = withPanel { f ->
+        f.click("Speak")
+        val callback = f.fake.status
+        main { callback(CaptureStatus(CapturePhase.PROCESSING, "Microphone off")) }
+        assertFalse(main { f.key("Transcribing…").isEnabled })
+        assertEquals(0, main { f.fake.stopped }) // No manual Stop needed at the capture limit.
+        main { callback(CaptureStatus(CapturePhase.RECORDING, "Late recording update")) }
+        assertFalse(main { f.key("Transcribing…").isEnabled })
+        main { f.results.single()("finished") }
+        main { callback(CaptureStatus(CapturePhase.PROCESSING, "Late processing update")) }
+        assertTrue(main { f.key("Insert").isEnabled })
+        f.click("Discard"); f.click("Speak")
+        main { callback(CaptureStatus(CapturePhase.PROCESSING, "Previous take")) }
+        assertTrue(main { f.key("Stop").isEnabled })
     }
     @Test fun micEntryStartsOneReviewTakeAndNeverRestartsOnClear() = withPanel { f ->
         f.holdMode()
