@@ -75,9 +75,16 @@ class EditorActionsTest {
                 key("Return to typing").performClick()
                 editor.selectAll(); stale.performClick()
                 assertEquals("cats", editor.text.toString())
+                key("Edit actions").performClick()
+                check(context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0)
+                activity.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
             }
+            instrumentation.waitForIdleSync()
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(
+                "screencap -p /data/local/tmp/utterleaf-keyboard-actions.png")).use { it.readBytes() }
         } finally {
             instrumentation.runOnMainSync {
+                activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
                 activity.finish()
                 (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
                     .setPrimaryClip(android.content.ClipData.newPlainText("", ""))
