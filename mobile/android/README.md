@@ -3,7 +3,7 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha03 is released as a signed development preview.** Typing works without
+**0.1.0-alpha04 is released as a signed development preview.** Typing works without
 microphone permission or a speech model. A separate voice-only option remains
 available for compatible keyboards.
 
@@ -15,6 +15,8 @@ prediction, accessibility and device coverage remain on the
 
 - English typing with letters, numbers, symbols, shift/caps, deletion, cursor arrows,
   Enter actions and an integrated **Mic** button.
+- Alpha04 fixes Shift/Caps handling: letters follow the displayed case, one-shot
+  Shift clears after successful entry, and Shift reverses Caps Lock for one letter.
 - Local keyboard preferences: larger keys/labels, light/dark keys, optional vibration
   and repeat filtering, with a preview and reset. Repeat filtering is off by default;
   enabling it suppresses same-key taps within 250 ms, including fast double letters.
@@ -35,11 +37,13 @@ prediction, accessibility and device coverage remain on the
 
 ## Try it
 
-1. [Download and install Utterleaf Android alpha03](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha03/Utterleaf-Android-0.1.0-alpha03.apk)
+1. [Download and install Utterleaf Android alpha04](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha04/Utterleaf-Android-0.1.0-alpha04.apk)
    on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Use `Utterleaf-Android-0.1.0-alpha03.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha03).
+   Use `Utterleaf-Android-0.1.0-alpha04.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha04).
    If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
-   then install alpha03. Uninstalling removes the imported model and other app data.
+   then install alpha04. Uninstalling removes the imported model and other app data.
+   Alpha03 began the persistent signing channel; an installed signed alpha03 uses
+   the same release identity and should be updated in place rather than uninstalled.
 2. Open **Utterleaf Voice**, tap **Enable Utterleaf Keyboard**, enable it in Android's
    settings, then use **Choose keyboard**. Choose **Utterleaf Keyboard** for typing;
    **Utterleaf Voice** is the separate voice-only option.
@@ -84,7 +88,7 @@ whether the eventual destination is a password field.
 Check the filename first. An earlier release download list included
 `Utterleaf-Voice-0.1.0-alpha02-unsigned.apk`. That developer build cannot be
 installed; download the signed APK linked above instead. Enabling unknown sources
-does not make an unsigned APK installable. Alpha03 provides the installable APK,
+does not make an unsigned APK installable. Alpha04 provides the installable APK,
 checksums, signing information and a version manifest.
 
 Alpha01/alpha02 used disposable debug certificates. Alpha03 starts the persistent
@@ -131,16 +135,22 @@ it on the emulator without test-only installation flags. Reports and APK checksu
 accompany successful builds. `assembleRelease` also checks release compilation,
 but its unsigned output stays in the build directory and is not distributed.
 
-Alpha03's verified baseline is **4 JVM tests, 10 API 35 emulator tests and 3 Python
-release-contract tests**. Coverage includes model verification and real local
+Alpha04 passed **4 JVM tests, 11 API 35 emulator tests and 3 Python release-contract
+tests** in the [verified CI run](https://github.com/RioPlay/utterleaf/actions/runs/34427672686).
+Coverage includes model verification and real local
 inference, permission/backup restrictions, password filtering, stale voice-result
 rejection, single insertion, capture cancellation, typing-panel behavior, keyboard
-service protection and preferences rendering. The
-[successful signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34425184566)
-verified signed installation/reinstallation and published
-[alpha03](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha03).
-These tests do not establish complete live-IME behavior across real editors or
-physical phones. See [validation limits](../../docs/mobile.md#android-validation--september-9-2026).
+service protection and preferences rendering. The added live-IME test drives letter
+entry, cursor movement, deletion, Done, a voice-panel-to-password transition and
+hide/reopen in an emulator test activity; it starts no microphone capture. A separate
+direct typing-panel button test verifies Shift/Caps. Selected-text replacement and
+compatibility across real editors, phones and assistive technologies remain open.
+
+The [successful alpha04 signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34428171272)
+verified the release signature, upgraded signed alpha03 to alpha04 on an emulator,
+and reinstalled the same alpha04 version. The signing certificate is unchanged.
+Preference and imported-model preservation were not exercised; physical updates
+and real Obtainium acceptance remain open. See [validation limits](../../docs/mobile.md#android-validation--september-9-2026).
 
 ## Acceptance work before a stable mobile release
 
@@ -153,8 +163,9 @@ physical phones. See [validation limits](../../docs/mobile.md#android-validation
   gesture/three-button navigation, and small displays, with assistive-technology users.
 - Cold inference latency, RAM, battery and thermal behavior on midrange ARM64 phones.
 - Physical version-to-version signed installation and real Obtainium import/updates;
-  independently protected offline signing-key backup. Signing and emulator
-  installation/reinstallation have passed, but do not establish these device gates.
+  independently protected offline signing-key backup. Alpha03-to-alpha04 upgrade
+  and same-version reinstallation passed on an emulator; preference/model
+  preservation and these physical-device gates still need verification.
 - Dependency provenance, native 16 KB page compatibility and distribution policy
   review. CI debug APKs remain development artifacts, separate from signed releases.
 - Bounded incremental dictation, additional reviewed models/languages, local

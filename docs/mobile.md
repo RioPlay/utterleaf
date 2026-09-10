@@ -10,15 +10,17 @@ it does not replace or add dependencies to the desktop Python application.
 
 ## Android — typing and local dictation preview
 
-[Download the signed Android alpha03 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha03/Utterleaf-Android-0.1.0-alpha03.apk) ·
-[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha03) ·
+[Download the signed Android alpha04 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha04/Utterleaf-Android-0.1.0-alpha04.apk) ·
+[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha04) ·
 [Setup and current limits](../mobile/android/README.md)
 
-Android **0.1.0-alpha03 is released** with an English typing keyboard and integrated
+Android **0.1.0-alpha04 is released** with an English typing keyboard and integrated
 local dictation. Typing works without a speech model or microphone permission.
 Preferences offer larger keys/labels, light or dark keys, optional vibration and
 repeat filtering; speech previews have an expiry warning and **Keep reviewing**.
 Setup includes an [Obtainium configuration button](mobile-obtainium.md).
+Alpha04 fixes Shift/Caps behavior so entered letters follow the displayed case,
+including one-shot Shift and Shift with Caps Lock, and adds live-IME regression coverage.
 
 The native Kotlin app uses Android's input-method framework and local whisper.cpp
 inference. A separate voice-only IME and speech-recognition activity remain available
@@ -28,7 +30,8 @@ prediction and broader accessibility/device coverage remain on the
 
 Existing alpha01/alpha02 users need a one-time uninstall because those builds used
 different debug signing keys. Uninstalling removes app data and the imported model;
-install alpha03 and import the model again. See [migration details](mobile-obtainium.md#migrating-from-the-old-alpha).
+install alpha04 and import the model again. Alpha03 began the persistent signing
+channel; it is the signed predecessor for alpha04. See [migration details](mobile-obtainium.md#migrating-from-the-old-alpha).
 
 See the [Android guide](../mobile/android/README.md) for exact implemented scope,
 setup, permissions, test evidence and remaining native-device acceptance work.
@@ -45,18 +48,26 @@ from screenshots. These images do not establish physical accessibility coverage.
 
 ### Android validation — September 9, 2026
 
-Alpha03 passes **4 JVM tests, 10 API 35 emulator tests and 3 Python release-contract
-tests**. Coverage includes
+Alpha04 passed **4 JVM tests, 11 API 35 emulator tests and 3 Python release-contract
+tests** in the [verified CI run](https://github.com/RioPlay/utterleaf/actions/runs/34427672686).
+Coverage includes
 hash rejection for same-size untrusted models, packaged permission/backup checks,
 denied microphone access, password-field filtering, auxiliary voice subtype
 discovery, stale-result rejection, single insertion, actual whisper.cpp
 transcription of the pinned JFK speech fixture, and foreground microphone
 capture/cancellation, typing-panel behavior, keyboard service protection and the
-preferences preview. ARM64 and x86_64 debug/release APKs compile; Android lint
+preferences preview. The added live-IME test exercises letter entry, cursor movement,
+deletion, the Done action, switching from the voice panel to a password field, and
+keyboard dismissal/reopening in an emulator test activity. It starts no microphone
+capture. A separate direct typing-panel button test verifies Shift/Caps behavior.
+Selected-text replacement remains an acceptance task. ARM64 and x86_64 debug/release
+APKs compile; Android lint
 passes its error gate. Remaining warnings include English UI localization and
-newer dependency versions. The [successful signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34425184566)
-verified the release signature and signed-APK installation/reinstallation before
-publishing alpha03. This does not establish a physical version-to-version update.
+newer dependency versions. The [successful alpha04 signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34428171272)
+verified the release signature, upgraded signed alpha03 to alpha04 on an emulator,
+and reinstalled the same alpha04 version before publication. Alpha04 retains the
+alpha03 signing certificate. Preference and imported-model preservation were not
+exercised by that upgrade test; physical version-to-version updates remain open.
 
 Native optimization reduced the fixture test from about 4m18s to 33s on separate
 hosted emulator runs. These times include model import/verification/loading and

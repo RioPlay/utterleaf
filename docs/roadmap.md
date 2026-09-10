@@ -17,12 +17,23 @@ are requirements throughout development, not finishing touches.
 | iOS | A separately implemented keyboard and local speech experience within platform restrictions | [iOS feasibility and milestones](mobile-roadmap.md#ios-track) |
 | Shared product direction | Security, privacy, accessibility principles, branding, and candidate ideas | [Ideas and decisions](ideas.md) ? [Development boundaries](development-boundaries.md) |
 
-Desktop v0.4.0 and [Android 0.1.0-alpha03](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha03)
-have independent release histories. Android alpha03 includes an **English typing
-keyboard with local dictation**, preferences, preview extension and Obtainium setup,
-published as a signed APK. It is an early foundation; physical device, accessibility
+Desktop v0.4.0 and [Android 0.1.0-alpha04](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha04)
+have independent release histories. Android alpha04 includes an **English typing
+keyboard with local dictation**, preferences, preview extension, Obtainium setup
+and corrected Shift/Caps behavior, published as a signed APK. It is an early
+foundation; physical device, accessibility
 and real Obtainium update acceptance remain open. Earlier voice-companion feedback
 from a Pixel 8 Pro does not certify this keyboard. No iOS app is released.
+
+Android's [passed CI run](https://github.com/RioPlay/utterleaf/actions/runs/34427672686)
+covers 4 JVM, 11 emulator and 3 release-contract tests; the [mobile guide](mobile.md#android-validation--september-9-2026)
+distinguishes live-IME editing checks from direct-panel Shift/Caps checks and open
+selection-replacement acceptance.
+
+The [successful Android signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34428171272)
+also verified an emulator upgrade from signed alpha03 to alpha04 and same-version
+reinstallation with the unchanged certificate. Physical and real Obtainium update
+checks remain open.
 
 The [execution plan](execution-plan.md) assigns ordered work packages, file ownership,
 security gates and external validation requirements across these workstreams.

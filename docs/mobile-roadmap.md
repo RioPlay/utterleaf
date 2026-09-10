@@ -9,15 +9,19 @@ Desktop changes are tracked separately in the [desktop roadmap](desktop-roadmap.
 
 ## Current status
 
-- **Released:** [Android 0.1.0-alpha03](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha03),
+- **Released:** [Android 0.1.0-alpha04](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha04),
   with a native English typing keyboard, integrated local speech, verified model
   import, sizing/theme/feedback/repeat preferences, preview expiry warning/extension,
-  and an Obtainium setup button. The separate voice companion remains available.
-- **Verified in CI:** 4 JVM, 10 API 35 emulator and 3 Python release-contract tests;
-  ARM64 and x86_64 builds. The [successful signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34425184566)
-  verified signed installation/reinstallation. See [validation evidence](mobile.md#android-validation--september-9-2026).
+  and an Obtainium setup button. Alpha04 fixes Shift/Caps case handling and adds
+  live-IME regression coverage. The separate voice companion remains available.
+- **Verified in CI:** [4 JVM, 11 API 35 emulator and 3 Python release-contract tests](https://github.com/RioPlay/utterleaf/actions/runs/34427672686);
+  ARM64 and x86_64 builds. The live-IME test covers letters, cursor movement,
+  deletion, Done, voice-panel-to-password transitions and hide/reopen in a test
+  activity, without starting capture. Shift/Caps is verified separately through
+  direct typing-panel buttons. Selected-text replacement remains an acceptance task.
+  See [validation evidence and limits](mobile.md#android-validation--september-9-2026).
 - **User feedback on the earlier voice companion:** functions on a Pixel 8 Pro,
-  with setup and voice-only usability friction. This does not establish alpha03
+  with setup and voice-only usability friction. This does not establish alpha04
   keyboard, broader phone or accessibility acceptance.
 - **Acceptance remains open:** real-editor typing/dictation/correction, assistive
   technology, physical interruptions, broad device coverage and real Obtainium updates.
@@ -32,7 +36,7 @@ Desktop changes are tracked separately in the [desktop roadmap](desktop-roadmap.
 | M3 — In progress; initial preferences released in alpha03 | Accessibility and useful customization | Complete setup, typing, correction, dictation, cancellation and reset using TalkBack and Switch Access. Adjustable key/label sizing, light/dark contrast, reachable layouts, optional feedback and repeat filtering. Essential actions have visible single-tap alternatives. Test large fonts and landscape, not just default screenshots. |
 | M4 — In progress; bounded speech and preview extension released | Comfortable offline speech | Clear mic/loading/error state, tap start/stop and optional hold mode, pause tolerance, accessible preview warning/extension, bounded longer takes, and correction without repeating the whole message. Measure quality and latency on real hardware; do not promise recognition of every speech pattern. |
 | M5 — Planned | Everyday language and editing support | Reviewed multilingual layouts/dictionaries, optional suggestions and correction, correction rejection, accents, emoji and text shortcuts. Explicit local learning controls and deletion; no password learning or automatic clipboard history. |
-| M6 — In progress; signed alpha03 published | Broad compatibility and sustainable distribution | Defined Android/API and ABI support, diverse physical-device matrix, stable protected signing, install/update/rollback-policy testing, reproducible build inputs and release checksums. No forced downgrade or unsigned consumer APK. |
+| M6 — In progress; persistent signed channel began with alpha03 | Broad compatibility and sustainable distribution | Defined Android/API and ABI support, diverse physical-device matrix, stable protected signing, install/update/rollback-policy testing, reproducible build inputs and release checksums. No forced downgrade or unsigned consumer APK. |
 
 Security and accessibility gates apply to every milestone; they are not deferred
 until M6. M2 is not full FUTO feature parity. Swipe typing requires a separate
@@ -69,9 +73,11 @@ channel, certificate identity and update acceptance work.
   multiple manufacturers, and small/large displays. Current ARM64/x86_64 builds do
   not imply 32-bit support. Expand ABIs only with build, resource and runtime evidence.
 - A persistent release signing identity and isolated publishing workflow are implemented.
-  Signed alpha03 installation/reinstallation passed in the release workflow. CI debug
-  keys remain disposable; physical version-to-version installation, real Obtainium
-  updates and independently protected offline key backup remain separate gates.
+  The [successful alpha04 signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34428171272)
+  verified the same signing certificate, an emulator upgrade from alpha03 to alpha04,
+  and same-version reinstallation. Preference/model preservation was not exercised.
+  CI debug keys remain disposable; physical updates, real Obtainium updates and independently
+  protected offline key backup remain separate gates.
 
 ## iOS track
 

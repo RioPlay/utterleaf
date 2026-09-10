@@ -21,10 +21,14 @@ Reserve `utterleaf/app.py`, `config.py`, `settings.py`, `settings_ui.py`, and
 roadmap status edits and shared CI changes for the coordinator. Package owners may
 write isolated tests and evidence notes. Do not revert another agent's work.
 
-Android foundation PR #2 and live-IME follow-up PR #3 are merged. Signed alpha03
-is published; the Shift/live-IME follow-up is source-tested and is not retroactively
-included in that APK. Mobile release, signing, Obtainium, versioning, and publishing
-remain coordinator-owned and independent of desktop releases.
+Android foundation PR #2 and live-IME follow-up PR #3 are merged. Alpha03 began the
+persistent signing channel; alpha04 includes the Shift/Caps correction and live-IME
+follow-up. [CI passed 4 JVM, 11 API 35 emulator and 3 Python release-contract tests](https://github.com/RioPlay/utterleaf/actions/runs/34427672686).
+The [successful alpha04 signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34428171272)
+verified the unchanged certificate, an emulator upgrade from signed alpha03 to
+alpha04, and same-version reinstallation. Preference/model preservation was not
+exercised. Mobile release, signing, Obtainium, versioning and publishing remain coordinator-owned
+and independent of desktop releases.
 
 ## Implementation checkpoint
 
@@ -35,10 +39,14 @@ atomic native restoration remain open. Physical microphone and accessibility
 acceptance is still required. These increments do not complete D5 long sessions,
 captions, meetings, speaker labels, translation, or the iOS track.
 
-Android has the initial typing/preferences foundation, signed distribution and
-Obtainium configuration. API 35 tests now drive the live IME through editor changes;
-real Obtainium upgrades, diverse phones, and assistive-technology workflows remain
-external evidence gates. Use the platform roadmaps for current release status.
+Android alpha04 has the initial typing/preferences foundation, corrected case
+handling, signed distribution and
+Obtainium configuration. The API 35 live-IME test covers letters, cursor movement,
+deletion, Done, a voice-panel-to-password transition and hide/reopen, without starting
+capture. A separate direct typing-panel test verifies Shift/Caps. Selected-text
+replacement remains acceptance work; real Obtainium upgrades, diverse phones and
+assistive-technology workflows remain external evidence gates. Use the platform
+roadmaps for current release status.
 
 ## Gates for every package
 

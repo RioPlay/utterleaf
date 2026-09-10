@@ -6,6 +6,9 @@ Obtainium checks GitHub and installs Android updates. Utterleaf itself keeps **n
 Internet permission** and does not add an updater service. The signed channel
 begins with Android alpha03; alpha01/alpha02 used disposable debug keys.
 
+Current release: [Android alpha04](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha04) ·
+[Signed APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha04/Utterleaf-Android-0.1.0-alpha04.apk).
+
 ## Set up
 
 In a signed Utterleaf Android build, open **Set up updates in Obtainium**.
@@ -35,6 +38,18 @@ Android will reject an update signed by a different key. If alpha01/alpha02 is
 installed, uninstall it once, install the signed alpha03-or-later APK and re-import
 the speech model. Uninstalling removes app data. Do not disable Android's signature
 checks or protection settings to force an update.
+
+Signed alpha03 and alpha04 use the same persistent release identity. An installed
+signed alpha03 should be updated in place. The
+[successful alpha04 signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34428171272)
+verified the unchanged certificate, upgraded signed alpha03 to alpha04 on an
+emulator, and reinstalled alpha04. Preference and imported-model preservation were
+not exercised. Real Obtainium import and physical updates remain separate gates.
+
+The [passed alpha04 CI run](https://github.com/RioPlay/utterleaf/actions/runs/34427672686)
+records 4 JVM, 11 API 35 emulator and 3 release-contract tests. See the
+[mobile validation record](mobile.md#android-validation--september-9-2026) for exact
+keyboard test coverage.
 
 New installations should use the signed release APK, never a CI debug APK. A
 release is available only after its signed APK is published; a roadmap entry or
