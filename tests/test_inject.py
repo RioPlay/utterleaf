@@ -7,6 +7,14 @@ from utterleaf import inject
 from utterleaf.inject import same_target
 
 
+@pytest.fixture(autouse=True)
+def stable_clipboard_identity(monkeypatch):
+    # These tests simulate clipboard contents. Their identity must also be
+    # simulated, rather than depending on a CI runner's native clipboard.
+    # Changes/unavailable identities have dedicated adversarial tests.
+    monkeypatch.setattr(inject, "_clipboard_sequence", lambda: 1)
+
+
 def test_same_target_treats_empty_as_ok() -> None:
     assert same_target(None, 123) is True
     assert same_target(0, 0) is True

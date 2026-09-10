@@ -24,6 +24,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--quit", action="store_true", dest="quit_app", help="Quit a running instance")
     parser.add_argument("--polish", metavar="TEXT", help="Polish text on stdout (no mic)")
     parser.add_argument("--app", default="", help="Foreground app name for --polish")
+    parser.add_argument("--transcribe-file", metavar="PATH", help="Transcribe a local media file using already installed models")
+    parser.add_argument("--files", action="store_true", help="Open local file transcription and export")
+    parser.add_argument("--output", metavar="PATH", help="Explicit destination for file transcription")
+    parser.add_argument("--format", choices=("txt", "srt", "vtt"), help="Output format (otherwise inferred from destination suffix)")
+    parser.add_argument("--overwrite", action="store_true", help="Allow replacing the explicitly selected output file")
     parser.add_argument("--no-tray", action="store_true", help="Run without a tray icon")
     parser.add_argument("--paths", action="store_true", help="Print config paths and exit")
     parser.add_argument(
@@ -53,6 +58,35 @@ def main(argv: list[str] | None = None) -> int:
         help=argparse.SUPPRESS,
     )
     args = parser.parse_args(argv)
+
+    if args.transcribe_file:
+        if not args.output:
+            parser.error("--transcribe-file requires --output; transcripts are not printed or saved implicitly")
+        if any((args.files, args.pill, args.settings, args.paths, args.toggle, args.stop, args.quit_app,
+                args.copy_last, args.forget_last, args.download_model, args.doctor, args.cuda_setup,
+                args.install_startup, args.uninstall_startup, args.polish is not None, args.no_tray, args.app)):
+            parser.error("--transcribe-file cannot be combined with another app action")
+        from pathlib import Path
+        source, destination = Path(args.transcribe_file).expanduser(), Path(args.output).expanduser()
+        if not source.is_file():
+            parser.error("The selected input file does not exist or is not a file")
+        if source.resolve() == destination.resolve() or (destination.exists() and source.samefile(destination)):
+            parser.error("The output must not replace the source media file")
+        if destination.exists() and not args.overwrite:
+            parser.error("Output already exists; choose another destination or explicitly use --overwrite")
+        if args.format is None and destination.suffix.lower() not in (".txt", ".srt", ".vtt"):
+            parser.error("Use a .txt, .srt or .vtt output filename, or specify --format")
+    elif args.output or args.format or args.overwrite:
+        parser.error("--output, --format and --overwrite require --transcribe-file")
+
+    if args.files:
+        if any((args.pill, args.settings, args.paths, args.toggle, args.stop, args.quit_app,
+                args.copy_last, args.forget_last, args.download_model, args.doctor, args.cuda_setup,
+                args.install_startup, args.uninstall_startup, args.polish is not None, args.no_tray, args.app)):
+            parser.error("--files cannot be combined with another app action")
+        from utterleaf.file_ui import run_files
+
+        return run_files()
 
     if args.pill:
         from utterleaf.indicator import run_pill
@@ -111,6 +145,25 @@ def main(argv: list[str] | None = None) -> int:
     from utterleaf.hardware import enable_cuda_libs
 
     enable_cuda_libs()
+
+    if args.transcribe_file:
+        import threading
+        from utterleaf.file_transcription import transcribe_file
+        from utterleaf.transcript import export_transcript
+
+        cancelled = threading.Event()
+        try:
+            result = transcribe_file(source, cfg, cancel=cancelled)
+            written = export_transcript(result, destination, format=args.format, overwrite=args.overwrite)
+        except KeyboardInterrupt:
+            cancelled.set()
+            print("File transcription cancelled. No new output was requested after cancellation.", file=sys.stderr)
+            return 130
+        except (OSError, ValueError, RuntimeError) as exc:
+            print(f"File transcription failed: {exc}", file=sys.stderr)
+            return 1
+        print(f"Saved transcription to {written}")
+        return 0
 
     from utterleaf.app import Utterleaf, run_doctor, run_once, setup_logging
 

@@ -42,6 +42,33 @@ def same_target(saved, current) -> bool:
     return saved == current
 
 
+def _clipboard_sequence() -> int | None:
+    """Windows change identity, without reading or retaining clipboard content.
+
+    Text equality alone cannot detect a user copying the same text again. None
+    means the platform has no supported identity check; zero on Windows means
+    access could not be verified and must not authorize automatic restoration.
+    """
+    if sys.platform != "win32":
+        return None
+    try:
+        import ctypes
+
+        sequence = ctypes.windll.user32.GetClipboardSequenceNumber
+        sequence.argtypes = []
+        sequence.restype = ctypes.c_ulong
+        return int(sequence())
+    except Exception:
+        return 0
+
+
+def _clipboard_unchanged(sequence: int | None) -> bool:
+    current = _clipboard_sequence()
+    if sequence is None:
+        return current is None
+    return sequence != 0 and current == sequence
+
+
 def foreground_app() -> str:
     try:
         if sys.platform == "win32":
@@ -85,7 +112,11 @@ def _paste_settled(deadline: float = 0.28) -> None:
 
 
 def paste(text: str, restore_clipboard: bool = True, target=None) -> str:
-    """Paste into the focused app. Returns pasted, clipboard, fail, or empty."""
+    """Return pasted (shortcut sent), clipboard, fail, or empty.
+
+    A successful shortcut is not proof the editor inserted the text. Clipboard
+    and focus checks reduce races; they do not make desktop delivery atomic.
+    """
     if text == "":
         return "empty"
     if target is not None and not same_target(target, foreground_id()):
@@ -106,6 +137,7 @@ def paste(text: str, restore_clipboard: bool = True, target=None) -> str:
     except Exception:
         log.exception("Clipboard copy failed")
         return "fail"
+    sequence = _clipboard_sequence()
 
     # Allow shortcut modifiers to settle before the final focus check. Doing
     # this inside the platform helper leaves an avoidable wrong-window gap.
@@ -114,14 +146,20 @@ def paste(text: str, restore_clipboard: bool = True, target=None) -> str:
         log.warning("Focus moved before delivery; left text on the clipboard")
         return "clipboard"
     try:
-        if pyperclip.paste() != text:
+        if pyperclip.paste() != text or (sequence != 0 and not _clipboard_unchanged(sequence)):
             log.warning("Clipboard changed before delivery; paste cancelled")
             return "fail"
     except Exception:
         log.warning("Could not verify clipboard before delivery; paste cancelled")
         return "fail"
 
-    ok = _send_paste()
+    try:
+        ok = _send_paste()
+    except Exception:
+        # Preserve the copied dictation and the caller's recovery path. Helper
+        # errors need not include command output or clipboard content in logs.
+        log.warning("Paste shortcut failed; dictation remains available for recovery")
+        return "fail"
     if ok and restore_clipboard:
         _paste_settled()
         # Restore only if the user is still in the same window: a slow app can
@@ -131,7 +169,9 @@ def paste(text: str, restore_clipboard: bool = True, target=None) -> str:
             try:
                 # A copy made while the target handles the paste belongs to
                 # the user. Never replace it with our saved clipboard.
-                if pyperclip.paste() == text:
+                # Check identity after reading: delayed rendering or a copy of
+                # identical text may have changed the clipboard in the meantime.
+                if pyperclip.paste() == text and _clipboard_unchanged(sequence):
                     pyperclip.copy(previous)
             except Exception:
                 pass

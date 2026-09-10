@@ -336,6 +336,9 @@ class SettingsWindow:
         p = self._section(page, "A fresh start", "Restore preferences without removing your vocabulary or models.")
         self.reset_button = ttk.Button(p, text="Restore default settings…", command=self.restore_defaults)
         self.reset_button.pack(anchor="w", pady=(10, 4))
+        p = self._section(page, "Local backup", "Review and export portable preferences and vocabulary, or inspect a selected backup before applying it.")
+        ttk.Button(p, text="Export backup…", command=lambda: self.show_backup(False)).pack(anchor="w", pady=4)
+        ttk.Button(p, text="Import backup…", command=lambda: self.show_backup(True)).pack(anchor="w", pady=4)
         p = self._section(page, "Device report", "Check your setup without downloading a model. Review the report before sharing it.")
         self.diagnostic_button = ttk.Button(p, text="Check this device", command=self.diagnostics)
         self.diagnostic_button.pack(anchor="w", pady=10)
@@ -355,6 +358,42 @@ class SettingsWindow:
             return
         from .appearance import AppearanceGuide
         self.appearance_guide = AppearanceGuide(self.root)
+
+    def show_backup(self, importing=False):
+        if self.saving:
+            return
+        if self._reset_pending or self._snapshot() != self.baseline:
+            messagebox.showinfo("Save your current edits first", "Save changes or reopen Settings before reviewing a backup.", parent=self.root)
+            return
+        from pathlib import Path
+        from utterleaf.backup_store import read_backup, read_current
+        from utterleaf.backup_ui import BackupDialog
+        try:
+            plan = None
+            if importing:
+                name = filedialog.askopenfilename(parent=self.root, title="Select a backup to inspect", filetypes=[("JSON backup", "*.json")])
+                if not name:
+                    return
+                plan = read_backup(Path(name))
+            cfg, vocabulary = read_current()
+            self.backup_dialog = BackupDialog(self.root, cfg, vocabulary, plan=plan, on_applied=self._backup_applied)
+        except Exception:
+            messagebox.showerror("Backup unavailable", "The selected backup or current settings could not be read safely. No changes saved.", parent=self.root)
+
+    def _backup_applied(self, values):
+        self.cfg = values.config
+        for key, var in self.vars.items():
+            if key != "start_at_login":
+                value = getattr(self.cfg, key)
+                var.set(value or SYSTEM_DEFAULT if key == "microphone" else value)
+        self.names.delete("1.0", "end")
+        self.names.insert("1.0", values.vocabulary_text)
+        self.names.edit_modified(False)
+        self.baseline = self._snapshot()
+        self._dirty()
+        from utterleaf import ipc
+        self._worker(lambda: ipc.send("reload"), lambda result: self.status.set(
+            "Backup imported · app reloaded" if result == "ok" else "Backup imported · restart the dictation app to use the saved settings"))
 
     def show_page(self, name):
         if name != "Dictation":

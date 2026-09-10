@@ -13,9 +13,16 @@ import time
 from utterleaf.config import data_dir
 
 
-def activate() -> bool:
+def _namespace(namespace: str) -> str:
+    if namespace not in {"settings", "files"}:
+        raise ValueError("Window namespace must be settings or files")
+    return namespace
+
+
+def activate(namespace: str = "settings") -> bool:
+    namespace = _namespace(namespace)
     try:
-        endpoint = json.loads((data_dir() / "settings-instance.json").read_text(encoding="utf-8"))
+        endpoint = json.loads((data_dir() / f"{namespace}-instance.json").read_text(encoding="utf-8"))
         with socket.create_connection(("127.0.0.1", int(endpoint["port"])), timeout=0.3) as client:
             client.sendall((endpoint["token"] + "\n").encode("ascii"))
             return client.recv(16) == b"ok\n"
@@ -30,15 +37,16 @@ class SettingsInstance:
     thread. Endpoint files are discovery data, never evidence of a live owner.
     """
 
-    def __init__(self):
+    def __init__(self, namespace: str = "settings"):
+        self.namespace = _namespace(namespace)
         self.lock = None
         self.server = None
         self.stopped = threading.Event()
-        self.endpoint = data_dir() / "settings-instance.json"
+        self.endpoint = data_dir() / f"{self.namespace}-instance.json"
 
     def acquire(self, on_activate) -> bool:
         data_dir().mkdir(parents=True, exist_ok=True)
-        handle = (data_dir() / "settings.lock").open("a+b")
+        handle = (data_dir() / f"{self.namespace}.lock").open("a+b")
         handle.seek(0, 2)
         if not handle.tell():
             handle.write(b"0")
@@ -59,10 +67,10 @@ class SettingsInstance:
             # another window just because activation is temporarily unavailable.
             deadline = time.monotonic() + 5
             while time.monotonic() < deadline:
-                if activate():
+                if activate(self.namespace):
                     return False
                 time.sleep(0.1)
-            raise RuntimeError("Settings is already opening or not responding. Try again shortly.")
+            raise RuntimeError(f"{self.namespace.title()} is already opening or not responding. Try again shortly.")
         self.lock = handle
         try:
             self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
