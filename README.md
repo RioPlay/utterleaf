@@ -21,11 +21,11 @@ history. Your microphone closes between takes.
 
 | Desktop dictation | Android keyboard preview |
 | --- | --- |
-| <img src="docs/assets/screenshots/dictation-dark.png" width="460" alt="Utterleaf desktop dictation settings on Windows" /> | <img src="docs/assets/screenshots/android-keyboard-live.png" width="230" alt="Utterleaf Android keyboard in a synthetic editor" /> |
+| <img src="docs/assets/screenshots/dictation-dark.png" width="460" alt="Utterleaf desktop dictation settings on Windows" /> | <img src="docs/assets/screenshots/android-voice-edit-alpha10.png" width="230" alt="Utterleaf Android voice transcript editor and keyboard with sample text" /> |
 | Hold a shortcut and speak naturally; the local result goes to your selected text field. | Type directly with the Android keyboard, then add optional offline English voice when you choose. |
 
-The desktop capture is from the Windows app. The Android capture is a synthetic
-editor on an API 35 emulator from alpha07, revision `ee47aa7`. [Android preview
+The desktop capture is from the Windows app. The Android preview shows local
+transcript editing in an emulator with sample text. [Android preview
 and current limits](docs/mobile.md) · [Keyboard roadmap](docs/mobile-roadmap.md)
 
 ## Download
@@ -33,12 +33,12 @@ and current limits](docs/mobile.md) · [Keyboard roadmap](docs/mobile-roadmap.md
 Desktop archives include Python. Extract the **whole archive**, then open Utterleaf.
 On Android, install the signed APK and follow its keyboard setup.
 
-| Your computer | Download | Setup |
+| Platform | Download | Setup |
 | --- | --- | --- |
 | Windows x64 | [Windows ZIP](https://github.com/RioPlay/utterleaf/releases/latest/download/Utterleaf-windows-x64-cpu.zip) | Open `Utterleaf/utterleaf.exe` |
 | macOS Apple Silicon | [macOS archive](https://github.com/RioPlay/utterleaf/releases/latest/download/Utterleaf-macos-arm64.tar.gz) | [Permissions & launch](docs/installation.md#macos) |
 | Linux x64 | [Linux archive](https://github.com/RioPlay/utterleaf/releases/latest/download/Utterleaf-linux-x64.tar.gz) | [X11 setup](docs/installation.md#linux) · [Wayland setup](docs/wayland.md) |
-| Android ARM64 preview | [Signed Android alpha09 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha09/Utterleaf-Android-0.1.0-alpha09.apk) | [Setup & current limits](docs/mobile.md) |
+| Android ARM64 preview | [Signed Android alpha10 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha10/Utterleaf-Android-0.1.0-alpha10.apk) | [Setup & current limits](docs/mobile.md) |
 
 Linux builds target Ubuntu 24.04 or compatible distributions. Downloads are
 unsigned on desktop; the Android APK is signed. macOS is not notarized. Wayland needs manual shortcut/paste setup and

@@ -20,6 +20,14 @@ roadmap without claiming those capabilities are already released.
 
 ## Current status
 
+- **Released alpha10:** held Ctrl/Alt chords, independently configurable
+  delete repetition and retained model imports with between-take selection.
+  [67 emulator tests passed](https://github.com/RioPlay/utterleaf/actions/runs/34480299407),
+  alongside 8 JVM tests, lint and 3 release-contract checks. Publication is tracked
+  in the [Android guide](android-keyboard-design.md#released-in-alpha10).
+  The [defaults/customization contract](android-keyboard-capabilities.md#required-defaults-and-customization-contract)
+  now applies to new interactions and preferences.
+
 - **Released alpha09:** [editing and voice evidence](android-keyboard-design.md#released-in-alpha09).
   Shift-space selection, held deletion, period punctuation, sizing/practice and
   one-handed voice controls with local transcript editing. 61 API 35 emulator,

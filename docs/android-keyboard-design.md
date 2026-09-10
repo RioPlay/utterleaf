@@ -1,5 +1,35 @@
 # Android typing surface
 
+## Released in alpha10
+
+Enable **Terminal controls** to use Ctrl and Alt. Hold either modifier, then
+press another key with a second finger. Ctrl+Backspace sends a word-delete key
+combination to compatible editors. Releasing the modifier or moving outside a
+key cancels the physical chord. Tap-to-arm remains available. Held deletion has
+an independent preference, enabled by default and restored by Reset.
+
+Setup retains multiple verified English model imports and lets you select the
+active model without importing it again. The idle voice panel has an inline
+selector when multiple models are installed. Switches are blocked during a take
+or import. Old verified imports remain selectable; deleting the active model
+leaves voice unavailable until another model is selected.
+
+Revision `cd009b1` passed [CI run 34480299407](https://github.com/RioPlay/utterleaf/actions/runs/34480299407):
+67 API 35 emulator tests, 8 JVM tests, lint and 3 release contracts. Coverage
+includes actual EditText word deletion through an owned input connection,
+modifier release/cancellation, repeat preference persistence/reset, multi-model
+retention, legacy selection/deletion, and blocked/stale model-choice callbacks.
+[Signing and installation checks](https://github.com/RioPlay/utterleaf/actions/runs/34481384006)
+track the [alpha10 APK](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha10).
+
+Physical-phone, named terminal/editor and accessibility acceptance remain open.
+This does not add drag-to-highlight deletion or universal desktop shortcut behavior.
+
+<img src="assets/screenshots/android-voice-edit-alpha10.png" width="300" alt="Alpha10 protected local transcript editor in an Android emulator with sample text" />
+
+Actual debug API 35 panel fixture from `cd009b1`, visually reviewed. Synthetic
+capture is temporarily allowed by the test fixture; release protection remains on.
+
 ## Released in alpha09
 
 The keyboard's **Voice** button starts a reviewable take immediately. Stop and

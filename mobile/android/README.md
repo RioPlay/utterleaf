@@ -3,9 +3,13 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha09 is released as a signed development preview.**
+**0.1.0-alpha10 is released as a signed development preview.**
 Typing works without microphone permission or a speech
 model. A separate voice-only option remains available for compatible keyboards.
+
+Alpha10 adds held Ctrl/Alt shortcuts in Terminal controls, independently configurable
+delete repetition, and switching between retained model imports. See
+[release validation and limits](../../docs/android-keyboard-design.md#released-in-alpha10).
 
 Alpha09 adds Shift-space selection, held deletion, period-key punctuation,
 independent height/bottom spacing and private layout practice. The voice panel
@@ -56,11 +60,11 @@ prediction, accessibility and device coverage remain on the
 
 ## Try it
 
-1. [Download and install Utterleaf Android alpha09](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha09/Utterleaf-Android-0.1.0-alpha09.apk)
+1. [Download and install Utterleaf Android alpha10](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha10/Utterleaf-Android-0.1.0-alpha10.apk)
    on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Use `Utterleaf-Android-0.1.0-alpha09.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha09).
+   Use `Utterleaf-Android-0.1.0-alpha10.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha10).
    If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
-   then install alpha09. Uninstalling removes the imported model and other app data.
+   then install alpha10. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
    the same release identity and should be updated in place rather than uninstalled.
 2. Open **Utterleaf Voice**. Under **Your keyboard**, enable **Utterleaf Keyboard**
@@ -91,6 +95,17 @@ prediction, accessibility and device coverage remain on the
 
 ## English speech models
 
+Keep multiple imported models and change the active one in setup with **Use
+tiny.en**, **Use base.en** or **Use small.en**. Their rows show **Active**,
+**Installed** or **Not installed**. In an idle voice panel, the **Model** control
+offers the installed choices when there is more than one. Switching is allowed
+between takes, not during recording, processing or import.
+
+**Fast** uses tiny.en, **Balanced** uses base.en, and **Larger** uses small.en.
+These describe the intended tradeoff, not measured phone performance or a promise
+of correctness. **Delete selected model** removes only that import. If you delete
+the active model, select another installed model before dictating again.
+
 Start with tiny.en for the smallest download. Larger models require more RAM and
 processing time; accuracy and speed depend on your phone and speech. The native
 engine currently uses English for all three choices. These are reviewed file
@@ -111,8 +126,9 @@ not accepted. A computer-to-phone file transfer also works.
 
 Allow roughly twice the download size in free storage for the browser's copy and
 the verified import: about **156 MB**, **296 MB** or **976 MB** respectively. One
-model is active at a time. Selecting a model option changes the next browser download;
-the installed model changes only after verification succeeds. Failed verification,
+model is active at a time; retained imports use additional storage. Selecting a row
+changes the browser link; **Use** switches to that installed model. New imports
+become active only after verification succeeds. Failed verification,
 an interrupted read or a failed replacement keeps the previous file. Existing
 verified tiny.en installations remain usable after upgrading. Deleting the imported
 model leaves typing available and does not delete your browser's copy in Downloads.
