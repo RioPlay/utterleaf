@@ -222,8 +222,11 @@ def _cublas_loadable() -> bool:
 
 
 def _cuda_missing_hint() -> str:
-    """How to get the NVIDIA math libraries. Frozen builds cannot use the
-    pip extra, so the hint must name the distro toolkit instead."""
+    """Give runtime setup guidance for this platform and installation type."""
+    if sys.platform == "win32":
+        return ("NVIDIA hardware detected; GPU runtime is not ready. "
+                "Open Settings > Set up NVIDIA GPU for Windows CUDA/cuDNN instructions; "
+                "CPU remains available")
     if getattr(sys, "frozen", False):
         return "install the NVIDIA CUDA toolkit and cuDNN for this distro (Arch: sudo pacman -S cuda cudnn), or bundle a build with UTTERLEAF_BUNDLE_CUDA=1"
     return "pip install 'utterleaf[cuda]'"
@@ -255,7 +258,16 @@ def cuda_setup_plan() -> list[str]:
     toolkit (Linux) or a bundled CUDA build. No system changes are made.
     """
     if cuda_runtime_ok():
-        return ["NVIDIA acceleration is already working; 'auto' picks the GPU."]
+        # Loading cuBLAS alone does not prove CTranslate2 can see a device.
+        ready = any(item.kind == "gpu" and item.backend == "ctranslate2" and item.ready
+                    for item in probe())
+        if ready:
+            return ["NVIDIA acceleration passed the device and cuBLAS checks.",
+                    "With Device set to auto, Utterleaf can select the GPU; "
+                    "a successful dictation still needs compatible cuDNN and model loading."]
+        return ["NVIDIA libraries were found, but CTranslate2 sees no usable CUDA device.",
+                "Check your NVIDIA driver and runtime compatibility, restart Utterleaf, "
+                "then run the hardware diagnostic again. CPU remains available."]
     if not nvidia_gpu_label():
         return ["No NVIDIA GPU detected. Utterleaf already runs on CPU — nothing to set up."]
 
@@ -266,13 +278,21 @@ def cuda_setup_plan() -> list[str]:
                 "This is a source install. Add the CUDA libraries to your environment:",
                 '    python -m pip install -e ".[cuda]"',
                 "",
-                "Restart Utterleaf; the next launch uses the GPU.",
+                "Use the same Python environment that runs Utterleaf. Restart and check "
+                "the hardware diagnostic, then try a dictation to verify GPU operation.",
             ]
         return [
-            "This binary does not bundle the NVIDIA libraries. Either:",
-            "  - install the NVIDIA CUDA Toolkit (developer.nvidia.com/cuda-downloads)",
-            "    with cuDNN, so CTranslate2 finds the DLLs; or",
-            "  - produce a CUDA-bundled build with UTTERLEAF_BUNDLE_CUDA=1.",
+            "Your NVIDIA card is detected, but the optional Windows GPU runtime is not ready.",
+            "The standard Windows release runs on CPU without installing NVIDIA math libraries.",
+            "For optional GPU use, install CUDA 12.x and cuDNN 9 for CUDA 12, "
+            "compatible with this release's CTranslate2 runtime:",
+            "  https://developer.nvidia.com/cuda-12-9-0-download-archive",
+            "  https://docs.nvidia.com/deeplearning/cudnn/installation/latest/windows.html",
+            "Follow NVIDIA's Windows installation instructions, including adding the "
+            "CUDA and cuDNN DLL directories to PATH. Keep your NVIDIA driver compatible.",
+            "Restart Utterleaf, select Device: auto, and check the hardware diagnostic. "
+            "Then try a dictation to verify model loading; detection alone does not prove GPU readiness.",
+            "Installing Python packages into a separate Python installation does not update this packaged app.",
         ]
 
     distro = linux_distro()
@@ -508,6 +528,11 @@ def generate_diagnostic_report(cfg: Config) -> str:
     lines.append("")
     lines.append("CUDA Status:")
     lines.append(f"  Runtime OK: {cuda_runtime_ok()}")
+    lines.append("  Runtime OK checks cuBLAS loading only; GPU detection and cuDNN/model loading are separate checks.")
     lines.append(f"  Library Dirs: {', '.join(map(str, cuda_library_dirs()))}")
+    if any(item.kind == "gpu" and item.backend == "ctranslate2" and not item.ready for item in accels):
+        lines.append("")
+        lines.append("NVIDIA setup action (also available in Settings > Set up NVIDIA GPU):")
+        lines.extend(f"  {line}" for line in cuda_setup_plan())
     
     return "\n".join(lines)

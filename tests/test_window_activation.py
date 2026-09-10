@@ -37,7 +37,8 @@ def test_malformed_activation_metadata_does_not_raise(tmp_path, monkeypatch, pay
     assert not settings_instance.activate()
 
 
-def test_raise_reuses_window_and_preserves_modal_and_topmost(monkeypatch):
+@pytest.mark.parametrize("foreground_allowed", [True, False])
+def test_raise_reuses_window_and_preserves_modal_and_topmost(monkeypatch, foreground_allowed):
     import tkinter as tk
     try:
         root = tk.Tk()
@@ -54,7 +55,7 @@ def test_raise_reuses_window_and_preserves_modal_and_topmost(monkeypatch):
         modal.grab_set()
         api = SimpleNamespace(GetAncestor=lambda hwnd, mode: hwnd,
                               IsIconic=lambda hwnd: False,
-                              SetForegroundWindow=lambda hwnd: calls.append(hwnd) or True)
+                              SetForegroundWindow=lambda hwnd: calls.append(hwnd) or foreground_allowed)
         monkeypatch.setattr(activation.sys, "platform", "win32")
         monkeypatch.setattr(activation, "_user32", lambda: api)
         before = root.winfo_id()
