@@ -78,6 +78,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     private val warning = Runnable {
         if (mode == Mode.REVIEW || mode == Mode.EDIT) {
             status.text = "Preview clears in 30 seconds. Tap Keep reviewing for more time."
+            keep.visibility = View.VISIBLE
             status.announceForAccessibility(status.text)
         }
     }
@@ -222,12 +223,13 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         preview.visibility = if (mode == Mode.REVIEW || mode == Mode.EDIT) View.VISIBLE else View.GONE
         preview.isEnabled = mode == Mode.EDIT
         edit.visibility = if (mode == Mode.REVIEW && !activeHold) View.VISIBLE else View.GONE
-        keep.visibility = if (mode == Mode.REVIEW || mode == Mode.EDIT) View.VISIBLE else View.GONE
+        if (mode != Mode.REVIEW && mode != Mode.EDIT) keep.visibility = View.GONE
         holdMode.isEnabled = mode == Mode.IDLE && !disposed
     }
     private fun scheduleExpiry() {
         handler.removeCallbacks(warning); handler.removeCallbacks(expire)
-        status.text = "Microphone off · preview clears in 2 minutes · Keep reviewing extends this"
+        keep.visibility = View.GONE
+        status.text = "Microphone off · preview clears in 2 minutes"
         handler.postDelayed(warning, 90000); handler.postDelayed(expire, 120000)
     }
     fun clear() {

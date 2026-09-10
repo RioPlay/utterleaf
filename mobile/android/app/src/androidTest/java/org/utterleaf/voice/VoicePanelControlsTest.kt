@@ -74,6 +74,7 @@ class VoicePanelControlsTest {
             val fixture = main {
                 val fake = Fake(); val results = mutableListOf<(String) -> Unit>(); val inserted = mutableListOf<String>()
                 val panel = VoicePanel(activity, { inserted.add(it); accept }, {}, { _, result, _ -> results.add(result); fake })
+                Ui.applySystemInsets(panel.view)
                 panel.view.addOnLayoutChangeListener { _, l, t, r, b, _, _, _, _ -> if (r > l && b > t) laidOut.countDown() }
                 activity.setContentView(panel.view)
                 Fixture(activity, panel, fake, results, inserted)
