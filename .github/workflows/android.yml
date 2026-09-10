@@ -56,6 +56,8 @@ jobs:
             adb pull /data/local/tmp/utterleaf-keyboard-live.png mobile/android/app/build/reports/keyboard-live.png
             adb pull /data/local/tmp/utterleaf-keyboard-accents.png mobile/android/app/build/reports/keyboard-accents.png
             adb pull /data/local/tmp/utterleaf-keyboard-hold.png mobile/android/app/build/reports/keyboard-hold.png
+            adb pull /data/local/tmp/utterleaf-voice-review.png mobile/android/app/build/reports/voice-review.png
+            adb pull /data/local/tmp/utterleaf-voice-edit.png mobile/android/app/build/reports/voice-edit.png
             adb install -r mobile/android/app/build/outputs/apk/debug/app-debug.apk
             adb shell am start -n org.utterleaf.voice/.SetupActivity
             sleep 3

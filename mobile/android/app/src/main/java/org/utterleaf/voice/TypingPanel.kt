@@ -331,7 +331,7 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
             key(tools, "Accents", "Accents and alternate characters", utility = true, height = 48) {
                 alternateMode = !alternateMode; alternateKey = null
                 symbols = false; functionKeys = false; render()
-                if (alternateMode) view.announceForAccessibility("Tap a letter to choose accents or symbols")
+                if (alternateMode) view.announceForAccessibility("Tap a letter for accents, or period for punctuation")
             }.apply { isSelected = alternateMode }
             key(tools, "Settings", "Keyboard settings", utility = true, height = 48) { settings() }
             key(tools, "Switch", "Switch keyboard", utility = true, height = 48) { switchKeyboard() }
@@ -397,7 +397,7 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
                 }
             }
         }
-        key(bottom, ".") { type(".") }.also { period ->
+        key(bottom, ".") { if (alternateMode) openAlternates('.') else type(".") }.also { period ->
             val generation = layoutGeneration
             period.setOnLongClickListener {
                 if (generation != layoutGeneration) false else { openAlternates('.'); true }
