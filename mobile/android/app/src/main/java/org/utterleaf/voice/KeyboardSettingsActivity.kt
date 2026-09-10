@@ -104,7 +104,9 @@ class KeyboardSettingsActivity : Activity() {
             AlertDialog.Builder(this).setTitle("Reset keyboard preferences?")
                 .setMessage("Restore standard key size, dark keys, secondary character hints, no extra rows, no vibration, and no repeat filtering. Your model and microphone permission stay unchanged.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Reset") { _, _ ->
-                    options = KeyboardOptions(); options.save(this); render()
+                    options = KeyboardOptions(); options.save(this)
+                    getSharedPreferences("keyboard", MODE_PRIVATE).edit().remove("voiceHoldToInsert").apply()
+                    render()
                 }.show()
         })
         column.addView(Ui.button(this, "Done") { finish() })

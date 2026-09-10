@@ -20,6 +20,12 @@ Current follow-up source work also covers direct Tools forward Delete plus
 Shift+Space selection and held-delete gestures; those paths still need release
 and real-editor validation.
 
+PR14 source (`c6cae1e`, not released) adds independent key height from 48–80 dp
+(default available) and bottom spacing from 0–80 dp, a secure ephemeral practice
+field capped at 256 characters and cleared on stop, and period-key
+hold/slide/release punctuation while retaining a normal period tap. CI and device
+validation are pending.
+
 These are source capabilities, not proof of complete real-editor behavior. The
 following gaps remain release-critical or require named-device evidence:
 
@@ -31,9 +37,11 @@ following gaps remain release-critical or require named-device evidence:
 | P1 | Spacebar cursor movement must coexist with a normal space tap; Shift+Space selection/extension needs a defined contract or an explicit unsupported state. | Cursor movement exists; Shift+Space source work is in progress and real-editor selection is open. |
 | P1 | Held delete needs an explicit policy: repeat rate, word-versus-character mode, cancellation and intentional repeated-character safety. | Held-delete source work is in progress; keep single-delete behavior dependable until tested. |
 | P1 | Accent/symbol picker must preserve case, show a readable selection, cancel on slide-off, and retain the tap route when hints are hidden. | Source route exists; adjustable hold timing and TalkBack/Switch Access behavior remain open. |
+| P1 | Period punctuation needs the same hold/slide/release contract as letter alternates while a tap still inserts a period. | PR14 source implements the route; CI and real-editor/device validation remain open. |
 | P1 | Accessibility must provide equivalent activation without mandatory holds, swipes or chords, with stable focus/order and useful announcements. | Native controls expose labels; physical TalkBack/Switch Access workflows are unvalidated. |
 | P1 | Offline suggestions, reversible autocorrection and personal dictionaries must be separate choices; additions are explicit and deletable/exportable, with no implicit collection or password/private learning. | Prediction/correction and vocabulary remain planned; terminal mode must stay literal. |
 | P2 | Broader languages require reviewed layouts, dictionaries, composition and speech claims per language; common Latin accents do not equal multilingual support. | English typing/speech foundation only; broader language work remains planned. |
+| P2 | Layout tuning needs independent key height and bottom spacing without clipping or moving the secure practice/editor boundary. | PR14 source bounds key height to 48–80 dp and bottom spacing to 0–80 dp; physical size/orientation validation remains open. |
 
 ## First-party behavior that sets the test bar
 
@@ -71,9 +79,9 @@ following gaps remain release-critical or require named-device evidence:
    held-delete cancellation, combining accents, emoji/ZWJ, RTL mixing and
    multiline text. Verify selection and composition ranges after every action.
 3. **Accent gesture:** on a Pixel 8 Pro and a 320 dp device, test hint on/off,
-   long press, slide across choices, release, slide away, multitouch, case and
-   Tools → Accents → letter. Confirm tap selection remains available and no
-   accidental base letter is committed.
+   long press, slide across choices, release, slide away, multitouch, case,
+   period punctuation, and Tools → Accents → letter. Confirm tap selection
+   remains available and no accidental base character is committed.
 4. **Accessibility:** with TalkBack and Switch Access, complete enable → type →
    correct → accent selection → cancel → submit → switch keyboard. Check focus
    order, spoken names/states, large labels, no gesture-only essential action and
@@ -86,6 +94,10 @@ following gaps remain release-critical or require named-device evidence:
    reject/restore autocorrection, add/delete/export a personal word, and repeat in
    password/private and terminal fields. Verify no implicit collection, learning or
    correction crosses those boundaries.
+7. **Practice and geometry:** type at the secure 256-character practice limit,
+   stop/leave the settings screen, and verify the field clears. Exercise default
+   and boundary key-height/bottom-spacing values in portrait and landscape; check
+   insets, focus and the secure overlay.
 
 The release gate stays open until these checks have dated build/device/editor
 results. Passing source tests or a settings preview alone does not close it.

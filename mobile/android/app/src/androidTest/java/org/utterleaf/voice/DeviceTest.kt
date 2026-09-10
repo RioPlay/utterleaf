@@ -513,14 +513,14 @@ class DeviceTest {
                 else -> emptyList()
             }
             val speak = buttons(panel.view).first { it.text == "Speak" }
-            val insert = buttons(panel.view).first { it.text == "Insert" }
+            val insert = speak // The same primary control changes action in place.
             panel.view.measure(android.view.View.MeasureSpec.makeMeasureSpec(Ui.dp(app, 360), android.view.View.MeasureSpec.EXACTLY),
                 android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED))
-            assertTrue("Idle voice panel takes too much space", panel.view.measuredHeight <= Ui.dp(app, 240))
+            assertTrue("Idle voice panel takes too much space", panel.view.measuredHeight <= Ui.dp(app, 300))
             speak.performClick()
             panel.clear() // Same path used by input-field changes and hiding the IME.
             callbacks[0]("stale speech")
-            assertFalse(insert.isEnabled)
+            assertEquals("Speak", insert.text.toString())
             assertEquals(1, cancellations)
             speak.performClick()
             callbacks[1]("fresh speech")

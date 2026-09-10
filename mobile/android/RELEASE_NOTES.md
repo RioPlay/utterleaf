@@ -1,8 +1,19 @@
-# Utterleaf Android 0.1.0-alpha08
+# Utterleaf Android 0.1.0-alpha09
 
-Selection and held deletion improve everyday editing. This is still an
+One-handed voice controls and local transcript editing build on the keyboard editing improvements. This is still an
 alpha keyboard; suggestions, autocorrection, swipe typing, multilingual layouts
 and emoji remain roadmap work.
+
+- One primary voice button stays in place: Speak, Stop, then Insert. A short
+  post-insertion delay prevents a rapid second tap starting another capture.
+- Edit transcript opens a local typing surface. Use edits returns to review;
+  Insert sends the edited text. Edits stay in the protected panel, are not saved,
+  and are cleared on expiry, discard, dismissal or input-session changes.
+- Optional hold-to-speak mode starts after the system hold delay and inserts
+  after release and recognition. Slide outside to cancel. A changed field or
+  dismissed panel cancels delivery. Review/tap mode remains the default.
+- Failed automatic insertion retains the transcript for an explicit retry or edit.
+  Reset keyboard preferences also restores review mode.
 
 - Hold the period key for common punctuation, slide to a highlighted mark and
   release. A normal tap still types a period; slide away to cancel.
