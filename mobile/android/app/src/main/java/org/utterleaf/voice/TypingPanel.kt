@@ -387,7 +387,8 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         key(toolbar, if (toolsOpen) "Close" else "Tools", "Keyboard tools", 2f, utility = true, height = 48) {
             toolsOpen = !toolsOpen; editActionsOpen = false; alternateMode = false; alternateKey = null; render()
         }.apply { isSelected = toolsOpen }
-        key(toolbar, if (editActionsOpen) "ABC" else "Edit", "Edit actions", 2f, utility = true, height = 48, chordable = false) {
+        key(toolbar, if (editActionsOpen) "ABC" else "Edit", if (editActionsOpen) "Close edit actions" else "Edit actions",
+            2f, utility = true, height = 48, chordable = false) {
             toolsOpen = false; editActionsOpen = !editActionsOpen; selecting = false
             shift = false; heldCtrl = false; heldAlt = false; releaseModifiers()
             alternateMode = false; alternateKey = null; render()
@@ -413,7 +414,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             visibility = if (alternateKey != null || alternateMode) View.VISIBLE else View.GONE
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
         }
-        toolbar.addView(toolbarStatus, LinearLayout.LayoutParams(0, Ui.dp(context, 48), 1.6f))
+        content.addView(toolbarStatus, LinearLayout.LayoutParams(-1, -2))
         key(toolbar, "", "Dictate", 2.5f, utility = true, height = 48) {
             dictate()
         }.apply {
