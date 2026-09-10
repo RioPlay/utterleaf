@@ -34,6 +34,9 @@ features are kept in the roadmap.
 [Product design & usability audit](product-quality.md) tracks findings, fixes,
 and unverified release-quality scenarios.
 
+[Production readiness](production-readiness.md) defines proposed stability,
+performance and security gates, current evidence, and remaining validation work.
+
 ## Research and historical notes
 
 - [What makes a mobile keyboard good](mobile-keyboard-research.md): research on typing,

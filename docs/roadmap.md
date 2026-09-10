@@ -52,6 +52,10 @@ Status vocabulary: **Idea**, **Planned**, **In progress**, **Implemented / unver
 
 ## Shared requirements
 
+The [production-readiness plan](production-readiness.md) sequences correctness,
+physical-device benchmarks, supply-chain hardening and stable-release acceptance.
+Its proposed budgets are not measured results or completed roadmap items.
+
 - Explicit microphone activation and clear stop/cancel controls; no passive capture.
 - Local inference; no accounts, telemetry, automatic transcript archives, or hidden uploads.
 - Minimum permissions, verified model import, dependency review, and protected signing keys.

@@ -6,6 +6,9 @@ This guide covers desktop development. Android has its own [build guide](../mobi
 See [development boundaries](development-boundaries.md) for source ownership,
 independent dependencies, CI routing and release conventions.
 
+Use the [production-readiness standard](production-readiness.md) for proposed
+reliability metrics, security gates and evidence required before stable releases.
+
 When Aden CLI/MCP is available, use a scoped symbol tree, bounded search and
 symbol understanding to locate callers and affected code before editing. Give
 subagents the same navigation guidance and the relevant source ownership limits.
