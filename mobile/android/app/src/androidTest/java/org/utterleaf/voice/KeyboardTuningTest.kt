@@ -10,6 +10,53 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class KeyboardTuningTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
+    private fun descendants(view: View): List<View> = listOf(view) +
+        if (view is android.view.ViewGroup) (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) } else emptyList()
+
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 29) // WindowInspector locates the reset dialog.
+    @Test fun tuningDescriptionsTrackProgressPersistenceCancelAndReset() {
+        val context = instrumentation.targetContext
+        val original = KeyboardOptions.load(context)
+        val prefs = context.getSharedPreferences("keyboard", 0)
+        val oldHold = prefs.getBoolean("voiceHoldToInsert", false)
+        KeyboardOptions(keyHeightDp = 64, bottomPaddingDp = 12).save(context)
+        val activity = instrumentation.startActivitySync(android.content.Intent(context, KeyboardSettingsActivity::class.java)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        try {
+            instrumentation.runOnMainSync {
+                fun sliders() = descendants(activity.window.decorView).filterIsInstance<android.widget.SeekBar>()
+                fun reset() = descendants(activity.window.decorView).filterIsInstance<android.widget.Button>()
+                    .single { it.text == "Reset keyboard preferences" }.performClick()
+                fun dialogButton(id: Int) = android.view.inspector.WindowInspector.getGlobalWindowViews()
+                    .mapNotNull { it.findViewById<android.widget.Button>(id) }.single()
+                val currentSliders = sliders()
+                assertEquals(listOf("Key height: 64 dp", "Bottom space: 12 dp"), currentSliders.map { it.contentDescription.toString() })
+                currentSliders[0].progress = 13; currentSliders[1].progress = 28
+                assertEquals(listOf("Key height: 60 dp", "Bottom space: 28 dp"), currentSliders.map { it.contentDescription.toString() })
+                // Accessibility progress changes follow the same persistence path as a user drag.
+                for ((slider, value) in currentSliders.zip(listOf(14f, 29f))) {
+                    val arguments = android.os.Bundle().apply {
+                        putFloat(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE, value)
+                    }
+                    assertTrue(slider.performAccessibilityAction(
+                        android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.id, arguments))
+                }
+                val changed = KeyboardOptions(keyHeightDp = 61, bottomPaddingDp = 29)
+                assertEquals(changed, KeyboardOptions.load(context))
+                reset(); dialogButton(android.R.id.button2).performClick()
+                assertEquals(changed, KeyboardOptions.load(context))
+                assertEquals(listOf("Key height: 61 dp", "Bottom space: 29 dp"), sliders().map { it.contentDescription.toString() })
+                reset(); dialogButton(android.R.id.button1).performClick()
+                assertEquals(KeyboardOptions(), KeyboardOptions.load(context))
+                assertEquals(listOf(0, 0), sliders().map { it.progress })
+                assertEquals(listOf("Key height: default", "Bottom space: 0 dp"), sliders().map { it.contentDescription.toString() })
+            }
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+            original.save(context); prefs.edit().putBoolean("voiceHoldToInsert", oldHold).commit()
+        }
+    }
+
     @Test fun previewQuickToggleUpdatesSettingsAndSurvivesAnotherChange() {
         val context = instrumentation.targetContext
         val original = KeyboardOptions.load(context)

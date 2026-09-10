@@ -67,15 +67,16 @@ class KeyboardSettingsActivity : Activity() {
                 reset(false, false, "Enter")
             }.view)
         }
-        fun tuningSlider(label: String, value: Int, max: Int, display: (Int) -> String, update: (Int) -> Unit) {
+        fun tuningSlider(value: Int, max: Int, display: (Int) -> String, update: (Int) -> Unit) {
             val labelView = Ui.text(this, display(value), 16f)
             column.addView(labelView)
             column.addView(SeekBar(this).apply {
                 this.max = max; progress = value
-                contentDescription = label
+                contentDescription = display(value)
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
                         labelView.text = display(progress)
+                        seekBar.contentDescription = display(progress)
                         if (fromUser) { update(progress); options.save(this@KeyboardSettingsActivity); updatePreview() }
                     }
                     override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
@@ -114,10 +115,10 @@ class KeyboardSettingsActivity : Activity() {
         })
         column.addView(Ui.button(this, "Done") { finish() })
         column.addView(Ui.text(this, "Tune your layout", 20f))
-        tuningSlider("Key height", if (options.keyHeightDp == 0) 0 else options.keyHeightDp - 47, 33,
+        tuningSlider(if (options.keyHeightDp == 0) 0 else options.keyHeightDp - 47, 33,
             { progress -> if (progress == 0) "Key height: default" else "Key height: ${progress + 47} dp" },
             { progress -> options = options.copy(keyHeightDp = if (progress == 0) 0 else progress + 47) })
-        tuningSlider("Bottom space", options.bottomPaddingDp, 80,
+        tuningSlider(options.bottomPaddingDp, 80,
             { progress -> "Bottom space: $progress dp" },
             { progress -> options = options.copy(bottomPaddingDp = progress) })
         column.addView(Ui.text(this, "Bottom space raises the keys above the system navigation area. Try typing below; the preview updates immediately."))
