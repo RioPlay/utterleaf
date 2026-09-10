@@ -279,6 +279,9 @@ class DeviceTest {
             awaitCondition("InputConnection did not delete before cursor") { onMain { screen.editor.text.toString() == "ac" } }
             press("Move cursor right"); press("d")
             awaitCondition("Cursor-right edit was incorrect") { onMain { screen.editor.text.toString() == "acd" } }
+            press("Move cursor left"); press("Delete to right")
+            awaitCondition("Forward delete did not remove text after the cursor") { onMain { screen.editor.text.toString() == "ac" } }
+            press("d")
             press("Done")
             awaitCondition("Editor action did not reach editor") { onMain { screen.lastEditorAction == android.view.inputmethod.EditorInfo.IME_ACTION_DONE } }
             press("Keyboard tools")
@@ -329,6 +332,14 @@ class DeviceTest {
                         assertEquals("Space swipe inserted text", "acd", onMain { screen.editor.text.toString() })
                     }
                     val letter = center("e")
+                    val backspace = center("Delete")
+                    touch(android.view.MotionEvent.ACTION_DOWN, backspace.first, backspace.second)
+                    Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 320)
+                    touch(android.view.MotionEvent.ACTION_UP, backspace.first, backspace.second)
+                    awaitCondition("Held Backspace did not repeatedly delete in the editor") { onMain { screen.editor.text.isEmpty() } }
+                    onMain { screen.editor.setText("acd"); screen.editor.setSelection(3) }
+                    Thread.sleep(160)
+                    assertEquals("Delete continued after release", "acd", onMain { screen.editor.text.toString() })
                     val shiftPosition = center("Shift off")
                     fun chord(action: Int, dx: Float = 0f, two: Boolean = true) {
                         val count = if (two) 2 else 1
