@@ -1,6 +1,7 @@
 package org.utterleaf.voice
 
 import android.content.Intent
+import android.content.ContextWrapper
 import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
@@ -13,6 +14,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.atomic.AtomicReference
+import java.nio.file.Files
 
 @RunWith(AndroidJUnit4::class)
 class VoicePanelControlsTest {
@@ -140,5 +142,54 @@ class VoicePanelControlsTest {
         assertEquals(listOf("original"), f.inserted)
         f.click("Edit transcript"); f.click("."); f.click("Use edits"); f.click("Insert")
         assertEquals(listOf("original", "original."), f.inserted)
+    }
+
+    @Test fun modelSelectorSwitchesVerifiedPrivateSlotsAndRejectsBusyOrStaleChoices() {
+        val activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext, KeyboardSettingsActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        val directory = Files.createTempDirectory(activity.cacheDir.toPath(), "utterleaf-voice-models").toFile()
+        try {
+            fun sparse(id: String) {
+                val spec = ModelStore.catalog.single { it.id == id }
+                val file = java.io.File(directory, "models/ggml-$id.bin")
+                file.parentFile.mkdirs(); java.io.RandomAccessFile(file, "rw").use { it.setLength(spec.size) }
+            }
+            // Private readiness fixtures only: fake sessions never send sparse files to native code.
+            sparse("tiny.en"); sparse("base.en")
+            java.io.File(directory, "active-model").writeText("tiny.en")
+            lateinit var panel: VoicePanel; lateinit var fake: Fake
+            val results = mutableListOf<(String) -> Unit>()
+            val wrapper = object : ContextWrapper(activity) { override fun getNoBackupFilesDir() = directory }
+            val laidOut = java.util.concurrent.CountDownLatch(1)
+            main {
+                fake = Fake()
+                panel = VoicePanel(wrapper, { true }, {}, { _, result, _ -> results += result; fake })
+                panel.view.addOnLayoutChangeListener { _, l, t, r, b, _, _, _, _ -> if (r > l && b > t) laidOut.countDown() }
+                activity.setContentView(panel.view)
+            }
+            assertTrue(laidOut.await(5, java.util.concurrent.TimeUnit.SECONDS)); instrumentation.waitForIdleSync()
+            fun button(text: String) = main { descendants(panel.view).filterIsInstance<Button>().single { it.text == text } }
+            main { button("Model · tiny.en").performClick() }
+            val baseChoice = button("Balanced · base.en")
+            main { assertTrue(WorkLease.acquire()) }
+            try { main { baseChoice.performClick() } }
+            finally { main { WorkLease.release() } }
+            assertEquals("tiny.en", ModelStore.installed(directory)?.id)
+            main { baseChoice.performClick() }
+            assertEquals("tiny.en", ModelStore.installed(directory)?.id)
+            main { button("Model · tiny.en").performClick(); button("Balanced · base.en").performClick() }
+            assertEquals("base.en", ModelStore.installed(directory)?.id)
+
+            main { button("Model · base.en").performClick() }
+            val staleChoice = button("Fast · tiny.en")
+            main { panel.startFromMicTap() }
+            main { staleChoice.performClick() }
+            assertEquals("base.en", ModelStore.installed(directory)?.id)
+            main { panel.clear(); staleChoice.performClick() }
+            assertEquals("base.en", ModelStore.installed(directory)?.id)
+            assertEquals(1, fake.started)
+        } finally {
+            main { activity.finish() }; instrumentation.waitForIdleSync(); directory.deleteRecursively()
+        }
     }
 }

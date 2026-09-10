@@ -256,8 +256,9 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
                         finally { WorkLease.release() }
                         updateControls()
                     } else status.text = "Wait for the current take or import to finish."
+                    gate.invalidate()
+                    modelOptions.removeAllViews()
                 }
-                modelOptions.removeAllViews()
             }.apply { isSelected = spec == selected })
         }
     }

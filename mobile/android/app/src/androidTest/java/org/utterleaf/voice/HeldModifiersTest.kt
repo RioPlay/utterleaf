@@ -31,7 +31,7 @@ class HeldModifiersTest {
 
     private data class Fixture(val activity: Activity, val panel: TypingPanel, val editor: EditText)
 
-    private fun fixture(): Fixture {
+    private fun fixture(repeatDelete: Boolean = true): Fixture {
         val activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext, KeyboardSettingsActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         lateinit var panel: TypingPanel; lateinit var editor: EditText
@@ -55,7 +55,7 @@ class HeldModifiersTest {
                     }
                 }
             }
-            panel = TypingPanel(activity, KeyboardOptions(terminal = true),
+            panel = TypingPanel(activity, KeyboardOptions(terminal = true, deleteRepeat = repeatDelete),
                 { text -> TerminalInput.printable(connection(), text, forceKeyEvents = true) },
                 { connection()?.deleteSurroundingText(1, 0) }, {}, {}, {}, {}, {},
                 { code, ctrl, alt, shift -> TerminalInput.send(connection(), code, ctrl, alt, shift) })
@@ -113,6 +113,33 @@ class HeldModifiersTest {
         } finally { instrumentation.runOnMainSync { f.activity.finish() } }
     }
 
+    @Test fun heldModifiedDeleteRepeatsOnlyWhenEnabledAndStopsOnRelease() {
+        for (enabled in listOf(true, false)) {
+            val f = fixture(enabled)
+            try {
+                lateinit var ctrl: Pair<Float, Float>; lateinit var del: Pair<Float, Float>
+                val down = SystemClock.uptimeMillis()
+                instrumentation.runOnMainSync {
+                    f.editor.setText("one two three four"); f.editor.setSelection(f.editor.length())
+                    ctrl = center(f.panel, "Control off"); del = center(f.panel, "Delete")
+                    dispatch(f.panel, down, MotionEvent.ACTION_DOWN, listOf(ctrl))
+                    dispatch(f.panel, down, MotionEvent.ACTION_POINTER_DOWN or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), listOf(ctrl, del))
+                    assertEquals("one two three ", f.editor.text.toString())
+                }
+                Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 180)
+                var releasedText = ""
+                instrumentation.runOnMainSync {
+                    if (enabled) assertTrue(f.editor.length() < "one two three ".length)
+                    else assertEquals("one two three ", f.editor.text.toString())
+                    dispatch(f.panel, down, MotionEvent.ACTION_POINTER_UP or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), listOf(ctrl, del))
+                    dispatch(f.panel, down, MotionEvent.ACTION_UP, listOf(ctrl))
+                    releasedText = f.editor.text.toString()
+                }
+                Thread.sleep(160)
+                instrumentation.runOnMainSync { assertEquals(releasedText, f.editor.text.toString()) }
+            } finally { instrumentation.runOnMainSync { f.activity.finish() } }
+        }
+    }
     @Test fun cancelMoveOutsideAndResetClearHeldModifierState() {
         val f = fixture()
         try {
