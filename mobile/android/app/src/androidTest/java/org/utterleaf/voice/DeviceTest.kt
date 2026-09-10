@@ -283,6 +283,16 @@ class DeviceTest {
                     flags(originalFlags and android.view.WindowManager.LayoutParams.FLAG_SECURE.inv())
                     instrumentation.waitForIdleSync()
                     shell("screencap -p /data/local/tmp/utterleaf-keyboard-live.png")
+                    press("Keyboard tools")
+                    press("Accents and alternate characters")
+                    press("e")
+                    shell("screencap -p /data/local/tmp/utterleaf-keyboard-accents.png")
+                    press("é")
+                    awaitCondition("Alternate character did not reach the editor") {
+                        onMain { screen.editor.text.toString() == "acdé" }
+                    }
+                    press("Delete")
+                    press("Keyboard tools")
                 } finally {
                     flags(originalFlags)
                 }

@@ -116,11 +116,11 @@ flag; release IME windows remain protected. Physical accessibility is still open
 
 Use **Advanced · voice with another keyboard** only if you want the separate
 voice-only provider. A compatible keyboard can delegate its microphone action to it.
-FUTO's [compatibility notes](https://github.com/futo-org/voice-input/blob/master/README.md)
-establish that this pattern exists for HeliBoard, FlorisBoard, AnySoftKeyboard and
-others; **Utterleaf has not yet been verified with those keyboards on a phone**.
-Gboard and Samsung Keyboard do not expose this third-party integration according
-to those notes. Their mic buttons cannot be replaced by installing Utterleaf.
+The upstream [compatibility notes](https://github.com/futo-org/voice-input/blob/master/README.md)
+document this integration pattern for several Android keyboards; **Utterleaf has
+not yet been verified with external keyboards on a phone**. Some stock keyboards
+do not expose this third-party integration, so installing Utterleaf cannot replace
+their microphone button.
 There is no `SpeechRecognizer`/`RecognitionService` implementation in this preview.
 
 Speech-intent callers must use an activity result. PendingIntent result delivery,
@@ -232,6 +232,6 @@ and real Obtainium acceptance remain open. See [validation limits](../../docs/mo
   vocabulary and reviewed command behavior. The released keyboard foundation needs
   further editing/language features and security, accessibility and license acceptance.
 
-There is no affiliation with FUTO or GrapheneOS. Their designs inform product
-principles; the implementation uses Android APIs and whisper.cpp under the licenses
-included in the APK.
+The implementation uses Android APIs and whisper.cpp under the licenses included
+in the APK; it has no affiliation with external keyboard or operating-system
+projects.

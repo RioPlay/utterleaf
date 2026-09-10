@@ -7,19 +7,19 @@ accessibility and privacy evidence behind this plan. Proposed thresholds are pro
 targets, not measured performance or universal human-factors limits.
 
 Reviewed September 9, 2026. The objective is an independently implemented Utterleaf
-keyboard combining a polished everyday experience with an optional terminal/power
-layout. FUTO Keyboard and Hacker's Keyboard are product references. Full feature
-coverage is the development goal, not a claim of current parity, compatibility,
+keyboard with a polished everyday surface and an optional terminal/power layout.
+The historical source observations below document design context; they do not
+define Utterleaf's identity or establish unverified capability, compatibility,
 code reuse or release availability. Security comes first, then privacy.
 
-## Reference review and design decisions
+## Historical source review and Utterleaf decisions
 
 Only official user-facing documentation and public product imagery were inspected;
 no third-party keyboard implementation code was reviewed or imported for this plan.
 Links identify the reference behavior; acceptance criteria below are Utterleaf's
 proposed requirements. Source visibility alone does not establish a reuse license.
 
-| Reference | Observed product direction | Utterleaf decision |
+| Historical source | Observed behavior | Utterleaf decision |
 | --- | --- | --- |
 | [FUTO overview](https://keyboard.futo.tech/) and [official product image](https://keyboard.futo.tech/assets/decoration-hero.webp) | Offline speech, swipe, correction, prediction and themes; familiar staggered letters, broad spacebar and compact action/suggestion area | Keep the everyday layout readable and familiar, with Utterleaf's own colors/assets. Add useful actions without filling the letter area with utility keys. |
 | [FUTO typing settings](https://docs.keyboard.futo.tech/settings/keyboardtyping) and [actions](https://docs.keyboard.futo.tech/actions/supportedactions) | Resizing, optional number/arrows rows, typing behavior, emoji, editing actions and alternate keyboard modes | Independent sizing, reachable editing, optional number row and visible alternatives to gestures; later one-handed, split and floating modes. |
@@ -27,17 +27,17 @@ proposed requirements. Source visibility alone does not establish a reuse licens
 | [Hacker's Keyboard user guide](https://github.com/klausw/hackerskeyboard/wiki/UsersGuide) and [official compact-layout image](https://raw.githubusercontent.com/klausw/hackerskeyboard/master/hk-5row-en-s.png) | Dedicated number/utility keys, Ctrl/Alt/Meta, arrows and Fn-accessed navigation/function keys | Offer a deliberate power layout, with a full key inventory and clear modifier state. Preserve a comfortable everyday default. |
 | [Hacker's Keyboard FAQ](https://github.com/klausw/hackerskeyboard/wiki/FrequentlyAskedQuestions) | Documents small-screen density and application-dependent special-key behavior | Fit power controls through optional rows/layers and orientation settings; verify terminal/editor behavior independently. The guide's older Android examples are historical, not present-day certification. |
 
-The FUTO image is promotional artwork; the Hacker's Keyboard image is an older
-compact layout. Both were inspected as references, not reproduced as Utterleaf UI
-or used as evidence that a feature works. FUTO's documented gesture shortcuts also
-show why gesture typing, navigation and destructive gestures need separate settings
-and visible alternatives. [FUTO gestures](https://docs.keyboard.futo.tech/gestures)
+The linked images and documents are historical source material, not Utterleaf UI
+assets or evidence that an Utterleaf feature works. Their gesture and power-key
+examples reinforce a general Utterleaf rule: gesture typing, navigation and
+destructive actions need separate settings and visible alternatives.
+[Gesture reference](https://docs.keyboard.futo.tech/gestures)
 
-The user's additional FUTO examples emphasize the complete typing experience:
-editing icons, a suggestion strip with a microphone, optional number row, staggered
-letters, secondary character hints and a symbol page that keeps familiar geometry.
-Treat those as requirements to implement and verify. An empty or decorative
-suggestion strip must not imply that prediction exists.
+Additional review notes identify useful interaction requirements: editing actions,
+an optional suggestion area, an optional number row, staggered letters, secondary
+character hints and a symbol page. Treat these as Utterleaf requirements to
+implement and verify. An empty or decorative suggestion strip must not imply that
+prediction exists.
 
 ## Current implementation and evidence boundary
 
@@ -173,7 +173,6 @@ screenshots supplement, and cannot replace, this acceptance evidence.
   and assistive-technology participation. Keep unrelated desktop work independent.
 
 Every capability ends with a recorded status: implemented, verified on named
-targets, unsupported with a reason, or still planned. A complete parity claim would
-require a dated exhaustive comparison and all applicable gates; this plan claims
-none. Reassess any new reference feature against Utterleaf's no-network, no-passive-
-capture and no-automatic-history boundaries before adding it.
+targets, unsupported with a reason, or still planned. Reassess any newly considered
+capability against Utterleaf's no-network, no-passive-capture and no-automatic-history
+boundaries before adding it.

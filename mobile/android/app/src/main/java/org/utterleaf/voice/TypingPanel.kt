@@ -3,6 +3,8 @@
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.InsetDrawable
@@ -17,6 +19,34 @@ import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+
+/** Secondary hints are visual; the button keeps its primary spoken key label. */
+internal class HintedKey(context: Context) : Button(context) {
+    var secondaryHint: String? = null
+        set(value) { field = value; invalidate() }
+    private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    override fun onDraw(canvas: Canvas) {
+        val hint = secondaryHint
+        if (hint != null) {
+            hintPaint.color = currentTextColor
+            hintPaint.textSize = 10 * resources.displayMetrics.scaledDensity
+            // At very large label sizes, preserve the primary key's legibility.
+            val offset = Ui.dp(context, 4).toFloat()
+            val primaryTop = (height - (paint.fontMetrics.descent - paint.fontMetrics.ascent)) / 2f + offset
+            if (Ui.dp(context, 3) + hintPaint.fontMetrics.descent - hintPaint.fontMetrics.ascent <= primaryTop - Ui.dp(context, 2)) {
+                canvas.save()
+                canvas.translate(0f, offset)
+                super.onDraw(canvas)
+                canvas.restore()
+                hintPaint.textAlign = Paint.Align.RIGHT
+                canvas.drawText(hint, width - Ui.dp(context, 6).toFloat(),
+                    Ui.dp(context, 3).toFloat() - hintPaint.ascent(), hintPaint)
+                return
+            }
+        }
+        super.onDraw(canvas)
+    }
+}
 
 /** Independent keyboard layout; native buttons retain accessibility and focus semantics. */
 class TypingPanel(private val context: Context, private val options: KeyboardOptions,
@@ -57,10 +87,14 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     private var shiftKey: Button? = null
     private var capsKey: Button? = null
     private var toolbarStatus: TextView? = null
+    private var alternateMode = false
+    private var alternateKey: Char? = null
+    private var layoutGeneration = 0
 
     fun reset(allowVoice: Boolean, numeric: Boolean, action: String) {
         shift = false; caps = false; symbols = numeric; moreSymbols = false; toolsOpen = false
         ctrl = false; alt = false; functionKeys = false
+        alternateMode = false; alternateKey = null
         voiceAllowed = allowVoice; actionLabel = action
         lastKey = ""; lastTime = 0
         render()
@@ -71,7 +105,8 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     private fun key(row: LinearLayout, label: String, description: String = label, weight: Float = 1f,
         utility: Boolean = false, primary: Boolean = false, height: Int = keyHeight,
         action: () -> Unit): Button {
-        val button = Button(context).apply {
+        val generation = layoutGeneration
+        val button = HintedKey(context).apply {
             text = label; contentDescription = description; isAllCaps = false
             textSize = if (label.length > 2) (if (options.large) 16f else 13f) else (if (options.large) 26f else 22f)
             setSingleLine()
@@ -99,6 +134,7 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
             isSoundEffectsEnabled = false
             isHapticFeedbackEnabled = options.haptics
             setOnClickListener {
+                if (generation != layoutGeneration) return@setOnClickListener
                 val now = SystemClock.elapsedRealtime()
                 if (!options.repeatGuard || description != lastKey || now - lastTime >= 250) {
                     lastKey = description; lastTime = now
@@ -122,10 +158,55 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     private fun characters(row: LinearLayout, sequence: String) {
         sequence.forEach { character ->
             val button = key(row, character.toString()) {
-                val value = displayed(character)
-                if (type(value.toString()) && shift) { shift = false; updateCase() }
+                if (alternateMode && character in 'a'..'z') {
+                    openAlternates(character)
+                } else {
+                    val value = displayed(character)
+                    if (type(value.toString()) && shift) { shift = false; updateCase() }
+                }
             }
-            if (!symbols) { button.tag = character; letters.add(button) }
+            if (!symbols) {
+                button.tag = character; letters.add(button)
+                if (character in 'a'..'z') {
+                    if (options.secondaryHints) (button as HintedKey).secondaryHint = AlternateCharacters.hint(character)
+                    val generation = layoutGeneration
+                    button.setOnLongClickListener {
+                        if (generation != layoutGeneration) false else {
+                            openAlternates(character); true
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun openAlternates(character: Char) {
+        alternateKey = character; render()
+        view.announceForAccessibility("Choose an alternate for ${displayed(character)}, or Cancel")
+    }
+
+    private fun alternateRows(character: Char) {
+        val choices = AlternateCharacters.choices(character, shift xor caps)
+        val heading = TextView(context).apply {
+            text = "Alternates for ${displayed(character)}"; textSize = 16f
+            setTextColor(ink); gravity = Gravity.CENTER; minHeight = Ui.dp(context, 40)
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+        }
+        view.addView(heading)
+        choices.chunked(5).forEach { group ->
+            val line = row()
+            group.forEach { value ->
+                key(line, value) {
+                    val accepted = type(value)
+                    if (accepted) {
+                        shift = false; alternateKey = null; alternateMode = false; render()
+                    }
+                }
+            }
+            repeat(5 - group.size) { spacer(line, 1f) }
+        }
+        key(row(), "Cancel", "Cancel alternate characters", utility = true) {
+            alternateKey = null; alternateMode = false; render()
         }
     }
     private fun displayed(character: Char): Char {
@@ -179,13 +260,14 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
         }
     }
     private fun render() {
+        layoutGeneration++
         view.removeAllViews(); letters.clear(); shiftKey = null; capsKey = null; ctrlKey = null; altKey = null
         val toolbar = row()
         key(toolbar, if (toolsOpen) "Close" else "Tools", "Keyboard tools", 2f, utility = true, height = 48) {
-            toolsOpen = !toolsOpen; render()
+            toolsOpen = !toolsOpen; alternateMode = false; alternateKey = null; render()
         }.apply { isSelected = toolsOpen }
         toolbarStatus = TextView(context).apply {
-            text = "English · offline"; textSize = 13f; setTextColor(ink); gravity = Gravity.CENTER
+            text = if (alternateMode) "Choose a letter" else "English · offline"; textSize = 13f; setTextColor(ink); gravity = Gravity.CENTER
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         toolbar.addView(toolbarStatus, LinearLayout.LayoutParams(0, Ui.dp(context, 48), 5.5f))
@@ -196,9 +278,15 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
             capsKey = key(tools, "Caps", "Caps lock off", utility = true, height = 48) { caps = !caps; updateCase() }
             key(tools, "←", "Move cursor left", utility = true, height = 48) { move(true) }
             key(tools, "→", "Move cursor right", utility = true, height = 48) { move(false) }
+            key(tools, "Accents", "Accents and alternate characters", utility = true, height = 48) {
+                alternateMode = !alternateMode; alternateKey = null
+                symbols = false; functionKeys = false; render()
+                if (alternateMode) view.announceForAccessibility("Tap a letter to choose accents or symbols")
+            }.apply { isSelected = alternateMode }
             key(tools, "Settings", "Keyboard settings", utility = true, height = 48) { settings() }
             key(tools, "Switch", "Switch keyboard", utility = true, height = 48) { switchKeyboard() }
         }
+        alternateKey?.let { alternateRows(it); return }
         if (options.terminal) terminalRows()
         if ((options.numberRow || options.terminal) && !symbols && !functionKeys) characters(row(), "1234567890")
         if (options.terminal && functionKeys) {
@@ -237,7 +325,8 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
         }
         val bottom = row()
         key(bottom, if (symbols) "ABC" else "?123", "Switch letters and symbols", 1.5f, utility = true) {
-            symbols = !symbols; moreSymbols = false; functionKeys = false; render()
+            symbols = !symbols; moreSymbols = false; functionKeys = false
+            alternateMode = false; alternateKey = null; render()
         }
         key(bottom, ",") { type(",") }
         key(bottom, "space", "Space", 5f) { type(" ") }

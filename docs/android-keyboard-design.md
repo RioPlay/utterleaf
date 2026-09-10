@@ -1,5 +1,20 @@
 # Android typing surface
 
+## Alpha06 changes awaiting release validation
+
+Letter keys show secondary symbol hints, with a setting to hide them. Hold a letter
+for common Latin accents and its symbol, or use **Tools → Accents → letter** without
+holding. Choose a character to insert it, or Cancel. Shift/Caps affect accented
+letters. At very large font sizes, hints yield to the primary label. These accents
+do not add dictionaries, prediction or full multilingual composition.
+
+Picker and panel callbacks are scoped to their layout and input session, so stale
+controls cannot insert into a later field. Instrumentation covers selection,
+cancellation, rejected input, stale controls, narrow layouts and real editor insertion.
+Compilation and emulator acceptance for this revision are pending.
+
+## Released foundation
+
 Released in **alpha05**. Revision f74b862 passed
 [CI run 34432378047](https://github.com/RioPlay/utterleaf/actions/runs/34432378047):
 4 JVM, 32 API 35 emulator and 3 release-contract tests, with zero emulator failures
@@ -8,10 +23,10 @@ or skips. Actual setup and synthetic live-IME screenshots were reviewed; see
 Physical, landscape and assistive-technology acceptance remains open.
 
 The alpha05 layout addresses feedback that the original keyboard felt like a grid
-of application buttons. This is an independent implementation. We inspected the
-[official FUTO keyboard visual](https://keyboard.futo.tech/assets/decoration-hero.webp)
-for familiar keyboard proportions; no FUTO source, artwork, fonts or layouts were
-imported into the app.
+of application buttons. This is an independent implementation. A historical
+[public keyboard visual](https://keyboard.futo.tech/assets/decoration-hero.webp)
+was reviewed as a design reference; no third-party source, artwork, fonts or
+layouts were imported into the app.
 
 - Letter keys keep a consistent width. The home row is inset by half a key;
   Shift and Delete flank the third row.

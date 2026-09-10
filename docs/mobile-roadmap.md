@@ -4,7 +4,8 @@
 
 Updated September 9, 2026. Product direction: a complete, customizable Utterleaf
 keyboard with integrated offline speech, its own identity, and security first.
-FUTO is a concept reference, not a specification to copy or a licensed dependency.
+The design uses historical public documentation as research context, not as a
+specification, dependency or source of product identity.
 Desktop changes are tracked separately in the [desktop roadmap](desktop-roadmap.md).
 
 [Mobile keyboard research](mobile-keyboard-research.md) supplies the evidence and QA
@@ -55,11 +56,11 @@ roadmap without claiming those capabilities are already released.
 
 ## Android milestones
 
-The [keyboard capability plan](android-keyboard-capabilities.md) turns the requested
-FUTO-style everyday experience and Hacker's Keyboard-style power functionality
-into independent Utterleaf work: P1 everyday layout/editing, P2 optional terminal
-keys/modifiers, P3 languages/correction, then P4 prediction/swipe and P5 advanced
-customization. It records current limits, editor contracts and measurable gates.
+The [keyboard capability plan](android-keyboard-capabilities.md) turns the product
+requirements into independent Utterleaf work: P1 everyday layout/editing, P2
+optional terminal keys/modifiers, P3 languages/correction, then P4 prediction/swipe
+and P5 advanced customization. It records current limits, editor contracts and
+measurable gates.
 The alpha05 layout, number-row preference, terminal dispatch and one-shot modifiers
 are released with controlled CI coverage; broader phone/editor acceptance remains
 open. Secondary hints and optional
@@ -77,10 +78,8 @@ Visible toolbar space does not establish implemented suggestions or correction.
 | M6 — In progress; persistent signed channel began with alpha03 | Broad compatibility and sustainable distribution | Defined Android/API and ABI support, diverse physical-device matrix, stable protected signing, install/update/rollback-policy testing, reproducible build inputs and release checksums. No forced downgrade or unsigned consumer APK. |
 
 Security and accessibility gates apply to every milestone; they are not deferred
-until M6. Full coverage of the requested reference capabilities is the goal; current
-Utterleaf is not at feature parity with FUTO or Hacker's Keyboard. The
-[capability matrix](android-keyboard-capabilities.md) separates implemented, next
-and later work. Swipe requires a separate engine/model/data review and measurements;
+until M6. The [capability matrix](android-keyboard-capabilities.md) separates
+implemented, next and later work. Swipe requires a separate engine/model/data review and measurements;
 special-key labels require real InputConnection/editor compatibility evidence.
 
 ## Accessibility acceptance matrix

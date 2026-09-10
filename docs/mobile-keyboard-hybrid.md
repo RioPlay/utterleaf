@@ -4,10 +4,10 @@
 
 Utterleaf's proposed hybrid combines a comfortable everyday touchscreen keyboard
 with deliberate editing and terminal controls. Security comes first, then privacy.
-FUTO's public documentation and visual arrangements inform the everyday experience;
-Hacker's Keyboard's user guide informs power-key behavior. This proposal uses no
-implementation code or imported layout/artwork from either project. These are
-requirements to implement and validate, not a claim of alpha05 feature parity.
+The design defines its own everyday, editing and terminal surfaces. Historical
+public documentation was consulted for interaction research; no implementation
+code or imported layout/artwork is used. These are requirements to implement and
+validate, not a claim that alpha05 already provides them.
 
 ## Recommended interaction model
 
@@ -19,20 +19,20 @@ requirements to implement and validate, not a claim of alpha05 feature parity.
 
 The number row should be independent of terminal mode. A person who enters
 addresses and quantities should not need to enable programming controls. Edit and
-Terminal should preserve familiar utility positions; switching panels must not
-lose the cursor or commit pending work into another field.
+Terminal should keep utility actions stable; switching panels must not lose the
+cursor or commit pending work into another field.
 
-FUTO documents independent sizing, optional number/arrows rows, alternate-character
-hints and timing controls. Its suggestion-bar setting also illustrates a coupling:
-hiding correction choices can make autocorrect difficult to repair. Utterleaf should
-keep restoration available whenever automatic replacement is active.
-[FUTO typing settings](https://docs.keyboard.futo.tech/settings/keyboardtyping)
+Historical keyboard documentation records independent sizing, optional utility
+rows, alternate-character hints and timing controls. It also illustrates a coupling:
+hiding correction choices can make automatic replacement difficult to repair.
+Utterleaf should keep restoration available whenever automatic replacement is active.
+[Historical typing-settings source](https://docs.keyboard.futo.tech/settings/keyboardtyping)
 
-Hacker's Keyboard documents one-shot and held modifiers, explicit cancellation,
-and an Fn map. Its guide warns that full layouts become too small on phones and
-that applications may ignore special keys. Those are useful design constraints;
-the guide's 2018 revision is not current compatibility certification.
-[Hacker's Keyboard user guide](https://github.com/klausw/hackerskeyboard/wiki/UsersGuide)
+Historical power-key documentation records one-shot and held modifiers, explicit
+cancellation and an Fn map. It warns that full layouts become too small on phones
+and that applications may ignore special keys. These are design constraints; the
+2018 revision is not current compatibility certification.
+[Historical power-key source](https://github.com/klausw/hackerskeyboard/wiki/UsersGuide)
 
 ## Defaults and meaningful choices
 

@@ -1,8 +1,17 @@
-﻿# Utterleaf Android 0.1.0-alpha05
+# Utterleaf Android 0.1.0-alpha06
 
-A redesigned typing surface with an optional terminal layer. This is still an
+Secondary key hints and common Latin accents join the optional terminal layer. This is still an
 alpha keyboard; suggestions, autocorrection, swipe typing, multilingual layouts
 and emoji remain roadmap work.
+
+- Secondary symbols are visible on letter keys by default; hide them in keyboard settings.
+- Hold a letter to choose an accent or its secondary symbol. For a tap-only route,
+  choose Tools → Accents, then a letter. Cancel returns without inserting anything.
+- Shift and Caps apply to accents. Unsupported terminal combinations show an error
+  without silently inserting plain text. Common Latin accents are not full language support.
+- Old keyboard/picker callbacks are invalidated on layout or input-session changes.
+- Hints yield to primary labels at very large font sizes; accent selection remains
+  available with hints hidden.
 
 - Consistent staggered letter rows, Shift/Delete beside the letters, a wide
   spacebar, direct comma/period keys and a highlighted editor action.
@@ -23,8 +32,8 @@ Dictation is explicit and remains disabled in password fields.
 
 ## Install and updates
 
-Use **Utterleaf-Android-0.1.0-alpha05.apk**, version code 5. It uses the persistent
-alpha03/alpha04 signing identity and supports installing over those releases.
+Use **Utterleaf-Android-0.1.0-alpha06.apk**, version code 6. It uses the persistent
+alpha03–alpha05 signing identity and supports installing over those releases.
 Do not uninstall first: Android removes app settings and the model on uninstall.
 Alpha01/alpha02 used disposable debug keys and require a one-time uninstall.
 
@@ -45,5 +54,3 @@ plain text. Small-model speed, memory use and accuracy still need physical-phone
 validation; its larger download is not a promise of a better result for every user.
 Installation and upgrade checks run separately before publication.
 
-The visual design uses independent native Android code; FUTO's public screenshots
-were a reference, with no FUTO source or artwork included.

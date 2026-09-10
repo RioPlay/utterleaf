@@ -54,6 +54,7 @@ jobs:
             cd mobile/android && bash gradlew --no-daemon connectedDebugAndroidTest
             adb pull /data/local/tmp/utterleaf-keyboard-preview.png mobile/android/app/build/reports/keyboard-preview.png
             adb pull /data/local/tmp/utterleaf-keyboard-live.png mobile/android/app/build/reports/keyboard-live.png
+            adb pull /data/local/tmp/utterleaf-keyboard-accents.png mobile/android/app/build/reports/keyboard-accents.png
             adb install -r mobile/android/app/build/outputs/apk/debug/app-debug.apk
             adb shell am start -n org.utterleaf.voice/.SetupActivity
             sleep 3
