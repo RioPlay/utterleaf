@@ -66,8 +66,9 @@ channel, certificate identity and update acceptance work.
 - Test supported older Android versions and newer releases, low/mid/high hardware,
   multiple manufacturers, and small/large displays. Current ARM64/x86_64 builds do
   not imply 32-bit support. Expand ABIs only with build, resource and runtime evidence.
-- Stable signing is unfinished. Existing CI debug keys can differ between builds;
-  do not promise seamless updates until key custody and upgrade tests are in place.
+- A persistent release signing identity and isolated publishing workflow are implemented.
+  CI debug keys remain disposable; signed release installation, real Obtainium updates
+  and independently protected offline key backup are separate acceptance gates.
 
 ## iOS track
 

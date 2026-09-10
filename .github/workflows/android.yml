@@ -50,7 +50,7 @@ jobs:
           disable-animations: true
           script: |
             cd mobile/android && bash gradlew --no-daemon connectedDebugAndroidTest
-            adb pull /sdcard/Android/data/org.utterleaf.voice/files/keyboard-preview.png mobile/android/app/build/reports/keyboard-preview.png
+            adb pull /data/local/tmp/utterleaf-keyboard-preview.png mobile/android/app/build/reports/keyboard-preview.png
             adb install -r mobile/android/app/build/outputs/apk/debug/app-debug.apk
             adb shell am start -n org.utterleaf.voice/.SetupActivity
             sleep 3

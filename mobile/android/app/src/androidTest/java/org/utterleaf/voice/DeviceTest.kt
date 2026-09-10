@@ -60,10 +60,14 @@ class DeviceTest {
             instrumentation.waitForIdleSync()
             val screenshot = instrumentation.uiAutomation.takeScreenshot()
             assertNotNull(screenshot)
-            java.io.File(app.getExternalFilesDir(null), "keyboard-preview.png").outputStream().use {
+            java.io.File(app.filesDir, "keyboard-preview.png").outputStream().use {
                 screenshot!!.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
             }
             screenshot!!.recycle()
+            // UTP uninstalls the target after testing. Preserve only this synthetic UI
+            // screenshot in shell-owned storage before that cleanup removes app files.
+            val command = "run-as org.utterleaf.voice cat files/keyboard-preview.png > /data/local/tmp/utterleaf-keyboard-preview.png"
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() }
         } finally { instrumentation.runOnMainSync { activity.finish() } }
     }
     @Test fun typingKeysWorkWithoutSpeechAndResetSensitiveState() {
