@@ -10,6 +10,25 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class KeyboardTuningTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
+    @Test fun previewQuickToggleUpdatesSettingsAndSurvivesAnotherChange() {
+        val context = instrumentation.targetContext
+        val original = KeyboardOptions.load(context)
+        KeyboardOptions().save(context)
+        val activity = instrumentation.startActivitySync(android.content.Intent(context, KeyboardSettingsActivity::class.java)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        try {
+            instrumentation.runOnMainSync {
+                fun descendants(view: View): List<View> = listOf(view) +
+                    if (view is android.view.ViewGroup) (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) } else emptyList()
+                fun views() = descendants(activity.window.decorView)
+                views().filterIsInstance<android.widget.Button>().single { it.contentDescription == "Number row off" }.performClick()
+                assertTrue(views().filterIsInstance<android.widget.CheckBox>().single { it.text == "Number row" }.isChecked)
+                views().filterIsInstance<android.widget.CheckBox>().single { it.text == "Light keyboard" }.performClick()
+                assertTrue(KeyboardOptions.load(context).numberRow)
+                assertTrue(KeyboardOptions.load(context).light)
+            }
+        } finally { instrumentation.runOnMainSync { activity.finish() }; original.save(context) }
+    }
     @Test fun quickToolbarTogglesPersistWithoutChangingOtherPreferences() {
         val context = instrumentation.targetContext
         val original = KeyboardOptions.load(context)
