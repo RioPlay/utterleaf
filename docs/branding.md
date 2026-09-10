@@ -15,6 +15,13 @@ for layout, copy, and screenshot conventions.
 
 ## Implemented in the application
 
+The Android voice panel uses compact transparent versions of the same idle,
+recording and busy leaf marks. They accompany written status, so color is not
+the only way to understand a take. Android resources `voice_idle.png`,
+`voice_recording.png` and `voice_busy.png` are unchanged 64 px RGBA copies of
+`cutout-{idle,recording,busy}-for-dark-64.png` in this guide's brand assets.
+The voice surface is dark; these cutouts have no rectangular background.
+
 Just want to understand the tray? Start with [Know your leaf](status-guide.md).
 This page is the full artwork reference.
 

@@ -1,5 +1,33 @@
 # Android typing surface
 
+## Released in alpha09
+
+The keyboard's **Voice** button starts a reviewable take immediately. Stop and
+Insert use one primary control; **Edit transcript** provides an owned local
+editor. Optional hold mode inserts after release and recognition, with slide-away
+cancellation. Idle, recording and processing use the desktop's transparent marks.
+
+Hold Shift then swipe Space to select; hold Backspace or forward Delete to repeat.
+Hold period for punctuation. Key height and bottom padding are independently
+adjustable, with private practice and reset in settings.
+
+Revision `ed491bd` passed [build and emulator CI](https://github.com/RioPlay/utterleaf/actions/runs/34475913178):
+61 API 35 emulator tests, 8 JVM tests, lint and 3 release contracts, with no
+emulator failures or skips. [Signed publication](https://github.com/RioPlay/utterleaf/actions/runs/34476752688)
+verified the existing certificate, upgrade from signed alpha03, reinstall and setup
+launch. [Download alpha09](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha09).
+
+Physical-phone reach, TalkBack/Switch Access, landscape, named terminal behavior
+and retained model/preferences during a real Obtainium update remain unverified.
+Clipboard tools, correction/prediction and silence detection remain roadmap work.
+
+<img src="assets/screenshots/android-voice-edit.png" width="300" alt="Local voice transcript editing with the desktop leaf icon and one primary action" />
+
+Actual debug API 35 panel fixture with synthetic text, not a full host-app capture.
+The fixture temporarily permits capture and restores protection; release windows
+retain screenshot protection. Screenshot review does not establish one-handed
+reach on physical phones.
+
 ## Released in alpha07
 
 Hold a letter, slide to the highlighted accent or symbol, then release to insert.

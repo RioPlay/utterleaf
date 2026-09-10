@@ -3,9 +3,14 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha07 is released as a signed development preview.**
+**0.1.0-alpha09 is released as a signed development preview.**
 Typing works without microphone permission or a speech
 model. A separate voice-only option remains available for compatible keyboards.
+
+Alpha09 adds Shift-space selection, held deletion, period-key punctuation,
+independent height/bottom spacing and private layout practice. The voice panel
+offers one primary control, local transcript editing and optional hold-to-insert.
+[Validation and current limits](../../docs/android-keyboard-design.md#released-in-alpha09).
 
 This is the foundation for a complete customizable keyboard. Broader language,
 prediction, accessibility and device coverage remain on the
@@ -51,11 +56,11 @@ prediction, accessibility and device coverage remain on the
 
 ## Try it
 
-1. [Download and install Utterleaf Android alpha07](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha07/Utterleaf-Android-0.1.0-alpha07.apk)
+1. [Download and install Utterleaf Android alpha09](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha09/Utterleaf-Android-0.1.0-alpha09.apk)
    on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Use `Utterleaf-Android-0.1.0-alpha07.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha07).
+   Use `Utterleaf-Android-0.1.0-alpha09.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha09).
    If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
-   then install alpha07. Uninstalling removes the imported model and other app data.
+   then install alpha09. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
    the same release identity and should be updated in place rather than uninstalled.
 2. Open **Utterleaf Voice**. Under **Your keyboard**, enable **Utterleaf Keyboard**
@@ -64,13 +69,19 @@ prediction, accessibility and device coverage remain on the
    the typing keyboard's dictation button.
 3. Open a text field and type. Use **Keyboard preferences and preview** in setup to
    change sizing, theme, number row, terminal controls, vibration or repeat filtering. Reopen the keyboard to apply
-   saved preferences. The preview does not enter or save text.
+   saved preferences. The private practice field lets you try the layout without
+   entering text into another app; it clears when you leave settings.
 4. For optional dictation, open **Optional · offline voice** in setup. Choose a model
    below, open its download in your browser, then return and **Import** that file.
    Allow microphone permission. The voice status shows what is still missing;
    granting permission does not start recording.
-5. In a non-password field, tap **Voice**, then **Speak**, talk, **Stop**, review, and
-   **Insert**. **Keep reviewing** extends the preview timeout; **Discard** clears it.
+5. In a non-password field, tap **Voice** to start, talk, **Stop**, review, and
+   **Insert**. Use **Edit transcript** to correct locally before insertion.
+   Speak/Stop/Insert share one primary control. From the idle panel, optionally
+   enable **Hold to speak and insert on release**; hold until recording starts,
+   speak and release. It inserts after recognition; moving outside cancels.
+   The separate voice provider still starts with **Speak**.
+   **Keep reviewing** appears near expiry to extend the timeout; **Discard** clears it.
    **Back to keyboard** returns to typing in the integrated keyboard. In the separate
    voice-only IME, it returns to the previous input method where Android permits,
    otherwise opens the picker.

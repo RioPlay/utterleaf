@@ -10,14 +10,20 @@ it does not replace or add dependencies to the desktop Python application.
 
 ## Android — typing and local dictation preview
 
-[Download the signed Android alpha07 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha07/Utterleaf-Android-0.1.0-alpha07.apk) ·
-[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha07) ·
+[Download the signed Android alpha09 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha09/Utterleaf-Android-0.1.0-alpha09.apk) ·
+[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha09) ·
 [Setup and current limits](../mobile/android/README.md)
 
-Android **0.1.0-alpha07 is released as a signed preview**. Setup
+Android **0.1.0-alpha09 is released as a signed preview**. Setup
 separates the two keyboard activation steps from optional voice setup, reports
 whether the keyboard is enabled and selected, and shows model and microphone
 permission status independently.
+
+Alpha09 adds one primary voice action, immediate recording from the keyboard's
+**Voice** button, local transcript editing and optional hold-to-insert. It also
+adds Shift-space selection, held deletion, period-key punctuation and independent
+height/bottom spacing with a private practice editor.
+[Validation and limits](android-keyboard-design.md#released-in-alpha09).
 
 Alpha07 adds hold–slide–release accent selection and spacebar cursor movement.
 Hold a letter, slide to the highlighted choice and release; slide away to cancel.
@@ -55,8 +61,8 @@ prediction and broader accessibility/device coverage remain on the
 
 Existing alpha01/alpha02 users need a one-time uninstall because those builds used
 different debug signing keys. Uninstalling removes app data and the imported model;
-install alpha07 and import the model again. Alpha03 began the persistent signing
-channel, which alpha07 retains. See [migration details](mobile-obtainium.md#migrating-from-the-old-alpha).
+install alpha09 and import the model again. Alpha03 began the persistent signing
+channel, which alpha09 retains. See [migration details](mobile-obtainium.md#migrating-from-the-old-alpha).
 
 See the [Android guide](../mobile/android/README.md) for exact implemented scope,
 setup, permissions, test evidence and remaining native-device acceptance work.

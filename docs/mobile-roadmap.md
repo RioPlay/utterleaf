@@ -20,6 +20,14 @@ roadmap without claiming those capabilities are already released.
 
 ## Current status
 
+- **Released alpha09:** [editing and voice evidence](android-keyboard-design.md#released-in-alpha09).
+  Shift-space selection, held deletion, period punctuation, sizing/practice and
+  one-handed voice controls with local transcript editing. 61 API 35 emulator,
+  8 JVM and 3 release-contract tests passed, plus signed install/upgrade checks.
+  Clipboard tools, optional silence detection, prediction and dictionaries remain
+  planned; see the [capability plan](android-keyboard-capabilities.md) and
+  [foundation assessment](android-keyboard-foundation-decision.md).
+
 - **Released alpha07:** [gesture and import evidence](android-keyboard-design.md#released-in-alpha07).
   Hold–slide–release accents, spacebar cursor movement and model autodetection;
   8 JVM, 44 emulator and 3 release-contract checks passed. Physical-device and

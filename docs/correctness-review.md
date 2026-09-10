@@ -11,18 +11,20 @@ This is a focused engineering pass, not a complete audit.
   were also verified. The local full repeat passed 731 tests with 13 skips
   (11 optional FFmpeg, one symlink-privilege and one Tk-availability case).
   An initial transient Tcl failure passed isolated reruns; no new skip was added.
-- **Android alpha07 source:** revision `ee47aa7` passed build, lint, 8 JVM,
-  44 emulator and 3 release-contract tests in [PR13 CI run 34443696731](https://github.com/RioPlay/utterleaf/actions/runs/34443696731).
-  Emulator checks had zero failures and zero skips. Generic
-  model import autodetects reviewed tiny.en, base.en and small.en by exact size
-  and SHA-256, independently of the download selector; failed or cancelled
-  replacement retains the old working model. Current touch source covers
-  Spacebar cursor movement and hold/slide/release accent selection while keeping
-  the Tools → Accents → letter tap route. The secure in-window overlay remains
-  part of manual acceptance.
+- **Android alpha09 source:** revision `ed491bd` passed build, lint, 8 JVM,
+  61 API 35 emulator and 3 release-contract tests in [CI run 34475913178](https://github.com/RioPlay/utterleaf/actions/runs/34475913178).
+  Emulator checks had zero failures and zero skips. Coverage includes Shift-space
+  selection, held deletion, forward Delete, punctuation, independent sizing and
+  practice reset, explicit mic entry, local transcript editing and hold-to-insert
+  cancellation/late-result handling. Existing model-import and privacy checks
+  remain included. The tested revision is on main. Signed publication passed in
+  [run 34476752688](https://github.com/RioPlay/utterleaf/actions/runs/34476752688),
+  including upgrade/reinstall/setup checks. The downloaded APK's SHA-256 is
+  `1c85634a5d085803d485e9a06d1a89d570624a3ffe277bc2d28e9a94364ca37c`,
+  matching the published checksum; version code is 9 with the existing certificate.
 
-Injected gestures passed in the live synthetic editor, and the held-accent capture
-was visually reviewed. Touch, overlay and import manual acceptance remain open;
+Injected gestures passed in the live synthetic editor. Voice edit/review captures
+were visually reviewed. Touch, overlay and import manual acceptance remain open;
 emulator success does not establish real-phone usability or accessibility.
 
 ## Manual QA before release validation closes

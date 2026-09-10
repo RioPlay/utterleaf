@@ -16,15 +16,19 @@ reviewed tiny.en/base.en/small.en by exact size/hash and preserves the prior mod
 on failed replacement. Password typing remains available while dictation is
 disabled in password fields.
 
-Current follow-up source work also covers direct Tools forward Delete plus
-Shift+Space selection and held-delete gestures; those paths still need release
-and real-editor validation.
+Follow-up source covers direct Tools forward Delete, Shift+Space selection and
+held-delete gestures. Revision `ebbd48a` passed 60 API 35 emulator tests, including
+the synthetic live editor and local transcript editing. Physical-device and
+named terminal validation remain open.
 
-PR14 source (`c6cae1e`, not released) adds independent key height from 48–80 dp
+PR15 source (including the PR14 keyboard work) adds independent key height from 48–80 dp
 (default available) and bottom spacing from 0–80 dp, a secure ephemeral practice
 field capped at 256 characters and cleared on stop, and period-key
-hold/slide/release punctuation while retaining a normal period tap. CI and device
-validation are pending.
+hold/slide/release punctuation while retaining a normal period tap. Final revision
+`ed491bd` also starts a review take from the keyboard's explicit Voice action and
+reuses desktop state icons. It passed 61 API 35 emulator tests, 8 JVM tests,
+lint and 3 release-contract tests in [run 34475913178](https://github.com/RioPlay/utterleaf/actions/runs/34475913178).
+The tested source is merged and [signed alpha09 is published](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha09).
 
 These are source capabilities, not proof of complete real-editor behavior. The
 following gaps remain release-critical or require named-device evidence:
