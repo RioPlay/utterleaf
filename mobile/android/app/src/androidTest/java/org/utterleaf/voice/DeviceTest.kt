@@ -65,7 +65,10 @@ class DeviceTest {
             // screenshot in shell-owned storage before that cleanup removes app files.
             val command = "screencap -p /data/local/tmp/utterleaf-keyboard-preview.png"
             android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() }
-        } finally { instrumentation.runOnMainSync { activity.finish() } }
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+            instrumentation.waitForIdleSync()
+        }
     }
     @Test fun typingKeysWorkWithoutSpeechAndResetSensitiveState() {
         instrumentation.runOnMainSync {
@@ -199,7 +202,10 @@ class DeviceTest {
                 if (condition()) return
                 Thread.sleep(50)
             }
-            fail(message)
+            val windows = automation.windows.joinToString { window ->
+                "type=${window.type}, title=${window.title}, focused=${window.isFocused}, active=${window.isActive}"
+            }
+            fail("$message; windows: $windows")
         }
         fun <T> onMain(block: () -> T): T {
             val result = java.util.concurrent.atomic.AtomicReference<T>()
