@@ -23,10 +23,7 @@ class RecognizeActivity : Activity() {
             finish(); true
         }, { finish() })
         setContentView(panel!!.view)
-        window.decorView.setOnApplyWindowInsetsListener { view, insets ->
-            view.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop,
-                insets.systemWindowInsetRight, insets.systemWindowInsetBottom); insets
-        }
+        Ui.applySystemInsets(panel!!.view)
     }
     override fun onPause() { panel?.clear(); super.onPause() }
     override fun onDestroy() { panel?.clear(); super.onDestroy() }

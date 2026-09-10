@@ -1,48 +1,49 @@
-# Utterleaf Android 0.1.0-alpha04
+﻿# Utterleaf Android 0.1.0-alpha05
 
-An early typing keyboard with integrated local dictation. Select **Utterleaf
-Keyboard** in Android's keyboard picker; the separate **Utterleaf Voice** provider
-remains available for compatible keyboards.
+A redesigned typing surface with an optional terminal layer. This is still an
+alpha keyboard; suggestions, autocorrection, swipe typing, multilingual layouts
+and emoji remain roadmap work.
 
-- Fixed Shift with Caps Lock: Shift now produces one lowercase letter, then returns
-  to capitals. Key labels match the letter that will be entered.
-- Added a live keyboard/editor regression test for typing, deletion, cursor movement,
-  editor actions, password-field dictation blocking, and hiding/reopening the keyboard.
-  The synthetic test editor is excluded from release APKs.
+- Consistent staggered letter rows, Shift/Delete beside the letters, a wide
+  spacebar, direct comma/period keys and a highlighted editor action.
+- Compact Tools button reveals cursor controls, Caps Lock, settings and switching.
+- Dark/light keycaps with visible focus and selected states; larger keys retained.
+- Optional number row, independent of the optional terminal controls.
+- Guided keyboard setup with separate typing/voice readiness and verified
+  tiny.en, base.en and small.en model choices, sizes and browser download links.
+- Terminal controls provide Esc, Tab, Ctrl, Alt, arrows, Home/End, Page Up/Down and
+  F1–F12, Insert and forward Delete. Ctrl/Alt release after the next key and reset when the field changes.
+  Raw terminal fields accept ASCII key events only when terminal mode is enabled;
+  dictation stays disabled there. Terminal applications determine shortcut support.
 
-Typing still works without a model or microphone permission. Dictation stays local,
-requires an explicit tap, and is disabled in password fields. No Internet permission,
-saved recordings, automatic clipboard writes or built-in updater. Voice previews
-clear after two minutes unless Keep reviewing extends the timeout.
+Select **Utterleaf Keyboard** in Android's picker. Typing needs no model or
+microphone permission. The separate Utterleaf Voice provider remains available.
+No Internet permission, typing history, clipboard collection or saved recordings.
+Dictation is explicit and remains disabled in password fields.
 
 ## Install and updates
 
-Use **Utterleaf-Android-0.1.0-alpha04.apk**. Alpha04 uses the same persistent signing
-identity as alpha03 and increases the version code to 4. Install it over signed
-alpha03 without uninstalling; settings and the imported speech model are retained.
-
-If alpha01/alpha02 is installed, uninstall it once before installing this release
-because those builds used disposable debug keys. Uninstalling removes the imported
-speech model, so import it again afterward. Do not mix CI debug APKs into this channel.
+Use **Utterleaf-Android-0.1.0-alpha05.apk**, version code 5. It uses the persistent
+alpha03/alpha04 signing identity and supports installing over those releases.
+Do not uninstall first: Android removes app settings and the model on uninstall.
+Alpha01/alpha02 used disposable debug keys and require a one-time uninstall.
 
 [Obtainium setup](https://github.com/RioPlay/utterleaf/blob/main/docs/mobile-obtainium.md)
-includes the public signing fingerprint and manual configuration. Release assets
-include APK checksums, certificate verification output and version metadata.
+explains the signed channel. APK checksums and public signer metadata accompany
+this release. Never substitute an unsigned or CI debug APK for a release update.
 
-## Limits
+## Validation and limits
 
-Android 8.0 or later on ARM64 or x86_64 is required. This is an alpha, not a finished
-everyday keyboard. English UI/layout and English
-speech only; no predictions, autocorrection, swipe typing, emoji picker or learned
-dictionary yet. Speech takes still have a 120-second bound. Small-screen/landscape
-layout, assistive-technology workflows and device/editor interoperability need
-physical testing. Large keys can require scrolling in a short keyboard area.
+Android 8+ on ARM64/x86_64. English layout and speech only; speech takes remain
+bounded to 120 seconds. Automated checks cover native key actions, geometry at
+320/412dp with both themes/key sizes, modifier event dispatch, real local inference,
+privacy rules and live synthetic editor interactions. These are not physical
+terminal, TalkBack, Switch Access or landscape acceptance tests. Large keys and
+terminal rows may require scrolling on short displays. Modified input requires a
+single supported ASCII character; unsupported combinations are not inserted as
+plain text. Small-model speed, memory use and accuracy still need physical-phone
+validation; its larger download is not a promise of a better result for every user.
+Installation and upgrade checks run separately before publication.
 
-Automated tests cover privacy/model rules, real local inference and microphone
-cancellation, voice/keyboard registration, live keyboard/editor interactions,
-typing callbacks, and preview rendering.
-Release signing verifies the package, version, signer and APK alignment, then
-tests installation and same-version replacement on an API 35 emulator. That is
-not proof of a version-to-version update on a physical phone.
-
-Desktop releases and the desktop stable download are unchanged.
+The visual design uses independent native Android code; FUTO's public screenshots
+were a reference, with no FUTO source or artwork included.

@@ -9,6 +9,11 @@ Desktop changes are tracked separately in the [desktop roadmap](desktop-roadmap.
 
 ## Current status
 
+- **Layout revision:** [alpha05 design](android-keyboard-design.md) replaces the
+  app-button grid with staggered rows, a wide spacebar, direct punctuation and
+  an expandable editing toolbar. Release and validation status are recorded in
+  [the mobile guide](mobile.md).
+
 - **Released:** [Android 0.1.0-alpha04](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha04),
   with a native English typing keyboard, integrated local speech, verified model
   import, sizing/theme/feedback/repeat preferences, preview expiry warning/extension,
@@ -29,18 +34,33 @@ Desktop changes are tracked separately in the [desktop roadmap](desktop-roadmap.
 
 ## Android milestones
 
+The [keyboard capability plan](android-keyboard-capabilities.md) turns the requested
+FUTO-style everyday experience and Hacker's Keyboard-style power functionality
+into independent Utterleaf work: P1 everyday layout/editing, P2 optional terminal
+keys/modifiers, P3 languages/correction, then P4 prediction/swipe and P5 advanced
+customization. It records current limits, editor contracts and measurable gates.
+The alpha05 layout revision above remains the active visual workstream.
+An optional number-row preference and initial terminal dispatch/one-shot modifiers
+are also underway for alpha05, with acceptance pending. Secondary hints and optional
+long-press characters with single-tap alternatives, an editing toolbar with verified
+undo/redo behavior, and a functional suggestion strip remain explicit follow-up work.
+Visible toolbar space does not establish implemented suggestions or correction.
+
 | ID / status | Deliverable | Completion gate |
 | --- | --- | --- |
 | M1 — In progress | Select and document keyboard foundation; threat model and licensing review | Record provenance, required notices, license compatibility, permissions, input-data lifetime, import boundaries, and update trust. Do not import restricted code merely because its source is visible. |
-| M2 — In progress; foundation released in alpha03 | Normal typing with integrated voice | Letters, numbers, symbols, shift/caps, deletion, Enter actions, selected-text replacement and cursor controls. Type → dictate → correct → type without switching IMEs. Password typing works; dictation and learning are disabled there. No stale result reaches a new field. |
-| M3 — In progress; initial preferences released in alpha03 | Accessibility and useful customization | Complete setup, typing, correction, dictation, cancellation and reset using TalkBack and Switch Access. Adjustable key/label sizing, light/dark contrast, reachable layouts, optional feedback and repeat filtering. Essential actions have visible single-tap alternatives. Test large fonts and landscape, not just default screenshots. |
+| M2 — In progress; foundation released in alpha03 | Polished everyday typing, integrated voice and optional power layout | Complete [P1/P2 editing and modifier gates](android-keyboard-capabilities.md#prioritized-capability-and-acceptance-matrix): selection/Unicode/Enter plus explicit Ctrl/Alt/Meta, Esc/Tab, navigation and Fn/function keys. Verify text/composition versus raw-key dispatch in named editors/terminals. Type → dictate → correct → type without switching IMEs. Password typing stays available; speech/learning stay disabled there. No stale edit or modifier reaches a new field. |
+| M3 — In progress; initial preferences released in alpha03 | Accessibility and useful customization | Optional number row, readable secondary hints, adjustable key/label sizing, light/dark contrast, reachable layouts and independent feedback/repeat preferences. Optional long presses retain single-tap character alternatives. Complete setup, typing, correction, dictation, cancellation and reset using TalkBack and Switch Access. Test large fonts, landscape and stable geometry across symbol pages, not just default screenshots. |
 | M4 — In progress; bounded speech and preview extension released | Comfortable offline speech | Clear mic/loading/error state, tap start/stop and optional hold mode, pause tolerance, accessible preview warning/extension, bounded longer takes, and correction without repeating the whole message. Measure quality and latency on real hardware; do not promise recognition of every speech pattern. |
-| M5 — Planned | Everyday language and editing support | Reviewed multilingual layouts/dictionaries, optional suggestions and correction, correction rejection, accents, emoji and text shortcuts. Explicit local learning controls and deletion; no password learning or automatic clipboard history. |
+| M5 — Planned | Languages, correction, composition and optional swipe | Follow [P3/P4 language gates](android-keyboard-capabilities.md#prioritized-capability-and-acceptance-matrix): reviewed layouts/dictionaries, accents/compose/emoji/snippets, reversible correction, then bounded prediction and licensed swipe. Complex scripts need separate composition evidence. Learning is explicit, local and erasable; no password learning or automatic clipboard history. Power mode preserves literal typing. |
 | M6 — In progress; persistent signed channel began with alpha03 | Broad compatibility and sustainable distribution | Defined Android/API and ABI support, diverse physical-device matrix, stable protected signing, install/update/rollback-policy testing, reproducible build inputs and release checksums. No forced downgrade or unsigned consumer APK. |
 
 Security and accessibility gates apply to every milestone; they are not deferred
-until M6. M2 is not full FUTO feature parity. Swipe typing requires a separate
-engine, model/data licensing review, resource measurements, and acceptance tests.
+until M6. Full coverage of the requested reference capabilities is the goal; current
+Utterleaf is not at feature parity with FUTO or Hacker's Keyboard. The
+[capability matrix](android-keyboard-capabilities.md) separates implemented, next
+and later work. Swipe requires a separate engine/model/data review and measurements;
+special-key labels require real InputConnection/editor compatibility evidence.
 
 ## Accessibility acceptance matrix
 
