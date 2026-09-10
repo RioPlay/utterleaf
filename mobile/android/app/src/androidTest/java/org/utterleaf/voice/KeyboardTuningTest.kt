@@ -57,6 +57,27 @@ class KeyboardTuningTest {
         }
     }
 
+    @Test fun quickToggleRefreshesUnrelatedOptionsFromSavedSnapshot() {
+        val context = instrumentation.targetContext
+        val original = KeyboardOptions.load(context)
+        try {
+            KeyboardOptions().save(context)
+            instrumentation.runOnMainSync {
+                val panel = TypingPanel(context, KeyboardOptions(), { true }, {}, {}, {}, {}, {}, {})
+                panel.reset(false, false, "Enter")
+                val saved = KeyboardOptions(terminal = true, haptics = true)
+                saved.save(context)
+                fun key(label: String) = descendants(panel.view).filterIsInstance<android.widget.Button>()
+                    .single { it.contentDescription == label }
+                key("Number row off").performClick()
+                assertEquals(saved.copy(numberRow = true), KeyboardOptions.load(context))
+                assertTrue(key("a").isHapticFeedbackEnabled)
+                key("Terminal controls on").performClick()
+                assertEquals(saved.copy(numberRow = true, terminal = false), KeyboardOptions.load(context))
+            }
+        } finally { original.save(context) }
+    }
+
     @Test fun previewQuickToggleUpdatesSettingsAndSurvivesAnotherChange() {
         val context = instrumentation.targetContext
         val original = KeyboardOptions.load(context)

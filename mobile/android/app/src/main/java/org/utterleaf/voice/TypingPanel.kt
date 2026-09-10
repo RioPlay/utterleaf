@@ -130,14 +130,11 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
 
     private fun saveQuickOption(numberRow: Boolean? = null, terminal: Boolean? = null) {
         val current = KeyboardOptions.load(context)
-        current.copy(
+        options = current.copy(
             numberRow = numberRow ?: current.numberRow,
             terminal = terminal ?: current.terminal,
-        ).save(context)
-        options = options.copy(
-            numberRow = numberRow ?: options.numberRow,
-            terminal = terminal ?: options.terminal,
         )
+        options.save(context)
     }
 
     fun reset(allowVoice: Boolean, numeric: Boolean, action: String) {

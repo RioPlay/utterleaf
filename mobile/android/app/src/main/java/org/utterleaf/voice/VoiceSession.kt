@@ -29,6 +29,7 @@ class VoiceSession(private val context: Context, private val state: (CaptureStat
     private var ownsLease = false
     private fun update(text: String, phase: CapturePhase = CapturePhase.RECORDING) =
         main.post { if (!cancelled.get()) state(CaptureStatus(phase, text)) }
+    // Single-use, including failed starts: callers create a fresh session for each take/retry.
     override fun start() {
         if (started) return
         started = true
