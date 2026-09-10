@@ -1,11 +1,11 @@
-**v0.4.2** improves microphone recovery and makes the microphone check report interruptions accurately.
+**v0.4.3** fixes a Windows microphone startup failure from background threads, including dictation hotkeys, tray/IPC actions and the Settings microphone check.
 
-- Windows WASAPI device-busy and invalidated-device/resource errors now receive the existing single retry after the failed stream closes. Retries remain bounded and keep the selected input.
-- Permission and unsupported-format failures receive specific recovery guidance instead of a generic microphone error. They are not retried.
-- **Test microphone** checks stream liveness throughout the check. Earlier audio no longer produces a misleading success result after capture stops.
+- Windows capture now opens, starts and releases its stream on a dedicated COM-initialized thread. The thread exits after the stream closes; no idle microphone capture is added.
+- Fixes a reproduced `Error starting stream / PaErrorCode -9999` failure. PortAudio can attach stale WDM-KS error details to this WASAPI failure, making it look like an unrelated driver or sharing issue.
+- Retains v0.4.2's bounded device-error retry, permission/format guidance and microphone-check liveness monitoring.
 - [Windows microphone sharing help](https://github.com/RioPlay/utterleaf/blob/main/docs/microphone-troubleshooting.md#windows-using-discord-or-another-voice-app) explains shared access, exclusive-mode settings and call/reconnect troubleshooting.
 
-A brief native Windows test accepted two simultaneous shared capture streams while Discord was running, without saving or transcribing audio. That does not reproduce a Discord voice-call conflict or establish its cause. Utterleaf cannot override another application's exclusive microphone access. No OS permissions, audio settings or Discord configuration are changed automatically.
+The diagnosed failure occurred on a background thread while the same microphone opened successfully on the main thread. Initializing COM on the background thread eliminated that failure in native checks. This identifies an Utterleaf threading defect, not proof that Discord takes exclusive control. Utterleaf cannot override another application's exclusive microphone access. No OS permissions, audio settings or Discord configuration are changed automatically.
 
 Includes the file-format, model setup, list/paragraph and Windows GPU diagnostic improvements from [v0.4.1](https://github.com/RioPlay/utterleaf/releases/tag/v0.4.1). The planned self-updater is not included.
 

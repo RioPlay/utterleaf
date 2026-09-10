@@ -50,6 +50,8 @@ class Recorder:
 
     def __init__(self, device: str = "") -> None:
         self._lock = threading.Lock()
+        self._lifecycle_lock = threading.RLock()
+        self._owner = None
         self._chunks: list[np.ndarray] = []
         self._ring: deque[np.ndarray] = deque()
         self._ring_samples = 0
@@ -76,17 +78,37 @@ class Recorder:
         self.close()
 
     def prepare(self) -> None:
+        # WASAPI creates COM interfaces on the opening thread. Keep opening,
+        # starting and releasing them on one COM-initialized owner, even when
+        # hotkey, IPC and recording-tail callbacks arrive on different threads.
+        with self._lifecycle_lock:
+            if sys.platform != "win32":
+                return self._prepare()
+            if self._owner is None:
+                from utterleaf.audio_owner import AudioOwner
+                self._owner = AudioOwner()
+            try:
+                self._owner.call(self._prepare)
+            except BaseException:
+                owner, self._owner = self._owner, None
+                try:
+                    owner.close(self._close)
+                except Exception:
+                    log.warning("Could not release failed audio owner", exc_info=True)
+                raise
+
+    def _prepare(self) -> None:
         try:
             chosen = resolve_input_device(self.preferred_device)
             info = sd.query_devices(chosen, kind="input")
             chosen, info = shared_input_device(chosen, info, self.preferred_device)
         except Exception:
-            self.close()
+            self._close()
             raise
         name = str(info.get("name") or self.preferred_device or "default")
         if self._stream is not None and name != self.device_name:
             log.info("Mic changed (%s -> %s); reopening", self.device_name, name)
-            self.close()
+            self._close()
         if self._stream is not None:
             return
         self.device_name = str(info.get("name") or name)
@@ -190,13 +212,19 @@ class Recorder:
         The caller stops/closes and recovers the buffered audio. Checking alone
         never discards audio, reopens a stream, or chooses another microphone.
         """
+        with self._lifecycle_lock:
+            return self._capture_error()
+
+    def _capture_error(self) -> str | None:
         with self._lock:
             if not self.recording:
                 return None
             stream = self._stream
             generation = self._stream_generation
         try:
-            active = stream is not None and bool(stream.active)
+            owner = self._owner
+            check = lambda: stream is not None and bool(stream.active)
+            active = owner.call(check) if owner is not None else check()
         except Exception:
             active = False
         with self._lock:
@@ -245,6 +273,14 @@ class Recorder:
         return resample_audio(np.concatenate(chunks, axis=0).reshape(-1), self.input_rate)
 
     def close(self) -> None:
+        with self._lifecycle_lock:
+            owner, self._owner = self._owner, None
+            if owner is not None:
+                owner.close(self._close)
+            else:
+                self._close()
+
+    def _close(self) -> None:
         with self._lock:
             self.recording = False
             self._stream_generation += 1
