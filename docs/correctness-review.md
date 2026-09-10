@@ -1,28 +1,29 @@
 # Current correctness review
 
-Status: pending release validation. This is a focused engineering pass, not a
-release certificate or complete audit.
+Status: automated checks passed; physical-device acceptance remains open.
+This is a focused engineering pass, not a complete audit.
 
 ## Current pass
 
-- **Desktop:** addressed cancellation during formatting and edit-window
-  retargeting. The regression set contains 11 cases. A local Tcl transient
-  failure was isolated and then passed; the full repeat passed 731 tests with
-  13 skips (11 optional FFmpeg cases, one symlink case, and one Tk-availability
-  case). PR12 CI passed Windows and macOS tests and Linux tests; the Linux build
-  remains pending.
-- **Android model import:** the generic import path autodetects the reviewed
-  tiny.en, base.en and small.en models by exact size and SHA-256, independently
-  of the browser download selector. A failed or cancelled replacement retains
-  the old working model.
-- **Android touch/input:** the in-progress gesture work covers Spacebar cursor
-  movement and hold/slide/release accent selection while retaining the tap route
-  through Tools → Accents → letter. The secure in-window overlay remains part of
-  the validation surface.
+- **Desktop v0.4.5:** cancellation during formatting and edit-window retargeting
+  are covered by the 11-case regression set. Windows, macOS and Linux CI are
+  green; the release is fully published. The local archive checksum and contents
+  were also verified. The local full repeat passed 731 tests with 13 skips
+  (11 optional FFmpeg, one symlink-privilege and one Tk-availability case).
+  An initial transient Tcl failure passed isolated reruns; no new skip was added.
+- **Android alpha07 source:** revision `ee47aa7` passed build, lint, 8 JVM,
+  44 emulator and 3 release-contract tests in [PR13 CI run 34443696731](https://github.com/RioPlay/utterleaf/actions/runs/34443696731).
+  Emulator checks had zero failures and zero skips. Generic
+  model import autodetects reviewed tiny.en, base.en and small.en by exact size
+  and SHA-256, independently of the download selector; failed or cancelled
+  replacement retains the old working model. Current touch source covers
+  Spacebar cursor movement and hold/slide/release accent selection while keeping
+  the Tools → Accents → letter tap route. The secure in-window overlay remains
+  part of manual acceptance.
 
-Gesture CI has not run yet. The Android touch, overlay and import statements
-above describe current source work and targeted checks, not completed release
-validation.
+Injected gestures passed in the live synthetic editor, and the held-accent capture
+was visually reviewed. Touch, overlay and import manual acceptance remain open;
+emulator success does not establish real-phone usability or accessibility.
 
 ## Manual QA before release validation closes
 

@@ -3,7 +3,7 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha06 is released as a signed development preview.**
+**0.1.0-alpha07 is released as a signed development preview.**
 Typing works without microphone permission or a speech
 model. A separate voice-only option remains available for compatible keyboards.
 
@@ -11,10 +11,12 @@ This is the foundation for a complete customizable keyboard. Broader language,
 prediction, accessibility and device coverage remain on the
 [mobile roadmap](../../docs/mobile-roadmap.md). Desktop development is tracked separately.
 
-## Alpha06
+## Alpha07
 
 - Visible secondary symbols on letters; hide hints in preferences if desired.
-- Hold a letter for common Latin accents/symbols, or use **Tools → Accents → letter**.
+- Hold a letter, slide to a highlighted accent/symbol and release to insert.
+  Slide away to cancel, or use **Tools → Accents → letter** for a tap-only route.
+  Slide the spacebar horizontally to move the cursor; tap to insert a space.
   Cancel inserts nothing; Shift/Caps affect the choices. Old picker callbacks cannot
   insert into a later field. Adjustable hold timing and full language support remain planned.
 
@@ -35,7 +37,8 @@ prediction, accessibility and device coverage remain on the
 - Local English recognition using pinned whisper.cpp, ARM64 and x86_64 builds.
 - A guided setup with real keyboard enabled/selected status and separate optional
   voice readiness. Choose one of three reviewed [English speech models](#english-speech-models)
-  and import it explicitly; every import must match its selected size and SHA-256.
+  and use **Import a model**. Import identifies any supported file by exact size and
+  SHA-256 independently of the browser download selector.
 - No Internet permission, microphone foreground service, accessibility service,
   automatic clipboard writes, contacts access, analytics, backup, or saved audio history.
 - Capture cancellation and preview clearing on field changes or panel dismissal;
@@ -48,11 +51,11 @@ prediction, accessibility and device coverage remain on the
 
 ## Try it
 
-1. [Download and install Utterleaf Android alpha06](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha06/Utterleaf-Android-0.1.0-alpha06.apk)
+1. [Download and install Utterleaf Android alpha07](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha07/Utterleaf-Android-0.1.0-alpha07.apk)
    on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Use `Utterleaf-Android-0.1.0-alpha06.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha06).
+   Use `Utterleaf-Android-0.1.0-alpha07.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha07).
    If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
-   then install alpha06. Uninstalling removes the imported model and other app data.
+   then install alpha07. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
    the same release identity and should be updated in place rather than uninstalled.
 2. Open **Utterleaf Voice**. Under **Your keyboard**, enable **Utterleaf Keyboard**
@@ -97,7 +100,7 @@ not accepted. A computer-to-phone file transfer also works.
 
 Allow roughly twice the download size in free storage for the browser's copy and
 the verified import: about **156 MB**, **296 MB** or **976 MB** respectively. One
-model is active at a time. Selecting a model option changes the next download/import;
+model is active at a time. Selecting a model option changes the next browser download;
 the installed model changes only after verification succeeds. Failed verification,
 an interrupted read or a failed replacement keeps the previous file. Existing
 verified tiny.en installations remain usable after upgrading. Deleting the imported
@@ -110,14 +113,14 @@ on real phones before recommending a larger model for a particular device.
 
 ## Screenshots and optional voice integration
 
-[Alpha06 validation](../../docs/android-keyboard-design.md#released-in-alpha06)
-records 8 JVM, 38 emulator and 3 release-contract tests plus signed installation checks.
+[Alpha07 validation](../../docs/android-keyboard-design.md#released-in-alpha07)
+records 8 JVM, 44 emulator and 3 release-contract tests plus signed installation checks.
 
-<img src="../../docs/assets/screenshots/android-setup.png" width="300" alt="Alpha06 setup showing separate keyboard activation and optional English voice readiness" />
-<img src="../../docs/assets/screenshots/android-keyboard-live.png" width="300" alt="Alpha06 keyboard in a synthetic editor with staggered letters, wide spacebar and Voice control" />
-<img src="../../docs/assets/screenshots/android-keyboard-accents.png" width="300" alt="Alpha06 common Latin accents with visible Cancel action" />
+<img src="../../docs/assets/screenshots/android-setup.png" width="300" alt="Alpha07 setup showing separate keyboard activation and optional English voice readiness" />
+<img src="../../docs/assets/screenshots/android-keyboard-live.png" width="300" alt="Alpha07 keyboard in a synthetic editor with staggered letters, wide spacebar and Voice control" />
+<img src="../../docs/assets/screenshots/android-keyboard-accents.png" width="300" alt="Alpha07 common Latin accents with visible Cancel action" />
 
-Actual alpha06 cdf29cd on the API 35 CI emulator. The setup page scrolls;
+Actual alpha07 ee47aa7 on the API 35 CI emulator. The setup page scrolls;
 the live keyboard is in a synthetic editor, with no personal text or recording.
 Status and navigation bars no longer overlap the controls in these captures.
 Instrumentation temporarily allows the debug screenshot and restores the secure

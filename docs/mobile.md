@@ -10,19 +10,20 @@ it does not replace or add dependencies to the desktop Python application.
 
 ## Android — typing and local dictation preview
 
-[Download the signed Android alpha06 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha06/Utterleaf-Android-0.1.0-alpha06.apk) ·
-[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha06) ·
+[Download the signed Android alpha07 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha07/Utterleaf-Android-0.1.0-alpha07.apk) ·
+[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha07) ·
 [Setup and current limits](../mobile/android/README.md)
 
-Android **0.1.0-alpha06 is released as a signed preview**. Setup
+Android **0.1.0-alpha07 is released as a signed preview**. Setup
 separates the two keyboard activation steps from optional voice setup, reports
 whether the keyboard is enabled and selected, and shows model and microphone
 permission status independently.
 
-Alpha06 adds optional secondary hints and common Latin accents/symbols. Hold a
-letter, or choose **Tools → Accents → letter** for a tap-only route. Cancel returns
-without typing. [Validation and picker screenshots](android-keyboard-design.md#released-in-alpha06)
-cover 8 JVM, 38 emulator and 3 release-contract tests plus signed installation checks.
+Alpha07 adds hold–slide–release accent selection and spacebar cursor movement.
+Hold a letter, slide to the highlighted choice and release; slide away to cancel.
+Use **Tools → Accents → letter** for a tap-only route.
+[Validation and picker screenshots](android-keyboard-design.md#released-in-alpha07)
+cover 8 JVM, 44 emulator and 3 release-contract tests plus signed installation checks.
 
 Alpha05 adds a staggered everyday layout with a wide spacebar,
 direct punctuation and **Voice**/**Tools** controls. Preferences offer an optional
@@ -36,7 +37,8 @@ work. Suggestions, correction and swipe typing are still planned.
 Typing works without microphone permission or a speech model. For optional
 English dictation, choose **tiny.en (77.7 MB)**,
 **base.en (148.0 MB)** or **small.en (487.6 MB)**. Use the browser download and then
-import the selected file; only exact reviewed sizes and SHA-256 hashes are
+choose **Import a model**. The file is identified independently of the download
+selector; only exact reviewed sizes and SHA-256 hashes are
 accepted. One model is active, and a failed import keeps the existing model.
 See [direct model links, hashes and setup](../mobile/android/README.md#english-speech-models).
 Small.en inference and phone performance are not yet verified.
@@ -53,18 +55,18 @@ prediction and broader accessibility/device coverage remain on the
 
 Existing alpha01/alpha02 users need a one-time uninstall because those builds used
 different debug signing keys. Uninstalling removes app data and the imported model;
-install alpha06 and import the model again. Alpha03 began the persistent signing
-channel, which alpha06 retains. See [migration details](mobile-obtainium.md#migrating-from-the-old-alpha).
+install alpha07 and import the model again. Alpha03 began the persistent signing
+channel, which alpha07 retains. See [migration details](mobile-obtainium.md#migrating-from-the-old-alpha).
 
 See the [Android guide](../mobile/android/README.md) for exact implemented scope,
 setup, permissions, test evidence and remaining native-device acceptance work.
 Build success alone does not establish keyboard compatibility or phone usability.
 Desktop vocabulary and spoken-command behavior have not yet been ported.
 
-<img src="assets/screenshots/android-setup.png" width="300" alt="Alpha06 setup showing separate keyboard activation and optional English voice readiness" />
-<img src="assets/screenshots/android-keyboard-live.png" width="300" alt="Alpha06 keyboard in a synthetic editor with staggered letters, wide spacebar and Voice control" />
+<img src="assets/screenshots/android-setup.png" width="300" alt="Alpha07 setup showing separate keyboard activation and optional English voice readiness" />
+<img src="assets/screenshots/android-keyboard-live.png" width="300" alt="Alpha07 keyboard in a synthetic editor with staggered letters, wide spacebar and Voice control" />
 
-Actual alpha06 cdf29cd on the API 35 CI emulator. Setup scrolls; the
+Actual alpha07 ee47aa7 on the API 35 CI emulator. Setup scrolls; the
 keyboard is shown in a synthetic test editor with no personal text or recording.
 Status and navigation bars are clear of the app controls. Instrumentation temporarily
 allows the debug capture and restores the secure flag; release IME windows remain

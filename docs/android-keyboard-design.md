@@ -1,5 +1,32 @@
 # Android typing surface
 
+## Released in alpha07
+
+Hold a letter, slide to the highlighted accent or symbol, then release to insert.
+Slide outside the choices to cancel. **Tools → Accents → letter** retains a tap-only
+route. Slide the spacebar horizontally to move the cursor; tapping it still inserts
+a space. Model setup now uses **Import a model**, identifying reviewed tiny.en,
+base.en or small.en files by size and SHA-256 independently of the download selector.
+
+Revision ee47aa7 passed [CI run 34443696731](https://github.com/RioPlay/utterleaf/actions/runs/34443696731):
+8 JVM, 44 API 35 emulator and 3 release-contract tests, with no emulator failures or
+skips. Tests include actual injected gestures in a synthetic editor, finger drift,
+direction reversal, cancellation, multitouch, stale controls and narrow geometry.
+Physical-phone, TalkBack, Switch Access and landscape acceptance remain open.
+
+[Signing run 34444324935](https://github.com/RioPlay/utterleaf/actions/runs/34444324935)
+passed signature, installation and upgrade checks and published the
+[signed alpha07 APK](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha07)
+with the existing release identity. Physical Obtainium updates and retained model
+and preference data still need device validation.
+
+<img src="assets/screenshots/android-keyboard-hold.png" width="300" alt="Alpha07 held accent strip with the release choice highlighted above the letter row" />
+
+Actual debug emulator capture from ee47aa7, visually reviewed. The strip stays within
+the existing secure keyboard window without increasing its height. Instrumentation
+temporarily permits synthetic screenshots and restores protection; release keyboard
+windows retain screenshot protection.
+
 ## Released in alpha06
 
 Letter keys show secondary symbol hints, with a setting to hide them. Hold a letter
@@ -20,8 +47,7 @@ passed installation, upgrade and stable-certificate checks before publishing the
 [signed alpha06 APK](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha06).
 Physical-phone, TalkBack and Switch Access acceptance remains open.
 
-<img src="assets/screenshots/android-keyboard-live.png" width="280" alt="Alpha06 secondary symbols above letter labels in a synthetic editor" />
-<img src="assets/screenshots/android-keyboard-accents.png" width="280" alt="Alpha06 accent picker with separate character choices and Cancel" />
+Current screenshots above and in the mobile guide supersede the alpha06 captures.
 
 ## Released foundation
 
