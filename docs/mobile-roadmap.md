@@ -12,6 +12,11 @@ criteria behind the priorities: safe editor behavior and accessible everyday typ
 then editing, language/correction and evaluated prediction/swipe. The report is a
 design input; it does not mark these features or physical acceptance as complete.
 
+[Everyday typing and power controls](mobile-keyboard-hybrid.md) pools additional
+touch research and ten concrete user reports into a Daily/Edit/Terminal proposal,
+default-versus-optional decisions and security acceptance contracts. It refines this
+roadmap without claiming those capabilities are already released.
+
 ## Current status
 
 - **Layout revision:** [alpha05 design](android-keyboard-design.md) replaces the
