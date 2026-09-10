@@ -37,12 +37,12 @@ class KeyboardSettingsActivity : Activity() {
         toggle("Number row", options.numberRow) { options = options.copy(numberRow = it) }
         toggle("Secondary character hints", options.secondaryHints) { options = options.copy(secondaryHints = it) }
         column.addView(Ui.text(this, "Hold a letter, slide to a highlighted accent or symbol, then release. Slide away to cancel. For tap selection, choose Tools → Accents and a letter. Hiding hints keeps both routes available."))
-        column.addView(Ui.text(this, "Slide the spacebar left or right to move the cursor. A normal tap types a space. Tools also has cursor buttons."))
+        column.addView(Ui.text(this, "Slide the spacebar to move the cursor. Hold Shift first, then slide the spacebar with another finger to select text. Release either finger to stop. For taps, use Tools → Select and the cursor arrows. Tools also provides Delete to right, Home and End."))
         toggle("Terminal controls", options.terminal) { options = options.copy(terminal = it) }
         column.addView(Ui.text(this, "Adds Esc, Tab, Ctrl, Alt, navigation and F1–F12. Ctrl and Alt apply to the next key, then release. Terminal apps decide which shortcuts they support."))
         toggle("Key vibration (respects device settings)", options.haptics) { options = options.copy(haptics = it) }
         toggle("Ignore repeated taps on the same key within 250 ms", options.repeatGuard) { options = options.copy(repeatGuard = it) }
-        column.addView(Ui.text(this, "Repeat filtering can help with accidental double taps, but slows intentional double letters. It is off by default. All keys work with a single tap; there are no required holds or swipes."))
+        column.addView(Ui.text(this, "Hold a delete key to repeat after the system hold delay; release or slide outside to stop. Repeat filtering disables held deletion and can help with accidental double taps, but slows intentional double letters. It is off by default. All essential actions have tap controls."))
         column.addView(Ui.button(this, "Reset keyboard preferences") {
             AlertDialog.Builder(this).setTitle("Reset keyboard preferences?")
                 .setMessage("Restore standard key size, dark keys, secondary character hints, no extra rows, no vibration, and no repeat filtering. Your model and microphone permission stay unchanged.")

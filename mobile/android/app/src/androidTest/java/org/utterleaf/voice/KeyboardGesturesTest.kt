@@ -72,6 +72,24 @@ class KeyboardGesturesTest {
                 2, properties, coordinates, 0, 0, 1f, 1f, 0, 0, android.view.InputDevice.SOURCE_TOUCHSCREEN, 0)
             try { button.dispatchTouchEvent(event) } finally { event.recycle() }
         }
+        fun chord(action: Int, shift: Button, space: Button? = null, dx: Float = 0f) = main {
+            val keys = if (space == null) listOf(shift) else listOf(shift, space)
+            val origin = IntArray(2); panel.view.getLocationOnScreen(origin)
+            val properties = Array(keys.size) { index -> MotionEvent.PointerProperties().apply {
+                id = index; toolType = MotionEvent.TOOL_TYPE_FINGER
+            } }
+            val coordinates = Array(keys.size) { index -> MotionEvent.PointerCoords().apply {
+                val position = IntArray(2); keys[index].getLocationOnScreen(position)
+                x = position[0] - origin[0] + keys[index].width / 2f + if (index == 1) dx else 0f
+                y = position[1] - origin[1] + keys[index].height / 2f
+                pressure = 1f; size = 1f
+            } }
+            val now = SystemClock.uptimeMillis()
+            if (action == MotionEvent.ACTION_DOWN) downTime = now
+            val event = MotionEvent.obtain(downTime, now, action, keys.size, properties, coordinates,
+                0, 0, 1f, 1f, 0, 0, android.view.InputDevice.SOURCE_TOUCHSCREEN, 0)
+            try { panel.view.dispatchTouchEvent(event) } finally { event.recycle() }
+        }
     }
     private fun withPanel(options: KeyboardOptions = KeyboardOptions(), accept: Boolean = true, test: (Fixture) -> Unit) {
         val activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext, KeyboardSettingsActivity::class.java)
@@ -80,7 +98,11 @@ class KeyboardGesturesTest {
             val laidOut = java.util.concurrent.CountDownLatch(1)
             val fixture = main {
                 val inserted = mutableListOf<String>(); val moves = mutableListOf<Boolean>()
-                val panel = TypingPanel(activity, options, { inserted.add(it); accept }, {}, {}, { moves.add(it) }, {}, {}, {})
+                val panel = TypingPanel(activity, options, { inserted.add(it); accept }, {}, {}, { moves.add(it) }, {}, {}, {},
+                    terminalKey = { code, ctrl, alt, shift ->
+                        assertTrue(shift); assertFalse(ctrl); assertFalse(alt)
+                        moves.add(code == android.view.KeyEvent.KEYCODE_DPAD_LEFT); true
+                    })
                 panel.reset(false, false, "Enter")
                 panel.view.addOnLayoutChangeListener { _, left, top, right, bottom, _, _, _, _ ->
                     if (right > left && bottom > top) laidOut.countDown()
@@ -174,5 +196,33 @@ class KeyboardGesturesTest {
         f.atCell(key, 0, MotionEvent.ACTION_UP)
         assertEquals(listOf("é"), f.inserted)
         assertFalse(f.hasStrip())
+    }
+
+    @Test fun shiftSpaceChordSelectsAndReversesWithoutTypingOrLatchingShift() = withPanel { f ->
+        val shift = f.key("Shift off"); val space = f.key("Space")
+        f.chord(MotionEvent.ACTION_DOWN, shift)
+        f.chord(MotionEvent.ACTION_POINTER_DOWN or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), shift, space)
+        f.chord(MotionEvent.ACTION_MOVE, shift, space, f.dp(-48))
+        f.chord(MotionEvent.ACTION_MOVE, shift, space, f.dp(-16))
+        f.chord(MotionEvent.ACTION_POINTER_UP or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), shift, space, f.dp(-16))
+        f.chord(MotionEvent.ACTION_UP, shift)
+        assertEquals(listOf(true, true, true, false, false), f.moves)
+        assertTrue(f.inserted.isEmpty()); assertEquals("Shift off", shift.contentDescription)
+        main { f.key("a").performClick() }; assertEquals(listOf("a"), f.inserted)
+    }
+
+    @Test fun chordResetAndFingerReleaseStopFurtherSelection() = withPanel { f ->
+        val shift = f.key("Shift off"); val space = f.key("Space")
+        f.chord(MotionEvent.ACTION_DOWN, shift)
+        f.chord(MotionEvent.ACTION_POINTER_DOWN or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), shift, space)
+        f.chord(MotionEvent.ACTION_POINTER_UP, shift, space) // Shift lifted first.
+        f.chord(MotionEvent.ACTION_MOVE, shift, space, f.dp(-48))
+        f.chord(MotionEvent.ACTION_CANCEL, shift)
+        f.chord(MotionEvent.ACTION_DOWN, shift)
+        f.chord(MotionEvent.ACTION_POINTER_DOWN or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), shift, space)
+        main { f.panel.reset(false, false, "Enter") }
+        f.chord(MotionEvent.ACTION_MOVE, shift, space, f.dp(-48))
+        f.chord(MotionEvent.ACTION_UP, shift)
+        assertTrue(f.moves.isEmpty()); assertTrue(f.inserted.isEmpty())
     }
 }

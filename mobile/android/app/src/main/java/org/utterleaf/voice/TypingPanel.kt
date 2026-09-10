@@ -64,7 +64,7 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     private val accent = Color.parseColor(if (options.light) "#25643D" else "#A2DFB3")
     private val accentInk = Color.parseColor(if (options.light) "#FFFFFF" else "#10291B")
     private val keyHeight = if (options.large) 66 else 54
-    val view = FrameLayout(context).apply { isMotionEventSplittingEnabled = false }
+    val view = KeyboardSurface(context)
     private val content = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
         isMotionEventSplittingEnabled = false
@@ -73,14 +73,17 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
         layoutDirection = View.LAYOUT_DIRECTION_LTR
     }
     private val gestures = KeyboardGestures(view)
+    private val deleteRepeater = DeleteRepeater()
     init {
         view.addView(content, FrameLayout.LayoutParams(-1, -2))
         view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(v: View) = Unit
-            override fun onViewDetachedFromWindow(v: View) = gestures.cancel()
+            override fun onViewDetachedFromWindow(v: View) { gestures.cancel(); deleteRepeater.cancel() }
         })
     }
     private var shift = false
+    private var selecting = false
+    private var selectKey: Button? = null
     private var caps = false
     private var symbols = false
     private var moreSymbols = false
@@ -104,7 +107,7 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
 
     fun reset(allowVoice: Boolean, numeric: Boolean, action: String) {
         gestures.cancel()
-        shift = false; caps = false; symbols = numeric; moreSymbols = false; toolsOpen = false
+        shift = false; selecting = false; caps = false; symbols = numeric; moreSymbols = false; toolsOpen = false
         ctrl = false; alt = false; functionKeys = false
         alternateMode = false; alternateKey = null
         voiceAllowed = allowVoice; actionLabel = action
@@ -156,6 +159,15 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
             }
         }
         row.addView(button, LinearLayout.LayoutParams(0, Ui.dp(context, height), weight))
+        if (description in listOf("Delete", "Forward delete", "Delete to right")) {
+            deleteRepeater.attach(button, !options.repeatGuard) {
+                if (generation == layoutGeneration) {
+                    // A one-shot modified delete must not become an unmodified repeat.
+                    if (ctrl || alt || shift) deleteRepeater.stop()
+                    action()
+                }
+            }
+        }
         return button
     }
     private fun row() = LinearLayout(context).also {
@@ -242,6 +254,8 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     private fun type(value: String): Boolean {
         val accepted = if (ctrl || alt) modifiedCommit(value, ctrl, alt) else commit(value)
         releaseModifiers()
+        selecting = false
+        selectKey?.isSelected = false
         if (!accepted) unavailable() else toolbarStatus?.text = "English · offline"
         return accepted
     }
@@ -258,6 +272,14 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     }
     private fun delete() {
         if (ctrl || alt || (options.terminal && shift)) special(KeyEvent.KEYCODE_DEL) else erase()
+    }
+    private fun navigate(left: Boolean) {
+        if (selecting || shift || ctrl || alt) {
+            val accepted = terminalKey(if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT,
+                ctrl, alt, selecting || shift)
+            releaseModifiers()
+            if (!accepted) unavailable()
+        } else move(left)
     }
     private fun terminalRows() {
         val modifiers = row()
@@ -282,7 +304,9 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     private fun render() {
         layoutGeneration++
         gestures.cancel()
-        content.removeAllViews(); letters.clear(); shiftKey = null; capsKey = null; ctrlKey = null; altKey = null
+        view.cancelSelection()
+        deleteRepeater.cancel()
+        content.removeAllViews(); letters.clear(); shiftKey = null; capsKey = null; ctrlKey = null; altKey = null; selectKey = null
         val toolbar = row()
         key(toolbar, if (toolsOpen) "Close" else "Tools", "Keyboard tools", 2f, utility = true, height = 48) {
             toolsOpen = !toolsOpen; alternateMode = false; alternateKey = null; render()
@@ -301,8 +325,8 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
                 caps = !caps
                 if (alternateKey != null) render() else updateCase()
             }
-            key(tools, "←", "Move cursor left", utility = true, height = 48) { move(true) }
-            key(tools, "→", "Move cursor right", utility = true, height = 48) { move(false) }
+            key(tools, "←", "Move cursor left", utility = true, height = 48) { navigate(true) }
+            key(tools, "→", "Move cursor right", utility = true, height = 48) { navigate(false) }
             key(tools, "Accents", "Accents and alternate characters", utility = true, height = 48) {
                 alternateMode = !alternateMode; alternateKey = null
                 symbols = false; functionKeys = false; render()
@@ -310,6 +334,13 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
             }.apply { isSelected = alternateMode }
             key(tools, "Settings", "Keyboard settings", utility = true, height = 48) { settings() }
             key(tools, "Switch", "Switch keyboard", utility = true, height = 48) { switchKeyboard() }
+            val editing = row()
+            selectKey = key(editing, "Select", "Select text", utility = true, height = 48) {
+                selecting = !selecting; render()
+            }.apply { isSelected = selecting }
+            key(editing, "Del →", "Delete to right", utility = true, height = 48) { special(KeyEvent.KEYCODE_FORWARD_DEL) }
+            key(editing, "Home", "Go to beginning", utility = true, height = 48) { special(KeyEvent.KEYCODE_MOVE_HOME) }
+            key(editing, "End", "Go to end", utility = true, height = 48) { special(KeyEvent.KEYCODE_MOVE_END) }
         }
         alternateKey?.let { alternateRows(it); updateCase(); return }
         if (options.terminal) terminalRows()
@@ -356,7 +387,14 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
         key(bottom, ",") { type(",") }
         key(bottom, "space", "Space", 5f) { type(" ") }.also { space ->
             val generation = layoutGeneration
-            gestures.attachSpace(space) { left -> if (generation == layoutGeneration) move(left) }
+            gestures.attachSpace(space) { left -> if (generation == layoutGeneration) navigate(left) }
+            view.bindSelection(shiftKey, space) { left ->
+                if (generation == layoutGeneration) {
+                    ctrl = false; alt = false; updateCase()
+                    if (!terminalKey(if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT,
+                            false, false, true)) unavailable()
+                }
+            }
         }
         key(bottom, ".") { type(".") }
         key(bottom, if (actionLabel == "Enter") "↵" else actionLabel, actionLabel, 1.5f, primary = true) {

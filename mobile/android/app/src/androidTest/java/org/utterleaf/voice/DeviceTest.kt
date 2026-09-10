@@ -329,6 +329,37 @@ class DeviceTest {
                         assertEquals("Space swipe inserted text", "acd", onMain { screen.editor.text.toString() })
                     }
                     val letter = center("e")
+                    val shiftPosition = center("Shift off")
+                    fun chord(action: Int, dx: Float = 0f, two: Boolean = true) {
+                        val count = if (two) 2 else 1
+                        val props = Array(count) { index -> android.view.MotionEvent.PointerProperties().apply {
+                            id = index; toolType = android.view.MotionEvent.TOOL_TYPE_FINGER
+                        } }
+                        val coords = Array(count) { index -> android.view.MotionEvent.PointerCoords().apply {
+                            x = if (index == 0) shiftPosition.first else space.first + dx
+                            y = if (index == 0) shiftPosition.second else space.second
+                            pressure = 1f; size = 1f
+                        } }
+                        val now = android.os.SystemClock.uptimeMillis()
+                        if (action == android.view.MotionEvent.ACTION_DOWN) gestureStart = now
+                        val event = android.view.MotionEvent.obtain(gestureStart, now, action, count, props, coords,
+                            0, 0, 1f, 1f, 0, 0, android.view.InputDevice.SOURCE_TOUCHSCREEN, 0)
+                        try { assertTrue(automation.injectInputEvent(event, true)) } finally { event.recycle() }
+                        instrumentation.waitForIdleSync()
+                    }
+                    chord(android.view.MotionEvent.ACTION_DOWN, two = false)
+                    chord(android.view.MotionEvent.ACTION_POINTER_DOWN or (1 shl android.view.MotionEvent.ACTION_POINTER_INDEX_SHIFT))
+                    chord(android.view.MotionEvent.ACTION_MOVE, -distance)
+                    chord(android.view.MotionEvent.ACTION_POINTER_UP or (1 shl android.view.MotionEvent.ACTION_POINTER_INDEX_SHIFT), -distance)
+                    chord(android.view.MotionEvent.ACTION_UP, two = false)
+                    awaitCondition("Shift-space did not select text in the real editor") { onMain {
+                        minOf(screen.editor.selectionStart, screen.editor.selectionEnd) == 1 &&
+                            maxOf(screen.editor.selectionStart, screen.editor.selectionEnd) == 3
+                    } }
+                    press("x")
+                    awaitCondition("Typing did not replace gesture selection") { onMain { screen.editor.text.toString() == "ax" } }
+                    onMain { screen.editor.setText("acd"); screen.editor.setSelection(3) }
+                    instrumentation.waitForIdleSync()
                     val imeHeight = onMain { imeRoot.height }
                     touch(android.view.MotionEvent.ACTION_DOWN, letter.first, letter.second)
                     Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 100)

@@ -1,8 +1,19 @@
-# Utterleaf Android 0.1.0-alpha07
+# Utterleaf Android 0.1.0-alpha08
 
-Touch gestures and automatic model identification improve everyday input. This is still an
+Selection and held deletion improve everyday editing. This is still an
 alpha keyboard; suggestions, autocorrection, swipe typing, multilingual layouts
 and emoji remain roadmap work.
+
+- Hold Shift first, then slide the spacebar with a second finger to select text.
+  Either finger lifting stops selection, without typing a space or latching Shift.
+  Tools → Select plus the arrows provides a tap-only route.
+- Hold Backspace or forward Delete for steady repetition after the system hold
+  delay. Release, move outside or dismiss the keyboard to stop. Repeat filtering
+  disables held deletion. No automatic acceleration to whole-word deletion.
+- Tools exposes Delete to right, Home and End; the optional terminal layer retains
+  Esc, Tab, Ctrl/Alt, arrows, Page Up/Down, Insert and F1–F12.
+- Shift-space selection dispatches only Shift+arrow, independent of armed Ctrl/Alt.
+  Editor support varies; named terminal and physical-phone acceptance remain open.
 
 - **Import a model** identifies supported tiny.en, base.en and small.en files by
   verified size and SHA-256. The download choice no longer restricts import.
