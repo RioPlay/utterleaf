@@ -10,6 +10,7 @@ import kotlin.math.abs
 
 /** Recognizes only Shift-first + Space chords; other multitouch remains cancelled. */
 class KeyboardSurface(context: Context) : FrameLayout(context) {
+    internal val modifiers = ModifierChords(this)
     private var shiftKey: View? = null
     private var spaceKey: View? = null
     private var select: ((Boolean) -> Unit)? = null
@@ -26,6 +27,7 @@ class KeyboardSurface(context: Context) : FrameLayout(context) {
         shiftKey = shift; spaceKey = space; select = action
     }
     internal fun cancelSelection() {
+        modifiers.reset()
         shiftPointer = -1; spacePointer = -1; stopped = true
         shiftKey = null; spaceKey = null; select = null
         parent?.requestDisallowInterceptTouchEvent(false)
@@ -37,6 +39,7 @@ class KeyboardSurface(context: Context) : FrameLayout(context) {
         return x.isFinite() && y.isFinite() && rect.contains(x.toInt(), y.toInt())
     }
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        modifiers.dispatch(event)?.let { return it }
         val action = event.actionMasked
         if (action == MotionEvent.ACTION_DOWN) {
             consumed = false; stopped = false; spacePointer = -1

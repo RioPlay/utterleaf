@@ -76,6 +76,7 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     private val gestures = KeyboardGestures(view)
     private val deleteRepeater = DeleteRepeater()
     init {
+        view.modifiers.repeatEnabled = options.deleteRepeat && !options.repeatGuard
         view.addView(content, FrameLayout.LayoutParams(-1, -2))
         view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(v: View) = Unit
@@ -89,8 +90,16 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     private var symbols = false
     private var moreSymbols = false
     private var toolsOpen = false
-    private var ctrl = false
-    private var alt = false
+    private var heldCtrl = false
+    private var heldAlt = false
+    private var armedCtrl = false
+    private var armedAlt = false
+    private var ctrl: Boolean
+        get() = armedCtrl || heldCtrl
+        set(value) { armedCtrl = value }
+    private var alt: Boolean
+        get() = armedAlt || heldAlt
+        set(value) { armedAlt = value }
     private var functionKeys = false
     private var ctrlKey: Button? = null
     private var altKey: Button? = null
@@ -160,8 +169,11 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
             }
         }
         row.addView(button, LinearLayout.LayoutParams(0, Ui.dp(context, height), weight))
+        if (description !in listOf("Keyboard tools", "Dictate", "Keyboard settings", "Switch keyboard",
+                "Function keys", "Caps lock off", "Accents and alternate characters", "Select text"))
+            view.modifiers.key(button)
         if (description in listOf("Delete", "Forward delete", "Delete to right")) {
-            deleteRepeater.attach(button, !options.repeatGuard) {
+            deleteRepeater.attach(button, options.deleteRepeat && !options.repeatGuard) {
                 if (generation == layoutGeneration) {
                     // A one-shot modified delete must not become an unmodified repeat.
                     if (ctrl || alt || shift) deleteRepeater.stop()
@@ -412,6 +424,10 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
         updateCase()
     }
     private fun updateCase() {
+        view.modifiers.bind(ctrlKey, altKey) { control, alternate ->
+            heldCtrl = control; heldAlt = alternate
+            updateCase()
+        }
         letters.forEach { button ->
             button.text = displayed(button.tag as Char).toString()
             button.contentDescription = button.text

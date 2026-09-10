@@ -99,6 +99,7 @@ class KeyboardSettingsActivity : Activity() {
         column.addView(Ui.text(this, "Adds Esc, Tab, Ctrl, Alt, navigation and F1–F12. Ctrl and Alt apply to the next key, then release. Terminal apps decide which shortcuts they support."))
         toggle("Key vibration (respects device settings)", options.haptics) { options = options.copy(haptics = it) }
         toggle("Ignore repeated taps on the same key within 250 ms", options.repeatGuard) { options = options.copy(repeatGuard = it) }
+        toggle("Hold Backspace or Delete to repeat", options.deleteRepeat) { options = options.copy(deleteRepeat = it) }
         column.addView(Ui.text(this, "Hold a delete key to repeat after the system hold delay; release or slide outside to stop. Repeat filtering disables held deletion and can help with accidental double taps, but slows intentional double letters. It is off by default. All essential actions have tap controls."))
         column.addView(Ui.button(this, "Reset keyboard preferences") {
             AlertDialog.Builder(this).setTitle("Reset keyboard preferences?")

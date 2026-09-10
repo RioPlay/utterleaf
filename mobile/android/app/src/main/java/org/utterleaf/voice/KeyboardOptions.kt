@@ -6,13 +6,15 @@ import android.content.Context
 data class KeyboardOptions(val large: Boolean = false, val light: Boolean = false,
     val haptics: Boolean = false, val repeatGuard: Boolean = false, val terminal: Boolean = false,
     val numberRow: Boolean = false, val secondaryHints: Boolean = true,
-    val keyHeightDp: Int = 0, val bottomPaddingDp: Int = 0) {
+    val keyHeightDp: Int = 0, val bottomPaddingDp: Int = 0,
+    val deleteRepeat: Boolean = true) {
     fun save(context: Context) {
         context.getSharedPreferences("keyboard", Context.MODE_PRIVATE).edit()
             .putBoolean("large", large).putBoolean("light", light)
             .putBoolean("haptics", haptics).putBoolean("repeatGuard", repeatGuard)
             .putBoolean("terminal", terminal).putBoolean("numberRow", numberRow)
             .putBoolean("secondaryHints", secondaryHints)
+            .putBoolean("deleteRepeat", deleteRepeat)
             .putInt("keyHeightDp", boundedKeyHeight(keyHeightDp))
             .putInt("bottomPaddingDp", boundedBottomPadding(bottomPaddingDp)).apply()
     }
@@ -26,7 +28,8 @@ data class KeyboardOptions(val large: Boolean = false, val light: Boolean = fals
                 prefs.getBoolean("terminal", false), prefs.getBoolean("numberRow", false),
                 prefs.getBoolean("secondaryHints", true),
                 boundedKeyHeight(prefs.getInt("keyHeightDp", 0)),
-                boundedBottomPadding(prefs.getInt("bottomPaddingDp", 0)))
+                boundedBottomPadding(prefs.getInt("bottomPaddingDp", 0)),
+                prefs.getBoolean("deleteRepeat", true))
         }
     }
 }

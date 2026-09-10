@@ -19,8 +19,11 @@ class KeyboardTuningTest {
             assertEquals(0, KeyboardOptions.load(context).bottomPaddingDp)
             KeyboardOptions(keyHeightDp = 60, bottomPaddingDp = 28).save(context)
             assertEquals(KeyboardOptions(keyHeightDp = 60, bottomPaddingDp = 28), KeyboardOptions.load(context))
+            KeyboardOptions(deleteRepeat = false).save(context)
+            assertFalse(KeyboardOptions.load(context).deleteRepeat)
             KeyboardOptions().save(context)
             assertEquals(KeyboardOptions(), KeyboardOptions.load(context))
+            assertTrue(KeyboardOptions.load(context).deleteRepeat)
             instrumentation.runOnMainSync {
                 fun height(options: KeyboardOptions): Int {
                     val panel = TypingPanel(context, options, { true }, {}, {}, {}, {}, {}, {})
