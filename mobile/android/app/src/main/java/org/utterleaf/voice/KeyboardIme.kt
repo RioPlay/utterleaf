@@ -82,7 +82,11 @@ class KeyboardIme : InputMethodService() {
             { if (currentUiSession(generation))
                 (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker() },
             { code, ctrl, alt, shift -> currentUiSession(generation) &&
-                TerminalInput.send(currentInputConnection, code, ctrl, alt, shift) },
+                if (shift && !ctrl && !alt && info?.inputType != InputType.TYPE_NULL && code in listOf(
+                        KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_UP,
+                        KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_MOVE_HOME, KeyEvent.KEYCODE_MOVE_END))
+                    TerminalInput.select(currentInputConnection, code)
+                else TerminalInput.send(currentInputConnection, code, ctrl, alt, shift) },
             { text, ctrl, alt -> currentUiSession(generation) &&
                 TerminalInput.printable(currentInputConnection, text, ctrl, alt,
                     forceKeyEvents = currentInputEditorInfo?.inputType == InputType.TYPE_NULL) })

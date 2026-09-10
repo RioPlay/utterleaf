@@ -36,7 +36,7 @@ class KeyboardSettingsActivity : Activity() {
     }
     override fun onStart() { super.onStart(); practiceActive = true; render() }
     private fun practiceConnection(generation: Int): android.view.inputmethod.InputConnection? {
-        if (!practiceActive || generation != practiceGeneration) return null
+        if (!practiceActive || isFinishing || isDestroyed || generation != practiceGeneration) return null
         practiceEditor.requestFocus()
         return practiceEditor.onCreateInputConnection(EditorInfo())
     }
@@ -55,7 +55,12 @@ class KeyboardSettingsActivity : Activity() {
                 { TerminalInput.printable(practiceConnection(generation), "\n") },
                 { left -> TerminalInput.send(practiceConnection(generation), if (left) android.view.KeyEvent.KEYCODE_DPAD_LEFT else android.view.KeyEvent.KEYCODE_DPAD_RIGHT) },
                 {}, {}, {},
-                { code, ctrl, alt, shift -> TerminalInput.send(practiceConnection(generation), code, ctrl, alt, shift) },
+                { code, ctrl, alt, shift -> if (shift && !ctrl && !alt && code in listOf(
+                    android.view.KeyEvent.KEYCODE_DPAD_LEFT, android.view.KeyEvent.KEYCODE_DPAD_RIGHT,
+                    android.view.KeyEvent.KEYCODE_DPAD_UP, android.view.KeyEvent.KEYCODE_DPAD_DOWN,
+                    android.view.KeyEvent.KEYCODE_MOVE_HOME, android.view.KeyEvent.KEYCODE_MOVE_END))
+                        TerminalInput.select(practiceConnection(generation), code)
+                    else TerminalInput.send(practiceConnection(generation), code, ctrl, alt, shift) },
                 { value, ctrl, alt -> TerminalInput.printable(practiceConnection(generation), value, ctrl, alt) }).apply {
                 reset(false, false, "Enter")
             }.view)
@@ -119,10 +124,11 @@ class KeyboardSettingsActivity : Activity() {
         setContentView(ScrollView(this).apply { addView(column); Ui.applySystemInsets(this) })
     }
 
-    override fun onStop() {
+    private fun clearPractice() {
         practiceActive = false; practiceGeneration++
         previewContainer?.removeAllViews()
-        practiceEditor.setText("")
-        super.onStop()
+        if (::practiceEditor.isInitialized) practiceEditor.setText("")
     }
+    override fun finish() { clearPractice(); super.finish() }
+    override fun onStop() { clearPractice(); super.onStop() }
 }

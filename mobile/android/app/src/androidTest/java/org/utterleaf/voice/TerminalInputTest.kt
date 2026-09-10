@@ -111,6 +111,16 @@ class TerminalInputTest {
         assertTrue(connection.events.all { !it.isCtrlPressed && !it.isAltPressed && !it.isShiftPressed })
         assertBalanced(connection.events)
     }
+    @Test fun editorSelectionBalancesShiftAndStopsWhenModifierRejected() = withConnection { connection ->
+        assertTrue(TerminalInput.select(connection, KeyEvent.KEYCODE_DPAD_LEFT))
+        assertEquals(listOf(KeyEvent.KEYCODE_SHIFT_LEFT, KeyEvent.KEYCODE_DPAD_LEFT,
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_SHIFT_LEFT), connection.events.map { it.keyCode })
+        assertBalanced(connection.events)
+        connection.events.clear(); connection.failDown = true
+        assertFalse(TerminalInput.select(connection, KeyEvent.KEYCODE_DPAD_LEFT))
+        assertEquals(listOf(KeyEvent.KEYCODE_SHIFT_LEFT, KeyEvent.KEYCODE_SHIFT_LEFT), connection.events.map { it.keyCode })
+        assertEquals(KeyEvent.ACTION_UP, connection.events.last().action)
+    }
 
     @Test fun failedOrThrowingDownStillAttemptsRelease() = withConnection { connection ->
         for (throwing in listOf(false, true)) {

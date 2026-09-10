@@ -30,6 +30,20 @@ object TerminalInput {
         return down && up
     }
 
+    /** TextView selection tracks a pressed Shift key in its editable meta state. */
+    fun select(connection: InputConnection?, keyCode: Int): Boolean {
+        if (connection == null || keyCode !in listOf(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
+                KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_MOVE_HOME, KeyEvent.KEYCODE_MOVE_END)) return false
+        val now = SystemClock.uptimeMillis()
+        fun shift(action: Int) = deliver(connection, KeyEvent(now, SystemClock.uptimeMillis(), action,
+            KeyEvent.KEYCODE_SHIFT_LEFT, 0, if (action == KeyEvent.ACTION_DOWN) KeyEvent.META_SHIFT_ON else 0,
+            KeyCharacterMap.VIRTUAL_KEYBOARD, 0, SOFT_FLAGS, InputDevice.SOURCE_KEYBOARD))
+        val pressed = shift(KeyEvent.ACTION_DOWN)
+        val moved = if (pressed) send(connection, keyCode, shift = true) else false
+        val released = shift(KeyEvent.ACTION_UP)
+        return pressed && moved && released
+    }
+
     fun printable(connection: InputConnection?, text: String, ctrl: Boolean = false,
                   alt: Boolean = false, forceKeyEvents: Boolean = false): Boolean {
         if (connection == null || text.isEmpty()) return false
