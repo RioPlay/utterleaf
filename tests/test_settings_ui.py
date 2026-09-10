@@ -47,6 +47,60 @@ def test_pages_preserve_edits_and_preview(window):
     assert "um" not in window.preview_result.get().lower()
 
 
+def test_model_status_updates_without_saving_or_downloading(window, tmp_path, monkeypatch):
+    monkeypatch.setattr("utterleaf.models.models_dir", lambda: tmp_path)
+    monkeypatch.setattr("utterleaf.model_setup.run_download", lambda *a, **k: pytest.fail("Status must not download"))
+    window.vars["model"].set("tiny")
+    window.vars["language"].set("en")
+    window.vars["device"].set("cpu")
+    assert "Missing" in window.model_status.get()
+    assert "tiny.en" in window.model_status.get()
+    folder = tmp_path / "faster-whisper-tiny.en"
+    folder.mkdir()
+    (folder / "model.bin").write_bytes(b"weights")
+    window.refresh_model_status()
+    assert "Incomplete" in window.model_status.get()
+    assert not (tmp_path / "config.toml").exists()
+
+
+def test_download_decline_preserves_offline_choice(window, tmp_path, monkeypatch):
+    monkeypatch.setattr("utterleaf.models.models_dir", lambda: tmp_path)
+    window.vars["allow_network"].set(False)
+    window.vars["model"].set("tiny")
+    window.vars["device"].set("cpu")
+    monkeypatch.setattr("utterleaf.settings_ui.messagebox.askyesno", lambda *a, **k: False)
+    monkeypatch.setattr("utterleaf.model_setup.run_download", lambda *a, **k: pytest.fail("Decline must not download"))
+    window.download_model()
+    assert window.vars["allow_network"].get() is False
+    assert not window.model_downloading
+
+
+def test_download_is_scoped_and_completion_does_not_replace_new_selection(window, tmp_path, monkeypatch):
+    monkeypatch.setattr("utterleaf.models.models_dir", lambda: tmp_path)
+    window.vars["allow_network"].set(False)
+    window.vars["model"].set("tiny")
+    window.vars["language"].set("en")
+    window.vars["device"].set("cpu")
+    calls = []
+    pending = []
+    monkeypatch.setattr("utterleaf.settings_ui.messagebox.askyesno", lambda *a, **k: True)
+    monkeypatch.setattr("utterleaf.model_setup.run_download", lambda *a, **k: calls.append(a))
+    def worker(action, done, *, daemon=True):
+        assert daemon is False  # Closing Tk must still allow cancellation to reap the child.
+        pending.append((action, done))
+    monkeypatch.setattr(window, "_worker", worker)
+    window.download_model()
+    window.download_model()
+    assert len(pending) == 1
+    window.vars["model"].set("base")
+    pending[0][0]()
+    pending[0][1](None)
+    assert calls == [("tiny.en", "ctranslate2")]
+    assert "base.en" in window.model_status.get()
+    assert "Missing" in window.model_status.get()
+    assert window.vars["allow_network"].get() is False
+
+
 def test_mascots_are_loaded_from_package_and_fit_compact_header(window):
     assert set(window.mascots) == {"Dictation", "Vocabulary", "Voice commands", "Help & diagnostics"}
     window.root.deiconify()

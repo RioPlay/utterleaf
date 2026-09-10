@@ -40,7 +40,8 @@ def ensure_ct2(name: str, *, allow_network: bool) -> Path:
         return dest
     if not allow_network:
         raise RuntimeError(
-            f"Model '{name}' is not in {dest}. Run: utterleaf --download-model"
+            f"Model '{name}' is missing. Open Settings → Speech & privacy → Model & installation "
+            f"and download the selected model. Expected location: {dest}. CLI: utterleaf --download-model"
         )
     dest.mkdir(parents=True, exist_ok=True)
     log.info("Downloading Whisper %s into %s (one-time)", name, dest)
@@ -65,7 +66,8 @@ def ensure_ov(repo: str, *, allow_network: bool) -> Path:
         return dest
     if not allow_network:
         raise RuntimeError(
-            f"OpenVINO model '{repo}' is not in {dest}. Run: utterleaf --download-model"
+            f"OpenVINO model '{repo}' is missing. Open Settings → Speech & privacy → Model & installation "
+            f"and download the selected model. Expected location: {dest}. CLI: utterleaf --download-model"
         )
     dest.mkdir(parents=True, exist_ok=True)
     log.info("Downloading OpenVINO %s into %s (one-time)", repo, dest)

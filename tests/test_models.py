@@ -41,5 +41,5 @@ def test_ensure_ct2_offline_missing_raises(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("utterleaf.models.models_dir", lambda: tmp_path)
-    with pytest.raises(RuntimeError, match="not in"):
+    with pytest.raises(RuntimeError, match="Settings.*Model & installation"):
         ensure_ct2("tiny.en", allow_network=False)

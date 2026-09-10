@@ -85,8 +85,11 @@ class FileWindow:
         preview_heading.grid(row=4, column=0, sticky="ew", pady=(0, 8))
         preview_heading.columnconfigure(0, weight=1)
         ttk.Label(preview_heading, text="Transcript preview", style="Section.TLabel").grid(row=0, column=0, sticky="w")
+        from utterleaf.settings import launch_settings
+        self.model_button = ttk.Button(preview_heading, text="Model settings…", command=launch_settings)
+        self.model_button.grid(row=0, column=1, padx=(0, 8))
         self.decoder_button = ttk.Button(preview_heading, text="More formats…", command=self.decoder_setup)
-        self.decoder_button.grid(row=0, column=1)
+        self.decoder_button.grid(row=0, column=2)
         self.decoder_dialog = None
         preview_frame = ttk.Frame(page)
         preview_frame.grid(row=5, column=0, sticky="nsew")
@@ -132,6 +135,7 @@ class FileWindow:
         self.discard_button.configure(state="normal" if self.result is not None else "disabled")
         self.export_button.configure(state="normal" if self.result is not None and not self.busy else "disabled")
         self.decoder_button.configure(state="disabled" if self.busy else "normal")
+        self.model_button.configure(state="disabled" if self.busy else "normal")
 
     def decoder_setup(self):
         if self.busy or self.closed:
@@ -189,9 +193,8 @@ class FileWindow:
             return
         if self.activation_requests.is_set():
             self.activation_requests.clear()
-            self.root.deiconify()
-            self.root.lift()
-            self.root.focus_force()
+            from utterleaf.window_activation import raise_window
+            raise_window(self.root)
         while True:
             try:
                 kind, value = self.events.get_nowait()

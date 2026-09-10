@@ -26,6 +26,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--app", default="", help="Foreground app name for --polish")
     parser.add_argument("--transcribe-file", metavar="PATH", help="Transcribe a local media file using already installed models")
     parser.add_argument("--files", action="store_true", help="Open local file transcription and export")
+    parser.add_argument("--model-setup-download", metavar="NAME", help=argparse.SUPPRESS)
+    parser.add_argument("--model-setup-backend", choices=("ctranslate2", "openvino"), help=argparse.SUPPRESS)
     parser.add_argument("--output", metavar="PATH", help="Explicit destination for file transcription")
     parser.add_argument("--format", choices=("txt", "srt", "vtt"), help="Output format (otherwise inferred from destination suffix)")
     parser.add_argument("--overwrite", action="store_true", help="Allow replacing the explicitly selected output file")
@@ -58,6 +60,17 @@ def main(argv: list[str] | None = None) -> int:
         help=argparse.SUPPRESS,
     )
     args = parser.parse_args(argv)
+
+    if args.model_setup_download:
+        allowed = {"model_setup_download", "model_setup_backend"}
+        if any(value not in (None, False, "") for key, value in vars(args).items() if key not in allowed):
+            parser.error("Model setup cannot be combined with another action")
+        if not args.model_setup_backend:
+            parser.error("Model setup requires an explicit backend")
+        from utterleaf.model_setup import download_selected
+        return download_selected(args.model_setup_download, args.model_setup_backend)
+    if args.model_setup_backend:
+        parser.error("A model setup backend requires a selected model")
 
     if args.transcribe_file:
         if not args.output:

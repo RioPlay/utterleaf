@@ -79,6 +79,7 @@ These also appear in Settings so you do not need this table to start.
 | You say | What happens |
 |---|---|
 | `scratch that` | Discard this take (or remove the last dictation in a verified text field if said alone) |
+| `scratch that, [new information]` | Replace the last verified entry with your correction; pauses such as “scratch, that” are accepted |
 | `new paragraph` / `new line` | Insert a break |
 | `make this shorter` | Drop hedges, keep the point |
 | `make it more professional` | Expand slang/contractions, tighten |
@@ -86,14 +87,33 @@ These also appear in Settings so you do not need this table to start.
 
 You can say **“make a bulleted list one two three”** in a longer take. Utterleaf also recognizes “bullet list” and the common transcription “bolded list.” Digits such as `1 2 3` become separate items. For longer lists, say **“end list”** before returning to prose, for example: “Make a bulleted list first open the ticket second assign it end list That is all.”
 
-If you only say an editing command, use it within 20 seconds in the same field.
+Use editing commands within two minutes, in the same unchanged field.
 Utterleaf changes an earlier dictation only when it can verify the field, its
 contents, and the caret. Currently this supports standard native Windows Edit
 controls; browsers, rich editors, macOS, and Linux use manual recovery. Revised
-text is copied for you to select and replace the original yourself. Standalone
+formatting edits may be copied for manual replacement. A spoken replacement remains
+available through **Copy last dictation**: select the original entry, copy the
+correction from the tray, then paste. Standalone
 “scratch that” asks you to delete manually when the field cannot be verified.
 Utterleaf does not send a blind Undo command into your document. Temporary field
-snapshots expire after 20 seconds and are never written to logs.
+snapshots expire after two minutes and are never written to logs. **Forget last
+dictation** clears this context sooner.
+
+Completed prose takes include a separating space so a later take cannot become
+`sentence.Next` merely because you paused or a window title changed. Existing
+newlines are preserved. Literal/code mode does not add this separator.
+
+## Model setup and windows
+
+To check model installation, open **Settings → Speech & privacy → Model &
+installation**. The status distinguishes missing or incomplete files from an
+installed selection. **Download selected model** authorizes a single download;
+your ongoing network preference stays unchanged. Cancel stops that download.
+Installed means required files are present, not that every device can load them.
+
+Clicking the tray's default Settings action brings the existing window forward
+and preserves unsaved edits. Windows may restrict keyboard focus, so activation
+also raises the requested window without leaving it permanently always-on-top.
 
 ## Personal vocabulary
 

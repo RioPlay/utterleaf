@@ -1,4 +1,9 @@
-**v0.4.1** makes common audio and video files usable in the compiled app through guided local decoder setup.
+**v0.4.1** improves file support, model setup, window activation and repeated dictation.
+
+- **Model readiness:** Settings → Speech & privacy separates model installation, processing and privacy. See Missing/Incomplete/Installed status and explicitly download or repair the selected model without changing the ongoing network preference.
+- **Bring windows forward:** tray activation reuses the existing Settings window, restores minimized windows and requests foreground permission on Windows. Modal dialogs and unsaved edits remain intact.
+- **Separate takes:** completed prose includes a separating space so pauses or window-title changes do not produce `sentence.Next`. Literal/code output and explicit line breaks retain their formatting.
+- **Spoken corrections:** “scratch, that” recognizes a paused command; “scratch that, [replacement]” replaces a verified prior insertion. The edit window is two minutes. Unsupported or changed fields are not blindly deleted; the correction remains available through Copy last dictation.
 
 - Open **Tools ? Transcribe a file ? More formats?** for platform-specific FFmpeg installation instructions, the official download page, and an executable picker.
 - Select a local FFmpeg installation once to decode MP3, M4A, AAC, FLAC, OGG/Opus, MP4, MOV, WebM and MKV. Format support depends on that installation. Files remain local; Utterleaf does not download or bundle the decoder.

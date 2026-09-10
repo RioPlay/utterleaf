@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import errno
 import json
+import os
 import secrets
 import socket
 import sys
@@ -22,11 +23,19 @@ def _namespace(namespace: str) -> str:
 def activate(namespace: str = "settings") -> bool:
     namespace = _namespace(namespace)
     try:
-        endpoint = json.loads((data_dir() / f"{namespace}-instance.json").read_text(encoding="utf-8"))
+        with (data_dir() / f"{namespace}-instance.json").open("rb") as stream:
+            payload = stream.read(2049)
+        if len(payload) > 2048:
+            return False
+        endpoint = json.loads(payload)
+        if not isinstance(endpoint, dict):
+            return False
         with socket.create_connection(("127.0.0.1", int(endpoint["port"])), timeout=0.3) as client:
+            from utterleaf.window_activation import allow_activation
+            allow_activation(endpoint.get("pid"))
             client.sendall((endpoint["token"] + "\n").encode("ascii"))
             return client.recv(16) == b"ok\n"
-    except (OSError, ValueError, KeyError, TypeError):
+    except (OSError, ValueError, KeyError, TypeError, UnicodeError):
         return False
 
 
@@ -78,7 +87,8 @@ class SettingsInstance:
             self.server.listen(8)
             self.server.settimeout(0.2)
             token = secrets.token_hex(32)
-            self.endpoint.write_text(json.dumps({"port": self.server.getsockname()[1], "token": token}), encoding="utf-8")
+            self.endpoint.write_text(json.dumps({"port": self.server.getsockname()[1], "token": token,
+                                                 "pid": os.getpid()}), encoding="utf-8")
 
             def listen():
                 while not self.stopped.is_set():

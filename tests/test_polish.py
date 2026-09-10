@@ -353,6 +353,55 @@ def test_command_hint_lists_the_verbs() -> None:
     assert "make a list" in text
 
 
+@pytest.mark.parametrize("raw", ["Scratch, that.", "Scratch that!", "scratch, that,", "scratch that...", "Scratch,that."])
+def test_scratch_pause_punctuation_discards(raw):
+    result = polish_local(raw, vocab=[])
+    assert result.discarded and result.command_only
+
+
+@pytest.mark.parametrize("raw", [
+    "scratch that, new information", "Scratch, that. New information",
+    "scratch that: new information", "Scratch that! New information",
+])
+def test_leading_scratch_replacement_is_explicit_edit(raw):
+    result = polish_local(raw, vocab=[])
+    assert result.command == "replace"
+    assert result.text == "New information."
+    assert not result.discarded and not result.command_only
+
+
+@pytest.mark.parametrize("raw", [
+    'The words "scratch that" are a command',
+    "The words 'scratch that' are a command",
+    '"scratch that, new information"',
+    'I said "scratch that"',
+    'The words “scratch that” are a command',
+])
+def test_quoted_scratch_reference_stays_text(raw):
+    result = polish_local(raw, vocab=[])
+    assert result.command is None and not result.discarded
+    assert "scratch that" in result.text.lower()
+
+
+@pytest.mark.parametrize("raw", ["scratch, that", "scratch that, new information"])
+def test_scratch_does_not_edit_code_or_literal(raw):
+    literal = polish_local(raw, vocab=[], text_cleanup=False)
+    code = polish_local(raw, vocab=[], app_name="code.exe")
+    assert literal.text == raw and literal.command is None
+    assert code.command is None and not code.discarded
+    assert "scratch" in code.text
+
+
+@pytest.mark.parametrize("raw", [
+    "I said scratch that", "The command scratch that removes a take",
+    "You can say scratch that, then continue", "The phrase scratch that is useful",
+])
+def test_reported_scratch_command_is_not_executed(raw):
+    result = polish_local(raw, vocab=[])
+    assert result.command is None and not result.discarded
+    assert "scratch that" in result.text.lower()
+
+
 def test_email_style_sentence_case() -> None:
     result = polish_local(
         "thanks for sending the report I will review it this afternoon",

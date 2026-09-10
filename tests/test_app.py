@@ -96,6 +96,78 @@ def _app(monkeypatch, **cfg_kw) -> Utterleaf:
     return app
 
 
+def test_three_prose_passes_keep_separators_after_title_change_and_timeout(monkeypatch):
+    app = _app(monkeypatch)
+    takes = iter(["Bring it to the front.", "Just little nitpicks.", "Guess that helps."])
+    title = ["chat — draft 1"]
+    pasted = []
+    monkeypatch.setattr("utterleaf.app.foreground_app", lambda: title[0])
+    monkeypatch.setattr("utterleaf.app.foreground_id", lambda: 123)
+    monkeypatch.setattr("utterleaf.app.transcribe", lambda *a: next(takes))
+    monkeypatch.setattr("utterleaf.app.paste", lambda text, **kw: pasted.append(text) or "pasted")
+    monkeypatch.setattr("utterleaf.app.edit_target.capture", lambda *a: None)
+    monkeypatch.setattr(app, "_schedule_edit_expiry", lambda: None)
+    app._finish(np.ones(16000, dtype=np.float32), target=123)
+    title[0] = "chat — draft 2"
+    app._finish(np.ones(16000, dtype=np.float32), target=123)
+    app.last_paste_at -= 30
+    app._finish(np.ones(16000, dtype=np.float32), target=123)
+    assert "".join(pasted) == "Bring it to the front. Just little nitpicks. Guess that helps. "
+    assert app.recent_dictation.get() == "Guess that helps."
+    app.recent_dictation.clear()
+
+
+@pytest.mark.parametrize("outcome", ["replaced", "unavailable", "failed"])
+def test_spoken_replacement_uses_verified_entry_and_retains_correction(monkeypatch, outcome):
+    app = _app(monkeypatch)
+    app.last_text = "Old information."
+    app.last_target = 123
+    app.last_paste_at = time.time() - 45  # The old 20-second gate was too short.
+    app._last_prefix = "\n"
+    app._last_suffix = " "
+    receipt = object()
+    app._edit_receipt = receipt
+    replacements, notices = [], []
+    monkeypatch.setattr("utterleaf.app.foreground_id", lambda: 123)
+    monkeypatch.setattr("utterleaf.app.foreground_app", lambda: "chat")
+    monkeypatch.setattr("utterleaf.app.transcribe", lambda *a: "Scratch, that. New information")
+    monkeypatch.setattr("utterleaf.app.paste", lambda *a, **k: pytest.fail("No blind paste"))
+    monkeypatch.setattr("utterleaf.app.copy_text", lambda *a: pytest.fail("Copy requires a user action"))
+    monkeypatch.setattr("utterleaf.app.edit_target.replace", lambda old, text: replacements.append((old, text)) or (outcome, None))
+    monkeypatch.setattr(app, "_after_job", lambda badge="hide", caption="": notices.append((badge, caption)))
+    monkeypatch.setattr(app, "_schedule_edit_expiry", lambda: None)
+    app._finish(np.ones(16000, dtype=np.float32), target=123)
+    assert replacements == [(receipt, "\nNew information. ")]
+    assert app.recent_dictation.get() == "New information."
+    if outcome == "replaced":
+        assert app.last_text == "New information."
+        assert app._last_suffix == " "
+        assert notices[-1][0] == "pasted"
+    else:
+        assert app.last_text == "Old information."
+        assert notices[-1][0] == "no_paste"
+        assert "Copy last dictation" in notices[-1][1]
+    app.recent_dictation.clear()
+
+
+@pytest.mark.parametrize("target,age", [(456, 1), (123, 121)])
+def test_replacement_never_mutates_wrong_or_expired_entry(monkeypatch, target, age):
+    app = _app(monkeypatch)
+    app.last_text = "Old information."
+    app.last_target = 123
+    app.last_paste_at = time.time() - age
+    monkeypatch.setattr("utterleaf.app.foreground_id", lambda: target)
+    monkeypatch.setattr("utterleaf.app.foreground_app", lambda: "chat")
+    monkeypatch.setattr("utterleaf.app.transcribe", lambda *a: "scratch that, new information")
+    monkeypatch.setattr("utterleaf.app.edit_target.replace", lambda *a: pytest.fail("Unsafe edit"))
+    monkeypatch.setattr("utterleaf.app.paste", lambda *a, **k: pytest.fail("No blind paste"))
+    monkeypatch.setattr(app, "_after_job", lambda *a: None)
+    app._finish(np.ones(16000, dtype=np.float32), target=target)
+    assert app.recent_dictation.get() == "New information."
+    assert app.last_text == "Old information."
+    app.recent_dictation.clear()
+
+
 def test_cancel_during_decode_never_pastes(monkeypatch):
     app = _app(monkeypatch)
     app.state = "busy"
