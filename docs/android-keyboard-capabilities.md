@@ -2,6 +2,10 @@
 
 [Mobile roadmap](mobile-roadmap.md) · [Layout design](android-keyboard-design.md) · [Security design](mobile-security.md)
 
+[Research and QA criteria](mobile-keyboard-research.md) explain the typing,
+accessibility and privacy evidence behind this plan. Proposed thresholds are project
+targets, not measured performance or universal human-factors limits.
+
 Reviewed September 9, 2026. The objective is an independently implemented Utterleaf
 keyboard combining a polished everyday experience with an optional terminal/power
 layout. FUTO Keyboard and Hacker's Keyboard are product references. Full feature

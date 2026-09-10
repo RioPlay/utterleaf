@@ -7,6 +7,11 @@ keyboard with integrated offline speech, its own identity, and security first.
 FUTO is a concept reference, not a specification to copy or a licensed dependency.
 Desktop changes are tracked separately in the [desktop roadmap](desktop-roadmap.md).
 
+[Mobile keyboard research](mobile-keyboard-research.md) supplies the evidence and QA
+criteria behind the priorities: safe editor behavior and accessible everyday typing,
+then editing, language/correction and evaluated prediction/swipe. The report is a
+design input; it does not mark these features or physical acceptance as complete.
+
 ## Current status
 
 - **Layout revision:** [alpha05 design](android-keyboard-design.md) replaces the

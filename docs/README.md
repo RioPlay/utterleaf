@@ -36,6 +36,9 @@ and unverified release-quality scenarios.
 
 ## Research and historical notes
 
+- [What makes a mobile keyboard good](mobile-keyboard-research.md): research on typing,
+  accessibility, security and privacy, with prioritized requirements and release gates.
+
 These records explain earlier investigations. Their test counts, screenshots,
 release status, and machine-specific findings apply to the dates they describe.
 Use the guides above for current instructions.
