@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Instrumentation-only synthetic fields; absent from the release variant. -->
+        <activity android:name=".KeyboardTestActivity" android:exported="false"
+            android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />
+    </application>
+</manifest>

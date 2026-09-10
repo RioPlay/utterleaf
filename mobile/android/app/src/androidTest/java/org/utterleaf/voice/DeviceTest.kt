@@ -84,16 +84,120 @@ class DeviceTest {
             assertFalse(key("Dictate").isEnabled)
             key("Shift off").performClick(); key("A").performClick(); key("a").performClick()
             key("Caps lock off").performClick(); key("B").performClick(); key("B").performClick()
+            key("Shift off").performClick(); key("a").performClick(); key("B").performClick()
             key("Delete").performClick(); key("Done").performClick()
-            assertEquals(listOf("A", "a", "B", "B"), inserted)
+            assertEquals(listOf("A", "a", "B", "B", "a", "B"), inserted)
             assertEquals(1, deletes); assertEquals(1, enters)
             panel.reset(false, true, "Next") // A new numeric/password field cannot retain case state.
             key("1").performClick(); key("$").performClick()
             key("Switch letters and symbols").performClick()
             key("a").performClick()
-            assertEquals(listOf("A", "a", "B", "B", "1", "$", "a"), inserted)
+            assertEquals(listOf("A", "a", "B", "B", "a", "B", "1", "$", "a"), inserted)
             assertTrue(buttons(panel.view).all { !it.contentDescription.isNullOrBlank() })
             assertTrue(key("Shift off").isFocusable)
+        }
+    }
+    @Test fun liveKeyboardEditsAndSurvivesFieldAndVisibilityChanges() {
+        val automation = instrumentation.uiAutomation
+        val previousFlags = automation.serviceInfo.flags
+        val manager = app.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+        val keyboardId = manager.inputMethodList.single { it.serviceName == KeyboardIme::class.java.name }.id
+        val wasEnabled = manager.enabledInputMethodList.any { it.id == keyboardId }
+        val previousKeyboard = android.provider.Settings.Secure.getString(app.contentResolver,
+            android.provider.Settings.Secure.DEFAULT_INPUT_METHOD)
+        fun shell(value: String): String = android.os.ParcelFileDescriptor.AutoCloseInputStream(
+            automation.executeShellCommand(value)).bufferedReader().use { it.readText() }
+        fun awaitCondition(message: String, condition: () -> Boolean) {
+            val deadline = android.os.SystemClock.elapsedRealtime() + 10000
+            while (android.os.SystemClock.elapsedRealtime() < deadline) {
+                if (condition()) return
+                Thread.sleep(50)
+            }
+            fail(message)
+        }
+        fun <T> onMain(block: () -> T): T {
+            val result = java.util.concurrent.atomic.AtomicReference<T>()
+            instrumentation.runOnMainSync { result.set(block()) }
+            return result.get()
+        }
+        fun findKey(description: String): android.view.accessibility.AccessibilityNodeInfo? {
+            fun find(node: android.view.accessibility.AccessibilityNodeInfo): android.view.accessibility.AccessibilityNodeInfo? {
+                if (node.contentDescription?.toString() == description && node.isClickable) return node
+                for (index in 0 until node.childCount) {
+                    val child = node.getChild(index) ?: continue
+                    val found = find(child)
+                    if (found != null) return found
+                }
+                return null
+            }
+            return automation.windows.asSequence()
+                .filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+                .mapNotNull { it.root?.let(::find) }.firstOrNull()
+        }
+        fun press(description: String) {
+            awaitCondition("Keyboard key unavailable: $description") { findKey(description)?.isEnabled == true }
+            assertTrue("Could not press $description", findKey(description)!!.performAction(
+                android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))
+            instrumentation.waitForIdleSync()
+        }
+        var activity: KeyboardTestActivity? = null
+        try {
+            automation.serviceInfo = automation.serviceInfo.apply {
+                flags = flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+            }
+            shell("ime enable $keyboardId")
+            shell("ime set $keyboardId")
+            awaitCondition("Test keyboard was not selected") {
+                android.provider.Settings.Secure.getString(app.contentResolver,
+                    android.provider.Settings.Secure.DEFAULT_INPUT_METHOD) == keyboardId
+            }
+            val screen = instrumentation.startActivitySync(android.content.Intent(app, KeyboardTestActivity::class.java)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) as KeyboardTestActivity
+            activity = screen
+            instrumentation.waitForIdleSync()
+            fun show(field: android.widget.EditText) {
+                onMain { field.requestFocus() }
+                awaitCondition("Synthetic field did not acquire its input connection") { onMain { manager.isActive(field) } }
+                onMain { manager.showSoftInput(field, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT) }
+                awaitCondition("Typing keyboard did not appear") { findKey("a") != null }
+            }
+            show(screen.editor)
+            press("a"); press("b"); press("c")
+            awaitCondition("InputConnection did not commit letters") { onMain { screen.editor.text.toString() == "abc" } }
+            press("Move cursor left")
+            awaitCondition("InputConnection did not move cursor") { onMain { screen.editor.selectionStart == 2 } }
+            press("Delete")
+            awaitCondition("InputConnection did not delete before cursor") { onMain { screen.editor.text.toString() == "ac" } }
+            press("Move cursor right"); press("d")
+            awaitCondition("Cursor-right edit was incorrect") { onMain { screen.editor.text.toString() == "acd" } }
+            press("Done")
+            awaitCondition("Editor action did not reach editor") { onMain { screen.lastEditorAction == android.view.inputmethod.EditorInfo.IME_ACTION_DONE } }
+
+            // Enter the real voice panel, then change fields. No microphone capture is started.
+            press("Dictate")
+            awaitCondition("Voice panel did not appear") {
+                automation.windows.filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+                    .any { it.root?.findAccessibilityNodeInfosByText("Speak")?.isNotEmpty() == true }
+            }
+            show(screen.password)
+            assertFalse("Password field allowed dictation", findKey("Dictate")!!.isEnabled)
+            press("x")
+            awaitCondition("Password typing did not work") { onMain { screen.password.text.toString() == "x" } }
+            onMain { manager.hideSoftInputFromWindow(screen.password.windowToken, 0) }
+            awaitCondition("Keyboard did not hide") { findKey("a") == null }
+            show(screen.password)
+            assertFalse("Reopened password field allowed dictation", findKey("Dictate")!!.isEnabled)
+            press("y")
+            awaitCondition("Keyboard failed after reopen") { onMain { screen.password.text.toString() == "xy" } }
+            assertEquals("Password input changed the previous field", "acd", onMain { screen.editor.text.toString() })
+        } finally {
+            activity?.let { screen -> onMain { screen.finish() } }
+            try {
+                if (!previousKeyboard.isNullOrBlank()) shell("ime set $previousKeyboard")
+            } finally {
+                if (!wasEnabled) shell("ime disable $keyboardId")
+                automation.serviceInfo = automation.serviceInfo.apply { flags = previousFlags }
+            }
         }
     }
     @Test fun deniedPermissionCannotStartCapture() {
