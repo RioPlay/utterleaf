@@ -66,7 +66,7 @@ class FileWindow:
         heading.columnconfigure(0, weight=1)
         ttk.Label(heading, text="Transcribe a file", style="Section.TLabel").grid(row=0, column=0, sticky="w")
         ttk.Label(heading, text="Choose local audio, review the words, then export when ready.", wraplength=560).grid(row=1, column=0, sticky="w", pady=(8, 4))
-        ttk.Label(heading, text="Up to 10 minutes · 256 MiB · Installed models only\nPackaged app: PCM WAV. Source installations also support other media.",
+        ttk.Label(heading, text="Up to 10 minutes · 256 MiB · Installed models only\nMP3, M4A and video: choose More formats to set up local decoding.",
                   style="Hint.TLabel", wraplength=560).grid(row=2, column=0, sticky="w")
         from PIL import ImageTk
         from utterleaf.brand import mascot_image
@@ -81,7 +81,13 @@ class FileWindow:
         ttk.Label(select, textvariable=self.filename, wraplength=440).grid(row=0, column=1, sticky="w", padx=12)
         self.start_button = ttk.Button(select, text="Transcribe", style="Primary.TButton", command=self.start, state="disabled")
         self.start_button.grid(row=0, column=2)
-        ttk.Label(page, text="Transcript preview", style="Section.TLabel").grid(row=4, column=0, sticky="w", pady=(0, 8))
+        preview_heading = ttk.Frame(page)
+        preview_heading.grid(row=4, column=0, sticky="ew", pady=(0, 8))
+        preview_heading.columnconfigure(0, weight=1)
+        ttk.Label(preview_heading, text="Transcript preview", style="Section.TLabel").grid(row=0, column=0, sticky="w")
+        self.decoder_button = ttk.Button(preview_heading, text="More formats…", command=self.decoder_setup)
+        self.decoder_button.grid(row=0, column=1)
+        self.decoder_dialog = None
         preview_frame = ttk.Frame(page)
         preview_frame.grid(row=5, column=0, sticky="nsew")
         self.preview = tk.Text(preview_frame, wrap="word", height=10, state="disabled",
@@ -125,12 +131,23 @@ class FileWindow:
         self.cancel_button.configure(state="normal" if self.busy and not self.cancel_event.is_set() else "disabled")
         self.discard_button.configure(state="normal" if self.result is not None else "disabled")
         self.export_button.configure(state="normal" if self.result is not None and not self.busy else "disabled")
+        self.decoder_button.configure(state="disabled" if self.busy else "normal")
+
+    def decoder_setup(self):
+        if self.busy or self.closed:
+            return
+        if self.decoder_dialog is not None and self.decoder_dialog.winfo_exists():
+            self.decoder_dialog.lift()
+            return
+        from utterleaf.file_decoder_ui import DecoderDialog
+        self.decoder_dialog = DecoderDialog(self.root).root
 
     def choose(self):
         if self.busy:
             return
         path = filedialog.askopenfilename(parent=self.root, title="Choose local audio or video",
-                                         filetypes=[("WAV audio", "*.wav"), ("All files", "*.*")])
+                                         filetypes=[("Audio and video", "*.wav *.mp3 *.m4a *.m4b *.aac *.flac *.ogg *.opus *.mp4 *.mov *.webm *.mkv"),
+                                                    ("All files", "*.*")])
         if path:
             self.discard()
             self.path = Path(path)
