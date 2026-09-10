@@ -406,16 +406,20 @@ class DeviceTest {
                     instrumentation.waitForIdleSync()
                     val imeHeight = onMain { imeRoot.height }
                     val letter = center("e")
-                    touch(android.view.MotionEvent.ACTION_DOWN, letter.first, letter.second)
-                    Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 100)
-                    instrumentation.waitForIdleSync()
-                    val choice = onMain {
-                        fun find(view: android.view.View): AlternateStrip? {
-                            if (view is AlternateStrip) return view
-                            if (view is android.view.ViewGroup) for (i in 0 until view.childCount) find(view.getChildAt(i))?.let { return it }
-                            return null
+                    fun findHoldStrip(view: android.view.View): AlternateStrip? {
+                        if (view is AlternateStrip) return view
+                        if (view is android.view.ViewGroup) for (i in 0 until view.childCount) {
+                            findHoldStrip(view.getChildAt(i))?.let { return it }
                         }
-                        val strip = find(imeRoot) ?: error("Live hold strip did not appear")
+                        return null
+                    }
+                    touch(android.view.MotionEvent.ACTION_DOWN, letter.first, letter.second)
+                    // Input delivery and the posted hold callback are asynchronous.
+                    // Await the actual UI condition instead of assuming a 100 ms
+                    // runner scheduling allowance; this still fails if it never opens.
+                    awaitCondition("Live hold strip did not appear") { onMain { findHoldStrip(imeRoot) != null } }
+                    val choice = onMain {
+                        val strip = findHoldStrip(imeRoot) ?: error("Live hold strip disappeared")
                         assertEquals("Hold resized the IME", imeHeight, imeRoot.height)
                         val position = IntArray(2); strip.getLocationOnScreen(position)
                         Pair(position[0] + strip.cells[0].centerX(), position[1] + strip.cells[0].centerY())
