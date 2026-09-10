@@ -5,14 +5,22 @@ This is a focused engineering pass, not a complete audit.
 
 ## Current pass
 
+- **QA branch, unreleased:** revision `d942098` passed
+  [CI 34513111803](https://github.com/RioPlay/utterleaf/actions/runs/34513111803):
+  76 API 35 emulator tests (zero failures/skips), 8 JVM tests, lint, builds and
+  3 release contracts. Includes slider accessibility values/reset, conditional
+  gesture waits and live-IME editing/stale-action checks. Initial test synchronization
+  failures were fixed before the complete rerun; see [details](android-keyboard-design.md#qa-follow-up-not-released).
+  Physical-device and TalkBack acceptance remain open.
+
 - **Android alpha12:** revision `aec275b` passed
   [74 API 35 emulator tests (zero failures/skips), JVM tests, lint and 3 release contracts](https://github.com/RioPlay/utterleaf/actions/runs/34498263015).
   [Signed publication](https://github.com/RioPlay/utterleaf/actions/runs/34499446037)
   verified package/version identity, certificate continuity and emulator upgrade/reinstallation.
   Downloaded APK SHA-256: `c327c5b6d11544f53d2f7da5e503bd18e781939e047091628aad0e3ff2a524d2`.
   [Quick-action evidence and limits](android-quick-actions.md) do not establish
-  physical-device or accessibility acceptance. The local QA follow-up tests are
-  not included in this released pass; Android execution remains pending.
+  physical-device or accessibility acceptance. The QA follow-up above is
+  separate from this released alpha12 pass.
 
 - **Android alpha11:** revision `55e7173` passed
   [71 API 35 emulator tests, 8 JVM tests, lint and release contracts](https://github.com/RioPlay/utterleaf/actions/runs/34486083030).

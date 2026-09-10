@@ -27,10 +27,13 @@ roadmap without claiming those capabilities are already released.
   verified signing continuity and emulator install/upgrade. Physical-device and
   accessibility acceptance remain open. Earlier entries below are release history.
 
-- **QA follow-up, implemented locally / unverified:** slider accessibility values,
+- **QA follow-up, CI verified / unreleased:** slider accessibility values,
   preference snapshot synchronization, condition-based gesture tests and live-IME
-  editing-action coverage. These changes still require Android compile/lint and
-  API 35 instrumentation; they are not part of the alpha12 evidence above.
+  editing-action coverage. Revision `d942098` passed
+  [CI 34513111803](https://github.com/RioPlay/utterleaf/actions/runs/34513111803):
+  76 emulator tests, zero failures/skips, 8 JVM tests, lint, builds and 3 release
+  contracts. Physical accessibility acceptance remains open; these changes are
+  not part of the alpha12 artifact above.
 
 - **Released alpha10:** held Ctrl/Alt chords, independently configurable
   delete repetition and retained model imports with between-take selection.

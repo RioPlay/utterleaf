@@ -7,13 +7,22 @@ returns to typing. [Quick-action design, release evidence and editor limits](and
 record revision `aec275b`, its 74-test emulator pass and signed publication.
 The alpha11 and earlier sections below describe those releases unchanged.
 
-## Local QA follow-up (not released)
+## QA follow-up (not released)
 
 Height and bottom-space sliders now expose their displayed value in the accessible
 description, including after Reset. Added tests cover description updates,
 accessibility-driven persistence and reset cancellation/confirmation. Quick toggles
 also refresh in-memory options from the same saved snapshot they persist. These
-changes await Android CI and do not establish TalkBack or physical-device acceptance.
+changes passed [Android CI 34513111803](https://github.com/RioPlay/utterleaf/actions/runs/34513111803)
+at revision `d942098`: 76 API 35 emulator tests with zero failures/skips, 8 JVM
+tests, lint, builds and 3 release contracts. This does not establish TalkBack or
+physical-device acceptance.
+
+The first run compiled but exposed test synchronization errors: reset confirmation
+reopened before asynchronous dismissal completed, and a live-IME action used a
+stale accessibility node after editor restart. Tests now await window/panel
+transitions and exercise current native IME buttons. All output, persistence and
+stale-action assertions remain. Production gesture behavior was not changed.
 
 ## Released in alpha11
 
