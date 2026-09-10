@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections import deque
+from dataclasses import dataclass
 from logging.handlers import RotatingFileHandler
 import os
 import socket
@@ -50,6 +51,15 @@ ENGINE_FAILED = "speech model unavailable"
 NO_MIC = "microphone unavailable"
 DOWNLOADING = "Downloading your speech model… First use only."
 MAX_PENDING_TAKES = 4
+CAPTURE_CHECK_SECONDS = 0.5
+
+
+@dataclass(frozen=True)
+class _InterruptedTake:
+    """An unsolicited stop may recover text but must never target an editor."""
+
+    reason: str
+
 
 # How long a result pill stays up. Failures linger longer than successes.
 # engine is omitted on purpose: that pill stays until the model loads.
@@ -60,6 +70,7 @@ LINGER = {
     "too_short": 1.2,
     "transcribe": 3.5,
     "no_paste": 3.5,
+    "no_mic": 8.0,
 }
 
 
@@ -151,6 +162,7 @@ class Utterleaf:
         self._tail_args = None
         self._limit_timer: threading.Timer | None = None
         self._countdown_timer: threading.Timer | None = None
+        self._capture_timer: threading.Timer | None = None
         self._recording_deadline = 0.0
         self._recording_draft = ""
         self._lock = threading.Lock()
@@ -222,6 +234,7 @@ class Utterleaf:
             self._limit_timer = timer
             timer.start()
             self._update_countdown(self._cut_id)
+            self._schedule_capture_check(self._cut_id)
             if self.cfg.live_preview and self.indicator.enabled:
                 self._preview_stop.clear()
                 threading.Thread(target=self._preview_loop, args=(self._cut_id,), daemon=True).start()
@@ -274,7 +287,32 @@ class Utterleaf:
     def _recording_limit(self, cut_id: int) -> None:
         self.stop_recording(limit_cut_id=cut_id)
 
+    def _schedule_capture_check(self, cut_id: int) -> None:
+        # Alternate recorder adapters may omit liveness reporting. Recorder
+        # implements it; do not start a monitor that cannot check its adapter.
+        if self._stop.is_set() or not callable(getattr(self.recorder, "capture_error", None)):
+            return
+        timer = threading.Timer(CAPTURE_CHECK_SECONDS, self._check_capture, args=(cut_id,))
+        timer.daemon = True
+        self._capture_timer = timer
+        timer.start()
+
+    def _check_capture(self, cut_id: int) -> None:
+        with self._capture_lock:
+            if self.state != "recording" or cut_id != self._cut_id or self._stop.is_set():
+                return
+            self._capture_timer = None
+            reason = self.recorder.capture_error()
+            if reason:
+                log.warning("Microphone capture interrupted")
+                self._stop_recording(limit_cut_id=cut_id, interruption=reason)
+            else:
+                self._schedule_capture_check(cut_id)
+
     def _cancel_limit_timer(self) -> None:
+        capture, self._capture_timer = self._capture_timer, None
+        if capture is not None:
+            capture.cancel()
         countdown, self._countdown_timer = self._countdown_timer, None
         if countdown is not None:
             countdown.cancel()
@@ -286,7 +324,7 @@ class Utterleaf:
         with self._capture_lock:
             self._stop_recording(limit_cut_id=limit_cut_id)
 
-    def _stop_recording(self, *, limit_cut_id: int | None = None) -> None:
+    def _stop_recording(self, *, limit_cut_id: int | None = None, interruption: str | None = None) -> None:
         with self._lock:
             if self.state != "recording" or (limit_cut_id is not None and limit_cut_id != self._cut_id):
                 return
@@ -294,17 +332,28 @@ class Utterleaf:
             if not follow_on:
                 self._job_running = True
             self.state = "busy"
+        if interruption is None:
+            check = getattr(self.recorder, "capture_error", None)
+            if callable(check):
+                interruption = check()
         self._preview_stop.set()
         self._cancel_limit_timer()
-        if limit_cut_id is not None and self.hotkey is not None:
+        if (limit_cut_id is not None or interruption) and self.hotkey is not None:
             self.hotkey.reset_active()
         request_final()
-        self._set_icon("busy", "transcribing", badge="transcribing",
-                       caption="Recording limit reached. Start another take to continue." if limit_cut_id is not None else "")
+        caption = "Recording limit reached. Start another take to continue." if limit_cut_id is not None else ""
+        if interruption:
+            caption = f"{interruption} Recovering captured speech. Reconnect your microphone, then try again."
+        self._set_icon("busy", "recovering interrupted dictation" if interruption else "transcribing",
+                       badge="transcribing", caption=caption)
         beep("stop", self.cfg.beep)
-        target = foreground_id()
         cut_id = self._cut_id
         continuation = self._take_continuation
+        if interruption:
+            # No trailing capture or automatic field delivery after device loss.
+            self._cut(_InterruptedTake(interruption), follow_on, cut_id)
+            return
+        target = foreground_id()
         self._tail_args = (target, follow_on, cut_id, continuation)
         timer = threading.Timer(TAIL_SECONDS, self._cut, args=self._tail_args)
         self._tail_timer = timer
@@ -332,6 +381,15 @@ class Utterleaf:
                 return
             self._tail_done_for = cut_id
             self._tail_timer = None
+        if not isinstance(target, _InterruptedTake):
+            # Release-time health is not enough: the stream can fail during
+            # the trailing capture after the periodic monitor has stopped.
+            check = getattr(self.recorder, "capture_error", None)
+            reason = check() if callable(check) else None
+            if reason:
+                log.warning("Microphone capture interrupted during recording tail")
+                target = _InterruptedTake(reason)
+                continuation = None
         audio = self.recorder.stop()
         try:
             self.recorder.close()
@@ -347,7 +405,10 @@ class Utterleaf:
                 self._cancel_job = False
                 self._job_running = False
             clear_final()
-            self._flash("too_short")
+            if isinstance(target, _InterruptedTake):
+                self._flash("no_mic", f"{target.reason} Too little audio to recover. Reconnect your microphone, then try again.")
+            else:
+                self._flash("too_short")
             return
         with self._lock:
             if follow_on and self._job_running:
@@ -403,7 +464,7 @@ class Utterleaf:
                 log.info("Paste skipped")
                 self._after_job()
                 return
-            app_name = foreground_app()
+            app_name = "" if isinstance(target, _InterruptedTake) else foreground_app()
             decode_started = time.perf_counter()
             raw = transcribe(audio, self.cfg)
             log.info("Dictation timing: audio=%.2fs decode=%.3fs",
@@ -419,6 +480,28 @@ class Utterleaf:
                 self._after_job()
                 return
             log.debug("Transcription received (%d characters)", len(raw))
+            if isinstance(target, _InterruptedTake):
+                # A partial take can contain a spoken edit command. Recover the
+                # model output literally, without editing or reading any field.
+                # Cancel takes this same lock. It must not win between the
+                # earlier post-decode check and retaining the recovered result.
+                with self._capture_lock:
+                    if self._cancel_job or self._stop.is_set():
+                        self._cancel_job = False
+                        self._queued_audio = None
+                        self._queued_target = None
+                        self._queued_continuation = None
+                        self._queued_takes.clear()
+                        self._after_job()
+                        return
+                    text = raw.strip()
+                    if text:
+                        self._remember_result(text)
+                        hint = "Captured speech is ready. Use Copy last dictation in the tray within two minutes."
+                    else:
+                        hint = "No speech was recovered from this take."
+                    self._after_job("no_mic", f"{target.reason} {hint} Reconnect your microphone, then try again.")
+                return
             if not raw:
                 self._after_job("missed")
                 return
@@ -641,7 +724,8 @@ class Utterleaf:
                 self.state = "idle"
         linger = LINGER.get(badge)
         if linger is not None:
-            self._set_icon("idle", status_hint(self.cfg), badge=badge, caption=caption)
+            status = "microphone interrupted — check microphone and recovery" if badge == "no_mic" else status_hint(self.cfg)
+            self._set_icon("idle", status, badge=badge, caption=caption)
             self._hide_after(linger)
             return
         self._idle()
@@ -918,6 +1002,7 @@ class Utterleaf:
             MenuItem("Floating indicator", lambda *_: self.toggle_indicator(),
                      checked=lambda _: self.cfg.indicator),
             MenuItem("Tools", Menu(
+                MenuItem("Transcribe a file…", lambda *_: self._launch_files()),
                 MenuItem("Open vocabulary file", lambda *_: open_path(dictionary_path())),
                 MenuItem("Open diagnostic log", lambda *_: open_path(log_path())),
             )),
@@ -941,6 +1026,12 @@ class Utterleaf:
             # never turn into a crash.
             log.exception("Tray loop ended with an error")
         self.quit()
+
+    @staticmethod
+    def _launch_files() -> None:
+        from utterleaf.file_ui import launch_files
+
+        launch_files()
 
 
 def run_doctor(cfg: Config) -> int:

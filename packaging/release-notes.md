@@ -1,11 +1,13 @@
-**v0.3.8** protects your microphone choice and starts the privacy-first convenience roadmap. The speech engine and dependencies are unchanged.
+**v0.4.0** adds local file transcription, selective backup, and safer recovery when a microphone stops mid-take.
 
-- A missing selected microphone now blocks capture instead of silently opening the system default.
-- Saved names must match exactly. If you previously entered a partial name manually, select the full name in Settings → Dictation and Save.
-- Refresh devices preserves your selection and explains when it is unavailable or ready to test. System default remains an explicit choice.
-- Updated roadmap milestones cover recovery, safe delivery, readiness, long dictation, speed choices, vocabulary, selective backup, and file transcription.
+- **Transcribe a file:** use Tools → Transcribe a file in the tray, review the transcript, then export TXT, SRT, or VTT. Includes progress, cancellation, discard, and one window per profile. Nothing is saved automatically; this flow never downloads missing models.
+- **Selective backup:** export portable preferences and vocabulary from Settings, preview an import, select changes, and keep, merge, or replace vocabulary. Network, clipboard protections, devices, shortcuts, models, audio, transcripts, logs, and control tokens are excluded. Failed multi-file imports attempt rollback and report incomplete recovery.
+- **Interrupted microphones:** detect a stopped stream or three seconds without audio callbacks. Stop capture and retain available speech in the two-minute recovery slot for explicit Copy last dictation. Quiet audio alone is not an interruption; no alternate microphone is selected automatically.
+- **Clipboard protection:** Windows sequence checks detect intervening copies even when text matches. Shortcut failures keep recovery available. Rich-format preservation and fully atomic native restoration remain open work.
 
-This does not yet add native hotplug refresh or recovery during a take. Some backends require restarting the app after reconnecting. Identical microphone names cannot distinguish physical devices.
+Packaged file input supports mono/stereo integer PCM WAV, 8–32-bit at 8–48 kHz, up to 10 minutes and 256 MiB. Broader media requires a source installation with PyAV. Timestamped recognition requires CPU or CUDA and an already installed model. Cancellation waits for an active native model operation to return.
+
+Some microphone backends require restarting after reconnecting. Identical names cannot distinguish physical devices. Native hotplug, assistive-technology, and broad editor/device acceptance checks remain open. Desktop and Android releases remain independent.
 
 Quit the older app before extracting and reopening the update. Local control authentication and the privacy-preserving defaults reset from v0.3.7 remain included.
 

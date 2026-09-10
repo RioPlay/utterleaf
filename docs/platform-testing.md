@@ -2,6 +2,16 @@
 
 ## Current validation — September 9, 2026
 
+Desktop v0.4.0 candidate: Windows **494 passed, 1 skipped** and AlmaLinux/WSL
+**493 passed, 2 skipped** before final release review. New checks cover file exports,
+bounded WAV decoding, backup preview and rollback, clipboard identity, capture
+interruption/cancellation, real Tk dialogs, and independent window activation.
+The Windows skip requires symlink privileges; the Linux skips are Windows-native
+APIs. A public JFK fixture also passed local tiny.en CPU recognition through the
+packaged decoder stub and all three export formats. This is functional evidence,
+not a speech-quality or latency benchmark. Final compiled-platform CI and physical
+microphone/assistive-technology acceptance remain separate gates.
+
 Version 0.3.8 selected-microphone protection: Windows **338 passed, 1 skipped**;
 AlmaLinux/WSL **337 passed, 2 skipped**, plus Linux CLI help. Regression tests
 verify that missing/partial input names cannot open another microphone, retry

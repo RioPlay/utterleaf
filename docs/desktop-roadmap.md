@@ -52,8 +52,15 @@ Included: Windows shared microphone selection, a bounded retry for
 temporary device-unavailable errors, and resetting toggle state after a failed
 microphone start. These are included in v0.3.4, not v0.3.3.
 
+**Implemented, release validation in progress:** timestamped file transcription
+with a review/export window and explicit TXT/SRT/VTT output, selective preference
+and vocabulary backup, clipboard change-identity checks, and microphone interruption
+recovery. These changes are not included in the published v0.3.8 downloads.
+See [file transcription](desktop-file-transcription.md) and
+[backup and import](desktop-backup.md) for supported scope and remaining gates.
+
 **Planned, not implemented:** long dictation without the fixed hold-mode cutoff,
-file transcription, subtitle export, system-audio captions, meetings, speaker
+system-audio captions, meetings, speaker
 labels, and translation. See the [feature plan](feature-plan.md) for dependencies
 and acceptance criteria, and [microphone troubleshooting](microphone-troubleshooting.md)
 for current behavior and limits.

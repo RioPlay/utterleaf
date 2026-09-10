@@ -93,7 +93,9 @@ PyAV/FFmpeg: not bundled. PyAV's official wheel carries a GPL build of FFmpeg
 obligations; this project is Apache-2.0 and deliberately chooses not to
 accept those terms — a distribution policy, not a claim that permissive
 licenses cannot be combined with GPL. Utterleaf feeds microphone audio to
-faster-whisper as raw PCM and never uses PyAV, so the frozen build replaces
+faster-whisper as raw PCM. Packaged file transcription decodes integer PCM WAV
+using Python's standard library and the existing NumPy resampler. Other media
+formats require a source installation. The frozen build replaces PyAV
 it with an import-only stub (packaging/stubs/av). No FFmpeg code is
 distributed.
 
@@ -161,11 +163,23 @@ def license_expression(meta: email.message.Message) -> str:
     return "unknown"
 
 
+def verify_media_policy(directory: Path) -> None:
+    """Fail packaging if the excluded FFmpeg/PyAV native libraries leaked in."""
+    prefixes = ("avcodec", "avformat", "avdevice", "avfilter", "avutil", "swscale", "swresample", "ffmpeg", "ffprobe")
+    for path in directory.rglob("*"):
+        if not path.is_file():
+            continue
+        name = path.name.lower().removeprefix("lib")
+        if name.startswith(prefixes) and any(part in name for part in (".dll", ".so", ".dylib", ".exe")):
+            raise SystemExit(f"Excluded media library found in packaged output: {path}")
+
+
 def main() -> int:
     if SITE is None:
         raise SystemExit("collect_notices: could not find .venv site-packages — run from the repo root")
     if not DIST.exists():
         raise SystemExit(f"collect_notices: {DIST} does not exist — run the build first")
+    verify_media_policy(DIST)
     shutil.copy2(ROOT / "LICENSE", DIST / "LICENSE")
     shutil.copy2(ROOT / "NOTICE", DIST / "NOTICE")
     licenses_dir = DIST / "licenses"

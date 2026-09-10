@@ -10,6 +10,7 @@ import numpy as np
 
 from utterleaf.clean import prepare
 from utterleaf.config import Config
+from utterleaf.transcript import Segment, Transcript, TranscriptionCancelled
 from utterleaf.hardware import (
     Accelerator,
     enable_cuda_libs,
@@ -56,6 +57,34 @@ def resolve_name(cfg: Config) -> str:
 class CTranslateEngine:
     def __init__(self, model) -> None:
         self.model = model
+
+    def transcribe_segments(self, audio: np.ndarray, cfg: Config, *, cancel=None,
+                            progress=None) -> Transcript:
+        """Preserve model timing and words, without dictation cleanup or commands."""
+        def check_cancel():
+            if cancel is not None and cancel.is_set():
+                raise TranscriptionCancelled("File transcription cancelled")
+
+        check_cancel()
+        while not _infer_lock.acquire(timeout=0.1):
+            check_cancel()
+        try:
+            check_cancel()
+            language = None if cfg.language.lower() in {"auto", ""} else cfg.language
+            segments, info = self.model.transcribe(
+                audio, language=language, vad_filter=len(audio) >= 22400,
+                beam_size=5, condition_on_previous_text=False,
+            )
+            result = []
+            for segment in segments:
+                check_cancel()
+                result.append(Segment(float(segment.start), float(segment.end), segment.text))
+                if progress is not None:
+                    progress("recognizing", min(1.0, segment.end / (len(audio) / 16000)))
+            check_cancel()
+            return Transcript(tuple(result), getattr(info, "language", language))
+        finally:
+            _infer_lock.release()
 
     def transcribe(self, audio: np.ndarray, cfg: Config) -> str:
         language = None if cfg.language.lower() in {"auto", ""} else cfg.language

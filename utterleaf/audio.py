@@ -16,6 +16,9 @@ log = logging.getLogger("utterleaf")
 SAMPLE_RATE = 16000
 PREROLL_SECONDS = 0.30
 TAIL_SECONDS = 0.16
+# A callback heartbeat timeout, not a silence detector. Native device/host testing
+# must validate this conservative allowance for high-latency capture backends.
+CALLBACK_TIMEOUT_SECONDS = 3.0
 
 
 def resample_audio(audio: np.ndarray, input_rate: float) -> np.ndarray:
@@ -52,6 +55,9 @@ class Recorder:
         self._ring_samples = 0
         self._stream: sd.InputStream | None = None
         self._opened_at: float | None = None
+        self._recording_started_at: float | None = None
+        self._last_callback_at: float | None = None
+        self._stream_generation = 0
         self.recording = False
         self.preferred_device = (device or "").strip()
         self.device_name = ""
@@ -98,22 +104,29 @@ class Recorder:
         # error needs a different action, and must not turn into a retry loop.
         for attempt in range(2):
             stream = None
+            with self._lock:
+                self._stream_generation += 1
+                generation = self._stream_generation
+                self._last_callback_at = None
             try:
                 stream = sd.InputStream(
                     device=chosen, samplerate=self.input_rate, channels=1,
-                    dtype="float32", blocksize=0, callback=self._on_audio, **extra,
+                    dtype="float32", blocksize=0,
+                    callback=lambda *args, token=generation: self._on_audio(*args, generation=token),
+                    **extra,
                 )
                 stream.start()
             except Exception as exc:
+                with self._lock:
+                    self._stream_generation += 1
+                    self._ring.clear()
+                    self._ring_samples = 0
                 if stream is not None:
                     try:
                         stream.close()
                     except Exception:
                         log.warning("Could not close failed microphone stream", exc_info=True)
                         raise exc
-                with self._lock:
-                    self._ring.clear()
-                    self._ring_samples = 0
                 if attempt == 0 and device_unavailable(exc):
                     log.info("Microphone temporarily unavailable; retrying once")
                     time.sleep(0.15)
@@ -136,9 +149,10 @@ class Recorder:
                 if max_seconds is not None else None
             )
             self.limit_reached.clear()
+            self._recording_started_at = time.monotonic()
             self.recording = True
 
-    def _on_audio(self, indata, frames, timestamp, status) -> None:  # noqa: ARG002
+    def _on_audio(self, indata, frames, timestamp, status, *, generation=None) -> None:  # noqa: ARG002
         if status:
             # ALSA-to-Pulse bridging overflows once at stream open before any
             # recording starts; warn only about overflows that matter.
@@ -150,6 +164,11 @@ class Recorder:
             (log.debug if startup_overflow else log.warning)("Mic status: %s", status)
         copy = indata.copy()
         with self._lock:
+            if generation is not None and generation != self._stream_generation:
+                return
+            if len(copy) == 0:
+                return
+            self._last_callback_at = time.monotonic()
             self._ring.append(copy)
             self._ring_samples += len(copy)
             limit = int(PREROLL_SECONDS * self.input_rate)
@@ -164,6 +183,33 @@ class Recorder:
                     self._captured_samples += len(chunk)
                 if self._capture_limit is not None and self._captured_samples >= self._capture_limit:
                     self.limit_reached.set()
+
+    def capture_error(self) -> str | None:
+        """Check the current capture's liveness without inspecting speech energy.
+
+        The caller stops/closes and recovers the buffered audio. Checking alone
+        never discards audio, reopens a stream, or chooses another microphone.
+        """
+        with self._lock:
+            if not self.recording:
+                return None
+            stream = self._stream
+            generation = self._stream_generation
+        try:
+            active = stream is not None and bool(stream.active)
+        except Exception:
+            active = False
+        with self._lock:
+            if not self.recording or generation != self._stream_generation:
+                return None
+            if not active:
+                return "The microphone stream stopped."
+            started = self._recording_started_at
+            if started is not None:
+                last = max(started, self._last_callback_at if self._last_callback_at is not None else started)
+                if time.monotonic() - last >= CALLBACK_TIMEOUT_SECONDS:
+                    return "The microphone stopped sending audio."
+        return None
 
     def snapshot(self, max_seconds: float | None = None) -> np.ndarray:
         # Select only the needed tail under the lock, then copy outside the audio
@@ -191,6 +237,7 @@ class Recorder:
     def stop(self) -> np.ndarray:
         with self._lock:
             self.recording = False
+            self._recording_started_at = None
             if not self._chunks:
                 return np.zeros(0, dtype=np.float32)
             chunks = self._chunks
@@ -200,6 +247,9 @@ class Recorder:
     def close(self) -> None:
         with self._lock:
             self.recording = False
+            self._stream_generation += 1
+            self._recording_started_at = None
+            self._last_callback_at = None
             stream = self._stream
             self._stream = None
             self._ring.clear()
