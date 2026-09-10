@@ -27,3 +27,8 @@ mobile/android/.kotlin/
 mobile/android/local.properties
 mobile/android/**/.cxx/
 mobile/android/app/src/androidTest/assets/
+*.keystore
+*.jks
+*.p12
+*.pfx
+mobile/android/**/signing.properties

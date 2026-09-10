@@ -12,6 +12,7 @@ status and acceptance criteria live in the linked platform plan, not in a second
 | Long speech without an arbitrary hold cutoff | Accepted, requires bounded processing and clear cancellation | [Desktop feature plan](feature-plan.md) · [Mobile M4](mobile-roadmap.md#android-milestones) |
 | Local file transcription and subtitle export | Planned desktop scope; mobile feasibility is an idea, not a committed port | [Desktop feature plan](feature-plan.md) |
 | Video/system-audio captions, meetings, speaker labels and translation | Planned desktop investigation with explicit capture/retention; evaluate mobile separately | [Desktop feature plan](feature-plan.md) |
+| Obtainium updates | Accepted: signed Android-only release channel, predictable versions and explicit migration from debug builds | [Obtainium setup](mobile-obtainium.md) |
 | Swipe typing | Candidate mobile feature; engine and data licensing, security, accuracy and device cost need review | [Mobile roadmap](mobile-roadmap.md) |
 | Local vocabulary and selective settings backup | Accepted with explicit selection and no transcript/secret export | [Desktop roadmap](desktop-roadmap.md) · [Mobile M5](mobile-roadmap.md#android-milestones) |
 | FUTO-like keyboard concept | Learn from usability; choose a compatible foundation and Utterleaf's own design | [Mobile M1](mobile-roadmap.md#android-milestones) |

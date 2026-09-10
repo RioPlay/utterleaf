@@ -34,7 +34,7 @@ boundaries; it remains an option if ownership or release operations later requir
 ## CI and release isolation
 
 Desktop push/PR CI ignores changes confined to `mobile/**`, `docs/mobile*.md`, or
-the Android workflow. Other paths conservatively keep the desktop checks running.
+an Android workflow. Other paths conservatively keep the desktop checks running.
 Desktop `v*` tags still run the release build regardless of changed file paths.
 Android CI is scoped to Android source/build changes and its workflow; Android
 Markdown-only edits do not rebuild native binaries. Both workflows can be run manually.
@@ -44,10 +44,10 @@ CI explicitly if they affect its packaged inputs. Some Android artwork and notic
 are bundled copies, so updating a documentation asset alone does not update an APK.
 
 The desktop release publisher accepts desktop tags and verifies desktop jobs and
-source revision. Android release publication remains separate and manual after CI;
+source revision. Android release publication uses a separate manually dispatched signing workflow after CI;
 do not upload Android artifacts to a desktop release or replace desktop's stable
-latest release with a mobile alpha. Stable mobile signing and update testing remain
-open acceptance gates, not an accomplished property of this repository layout.
+latest release with a mobile alpha. The mobile release key is kept in a main-only GitHub environment. Physical update
+testing and offline key backup remain acceptance gates.
 
 If branch protection later requires always-present checks, use a routing/gate job
 instead of workflow path skipping so unrelated changes do not wait on missing checks.

@@ -19,7 +19,20 @@ class SetupActivity : Activity() {
         column.addView(Ui.mascot(this))
         column.addView(Ui.title(this, "Let ideas speak."))
         column.addView(Ui.text(this, "Utterleaf Voice · Android preview", 18f))
-        column.addView(Ui.text(this, "Private voice input for compatible keyboards. No Internet permission, accounts, or saved recordings."))
+        column.addView(Ui.text(this, "Type and dictate locally. No Internet permission, accounts, or saved recordings. Typing works without microphone permission or a speech model."))
+        column.addView(Ui.button(this, "Enable Utterleaf Keyboard") { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) })
+        column.addView(Ui.button(this, "Choose keyboard") {
+            (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager).showInputMethodPicker()
+        })
+        column.addView(Ui.button(this, "Keyboard preferences and preview") { startActivity(Intent(this, KeyboardSettingsActivity::class.java)) })
+        column.addView(Ui.button(this, "Set up updates in Obtainium") {
+            val config = assets.open("obtainium.json").bufferedReader().use { it.readText() }
+            try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("obtainium://app/" + Uri.encode(config)))) }
+            catch (_: android.content.ActivityNotFoundException) {
+                status.text = "Obtainium is not installed. Install it separately, then return here. Utterleaf does not download or install updates itself."
+            }
+        })
+        column.addView(Ui.text(this, "Choose Utterleaf Keyboard for typing and its Mic button for dictation. Utterleaf Voice is the separate voice-only option for compatible keyboards. Speech setup below is optional."))
         status = Ui.text(this, readiness())
         column.addView(status)
         column.addView(Ui.text(this, "1 · Import the English model", 19f))
@@ -49,7 +62,7 @@ class SetupActivity : Activity() {
         column.addView(Ui.text(this, "3 · Enable voice input", 19f))
         column.addView(Ui.button(this, "Open keyboard settings") { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) })
         column.addView(Ui.text(this, "Enable Utterleaf Voice, then select it using the keyboard switcher. Compatible keyboards may open it from their microphone button. Gboard and Samsung Keyboard do not offer this integration."))
-        column.addView(Ui.text(this, "English only in this preview. Each take is limited to 120 seconds with a countdown. Preview text expires after two minutes and is cleared when you leave or change fields. No automatic clipboard writes. Password fields are blocked by our IME."))
+        column.addView(Ui.text(this, "English only in this preview. Each take is limited to 120 seconds with a countdown. Preview text clears after two minutes with a warning and Keep reviewing option. Leaving or changing fields clears it immediately. No automatic clipboard writes. Password typing works in Utterleaf Keyboard; dictation is disabled there."))
         column.addView(Ui.button(this, "Delete imported model") {
             AlertDialog.Builder(this).setTitle("Delete the model?").setMessage("You will need to import it again to dictate.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Delete") { _, _ ->

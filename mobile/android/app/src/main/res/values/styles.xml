@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">Utterleaf Voice</string>
     <string name="voice_input">English voice input</string>
+    <string name="typing_input">English keyboard</string>
     <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:colorAccent">#83DA9A</item>

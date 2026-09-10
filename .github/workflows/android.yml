@@ -27,6 +27,8 @@ jobs:
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.0.13004108' 'cmake;3.22.1'
       - name: Build, unit tests, and lint
         run: bash gradlew --no-daemon testDebugUnitTest lintDebug compileDebugAndroidTestKotlin assembleDebug assembleRelease
+      - name: Release contract tests
+        run: python3 -m unittest discover -s tools -p 'test_*.py'
       - name: Prepare reviewed inference fixtures (test APK only)
         run: |
           mkdir -p app/src/androidTest/assets
@@ -48,6 +50,7 @@ jobs:
           disable-animations: true
           script: |
             cd mobile/android && bash gradlew --no-daemon connectedDebugAndroidTest
+            adb pull /data/local/tmp/utterleaf-keyboard-preview.png mobile/android/app/build/reports/keyboard-preview.png
             adb install -r mobile/android/app/build/outputs/apk/debug/app-debug.apk
             adb shell am start -n org.utterleaf.voice/.SetupActivity
             sleep 3
@@ -56,7 +59,7 @@ jobs:
         run: |
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/debug/app-debug.apk
           mkdir -p preview
-          cp app/build/outputs/apk/debug/app-debug.apk preview/Utterleaf-Voice-0.1.0-alpha02-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk preview/Utterleaf-Voice-0.1.0-alpha03-debug.apk
           cd preview && sha256sum *.apk > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         if: always()
@@ -65,3 +68,9 @@ jobs:
           path: |
             mobile/android/preview/
             mobile/android/app/build/reports/
+      - name: Preserve unsigned input for isolated release signing
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-release-input
+          path: mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 14

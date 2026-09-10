@@ -1,0 +1,7 @@
+{
+  "id": "org.utterleaf.voice",
+  "url": "https://github.com/RioPlay/utterleaf",
+  "author": "RioPlay",
+  "name": "Utterleaf Android",
+  "additionalSettings": "{\"includePrereleases\":true,\"filterReleaseTitlesByRegEx\":\"^Utterleaf Android \",\"apkFilterRegEx\":\"^Utterleaf-Android-.*\\\\.apk$\",\"verifyLatestTag\":false,\"fallbackToOlderReleases\":true,\"versionExtractionRegEx\":\"^android-v(.+)$\",\"matchGroupToUse\":\"1\",\"versionDetection\":true}"
+}

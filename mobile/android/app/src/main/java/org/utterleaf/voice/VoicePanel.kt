@@ -24,7 +24,26 @@ class VoicePanel(context: Context, private val insert: (String) -> Boolean, priv
             else status.text = "Could not insert into this field. Text stays here until you discard or leave."
         }
     }
-    private val expire = Runnable { clear(); status.text = "Preview expired · microphone off" }
+    private val keep = Ui.button(context, "Keep reviewing") {
+        if (transcript.isNotBlank()) scheduleExpiry()
+    }.apply { visibility = android.view.View.GONE }
+    private val warning = Runnable {
+        if (transcript.isNotBlank()) {
+            status.text = "Preview clears in 30 seconds. Tap Keep reviewing for more time."
+            status.announceForAccessibility(status.text)
+        }
+    }
+    private val expire = Runnable {
+        clear(); status.text = "Preview expired · microphone off"
+        status.announceForAccessibility(status.text)
+    }
+    private fun scheduleExpiry() {
+        handler.removeCallbacks(warning); handler.removeCallbacks(expire)
+        status.text = "Microphone off · preview clears in 2 minutes · Keep reviewing extends this"
+        status.announceForAccessibility(status.text)
+        handler.postDelayed(warning, 90000)
+        handler.postDelayed(expire, 120000)
+    }
     init {
         view.addView(Ui.text(context, "Utterleaf Voice", 20f))
         view.addView(status)
@@ -33,6 +52,7 @@ class VoicePanel(context: Context, private val insert: (String) -> Boolean, priv
         val actions = LinearLayout(context)
         listOf(speak, stop, send).forEach { actions.addView(it, LinearLayout.LayoutParams(0, -2, 1f)) }
         view.addView(actions)
+        view.addView(keep)
         val secondary = LinearLayout(context)
         secondary.addView(Ui.button(context, "Discard") { clear(); status.text = "Discarded · microphone off" }, LinearLayout.LayoutParams(0, -2, 1f))
         secondary.addView(Ui.button(context, "Back to keyboard") { clear(); leave() }, LinearLayout.LayoutParams(0, -2, 1f))
@@ -48,9 +68,9 @@ class VoicePanel(context: Context, private val insert: (String) -> Boolean, priv
             { if (gate.accepts(token)) {
                 transcript = it; preview.text = it
                 previewScroll.visibility = android.view.View.VISIBLE
-                status.text = "Microphone off · preview expires in 2 minutes"
                 stop.isEnabled = false; speak.isEnabled = true; send.isEnabled = true
-                handler.postDelayed(expire, 120000)
+                keep.visibility = android.view.View.VISIBLE
+                scheduleExpiry()
             } },
             { if (gate.accepts(token)) { status.text = it; stop.isEnabled = false; speak.isEnabled = true } })
         session!!.start()
@@ -59,8 +79,9 @@ class VoicePanel(context: Context, private val insert: (String) -> Boolean, priv
         gate.invalidate(); session?.cancel(); session = null
         transcript = ""; preview.text = "Tap Speak when you are ready."
         previewScroll.visibility = android.view.View.GONE
+        keep.visibility = android.view.View.GONE
         status.text = "Microphone off · English · local processing"
-        handler.removeCallbacks(expire)
+        handler.removeCallbacks(warning); handler.removeCallbacks(expire)
         speak.isEnabled = true; stop.isEnabled = false; send.isEnabled = false
     }
 }
