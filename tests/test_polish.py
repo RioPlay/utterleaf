@@ -2,6 +2,14 @@ from utterleaf.polish import COMMAND_HINT, infer_style, polish_local
 import pytest
 
 
+@pytest.mark.parametrize("opening,closing", [('"', '"'), ('“', '”'), ('`', '`'), ("'", "'")])
+def test_quoted_list_request_preserves_surrounding_prose(opening, closing):
+    phrase = f"She said {opening}make a list of olive oil, first aid supplies{closing} and continued."
+    result = polish_local(phrase, vocab=[])
+    assert result.command is None
+    assert result.text == phrase
+
+
 @pytest.mark.parametrize("raw", [
     "um I mean scratch that", "  make a list one two three  ",
     "je veux garder ça, new paragraph", "i use a p i dot py", " utter leaf\n",

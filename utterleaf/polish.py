@@ -468,6 +468,8 @@ LIST_REQUEST = re.compile(
 
 def _list_request_is_command(text: str, request: re.Match[str]) -> bool:
     """Avoid turning a sentence about making a list into a list command."""
+    if _quoted_at(text, request.start()):
+        return False
     before = text[:request.start()].rstrip()
     if not before:
         return True
