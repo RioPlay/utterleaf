@@ -7,7 +7,8 @@
 
 - **Windows GPU diagnostics:** missing runtime guidance now links to Windows CUDA/cuDNN setup, without Linux commands or claiming that device detection proves successful GPU inference.
 
-- Open **Tools ? Transcribe a file ? More formats?** for platform-specific FFmpeg installation instructions, the official download page, and an executable picker.
+- **List boundaries:** explicit item lines preserve multiword entries; clearly separated “new line”/“new paragraph” commands work inside a take. Completed prose after a list keeps a separator before the next take.
+- Open **Tools → Transcribe a file → More formats…** for platform-specific FFmpeg installation instructions, the official download page, and an executable picker.
 - Select a local FFmpeg installation once to decode MP3, M4A, AAC, FLAC, OGG/Opus, MP4, MOV, WebM and MKV. Format support depends on that installation. Files remain local; Utterleaf does not download or bundle the decoder.
 - Ordinary PCM WAV continues to work without setup, including when an optional decoder is moved or updated. A changed decoder requires selecting it again before use.
 - Decoding has bounded output, a deadline, and cancellation that stops the child process. No FFmpeg report or recording file is created. Review and explicitly export TXT, SRT or VTT as before.

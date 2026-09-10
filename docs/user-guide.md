@@ -87,6 +87,20 @@ These also appear in Settings so you do not need this table to start.
 
 You can say **“make a bulleted list one two three”** in a longer take. Utterleaf also recognizes “bullet list” and the common transcription “bolded list.” Digits such as `1 2 3` become separate items. For longer lists, say **“end list”** before returning to prose, for example: “Make a bulleted list first open the ticket second assign it end list That is all.”
 
+For an explicit list with clear item boundaries, try:
+
+> Make a bulleted list. Bullet point cats. Next bullet point dogs. Next bullet point cars. Next bullet point elephants. End list. Now I am talking in a paragraph again.
+
+A list request applies to that take; it does not switch later recordings into a
+persistent list mode. Keep multiword items together using “next bullet point”
+or actual line breaks. Ordinary text is not made into a list just because it
+contains several nouns.
+
+Within a take, clearly separated commands also work: “Cats. New line. Dogs.
+New paragraph. Back to prose.” Say “end list” before returning from list items
+to a paragraph. Quoted command names and phrases such as “a new line of business”
+remain ordinary text; ambiguous words are not treated as commands.
+
 Use editing commands within two minutes, in the same unchanged field.
 Utterleaf changes an earlier dictation only when it can verify the field, its
 contents, and the caret. Currently this supports standard native Windows Edit

@@ -57,3 +57,16 @@ def test_structured_commands_keep_existing_join_policy(command):
 @pytest.mark.parametrize("command", ["discard", "replace"])
 def test_non_insert_commands_are_not_padded(command):
     assert prepare_delivery("Replacement.", command=command).payload == "Replacement."
+
+
+@pytest.mark.parametrize("command", [None, "bullets", "numbered"])
+def test_prose_after_list_keeps_next_take_separate_after_context_expires(command):
+    first = prepare_delivery("- Cats\n- Dogs\n\nBack to prose.", command=command)
+    second = prepare_delivery("Another take.")
+    assert first.payload + second.payload == "- Cats\n- Dogs\n\nBack to prose. Another take. "
+
+
+def test_multiline_prose_keeps_internal_breaks_and_both_take_boundaries():
+    delivery = prepare_delivery("Cats.\nDogs.", previous_delivered="Before.")
+    assert delivery.payload == " Cats.\nDogs. "
+    assert delivery.text == "Cats.\nDogs."

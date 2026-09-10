@@ -30,8 +30,8 @@ NVIDIA GPU (driver alone is not enough):
 .\.venv\Scripts\python -m pip install -e ".[cuda]"
 ```
 
-For GPU use in the **packaged Windows release**, open **Settings ? Help ? Set up
-NVIDIA GPU?**, or run `./utterleaf-cli.exe --cuda-setup` from its extracted folder.
+For GPU use in the **packaged Windows release**, open **Settings → Help → Set up
+NVIDIA GPU…**, or run `./utterleaf-cli.exe --cuda-setup` from its extracted folder.
 The standard archive works on CPU without the optional NVIDIA math libraries.
 Its CTranslate2 runtime needs compatible CUDA 12.x and cuDNN 9 for CUDA 12:
 use the [CUDA 12.9 archive](https://developer.nvidia.com/cuda-12-9-0-download-archive)

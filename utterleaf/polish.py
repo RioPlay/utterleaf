@@ -373,6 +373,32 @@ def _command_reference_at(text: str, position: int) -> bool:
         text[:position], re.IGNORECASE))
 
 
+def _inline_breaks(text: str) -> str:
+    """Replace exact standalone break commands, retaining original quote context."""
+    pieces: list[str] = []
+    cursor = 0
+    for match in re.finditer(r"\bnew[ \t]+(?P<kind>line|paragraph)\b", text, re.IGNORECASE):
+        if _command_reference_at(text, match.start()):
+            continue
+        # Require a complete sentence or physical line, never an ordinary phrase
+        # such as "a new line of business" or "Cats new line Dogs".
+        if not re.search(r"(?:^|[.!?\r\n])[ \t]*$", text[:match.start()]):
+            continue
+        tail = re.match(r"[ \t]*(?:[.!?]+(?=[ \t\r\n]|$)|(?=[\r\n]|$))", text[match.end():])
+        if tail is None:
+            continue
+        start = match.start()
+        while start > cursor and text[start - 1].isspace():
+            start -= 1
+        end = match.end() + tail.end()
+        while end < len(text) and text[end].isspace():
+            end += 1
+        pieces.extend((text[cursor:start], "\n\n" if match.group("kind").lower() == "paragraph" else "\n"))
+        cursor = end
+    pieces.append(text[cursor:])
+    return "".join(pieces)
+
+
 def _apply_corrections(text: str) -> str:
     # Repeated word: "the the" -> "the"
     text = re.sub(r"\b(\w+)(?:\s+\1)+\b",
@@ -520,6 +546,13 @@ def split_items(text: str) -> list[str]:
         return []
     # Explicit item boundaries take priority over words inside an item (for
     # example "research and development" or "first aid supplies").
+    lines = [line.strip(" .,:;\t") for line in text.splitlines() if line.strip(" .,:;\t")]
+    if len(lines) > 1:
+        # A recognizer can combine physical lines with spoken bullet markers.
+        # Strip only a leading marker; words within each item remain intact.
+        lines = [re.sub(r"^(?:next[ \t]+)?bullet[ \t]+point\b[ \t]*[:,-]?[ \t]*", "", line,
+                        flags=re.IGNORECASE) for line in lines]
+        return [line for line in lines if line]
     marked = re.split(r"\b(?:next\s+)?bullet\s+point\b\s*[:,-]?\s*", text,
                       flags=re.IGNORECASE)
     if len(marked) > 1 and not marked[0].strip(" .,:;"):
@@ -692,6 +725,8 @@ def polish_local(
     if command == "discard" and command_only:
         return PolishResult("", command=command, command_only=True, discarded=True)
 
+    if style != "code":
+        body = _inline_breaks(body)
     if remove_fillers:
         body = _remove_fillers(body)
     if fix_corrections and style != "code":

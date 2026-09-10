@@ -39,6 +39,130 @@ def test_explicit_list_boundaries_preserve_multiword_items(phrase, expected):
     assert polish_local(phrase, vocab=[]).text == expected
 
 
+@pytest.mark.parametrize("newline", ["\n", "\r\n", "\r"])
+@pytest.mark.parametrize("command, marker", [("bulleted", "-"), ("numbered", None)])
+def test_explicit_list_newlines_override_word_and_punctuation_heuristics(newline, command, marker):
+    items = ["Olive oil", "Research and development", "First aid supplies", "Paris, France"]
+    raw = f"Make a {command} list: " + newline.join(items)
+    result = polish_local(raw, vocab=[])
+    assert result.command == ("bullets" if marker else "numbered")
+    assert result.text.splitlines() == [
+        f"{marker or str(index) + '.'} {item}" for index, item in enumerate(items, 1)
+    ]
+
+
+def test_edit_existing_lines_as_list_ignores_blank_lines_and_keeps_item_phrases():
+    from utterleaf.polish import apply_edit
+
+    assert apply_edit("  Olive oil\r\n\r\n Research and development \r\n First aid supplies  ", "bullets") == (
+        "- Olive oil\n- Research and development\n- First aid supplies"
+    )
+
+
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+@pytest.mark.parametrize("items, expected", [
+    (["bullet point cats", "next bullet point dogs"], "- Cats\n- Dogs"),
+    (["bullet point: research and development", "next bullet point first aid supplies", "Discuss the bullet point design"],
+     "- Research and development\n- First aid supplies\n- Discuss the bullet point design"),
+])
+def test_explicit_list_lines_remove_only_leading_spoken_bullet_markers(newline, items, expected):
+    raw = "Make a bulleted list " + newline.join(items) + " end list Back to prose."
+    result = polish_local(raw, vocab=[])
+    assert result.text == expected + "\n\nBack to prose."
+    assert result.command == "bullets"
+
+
+def test_lines_without_explicit_list_command_remain_prose():
+    raw = "Cats\nDogs\nCars\nElephants\nOr New Line. Alright\nNow I'm just talking into a paragraph again."
+    result = polish_local(raw, vocab=[])
+    assert result.command is None
+    assert result.text == raw
+
+
+@pytest.mark.parametrize("options", [{"text_cleanup": False}, {"app_name": "code.exe"}])
+def test_multiline_list_request_does_not_format_literal_or_code(options):
+    raw = "Make a bulleted list: Olive oil\nResearch and development\nFirst aid supplies"
+    result = polish_local(raw, vocab=[], **options)
+    assert result.command is None
+    assert result.text == raw
+
+
+@pytest.mark.parametrize("raw, expected", [
+    ("Cats. New line. Dogs. New paragraph. Prose.", "Cats.\nDogs.\n\nProse."),
+    ("Cats\nNew line\nDogs\nNew paragraph\nProse.", "Cats\nDogs\n\nProse."),
+    ("Cats\r\nNew line\r\nDogs\r\nNew paragraph\r\nProse.", "Cats\nDogs\n\nProse."),
+    ("Cats. New line! Dogs. NEW PARAGRAPH? Prose.", "Cats.\nDogs.\n\nProse."),
+    ("New line. You are welcome.", "\nYou are welcome."),
+    ("Cats. New line. You. New paragraph. More prose.", "Cats.\nYou.\n\nMore prose."),
+    ("Cats. New line. New line. Dogs.", "Cats.\n\nDogs."),
+    ("Cats. New paragraph. New paragraph. Dogs.", "Cats.\n\nDogs."),
+])
+def test_inline_break_commands_have_strict_boundaries_and_no_edit_metadata(raw, expected):
+    result = polish_local(raw, vocab=[])
+    assert result.text == expected
+    assert result.command is None
+    assert not result.command_only and not result.discarded
+
+
+@pytest.mark.parametrize("raw", [
+    'She said "New line. New paragraph." Then continued.',
+    "She said ‘New line. New paragraph.’ Then continued.",
+    "The example is `New line. New paragraph.` Keep it literal.",
+    "I said new line. Then continued.",
+    "Say: new paragraph. Then continue.",
+    "Start a new line. Then continue.",
+    "A new line of business. A new paragraph about sales.",
+    "Cats new line Dogs new paragraph More prose.",
+    "Or New Line. Alright\nNow I'm just talking into a paragraph again.",
+])
+def test_inline_break_references_and_ambiguous_speech_stay_literal(raw):
+    result = polish_local(raw, vocab=[])
+    assert result.text == raw
+    assert result.command is None
+
+
+@pytest.mark.parametrize("options", [{"text_cleanup": False}, {"app_name": "code.exe"}])
+def test_inline_break_commands_do_not_run_in_literal_or_code_modes(options):
+    raw = "Cats. New line. Dogs. New paragraph. More prose. You."
+    result = polish_local(raw, vocab=[], **options)
+    # Code mode's existing path punctuation removes spaces after dots; it must
+    # still retain the spoken command words and add no line/paragraph breaks.
+    assert result.text == (raw if options.get("text_cleanup") is False else raw.replace(". ", "."))
+    assert result.command is None
+
+
+def test_inline_break_reference_guard_uses_original_context_after_earlier_command():
+    result = polish_local('Cats. New line. She said:\nNew paragraph\nThen wrote "New line."', vocab=[])
+    assert result.text == 'Cats.\nShe said:\nNew paragraph\nThen wrote "New line.".'
+    assert result.command is None
+
+
+@pytest.mark.parametrize("phrase, command, expected", [
+    ("New line.", "newline", "\n"),
+    ("New paragraph.", "paragraph", "\n\n"),
+    ("Cats new line.", "newline", "Cats\n"),
+    ("Cats new paragraph.", "paragraph", "Cats\n\n"),
+])
+def test_standalone_and_trailing_break_command_semantics_unchanged(phrase, command, expected):
+    result = polish_local(phrase, vocab=[])
+    assert result.text == expected
+    assert result.command == command
+    assert result.command_only == phrase.lower().startswith("new ")
+
+
+def test_inline_breaks_preserve_explicit_end_list_transition():
+    result = polish_local("Make a bulleted list: Olive oil. New line. Research and development. "
+                          "New line. First aid supplies. End list. More prose. New paragraph. Final thought.", vocab=[])
+    assert result.text == "- Olive oil\n- Research and development\n- First aid supplies\n\nMore prose.\n\nFinal thought."
+    assert result.command == "bullets"
+
+
+def test_inline_break_does_not_guess_end_of_explicit_list():
+    result = polish_local("Make a bulleted list: Cats. New line. Dogs. New paragraph. More prose.", vocab=[])
+    assert result.text == "- Cats\n- Dogs\n- More prose"
+    assert result.command == "bullets"
+
+
 @pytest.mark.parametrize("phrase", ["make a bulleted list 1 2 3.", "make a bolded list 1, 2, 3."])
 def test_digit_list_from_recognizer(phrase):
     assert polish_local(phrase, vocab=[]).text == "- 1\n- 2\n- 3"

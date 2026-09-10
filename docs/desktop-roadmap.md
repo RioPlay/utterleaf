@@ -1,6 +1,6 @@
 # Desktop roadmap
 
-[Roadmap hub](roadmap.md) ? [Mobile roadmap](mobile-roadmap.md)
+[Roadmap hub](roadmap.md) · [Mobile roadmap](mobile-roadmap.md)
 
 Scope: Windows, macOS, and Linux desktop application only.
 
@@ -30,7 +30,7 @@ intended field, with understandable local processing and minimal interruption.
 **Version 0.4.1:** model installation status and explicit download/repair, grouped
 speech/privacy controls, common audio/video decoding through a selected FFmpeg,
 existing-window activation, separators between completed dictation takes, and
-paused ?scratch that? with verified replacement. Windows GPU setup gives
+paused “scratch that” with verified replacement. Windows GPU setup gives
 platform-specific runtime instructions. Automatic correction still requires a
 supported native Windows Edit field; browsers and other unsupported fields use
 manual recovery. See the [user guide](user-guide.md) for the exact behavior.
