@@ -48,11 +48,27 @@ class DeviceTest {
         assertFalse(ime.getSubtypeAt(0).isAuxiliary)
         assertTrue(ime.getSubtypeAt(0).isAsciiCapable)
     }
-    @Test fun keyboardSettingsPreviewRendersWithoutEnteringText() {
+    @Test fun keyboardSettingsPracticeStaysLocalAndProtected() {
         val activity = instrumentation.startActivitySync(android.content.Intent(app, KeyboardSettingsActivity::class.java)
             .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        var practice: android.widget.EditText? = null
+        var oldKey: android.widget.Button? = null
         try {
             instrumentation.waitForIdleSync()
+            instrumentation.runOnMainSync {
+                assertTrue(activity.window.attributes.flags and android.view.WindowManager.LayoutParams.FLAG_SECURE != 0)
+                // Only the instrumented synthetic capture may temporarily bypass protection.
+                assertTrue(app.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0)
+                fun descendants(view: android.view.View): List<android.view.View> = listOf(view) +
+                    if (view is android.view.ViewGroup) (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) } else emptyList()
+                val views = descendants(activity.findViewById(android.R.id.content))
+                practice = views.filterIsInstance<android.widget.EditText>().single()
+                assertFalse(practice!!.isSaveEnabled); assertFalse(practice!!.showSoftInputOnFocus)
+                oldKey = views.filterIsInstance<android.widget.Button>().single { it.contentDescription == "a" }
+                oldKey!!.performClick()
+                assertEquals("a", practice!!.text.toString())
+                activity.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+            }
             instrumentation.runOnMainSync {
                 val content = activity.findViewById<android.view.ViewGroup>(android.R.id.content)
                 (content.getChildAt(0) as android.widget.ScrollView).fullScroll(android.view.View.FOCUS_DOWN)
@@ -66,8 +82,12 @@ class DeviceTest {
             val command = "screencap -p /data/local/tmp/utterleaf-keyboard-preview.png"
             android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command)).use { it.readBytes() }
         } finally {
-            instrumentation.runOnMainSync { activity.finish() }
+            instrumentation.runOnMainSync { activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE); activity.finish() }
             instrumentation.waitForIdleSync()
+            instrumentation.runOnMainSync {
+                oldKey?.performClick()
+                practice?.let { assertEquals("Practice text survived leaving the screen", "", it.text.toString()) }
+            }
         }
     }
     @Test fun typingKeysWorkWithoutSpeechAndResetSensitiveState() {

@@ -4,6 +4,10 @@ Selection and held deletion improve everyday editing. This is still an
 alpha keyboard; suggestions, autocorrection, swipe typing, multilingual layouts
 and emoji remain roadmap work.
 
+- Tune key height and bottom spacing independently, with a live practice area.
+  Practice text is bounded, protected from screenshots, never saved and cleared
+  when leaving settings. Reset restores default height and spacing.
+
 - Hold Shift first, then slide the spacebar with a second finger to select text.
   Either finger lifting stops selection, without typing a space or latching Shift.
   Tools → Select plus the arrows provides a tap-only route.

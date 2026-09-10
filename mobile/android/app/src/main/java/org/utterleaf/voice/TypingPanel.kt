@@ -63,12 +63,13 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     private val ink = Color.parseColor(if (options.light) "#17251D" else "#F0F5F2")
     private val accent = Color.parseColor(if (options.light) "#25643D" else "#A2DFB3")
     private val accentInk = Color.parseColor(if (options.light) "#FFFFFF" else "#10291B")
-    private val keyHeight = if (options.large) 66 else 54
+    private val keyHeight = if (options.keyHeightDp == 0) { if (options.large) 66 else 54 }
+        else options.keyHeightDp.coerceIn(48, 80)
     val view = KeyboardSurface(context)
     private val content = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
         isMotionEventSplittingEnabled = false
-        setPadding(Ui.dp(context, 3), 0, Ui.dp(context, 3), Ui.dp(context, 4))
+        setPadding(Ui.dp(context, 3), 0, Ui.dp(context, 3), Ui.dp(context, 4 + options.bottomPaddingDp.coerceIn(0, 80)))
         setBackgroundColor(surface)
         layoutDirection = View.LAYOUT_DIRECTION_LTR
     }
