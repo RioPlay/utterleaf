@@ -56,6 +56,7 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     private val letters = mutableListOf<Button>()
     private var shiftKey: Button? = null
     private var capsKey: Button? = null
+    private var toolbarStatus: TextView? = null
 
     fun reset(allowVoice: Boolean, numeric: Boolean, action: String) {
         shift = false; caps = false; symbols = numeric; moreSymbols = false; toolsOpen = false
@@ -139,11 +140,19 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     private fun type(value: String): Boolean {
         val accepted = if (ctrl || alt) modifiedCommit(value, ctrl, alt) else commit(value)
         releaseModifiers()
+        if (!accepted) unavailable() else toolbarStatus?.text = "English · offline"
         return accepted
     }
+    private fun unavailable() {
+        toolbarStatus?.apply {
+            text = "Key unavailable"
+            announceForAccessibility("This key is not supported in the current field")
+        }
+    }
     private fun special(code: Int) {
-        terminalKey(code, ctrl, alt, shift)
+        val accepted = terminalKey(code, ctrl, alt, shift)
         shift = false; releaseModifiers()
+        if (!accepted) unavailable() else toolbarStatus?.text = "English · offline"
     }
     private fun delete() {
         if (ctrl || alt || (options.terminal && shift)) special(KeyEvent.KEYCODE_DEL) else erase()
@@ -167,14 +176,6 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
             Triple("PgDn", "Page down", KeyEvent.KEYCODE_PAGE_DOWN)).forEach { (label, description, code) ->
             key(navigation, label, description, utility = true) { special(code) }
         }
-        if (functionKeys) {
-            for (start in listOf(1, 7)) {
-                val functions = row()
-                for (number in start until start + 6) {
-                    key(functions, "F$number", utility = true) { special(KeyEvent.KEYCODE_F1 + number - 1) }
-                }
-            }
-        }
     }
     private fun render() {
         view.removeAllViews(); letters.clear(); shiftKey = null; capsKey = null; ctrlKey = null; altKey = null
@@ -182,10 +183,11 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
         key(toolbar, if (toolsOpen) "Close" else "Tools", "Keyboard tools", 2f, utility = true, height = 48) {
             toolsOpen = !toolsOpen; render()
         }.apply { isSelected = toolsOpen }
-        toolbar.addView(TextView(context).apply {
+        toolbarStatus = TextView(context).apply {
             text = "English · offline"; textSize = 13f; setTextColor(ink); gravity = Gravity.CENTER
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-        }, LinearLayout.LayoutParams(0, Ui.dp(context, 48), 5.5f))
+        }
+        toolbar.addView(toolbarStatus, LinearLayout.LayoutParams(0, Ui.dp(context, 48), 5.5f))
         key(toolbar, "Voice", "Dictate", 2.5f, utility = true, height = 48) { dictate() }
             .apply { isEnabled = voiceAllowed }
         if (toolsOpen) {
@@ -198,7 +200,22 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
         }
         if (options.terminal) terminalRows()
         if ((options.numberRow || options.terminal) && !symbols && !functionKeys) characters(row(), "1234567890")
-        if (symbols) {
+        if (options.terminal && functionKeys) {
+            for (start in listOf(1, 7)) {
+                val functions = row()
+                for (number in start until start + 6) {
+                    key(functions, "F$number", utility = true) { special(KeyEvent.KEYCODE_F1 + number - 1) }
+                }
+            }
+            val editing = row()
+            shiftKey = key(editing, "⇧", "Shift off", 1.5f, utility = true) { shift = !shift; updateCase() }
+            key(editing, "Insert", utility = true, weight = 2f) { special(KeyEvent.KEYCODE_INSERT) }
+            key(editing, "Del", "Forward delete", 2f, utility = true) { special(KeyEvent.KEYCODE_FORWARD_DEL) }
+            key(editing, "ABC", "Return to letters", 3f, utility = true) {
+                functionKeys = false; symbols = false; render()
+            }
+            key(editing, "⌫", "Delete", 1.5f, utility = true) { delete() }
+        } else if (symbols) {
             characters(row(), if (moreSymbols) "~`|•√π÷×§∆" else "1234567890")
             val middle = row()
             characters(middle, if (moreSymbols) "£¢€¥^°={}\\" else "@#$%&-+()/")
@@ -219,7 +236,7 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
         }
         val bottom = row()
         key(bottom, if (symbols) "ABC" else "?123", "Switch letters and symbols", 1.5f, utility = true) {
-            symbols = !symbols; moreSymbols = false; render()
+            symbols = !symbols; moreSymbols = false; functionKeys = false; render()
         }
         key(bottom, ",") { type(",") }
         key(bottom, "space", "Space", 5f) { type(" ") }
