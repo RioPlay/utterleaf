@@ -16,6 +16,17 @@ intended field, with understandable local processing and minimal interruption.
 
 ## Foundation implemented
 
+### Responsiveness audit follow-up — September 10
+
+A scoped Aden/source review confirmed that settings work and IPC dispatch run
+outside the UI event loop. The local desktop test suite passed during this pass.
+Two delivery paths still need focused work: macOS/Linux paste subprocesses have
+no timeout, and cancellation is not propagated through the final paste operation.
+Add bounded helper execution and delivery cancellation tests before changing
+these paths; a timed-out helper must not trigger an automatic duplicate paste.
+This is an initial audit, not proof that every state or framework entry point has
+been covered or that the repository contains no unused code.
+
 - Local recognition and cleanup, with an option to preserve model output.
 - One-key toggle recording; microphone released between takes.
 - Bounded recording and queued takes, with explicit cancellation.

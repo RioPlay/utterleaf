@@ -62,3 +62,13 @@ owned after cancellation, and no delayed key repeat survives a panel reset.
 Prefer explicit state and resource ownership over compact but opaque code. Remove
 unused code only after checking source references, native/framework entry points
 and appropriate tests. Do not equate fewer lines with lower latency or security.
+
+## Transcript review follow-up
+
+The pending review change adds explicit expansion, preserves scrolling and
+selection in read-only review, and keeps Edit alongside the expansion control.
+Recording preferences and model choices are hidden while reviewing. Entering
+editing restores the smaller preview so the typing keys have more room. Test
+long transcripts, large fonts, landscape and small displays before declaring
+the layout finished. Advanced typing and terminal rows remain separate concerns;
+this change does not redesign the whole keyboard.
