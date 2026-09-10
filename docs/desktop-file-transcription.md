@@ -1,7 +1,6 @@
 # Local file transcription
 
-Implemented in the development branch; compiled-platform validation and real-speech
-quality remain release gates. This first version processes one explicitly selected
+Available from desktop v0.4.0. This first version processes one explicitly selected
 local file. It does not record system audio or create transcript history.
 
 Open **Tools → Transcribe a file** from the tray, or run `utterleaf --files`.
@@ -14,7 +13,7 @@ own separate window. No microphone opens merely because this tool is open.
 
 ![Local file review and export window](assets/screenshots/file-transcription.png)
 
-Actual development window with synthetic sample text; no personal recording is shown.
+Actual application window with synthetic sample text; no personal recording is shown.
 
 Packaged builds support integer PCM WAV: mono or stereo, 8/16/24/32-bit samples,
 and 8–48 kHz sample rates. Python's standard-library WAV reader and the existing
@@ -82,6 +81,12 @@ accepts a mono 16 kHz float array and the same cancel/progress arguments.
 returns the destination `Path`. It does not create missing parent directories.
 
 ## Verification and remaining gates
+
+The Windows executable passed local tiny.en CPU recognition of a public speech
+fixture and TXT/SRT/VTT exports. Its file window and existing-window activation
+also passed. Windows, macOS, and Linux builds/tests passed in
+[candidate CI](https://github.com/RioPlay/utterleaf/actions/runs/34426942978).
+This is functional evidence, not a broad speech-quality or performance benchmark.
 
 Unit tests cover the actual frozen-build PyAV stub with WAV decoding, PCM widths,
 truncation, bounded cancellation, timestamp validation/carry, Unicode, silence, literal editing

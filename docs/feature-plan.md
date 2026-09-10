@@ -10,8 +10,7 @@ these modes are not promises of Android or iOS availability.
 Updated September 9, 2026. This is a development plan, not a list of available
 features or promised release dates. Microphone open recovery is included in v0.3.4;
 the larger live modes below remain planned. File transcription and export are
-implemented in the next desktop candidate, with release validation in progress;
-they are not in the published v0.3.8 downloads.
+available from desktop v0.4.0 and are not in older v0.3.8 downloads.
 
 ## First: reliable capture and comfortable long takes
 
@@ -20,7 +19,7 @@ they are not in the published v0.3.8 downloads.
 | Windows shared microphone access | v0.3.4 | WASAPI shared mode for the system default or an unambiguously matching named endpoint; other platforms retain their capture backend. |
 | Temporary open failures | v0.3.4 | Close failed streams, retry device-unavailable once, keep other errors actionable, reset toggle state on failure. |
 | Missing selected microphone | v0.3.8 | Exact saved name required; no partial-name or default fallback. Refresh preserves selection and explains recovery. Identical hardware names remain a limitation. |
-| Device loss during recording | v0.4.0 candidate | Detect stopped streams or 3 seconds without callbacks; preserve captured speech for explicit recovery without automatic insertion. Silence remains valid. Native hotplug/timeout evidence pending. |
+| Device loss during recording | v0.4.0 | Detect stopped streams or 3 seconds without callbacks; preserve captured speech for explicit recovery without automatic insertion. Silence remains valid. Native hotplug/timeout evidence pending. |
 | Reconnect and permission recovery | Planned | Refresh devices, show selected/actual input, retry without restart; never change system permissions automatically. |
 | Hold until release | Planned | Replace the 120-second hold-mode cutoff with bounded incremental processing; preserve words and order across boundaries. |
 | Optional toggle-session limit | Planned | Configurable duration; countdown only when limited, optional elapsed time otherwise. |
@@ -52,8 +51,8 @@ flowchart LR
     E --> J[Optional translation]
 ```
 
-This diagram describes the broader planned architecture. The next desktop candidate
-adds structured start/end segments alongside the unchanged string dictation API.
+This diagram describes the broader planned architecture. Desktop v0.4.0 adds
+structured start/end segments alongside the unchanged string dictation API.
 Keep spoken edit commands out of captions and meeting transcripts: someone saying
 “scratch that” in a video must not trigger an edit to the user's document.
 
@@ -61,7 +60,7 @@ Keep spoken edit commands out of captions and meeting transcripts: someone sayin
 
 1. **File transcription and subtitle export.** Open supported audio/video, show
    progress and cancellation, export TXT/SRT/VTT, preserve timestamps, and test
-   long files and malformed input. The candidate supports bounded integer PCM WAV
+   long files and malformed input. Version 0.4.0 supports bounded integer PCM WAV
    in packaged builds without adding codecs; source installations with PyAV support
    additional media. See [scope and limits](desktop-file-transcription.md).
 2. **Live captions.** Select system audio, with explicit start/stop and a movable,

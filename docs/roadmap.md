@@ -17,7 +17,7 @@ are requirements throughout development, not finishing touches.
 | iOS | A separately implemented keyboard and local speech experience within platform restrictions | [iOS feasibility and milestones](mobile-roadmap.md#ios-track) |
 | Shared product direction | Security, privacy, accessibility principles, branding, and candidate ideas | [Ideas and decisions](ideas.md) ? [Development boundaries](development-boundaries.md) |
 
-Desktop v0.3.8 and [Android 0.1.0-alpha03](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha03)
+Desktop v0.4.0 and [Android 0.1.0-alpha03](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha03)
 have independent release histories. Android alpha03 includes an **English typing
 keyboard with local dictation**, preferences, preview extension and Obtainium setup,
 published as a signed APK. It is an early foundation; physical device, accessibility

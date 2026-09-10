@@ -47,7 +47,7 @@ Click the tray icon (or right-click → **Settings…**) to open Settings. First
 
 Prefer a clear screen? **Tray icon only** is the default. Switch the overlay on
 from the tray's **Floating indicator** toggle, or choose **Tray + floating indicator**
-under Dictation → Recording feedback. Live captions only run when the overlay is visible.
+under Dictation → Recording feedback. The dictation preview only runs when the overlay is visible.
 Settings uses a dark theme by default. Native system dialogs follow the OS theme.
 Controls are grouped by task, with Save and Close visible while you scroll.
 

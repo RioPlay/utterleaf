@@ -21,9 +21,24 @@ Reserve `utterleaf/app.py`, `config.py`, `settings.py`, `settings_ui.py`, and
 roadmap status edits and shared CI changes for the coordinator. Package owners may
 write isolated tests and evidence notes. Do not revert another agent's work.
 
-Android PR #2 is already in CI: preserve its source and acceptance work until its
-result is reviewed. Mobile release, signing, Obtainium, versioning, and publishing
-remain exclusively with the coordinator. Do not combine desktop changes into that PR.
+Android foundation PR #2 and live-IME follow-up PR #3 are merged. Signed alpha03
+is published; the Shift/live-IME follow-up is source-tested and is not retroactively
+included in that APK. Mobile release, signing, Obtainium, versioning, and publishing
+remain coordinator-owned and independent of desktop releases.
+
+## Implementation checkpoint
+
+Desktop v0.4.0 implements D2 interruption recovery, D4 structured
+recognition, D6 selective backup with its Settings flow, and a bounded D8 file
+review/export window. D1 has Windows clipboard identity guards; rich formats and
+atomic native restoration remain open. Physical microphone and accessibility
+acceptance is still required. These increments do not complete D5 long sessions,
+captions, meetings, speaker labels, translation, or the iOS track.
+
+Android has the initial typing/preferences foundation, signed distribution and
+Obtainium configuration. API 35 tests now drive the live IME through editor changes;
+real Obtainium upgrades, diverse phones, and assistive-technology workflows remain
+external evidence gates. Use the platform roadmaps for current release status.
 
 ## Gates for every package
 
@@ -57,7 +72,7 @@ earlier work. Paths not currently present below are proposed new files.
 | D5 / D2 + D4 | Bounded long sessions: new `streaming.py`, `tests/test_streaming.py`; audio owner and integrator merge dependent wiring | Specify chunk duration/overlap and a hard sample/queue byte cap before coding. Simulate one hour including decoder slower than capture; retained audio stays within the declared cap and output is ordered. Test repeated words and punctuation across overlap, cancel at every boundary, queue saturation, and final tail. Backpressure stops safely with explanation rather than dropping speech or spilling audio to disk. Remove hold cutoff only after integration proves these invariants. Toggle limits remain optional and visible. |
 | D6 / now, integrate after D3 | Selective backup/vocabulary helper: new `backup.py`, `tests/test_backup.py`; read-only use of `Config` and vocabulary format | Versioned allowlist export with preview; exclude audio, transcripts, logs, credentials/control tokens and device paths/identity. Reject oversized, unknown-version, malformed and invalid-value imports before mutation. Import cannot enable network or weaken clipboard protection implicitly. Test Unicode vocabulary, explicit replace/merge decisions, cancellation, and atomic rollback of affected files. UI/CLI wiring belongs to integrator. No surrounding-text or clipboard scanning. |
 | D7 / D3 + D4 | Explain speed choices: `scripts/benchmark_dictation.py`, new benchmark tests/evidence; integrator owns UI choices | User-requested local measurements report named model, engine, actual device, language, CPU/RAM, cold start, time to listening, and end-to-delivery p50/p95. Public/consented corpus covers names, numbers, negation, accents, multilingual speech, noise and silence. Record sample count and failures; derive Faster/Balanced/More accurate defaults from real measurements, not synthetic timing. No speech upload. |
-| D8 / D4 + D5 | Local file transcription and export: new `file_transcription.py`, `subtitles.py`, respective tests; integrator owns entry points | First ship a declared supported decoder/format set; review decoder licenses, size, hostile-media handling and packaged availability before widening it. Explicit file selection, progress, cancel/discard and TXT/SRT/VTT export. Test malformed/truncated input, long-file bounded memory, Unicode, timestamp ordering/rounding, and output overwrite failure. Captured words such as “scratch that” remain transcript text. No automatic model/media downloads. |
+| D8 / D4; streaming expansion needs D5 | Local file transcription and export: `file_transcription.py`, `transcript.py`, respective tests; integrator owns entry points | First ship a declared supported decoder/format set; review decoder licenses, size, hostile-media handling and packaged availability before widening it. Explicit file selection, progress, cancel/discard and TXT/SRT/VTT export. Test malformed/truncated input, long-file bounded memory, Unicode, timestamp ordering/rounding, and output overwrite failure. Captured words such as “scratch that” remain transcript text. No automatic model/media downloads. |
 | D9 / D5 + D8 | Windows live captions then platform adapters: new `system_audio.py`, `captions.py`, respective tests | Explicit audio-source selection and start/stop; overlay never starts at launch. Distinguish provisional/final text; test revisions, clock continuity, cancellation and bounded memory. Native tests measure caption latency and prove source routing. macOS/Linux adapters require separate permission/native evidence; desktop shortcut registration alone proves neither capture nor delivery. |
 | D10 / D9 | Meeting sessions: new `meeting.py`, `tests/test_meeting.py` | Explicit microphone/system-audio selection, pause, bookmarks, export/discard. One-hour capture keeps declared memory bounds and source-clock drift/echo/duplicate speech within recorded acceptance budgets. No calendar/bot access or automatic saving. Validate native audio routing and interruptions. |
 | D11 / D10 | Speaker labels: new `speakers.py`, tests, dependency decision note | Evaluate licensing, access requirements, offline behavior and resource use before selecting a model. Speaker 1/2 plus manual naming; keep available source tracks separate. Measure overlap, short turns and label instability on consented audio; support correction/refinement. No persistent voice identity. |

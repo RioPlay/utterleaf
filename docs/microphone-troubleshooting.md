@@ -19,7 +19,24 @@ not mean audio is being captured. An opening failure is not evidence that a
 particular app is responsible: disconnects, driver errors, and permissions can
 produce similar symptoms.
 
-## Recovery in v0.3.4
+## If recording stops unexpectedly (v0.4.0)
+
+Utterleaf checks whether the stream stopped or has sent no audio callbacks for
+three seconds. Ordinary quiet audio is valid; pauses in speech do not trigger this
+check. It releases the input and tries to recognize speech already captured,
+including when the interruption occurs during the short recording tail.
+
+Partial speech is **not inserted automatically**. If recovery succeeds, use
+**Copy last dictation (2 min)** in the tray and paste it where you intended.
+The recovery slot expires after two minutes; **Forget last dictation** clears it
+immediately. Cancel suppresses an unfinished recovery. No recording is saved.
+
+Reconnect the selected microphone and retry, or deliberately select another in
+Settings. Utterleaf never silently substitutes a different microphone. Native
+hotplug, Bluetooth, and permission behavior still depends on the platform/backend;
+some backends require restarting after reconnecting.
+
+## Opening recovery (since v0.3.4)
 
 These changes are included in v0.3.4. Update if you are still using v0.3.3:
 
@@ -55,8 +72,8 @@ physical microphones; stable hardware identifiers remain future work.
 
 Only PortAudio's device-unavailable error receives one retry, after 150 ms.
 Failed streams are closed first. Format and other errors are reported directly;
-Utterleaf does not change OS settings. Interrupted recording recovery and robust
-device hotplug re-enumeration are not implemented by this change.
+Utterleaf does not change OS settings. Robust device hotplug re-enumeration remains
+future work; interrupted-recording recovery is described above.
 
 Windows shared and exclusive access are described in [Microsoft's audio
 documentation](https://learn.microsoft.com/en-us/windows/win32/api/audiosessiontypes/ne-audiosessiontypes-audclnt_sharemode).

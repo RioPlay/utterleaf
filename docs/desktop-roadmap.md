@@ -52,10 +52,10 @@ Included: Windows shared microphone selection, a bounded retry for
 temporary device-unavailable errors, and resetting toggle state after a failed
 microphone start. These are included in v0.3.4, not v0.3.3.
 
-**Implemented, release validation in progress:** timestamped file transcription
+**Version 0.4.0:** timestamped file transcription
 with a review/export window and explicit TXT/SRT/VTT output, selective preference
 and vocabulary backup, clipboard change-identity checks, and microphone interruption
-recovery. These changes are not included in the published v0.3.8 downloads.
+recovery. These changes are not included in older v0.3.8 downloads.
 See [file transcription](desktop-file-transcription.md) and
 [backup and import](desktop-backup.md) for supported scope and remaining gates.
 

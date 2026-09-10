@@ -1,6 +1,6 @@
 # Back up preferences and vocabulary
 
-Implemented in the v0.4.0 candidate; not included in the published v0.3.8 downloads.
+Available from desktop v0.4.0; older v0.3.8 downloads do not include this feature.
 
 Settings → Help → Local backup provides export and import review dialogs. Save
 or discard any pending Settings edits first. Export lets you select preferences and
@@ -12,7 +12,7 @@ There is no backup CLI yet.
 
 ![Reviewing a selective import](assets/screenshots/backup-import.png)
 
-Actual development dialog using synthetic preferences and vocabulary.
+Actual application dialog using synthetic preferences and vocabulary.
 
 The validation core reads and writes no files, starts no capture, and makes no
 network calls. The separate persistence helper only reads selected backup files

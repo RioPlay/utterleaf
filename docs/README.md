@@ -16,8 +16,8 @@ features are kept in the roadmap.
 | Fix a busy or missing microphone | [Microphone help](microphone-troubleshooting.md) |
 | Set up Wayland shortcuts and paste | [Wayland help](wayland.md) |
 | Restore default preferences | [Settings and recovery](user-guide.md#settings-and-recovery) |
-| Preview upcoming desktop file transcription | [Local files and subtitle exports](desktop-file-transcription.md) |
-| Review upcoming selective backup | [Preferences and vocabulary backup](desktop-backup.md) |
+| Transcribe a local file or export subtitles | [Local files and subtitle exports](desktop-file-transcription.md) |
+| Back up preferences and vocabulary | [Selective backup and import](desktop-backup.md) |
 | Find out what's coming next | [Roadmap hub](roadmap.md) · [Desktop](desktop-roadmap.md) · [Mobile](mobile-roadmap.md) |
 | See proposed ideas and product decisions | [Ideas](ideas.md) |
 | Try mobile voice input | [Android preview and iOS plans](mobile.md) |
