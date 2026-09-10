@@ -66,6 +66,8 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         }
     }
     private val edit = Ui.button(context, "Edit transcript") { beginEditing() }
+    private val modelChoice = Ui.button(context, "Speech model") { chooseModel() }
+    private val modelOptions = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val keep = Ui.button(context, "Keep reviewing") { if (mode == Mode.REVIEW || mode == Mode.EDIT) scheduleExpiry() }
     private val holdMode = CheckBox(context).apply {
         text = "Hold to speak and insert on release"; setTextColor(Ui.ink); minHeight = Ui.dp(context, 48)
@@ -90,7 +92,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
             marginEnd = Ui.dp(context, 8)
         })
         heading.addView(Ui.text(context, "Utterleaf Voice", 20f))
-        view.addView(heading); view.addView(status)
+        view.addView(heading); view.addView(status); view.addView(modelChoice); view.addView(modelOptions)
         view.addView(preview, LinearLayout.LayoutParams(-1, Ui.dp(context, 96)))
         view.addView(editingKeys); view.addView(edit); view.addView(keep)
         // Keep the primary action the same distance above the bottom of the panel.
@@ -212,6 +214,11 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         updateControls(); preview.requestFocus()
     }
     private fun updateControls() {
+        val models = ModelStore.available(context.noBackupFilesDir)
+        modelChoice.visibility = if (models.size > 1) View.VISIBLE else View.GONE
+        modelChoice.isEnabled = mode == Mode.IDLE && !disposed
+        if (mode != Mode.IDLE) modelOptions.removeAllViews()
+        modelChoice.text = "Model · ${ModelStore.installed(context.noBackupFilesDir)?.id ?: "choose"}"
         stateIcon.setImageResource(when (mode) {
             Mode.CAPTURE -> R.drawable.voice_recording
             Mode.PROCESSING -> R.drawable.voice_busy
@@ -232,7 +239,30 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         status.text = "Microphone off · preview clears in 2 minutes"
         handler.postDelayed(warning, 90000); handler.postDelayed(expire, 120000)
     }
+    private fun chooseModel() {
+        if (disposed || mode != Mode.IDLE) return
+        val models = ModelStore.available(context.noBackupFilesDir)
+        val selected = ModelStore.installed(context.noBackupFilesDir)
+        val token = gate.next()
+        if (modelOptions.childCount > 0) { modelOptions.removeAllViews(); return }
+        models.forEach { spec ->
+                val profile = when (spec.id) { "tiny.en" -> "Fast"; "base.en" -> "Balanced"; else -> "Larger · more memory and time" }
+                modelOptions.addView(Ui.button(context, "$profile · ${spec.id}") {
+                if (!disposed && mode == Mode.IDLE && gate.accepts(token)) {
+                    if (WorkLease.acquire()) {
+                        try { status.text = if (ModelStore.select(context.noBackupFilesDir, spec))
+                            "${spec.id} selected · microphone off" else "Model unavailable. Open setup to import it." }
+                        catch (_: Exception) { status.text = "Could not switch models. Try again in setup." }
+                        finally { WorkLease.release() }
+                        updateControls()
+                    } else status.text = "Wait for the current take or import to finish."
+                }
+                modelOptions.removeAllViews()
+            }.apply { isSelected = spec == selected })
+        }
+    }
     fun clear() {
+        modelOptions.removeAllViews()
         rearm?.let { handler.removeCallbacks(it) }; rearm = null; inhibitUntil = 0
         gate.invalidate(); cancelHold(); autoInsert = false; released = false
         session?.cancel(); session = null; editingGeneration++; editingKeys.removeAllViews()

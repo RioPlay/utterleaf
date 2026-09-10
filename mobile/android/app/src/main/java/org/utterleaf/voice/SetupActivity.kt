@@ -22,6 +22,9 @@ class SetupActivity : Activity() {
     private lateinit var enableKeyboard: Button
     private lateinit var chooseKeyboard: Button
     private lateinit var modelDetails: TextView
+    private lateinit var useModel: Button
+    private lateinit var removeModel: Button
+    private val modelChoices = mutableMapOf<ModelStore.Spec, RadioButton>()
     private lateinit var downloadModel: Button
     private lateinit var importModel: Button
     private var selectedModel = ModelStore.catalog.first()
@@ -59,7 +62,7 @@ class SetupActivity : Activity() {
         column.addView(voiceStatus)
         column.addView(Ui.text(this, "Choose an English model, import its verified file, then allow your microphone. Use the keyboard's Voice button to dictate; no extra keyboard is required."))
         column.addView(Ui.text(this, "1 · Add a speech model", 19f))
-        column.addView(Ui.text(this, "One model is kept at a time. Larger models need more storage, RAM and processing time; speed and accuracy depend on your phone and speech. All three options are English only."))
+        column.addView(Ui.text(this, "Keep multiple models and switch between takes. Tiny is the fast option, Base balances size and processing, and Small offers more capacity at a higher cost in memory and time. Larger does not guarantee accuracy. All three options are English only."))
         importModel = Ui.button(this, "Import a model") {
             importPending = true
             try { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -74,6 +77,7 @@ class SetupActivity : Activity() {
         val choices = RadioGroup(this)
         ModelStore.catalog.forEach { spec ->
             choices.addView(RadioButton(this).apply {
+                modelChoices[spec] = this
                 id = View.generateViewId()
                 text = "${spec.id} · ${megabytes(spec.size)} MB\n${spec.description}"
                 setTextColor(Ui.ink)
@@ -89,6 +93,16 @@ class SetupActivity : Activity() {
         column.addView(choices)
         modelDetails = Ui.text(this, "")
         column.addView(modelDetails)
+        useModel = Ui.button(this, "Use selected model") {
+            if (WorkLease.acquire()) {
+                try { status.text = if (ModelStore.select(noBackupFilesDir, selectedModel))
+                    "${selectedModel.id} selected for the next take." else "Import this model first." }
+                catch (_: Exception) { status.text = "Could not switch models. The previous choice is kept." }
+                finally { WorkLease.release() }
+                refreshReadiness(); refreshModelChoice()
+            } else status.text = "Wait for the current take or import to finish."
+        }
+        column.addView(useModel)
         downloadModel = Ui.button(this, "") {
             val spec = selectedModel
             AlertDialog.Builder(this).setTitle("Download ${spec.id} in your browser?")
@@ -110,16 +124,19 @@ class SetupActivity : Activity() {
         })
         column.addView(Ui.text(this, "3 · Try it in a text field", 19f))
         column.addView(Ui.text(this, "Tap Dictate on Utterleaf Keyboard to start recording, then Stop to review. In the separate voice provider, tap Speak first. Edit transcript lets you make changes before Insert. Optional hold mode inserts after release and recognition. Each take has a 120-second limit. Preview clears after two minutes unless you choose Keep reviewing, and immediately when you leave or change fields. Password typing works; dictation is disabled in password fields."))
-        column.addView(Ui.button(this, "Delete imported model") {
-            AlertDialog.Builder(this).setTitle("Delete the model?").setMessage("Typing will still work. Import a model again whenever you want to dictate.")
+        removeModel = Ui.button(this, "Delete selected model") {
+            val deleting = selectedModel
+            AlertDialog.Builder(this).setTitle("Delete ${deleting.id}?").setMessage("Only this imported model is removed. Typing will still work. You can select another installed model or import it again later.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Delete") { _, _ ->
                     if (WorkLease.acquire()) {
-                        try { status.text = if (!ModelStore.file(noBackupFilesDir).exists() || ModelStore.file(noBackupFilesDir).delete()) "Model deleted. Typing still works without a model." else "Could not delete model. Try again." }
+                        try { status.text = if (ModelStore.remove(noBackupFilesDir, deleting)) "Model deleted." else "Could not delete model. Try again." }
+                        catch (_: Exception) { status.text = "Could not delete model. Try again." }
                         finally { WorkLease.release() }
-                        refreshReadiness()
+                        refreshReadiness(); refreshModelChoice()
                     } else status.text = "Wait for the current take or import to finish."
                 }.show()
-        })
+        }
+        column.addView(removeModel)
         val companion = Ui.column(this).apply { visibility = View.GONE }
         column.addView(Ui.button(this, "Advanced · voice with another keyboard") {
             companion.visibility = if (companion.visibility == View.VISIBLE) View.GONE else View.VISIBLE
@@ -155,9 +172,22 @@ class SetupActivity : Activity() {
         if (!::modelDetails.isInitialized || !::downloadModel.isInitialized || !::importModel.isInitialized) return
         modelDetails.text = "${selectedModel.filename}\nDownload: ${megabytes(selectedModel.size)} MB. Allow about ${megabytes(selectedModel.size * 2)} MB free for the browser download and verified import. Your current model stays installed until verification succeeds. You can remove the browser's downloaded copy afterwards."
         downloadModel.text = "Download ${selectedModel.id} in browser"
+        val installed = ModelStore.available(noBackupFilesDir)
+        val active = ModelStore.installed(noBackupFilesDir)
+        modelChoices.forEach { (spec, choice) ->
+            val profile = when (spec.id) { "tiny.en" -> "Fast"; "base.en" -> "Balanced"; else -> "Larger" }
+            val state = if (spec == active) "Active" else if (spec in installed) "Installed" else "Not installed"
+            choice.text = "$profile · ${spec.id} · ${megabytes(spec.size)} MB · $state\n${spec.description}"
+        }
+        if (::useModel.isInitialized) {
+            useModel.text = if (selectedModel == active) "${selectedModel.id} is active" else "Use ${selectedModel.id}"
+            useModel.isEnabled = selectedModel in installed && selectedModel != active
+        }
+        if (::removeModel.isInitialized) removeModel.isEnabled = selectedModel in installed
     }
     private fun microphoneAllowed() = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
     private fun refreshReadiness() {
+        refreshModelChoice()
         if (!::companionStatus.isInitialized) return
         val manager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         val enabled = manager.enabledInputMethodList

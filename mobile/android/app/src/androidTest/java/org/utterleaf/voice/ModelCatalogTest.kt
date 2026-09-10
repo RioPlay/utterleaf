@@ -220,6 +220,59 @@ class ModelCatalogTest {
         }
     }
 
+    @Test fun verifiedModelsRemainAvailableAndSelectionIsAtomic() {
+        val directory = temporaryDirectory()
+        try {
+            instrumentation.context.assets.open("ggml-tiny.en.bin").use { ModelStore.install(it, directory) }
+            val tiny = ModelStore.catalog.single { it.id == "tiny.en" }
+            val base = ModelStore.catalog.single { it.id == "base.en" }
+            assertEquals(tiny, ModelStore.installed(directory))
+            instrumentation.context.assets.open("ggml-base.en.bin").use { ModelStore.install(it, directory) }
+            assertEquals(base, ModelStore.installed(directory))
+            assertEquals(setOf("tiny.en", "base.en"), ModelStore.available(directory).map { it.id }.toSet())
+            assertTrue(ModelStore.select(directory, tiny))
+            assertEquals(tiny, ModelStore.installed(directory))
+            assertTrue(ModelStore.file(directory).name == tiny.filename)
+            val before = ModelStore.file(directory)
+            assertFalse(ModelStore.select(directory, ModelStore.catalog.single { it.id == "small.en" }))
+            assertEquals(tiny, ModelStore.installed(directory))
+            assertEquals(before, ModelStore.file(directory))
+            assertEquals(tiny.size, before.length())
+            assertTrue(ModelStore.remove(directory, tiny))
+            assertNull(ModelStore.installed(directory))
+            assertFalse(ModelStore.ready(directory))
+            assertTrue(ModelStore.remove(directory, base))
+            assertFalse(ModelStore.available(directory).any { it.id == "base.en" })
+        } finally { directory.deleteRecursively() }
+    }
+
+    @Test fun legacyReviewedSizeIsSelectableButNeverNativeAndDeletionCannotFallback() {
+        val directory = temporaryDirectory()
+        val base = ModelStore.catalog.single { it.id == "base.en" }
+        val tiny = ModelStore.catalog.single { it.id == "tiny.en" }
+        try {
+            RandomAccessFile(File(directory, "tiny.en.bin"), "rw").use { it.setLength(base.size) }
+            assertTrue(ModelStore.available(directory).any { it.id == base.id })
+            assertTrue(ModelStore.select(directory, base))
+            assertEquals(base, ModelStore.installed(directory))
+            assertEquals("tiny.en.bin", ModelStore.file(directory).name)
+
+            instrumentation.context.assets.open("ggml-tiny.en.bin").use { ModelStore.install(it, directory) }
+            assertEquals(tiny, ModelStore.installed(directory))
+            assertTrue(ModelStore.available(directory).map { it.id }.containsAll(listOf("tiny.en", "base.en")))
+            assertTrue(ModelStore.select(directory, tiny))
+            assertTrue(ModelStore.remove(directory, base))
+            assertFalse(ModelStore.available(directory).any { it.id == base.id })
+
+            assertTrue(ModelStore.remove(directory, tiny))
+            assertNull(ModelStore.installed(directory))
+            assertFalse(ModelStore.ready(directory))
+            assertEquals("ggml-tiny.en.bin", ModelStore.file(directory).name)
+            assertFalse(ModelStore.select(directory, base))
+            assertNull(ModelStore.installed(directory))
+        } finally { directory.deleteRecursively() }
+    }
+
     @Test fun setupSeparatesTypingVoiceAndSelectableModelLinks() {
         val activity = instrumentation.startActivitySync(Intent(app, SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         fun labels(view: View): List<TextView> = when (view) {
@@ -236,7 +289,7 @@ class ModelCatalogTest {
                 val choices = texts.filterIsInstance<RadioButton>()
                 assertEquals(3, choices.size)
                 for (spec in ModelStore.catalog) {
-                    choices.single { it.text.startsWith(spec.id) }.performClick()
+                    choices.single { it.text.contains("· ${spec.id} ·") }.performClick()
                     assertTrue(texts.any { it.text.toString() == "Download ${spec.id} in browser" })
                     assertTrue(texts.any { it.text.toString() == "Import a model" })
                     assertEquals(1, choices.count { it.isChecked })

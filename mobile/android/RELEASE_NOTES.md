@@ -1,4 +1,22 @@
-# Utterleaf Android 0.1.0-alpha09
+# Utterleaf Android 0.1.0-alpha10
+
+- Hold Ctrl or Alt and press another key with a second finger. Ctrl+Backspace
+  sends word deletion to compatible editors. The modifier remains active for
+  subsequent presses until released; holding Delete repeats the modified key.
+  Moving outside, cancellation and panel changes clear the physical chord.
+  Tap-to-arm remains available. Application shortcut behavior varies; this does
+  not implement drag-to-preview deletion or universal desktop shortcut parity.
+- Held deletion has its own preference, enabled by default, separate from
+  repeated-tap filtering. Reset restores it without deleting imported models.
+- Keep multiple reviewed English models installed and switch without reimporting.
+  Setup shows Fast (tiny.en), Balanced (base.en) and Larger (small.en), plus
+  installed/active status. A larger model costs more memory and processing time
+  and does not guarantee accuracy. The idle voice panel offers a quick model
+  choice when multiple models are installed. Switches apply between takes.
+- Old verified imports remain available after upgrading. Imports still verify
+  full SHA-256 before publication; invalid imports preserve the previous model.
+  Delete an individual model in setup. Deleting the active model requires
+  selecting another installed model before dictation can resume.
 
 One-handed voice controls and local transcript editing build on the keyboard editing improvements. This is still an
 alpha keyboard; suggestions, autocorrection, swipe typing, multilingual layouts
