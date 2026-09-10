@@ -38,7 +38,7 @@ On Android, install the signed APK and follow its keyboard setup.
 | Windows x64 | [Windows ZIP](https://github.com/RioPlay/utterleaf/releases/latest/download/Utterleaf-windows-x64-cpu.zip) | Open `Utterleaf/utterleaf.exe` |
 | macOS Apple Silicon | [macOS archive](https://github.com/RioPlay/utterleaf/releases/latest/download/Utterleaf-macos-arm64.tar.gz) | [Permissions & launch](docs/installation.md#macos) |
 | Linux x64 | [Linux archive](https://github.com/RioPlay/utterleaf/releases/latest/download/Utterleaf-linux-x64.tar.gz) | [X11 setup](docs/installation.md#linux) · [Wayland setup](docs/wayland.md) |
-| Android ARM64 preview | [Signed Android alpha11 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha11/Utterleaf-Android-0.1.0-alpha11.apk) | [Setup & current limits](docs/mobile.md) |
+| Android ARM64 preview | [Signed Android alpha12 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha12/Utterleaf-Android-0.1.0-alpha12.apk) | [Setup & current limits](docs/mobile.md) |
 
 Linux builds target Ubuntu 24.04 or compatible distributions. Downloads are
 unsigned on desktop; the Android APK is signed. macOS is not notarized. Wayland needs manual shortcut/paste setup and

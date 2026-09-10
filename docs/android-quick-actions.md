@@ -1,6 +1,6 @@
 # Android quick editing actions
 
-Implemented on the development branch; not included in the alpha11 APK.
+Released in [signed Android alpha12](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha12).
 
 Tap **Edit** in the toolbar for Undo, Redo, Select all, Cut, Copy, Paste, four-way
 cursor movement, selection mode, Home and End. The action panel replaces letters
@@ -39,4 +39,16 @@ these action buttons.
 Regression coverage exercises native EditText undo/redo, selection and clipboard
 commands; password and raw-terminal guards; invalid connections; stale buttons;
 and panel height. Physical-device, external-editor and accessibility acceptance
-remain open. CI results must be recorded before treating the change as verified.
+remain open. Revision `aec275b` passed [Android CI](https://github.com/RioPlay/utterleaf/actions/runs/34498263015):
+74 emulator tests with zero failures/skips, JVM tests, lint and release contracts.
+[Desktop CI](https://github.com/RioPlay/utterleaf/actions/runs/34498263059) passed.
+The first candidate failed an existing live-hold test with a fixed scheduling wait;
+the test now awaits the actual overlay within a bounded deadline. The complete
+suite passed afterward, including insertion after hold-slide-release.
+
+[Signed publication](https://github.com/RioPlay/utterleaf/actions/runs/34499446037)
+verified certificate continuity, package/version identity and emulator
+upgrade/reinstallation. Downloaded APK SHA-256:
+`c327c5b6d11544f53d2f7da5e503bd18e781939e047091628aad0e3ff2a524d2`.
+The practice-panel capture was inspected; the OS clipboard preview overlaps it,
+so it is not used as a promotional screenshot. This is not physical-phone QA.

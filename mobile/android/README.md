@@ -3,9 +3,13 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha11 is released as a signed development preview.**
+**0.1.0-alpha12 is released as a signed development preview.**
 
-New in alpha11: the single-row toolbar has **123** (number row),
+New in alpha12: **Edit** opens Undo, Redo, Select all, Cut, Copy, Paste and
+navigation in a panel that replaces the letters. **ABC** returns to typing.
+[Validation and editor limits](../../docs/android-quick-actions.md).
+
+Alpha11 added the single-row toolbar with **123** (number row),
 **>_** (terminal controls) and the Utterleaf dictation icon. Quick toggles save
 locally and stay synchronized with the Settings preview. Voice review supports
 **Expand transcript**, scrolling, selection and **Edit transcript**; recording
@@ -69,11 +73,11 @@ prediction, accessibility and device coverage remain on the
 
 ## Try it
 
-1. [Download and install Utterleaf Android alpha11](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha11/Utterleaf-Android-0.1.0-alpha11.apk)
+1. [Download and install Utterleaf Android alpha12](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha12/Utterleaf-Android-0.1.0-alpha12.apk)
    on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Use `Utterleaf-Android-0.1.0-alpha11.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha11).
+   Use `Utterleaf-Android-0.1.0-alpha12.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha12).
    If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
-   then install alpha11. Uninstalling removes the imported model and other app data.
+   then install alpha12. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
    the same release identity and should be updated in place rather than uninstalled.
 2. Open **Utterleaf Voice**. Under **Your keyboard**, enable **Utterleaf Keyboard**

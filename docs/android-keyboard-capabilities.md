@@ -41,6 +41,12 @@ prediction exists.
 
 ## Current implementation and evidence boundary
 
+Current editing increment: [alpha12 quick actions](android-quick-actions.md)
+implements editor-owned Undo/Redo, Select all, Cut/Copy/Paste and navigation in
+a replacing panel. The linked evidence covers 74 emulator tests; external-editor,
+physical-device and accessibility acceptance remain open. Historical milestones
+and broader planned capabilities below retain their original scope.
+
 Alpha04 introduced English letters/symbols, Shift/Caps, left/right cursor movement,
 deletion and editor actions; local speech with explicit insertion; basic appearance,
 feedback and repeat preferences; private model import and signed distribution.
