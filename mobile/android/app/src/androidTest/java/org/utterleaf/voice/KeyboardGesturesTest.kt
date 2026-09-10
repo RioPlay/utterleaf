@@ -60,9 +60,7 @@ class KeyboardGesturesTest {
         }
         fun hold(button: Button) {
             send(button, MotionEvent.ACTION_DOWN)
-            Thread.sleep(ViewConfiguration.getLongPressTimeout().toLong() + 100)
-            instrumentation.waitForIdleSync()
-            assertTrue("Attached button did not open hold choices", hasStrip())
+            UiAwait.until("Attached button did not open hold choices") { hasStrip() }
         }
         fun multiTouch(button: Button) = main {
             val properties = Array(2) { index -> MotionEvent.PointerProperties().apply { id = index; toolType = MotionEvent.TOOL_TYPE_FINGER } }
@@ -185,8 +183,7 @@ class KeyboardGesturesTest {
         f.hold(key); main { f.panel.reset(false, false, "Enter") }; f.send(key, MotionEvent.ACTION_UP)
         key = f.key("a"); f.send(key, MotionEvent.ACTION_DOWN)
         main { f.panel.reset(false, false, "Enter") }
-        Thread.sleep(ViewConfiguration.getLongPressTimeout().toLong() + 100)
-        assertFalse(f.hasStrip())
+        UiAwait.remains("Reset must cancel pending hold choices") { !f.hasStrip() && f.inserted.isEmpty() }
         key = f.key("a"); f.hold(key); main { f.host.removeView(f.panel.view) }; f.send(key, MotionEvent.ACTION_UP)
         assertTrue(f.inserted.isEmpty()); assertFalse(f.hasStrip())
     }

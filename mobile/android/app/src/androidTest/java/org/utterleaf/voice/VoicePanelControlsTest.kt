@@ -41,8 +41,8 @@ class VoicePanelControlsTest {
         }
         fun hold(): Button {
             holdMode(); val button = key("Hold to speak"); touch(button, MotionEvent.ACTION_DOWN)
-            Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 100)
-            instrumentation.waitForIdleSync(); assertEquals(1, main { fake.started }); return button
+            UiAwait.until("Hold did not start capture") { fake.started == 1 }
+            assertEquals(1, main { fake.started }); return button
         }
         fun capture(name: String) {
             require(name in setOf("voice-review", "voice-edit"))
@@ -166,8 +166,7 @@ class VoicePanelControlsTest {
     @Test fun shortTapDoesNotCaptureAndExtraFingerCancelsHold() = withPanel { f ->
         f.holdMode(); val primary = f.key("Hold to speak")
         f.touch(primary, MotionEvent.ACTION_DOWN); f.touch(primary, MotionEvent.ACTION_UP)
-        Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 100)
-        assertEquals(0, main { f.fake.started })
+        UiAwait.remains("Short tap must not start capture") { f.fake.started == 0 }
         val held = f.hold(); f.extraFinger(held); f.touch(held, MotionEvent.ACTION_UP)
         main { f.results.single()("cancelled") }
         assertTrue(f.inserted.isEmpty()); assertEquals(1, main { f.fake.cancelled })

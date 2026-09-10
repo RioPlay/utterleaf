@@ -72,18 +72,23 @@ class DeleteRepeaterTest {
     @Test fun holdRepeatsAtSteadyIntervalAndReleaseDoesNotClick() {
         val fixture = fixture(); try {
         val erases = mutableListOf<Long>(); val repeater = DeleteRepeater(); val target = fixture.button
+        var downTime = 0L
         instrumentation.runOnMainSync {
             target.setOnClickListener { erases += -1L }
             repeater.attach(target, true) { erases += SystemClock.uptimeMillis() }
-            val now = SystemClock.uptimeMillis(); send(target, event(MotionEvent.ACTION_DOWN, 20f, 20f, now))
+            downTime = SystemClock.uptimeMillis(); send(target, event(MotionEvent.ACTION_DOWN, 20f, 20f, downTime))
         }
-        Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 260)
-        instrumentation.waitForIdleSync()
+        UiAwait.until("hold must erase at least twice") { erases.size >= 2 }
         instrumentation.runOnMainSync {
             val now = SystemClock.uptimeMillis(); send(target, event(MotionEvent.ACTION_UP, 20f, 20f, now))
         }
         assertTrue("hold must erase at least twice", erases.size >= 2)
         assertTrue("release must not perform a click", erases.none { it == -1L })
+        assertTrue("hold must respect the system delay",
+            erases.first() - downTime >= android.view.ViewConfiguration.getLongPressTimeout())
+        assertTrue("repeat must not run faster than its 80 ms cadence", erases.zipWithNext().all { (a, b) -> b - a >= 80 })
+        val releasedCount = erases.size
+        UiAwait.remains("release must stop repeating") { erases.size == releasedCount }
         } finally { instrumentation.runOnMainSync { fixture.activity.finish() } }
     }
 
@@ -96,17 +101,15 @@ class DeleteRepeaterTest {
             send(target, event(MotionEvent.ACTION_MOVE, 200f, 20f, now + 20))
             send(target, event(MotionEvent.ACTION_UP, 200f, 20f, now + 40))
         }
-        Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 120)
-        instrumentation.waitForIdleSync(); assertTrue(erased.isEmpty())
+        UiAwait.remains("Cancelled delete must not fire") { erased.isEmpty() }
         instrumentation.runOnMainSync {
             val now = SystemClock.uptimeMillis(); send(target, event(MotionEvent.ACTION_DOWN, 20f, 20f, now))
             send(target, pointerDown(now + 20))
             send(target, event(MotionEvent.ACTION_UP, 20f, 20f, now + 40))
         }
-        Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 120)
-        instrumentation.waitForIdleSync(); assertTrue(erased.isEmpty())
+        UiAwait.remains("Cancelled delete must not fire") { erased.isEmpty() }
         instrumentation.runOnMainSync { repeater.cancel() }
-        Thread.sleep(120); instrumentation.waitForIdleSync(); assertTrue(erased.isEmpty())
+        UiAwait.remains("Explicit cancellation must stop callbacks") { erased.isEmpty() }
         } finally { instrumentation.runOnMainSync { fixture.activity.finish() } }
     }
 
@@ -118,13 +121,11 @@ class DeleteRepeaterTest {
             send(old, event(MotionEvent.ACTION_DOWN, 20f, 20f, SystemClock.uptimeMillis()))
             repeater.cancel()
         }
-        Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 120)
-        instrumentation.waitForIdleSync(); assertTrue(erased.isEmpty())
+        UiAwait.remains("Cancelled delete must not fire") { erased.isEmpty() }
         instrumentation.runOnMainSync {
             send(old, event(MotionEvent.ACTION_DOWN, 20f, 20f, SystemClock.uptimeMillis()))
         }
-        Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 120)
-        instrumentation.waitForIdleSync(); assertTrue("cancelled button must remain invalid", erased.isEmpty())
+        UiAwait.remains("cancelled button must remain invalid") { erased.isEmpty() }
         } finally { instrumentation.runOnMainSync { fixture.activity.finish() } }
     }
 }

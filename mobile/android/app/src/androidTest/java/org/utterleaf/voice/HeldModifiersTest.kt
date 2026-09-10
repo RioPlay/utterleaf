@@ -126,7 +126,8 @@ class HeldModifiersTest {
                     dispatch(f.panel, down, MotionEvent.ACTION_POINTER_DOWN or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), listOf(ctrl, del))
                     assertEquals("one two three ", f.editor.text.toString())
                 }
-                Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 180)
+                if (enabled) UiAwait.until("Modified delete did not repeat") { f.editor.length() < "one two three ".length }
+                else UiAwait.remains("Disabled repeat changed text") { f.editor.text.toString() == "one two three " }
                 var releasedText = ""
                 instrumentation.runOnMainSync {
                     if (enabled) assertTrue(f.editor.length() < "one two three ".length)
@@ -135,8 +136,7 @@ class HeldModifiersTest {
                     dispatch(f.panel, down, MotionEvent.ACTION_UP, listOf(ctrl))
                     releasedText = f.editor.text.toString()
                 }
-                Thread.sleep(160)
-                instrumentation.runOnMainSync { assertEquals(releasedText, f.editor.text.toString()) }
+                UiAwait.remains("Modified delete continued after release") { f.editor.text.toString() == releasedText }
             } finally { instrumentation.runOnMainSync { f.activity.finish() } }
         }
     }
@@ -157,8 +157,7 @@ class HeldModifiersTest {
                 f.panel.reset(false, false, "Enter")
                 buttons(f.panel.view).single { it.contentDescription == "Delete" }.performClick()
             }
-            Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 100); instrumentation.waitForIdleSync()
-            assertEquals("one", f.editor.text.toString())
+            UiAwait.remains("Cancelled modifier repeated or remained armed") { f.editor.text.toString() == "one" }
         } finally { instrumentation.runOnMainSync { f.activity.finish() } }
     }
 }

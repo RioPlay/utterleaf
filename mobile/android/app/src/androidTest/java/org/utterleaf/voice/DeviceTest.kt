@@ -367,12 +367,11 @@ class DeviceTest {
                     }
                     val backspace = center("Delete")
                     touch(android.view.MotionEvent.ACTION_DOWN, backspace.first, backspace.second)
-                    Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 320)
+                    awaitCondition("Held Backspace did not repeatedly delete in the editor") { onMain { screen.editor.text.isEmpty() } }
                     touch(android.view.MotionEvent.ACTION_UP, backspace.first, backspace.second)
                     awaitCondition("Held Backspace did not repeatedly delete in the editor") { onMain { screen.editor.text.isEmpty() } }
                     onMain { screen.editor.setText("acd"); screen.editor.setSelection(3) }
-                    Thread.sleep(160)
-                    assertEquals("Delete continued after release", "acd", onMain { screen.editor.text.toString() })
+                    UiAwait.remains("Delete continued after release") { screen.editor.text.toString() == "acd" }
                     val shiftPosition = center("Shift off")
                     fun chord(action: Int, dx: Float = 0f, two: Boolean = true) {
                         val count = if (two) 2 else 1
@@ -456,6 +455,7 @@ class DeviceTest {
                     assertEquals("Detached alternate button changed the new field", "",
                         onMain { screen.password.text.toString() })
                     show(screen.editor)
+
                 } finally {
                     flags(originalFlags)
                 }
