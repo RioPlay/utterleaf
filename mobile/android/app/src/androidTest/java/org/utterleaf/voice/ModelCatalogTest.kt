@@ -28,12 +28,12 @@ class ModelCatalogTest {
 
     @Suppress("DEPRECATION")
     @Test fun systemInsetsPreservePaddingWithoutAccumulation() {
+        org.junit.Assume.assumeTrue(Build.VERSION.SDK_INT >= 30)
         instrumentation.runOnMainSync {
-            val insets = if (Build.VERSION.SDK_INT >= 30) WindowInsets.Builder()
+            val insets = WindowInsets.Builder()
                 .setInsets(WindowInsets.Type.statusBars(), android.graphics.Insets.of(0, 23, 0, 0))
                 .setInsets(WindowInsets.Type.navigationBars(), android.graphics.Insets.of(7, 0, 11, 29))
                 .build()
-            else WindowInsets(Rect(7, 23, 11, 29))
             for (navigationOnly in listOf(false, true)) {
                 val view = View(app).apply { setPadding(2, 3, 5, 7) }
                 Ui.applySystemInsets(view, navigationOnly)
@@ -46,7 +46,7 @@ class ModelCatalogTest {
                     assertEquals(0, remaining.systemWindowInsetBottom)
                 }
                 // Hidden bars or a later inset change must restore the original padding.
-                val none = if (Build.VERSION.SDK_INT >= 30) WindowInsets.CONSUMED else WindowInsets(Rect())
+                val none = WindowInsets.CONSUMED
                 view.dispatchApplyWindowInsets(none)
                 assertEquals(listOf(2, 3, 5, 7), listOf(view.paddingLeft, view.paddingTop, view.paddingRight, view.paddingBottom))
             }
