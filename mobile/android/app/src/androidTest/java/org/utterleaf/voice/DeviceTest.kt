@@ -456,6 +456,35 @@ class DeviceTest {
                         onMain { screen.password.text.toString() })
                     show(screen.editor)
 
+                    // Exercise toolbar actions through the real IME InputConnection.
+                    onMain { screen.editor.setText("cat"); screen.editor.setSelection(3) }
+                    press("s")
+                    awaitCondition("Live action fixture did not type") { onMain { screen.editor.text.toString() == "cats" } }
+                    press("Edit actions"); press("Undo")
+                    awaitCondition("Live Undo did not reach editor history") { onMain { screen.editor.text.toString() == "cat" } }
+                    press("Select all")
+                    awaitCondition("Live Select all did not select the editor") { onMain {
+                        screen.editor.selectionStart == 0 && screen.editor.selectionEnd == 3
+                    } }
+                    press("Copy")
+                    onMain { screen.editor.setSelection(3) }
+                    press("Paste")
+                    awaitCondition("Live Copy/Paste did not duplicate the selected text") { onMain { screen.editor.text.toString() == "catcat" } }
+                    val leftPanelPaste = onMain { findNativeKey("Paste") ?: error("Missing live Paste") }
+                    press("Return to typing")
+                    onMain { leftPanelPaste.performClick() }
+                    UiAwait.remains("Old action changed text after leaving Edit") { screen.editor.text.toString() == "catcat" }
+                    press("Edit actions")
+                    val oldFieldPaste = onMain { findNativeKey("Paste") ?: error("Missing live Paste") }
+                    show(screen.password)
+                    onMain { oldFieldPaste.performClick() }
+                    // Paste is allowed for passwords: this must rely on session invalidation,
+                    // not the password Copy/Cut restriction hiding a stale callback.
+                    UiAwait.remains("Old action changed a field after switching editors") {
+                        screen.password.text.isEmpty() && screen.editor.text.toString() == "catcat"
+                    }
+                    onMain { screen.editor.setText("acd"); screen.editor.setSelection(3) }
+                    show(screen.editor)
                 } finally {
                     flags(originalFlags)
                 }
@@ -479,6 +508,8 @@ class DeviceTest {
             awaitCondition("Keyboard failed after reopen") { onMain { screen.password.text.toString() == "xy" } }
             assertEquals("Password input changed the previous field", "acd", onMain { screen.editor.text.toString() })
         } finally {
+            (app.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+                .setPrimaryClip(android.content.ClipData.newPlainText("", ""))
             activity?.let { screen -> onMain { screen.finish() } }
             try {
                 if (!previousKeyboard.isNullOrBlank()) shell("ime set $previousKeyboard")
