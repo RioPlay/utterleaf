@@ -4,7 +4,15 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+    paths-ignore:
+      - 'mobile/**'
+      - 'docs/mobile*.md'
+      - '.github/workflows/android.yml'
   pull_request:
+    paths-ignore:
+      - 'mobile/**'
+      - 'docs/mobile*.md'
+      - '.github/workflows/android.yml'
   workflow_dispatch:
 
 permissions:

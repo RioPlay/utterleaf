@@ -1,8 +1,11 @@
-# What grows next
+# Desktop feature plan
 
 <img src="assets/brand/utterling-thinking.png" width="100" alt="Utterling thinking through the next improvements" />
 
-[Roadmap](roadmap.md) · [User guide](user-guide.md) · [Microphone help](microphone-troubleshooting.md)
+[Desktop roadmap](desktop-roadmap.md) · [User guide](user-guide.md) · [Microphone help](microphone-troubleshooting.md)
+
+Scope: Windows, macOS and Linux. Mobile has a separate [keyboard roadmap](mobile-roadmap.md);
+these modes are not promises of Android or iOS availability.
 
 Updated September 9, 2026. This is a development plan, not a list of available
 features or promised release dates. Microphone open recovery is included in v0.3.4;

@@ -1,156 +1,47 @@
 # Utterleaf roadmap
 
-Updated September 9, 2026. Priorities follow the
-[offline STT user research](offline-stt-user-research-2026-09-08.md).
-This is an ordered development plan, not a promise of release dates.
+<img src="assets/brand/utterling-thinking.png" width="88" alt="Utterling considering the next improvements" />
 
-See [platform testing](platform-testing.md) for current Windows/WSL results and
-the real-device checklist, including macOS testing.
+[Documentation](README.md) ? [Development boundaries](development-boundaries.md)
 
-The product goal is simple: press a key, speak, and get dependable text in the
-intended field, with understandable local processing and minimal interruption.
+Updated September 9, 2026. This is the planning hub, not a list of released features.
+**Security first, privacy second, convenience third.** Accessibility and reliability
+are requirements throughout development, not finishing touches.
 
-## Foundation implemented
+## Choose a workstream
 
-- Local recognition and cleanup, with an option to preserve model output.
-- One-key toggle recording; microphone released between takes.
-- Bounded recording and queued takes, with explicit cancellation.
-- Two-minute in-memory recovery, explicit forgetting, and recovery CLI commands.
-- Conservative native-field editing and manual fallback when edits cannot be verified.
-- Clearer settings, shortcut validation, and partial-save error reporting.
-- Dark Settings, optional overlay with countdown, tray-only defaults, and all seven Utterlings in normal UI use (v0.3.3).
-- Multiword list fixes and local timing diagnostics (v0.3.3).
-
-## Current delivery status
-
-**Version 0.3.7 usability audit:** direct task headings, compact decorative art,
-visible selection/focus marks, responsive footer messages, readable hardware
-choices, and validation that returns to the invalid field. The
-[quality audit](product-quality.md) records evidence and outstanding platform,
-accessibility, and display-scaling checks.
-The same release authenticates local control commands and preserves offline and
-clipboard preferences during defaults recovery. Privacy and security take
-precedence over convenience for remaining roadmap decisions.
-
-**Version 0.3.6 interface and documentation refresh:** grouped Settings controls,
-charcoal surfaces, the approved sidebar wordmark, recovery-first Help, and updated
-screenshots. A [documentation index](README.md) separates current guides from
-historical investigations. [Interface guidelines](interface.md) keep future work consistent.
-
-**Version 0.3.5 changes:** one Settings window per configuration, staged defaults
-recovery under Help, and a current Help screenshot. Wayland fixes exclude misleading X11 paste
-fallbacks, avoid stale XWayland focus queries, and explain missing desktop setup
-in diagnostics. [Wayland setup](wayland.md) documents current limitations.
-Native GNOME/KDE/wlroots delivery validation and portal integration remain needed.
-
-**Microphone recovery release:** [v0.3.4](https://github.com/RioPlay/utterleaf/releases/tag/v0.3.4).
-Included: Windows shared microphone selection, a bounded retry for
-temporary device-unavailable errors, and resetting toggle state after a failed
-microphone start. These are included in v0.3.4, not v0.3.3.
-
-**Planned, not implemented:** long dictation without the fixed hold-mode cutoff,
-file transcription, subtitle export, system-audio captions, meetings, speaker
-labels, and translation. See the [feature plan](feature-plan.md) for dependencies
-and acceptance criteria, and [microphone troubleshooting](microphone-troubleshooting.md)
-for current behavior and limits.
-
-These are implemented capabilities, not proof of end-to-end quality on every platform.
-
-## Privacy-first convenience milestones
-
-Mobile is a separate workstream: [Android voice companion and iOS feasibility](mobile.md).
-The Android alpha implements a compact voice IME and local recognition; phone
-compatibility and stable distribution remain acceptance gates, not completed claims.
-
-Each milestone must preserve explicit capture, bounded retention, offline use,
-and actionable recovery. No accounts, passive listening, automatic transcript
-archives, or background reading of other apps are required.
-
-| Order | Deliverable | Acceptance gate |
+| Workstream | Product | Plan and current evidence |
 | --- | --- | --- |
-| 1 — active | Microphone recovery, safe delivery, clear readiness | Missing named inputs never open a substitute; reconnect/permission errors offer recovery. Test native device loss and editor delivery before broader reliability claims. Show loading/download/ready states and require explicit download approval. |
-| 2 | Comfortable long dictation | Bounded RAM and queued processing, ordered text across chunk boundaries, cancel/discard, elapsed time and optional limits; no automatic disk recording. |
-| 3 | Understandable speed choices | Local, user-requested measurements inform Faster/Balanced/More accurate choices; show actual engine/device and explain fallback. Never upload benchmark speech. |
-| 4 | Vocabulary helper and selective backup | Explicit local vocabulary additions; preview exported preferences/vocabulary. Exclude recordings, transcripts, device-specific control tokens, and secrets. No contacts or clipboard-history scanning. |
-| 5 | Local file transcription | Explicit file selection, text/SRT/VTT export and discard; handle missing models and media support without unexpected downloads. |
-| Later | Captions, meetings, speaker labels, translation | Follow the [feature plan](feature-plan.md), with explicit session start, source selection, retention and export controls. |
+| Desktop | Quiet local dictation on Windows, macOS, and Linux | [Desktop roadmap](desktop-roadmap.md) ? [Detailed feature plan](feature-plan.md) ? [Platform testing](platform-testing.md) |
+| Android | A complete, customizable keyboard with integrated local dictation | [Mobile roadmap](mobile-roadmap.md) ? [Current Android preview](mobile.md) |
+| iOS | A separately implemented keyboard and local speech experience within platform restrictions | [iOS feasibility and milestones](mobile-roadmap.md#ios-track) |
+| Shared product direction | Security, privacy, accessibility principles, branding, and candidate ideas | [Ideas and decisions](ideas.md) ? [Development boundaries](development-boundaries.md) |
 
-Wayland desktop-managed shortcuts and safe insertion belong to milestone 1;
-shortcut registration does not establish successful or correctly targeted paste.
-Keep frequent actions in the tray, preferences in Settings, and repair tools in
-Help. Use Utterlings for helpful status and recovery guidance without new popups.
+Desktop v0.3.8 and Android 0.1.0-alpha02 have independent release histories.
+Android alpha02 is still a **voice companion**, not the planned full keyboard.
+A user has reported successful operation on a Pixel 8 Pro, with usability friction;
+that is not broad device or accessibility certification. No iOS app is released.
 
-First implementation in v0.3.8: exact saved microphone selection,
-failure before capture when it is missing, and refresh guidance that preserves
-the selection. Native hotplug recovery and device identity remain open work.
+## How work moves forward
 
-## 1. Reliable delivery — active
+1. Capture a problem and proposed benefit in [Ideas](ideas.md).
+2. Review permissions, data flow, licensing, accessibility, and maintenance cost.
+3. Put accepted work in the relevant platform roadmap with a completion gate.
+4. Implement and test within that platform's source and build boundaries.
+5. Mark work verified only with evidence; mark it released only with an installable
+   artifact, version, and release notes. A green build alone is not release availability.
 
-Implemented in the current pass: check focus after the shortcut-settling delay;
-verify clipboard text before sending paste. If focus moved, leave dictation on
-the clipboard. If the clipboard changed or cannot be read, cancel delivery and
-retain the existing recovery path. Do not overwrite a user's intervening copy.
+Status vocabulary: **Idea**, **Planned**, **In progress**, **Implemented / unverified**,
+**Verified**, and **Released**. Do not describe a proposal or local prototype as shipped.
 
-Remaining work:
+## Shared requirements
 
-- Preserve rich clipboard formats, not only plain text.
-- Investigate restoration timing in slow applications.
-- Distinguish sending a paste shortcut from observing successful insertion.
-- Test browser fields, native and rich-text editors, terminals, and elevated apps.
-- Test window and field changes, held modifiers, busy clipboards, and fast repeated takes.
+- Explicit microphone activation and clear stop/cancel controls; no passive capture.
+- Local inference; no accounts, telemetry, automatic transcript archives, or hidden uploads.
+- Minimum permissions, verified model import, dependency review, and protected signing keys.
+- Accessible setup, editing, feedback, and recovery; never require one particular sense or gesture.
+- Predictable settings, safe reset, and no loss of security preferences for convenience.
+- Each platform retains its own compatibility matrix. One device passing does not mean all phones work.
 
-Completion evidence: a documented OS/editor matrix with observed delivery and
-recovery results, including Unicode and selected-text replacement. No unexpected
-typing or loss of a newer clipboard copy in the tested scenarios. The final
-focus check reduces a race; it cannot make desktop input atomic or detect every
-field change inside the same window.
-
-## 2. Effortless first run — next
-
-- Make model availability and download requirements clear before recording.
-- Verify interrupted-download retry and model changes after offline initialization.
-- Exercise missing microphone permission, unplugged devices, and default-device changes.
-- Verify useful CPU fallback when an accelerator cannot initialize.
-- Check packaged first launch on a clean user profile without developer tools.
-
-Completion evidence: a new user can reach a successful first dictation using the
-visible UI; each failure above offers an actionable recovery without editing config
-files. Test denied network access and offline relaunch with installed weights.
-
-## 3. Measured speech quality and speed
-
-- Measure cold start, time until listening, and end-of-speech-to-delivery p50/p95.
-- Record CPU, RAM, model, engine, language, and audio conditions for each result.
-- Include names, numbers, negation, accents, multilingual text, quiet speech,
-  background noise, and silence in a consented or public evaluation set.
-- Choose defaults from measured accuracy, responsiveness, and resource use.
-
-Completion evidence: reproducible results on named ordinary CPU hardware, with
-explicit accuracy/latency tradeoffs. Set performance budgets from that baseline.
-
-## 4. Accessibility and desktop polish
-
-- Test keyboard-only setup and recovery, screen readers, and high display scaling.
-- Verify recording status and errors without relying on sound or color alone.
-- Keep real Tk checks running in CI; investigate any unexpected display-related skips.
-- Evaluate a different desktop shell only if measured usability, accessibility,
-  startup, or packaging limits justify it. Keep the Python speech pipeline unless
-  evidence identifies it as the constraint.
-
-Completion evidence: documented accessibility results and release checks that run
-reliably in the supported environments.
-
-## Scope discipline
-
-The new user-requested expansion is optional **Transcribe**, **Captions**, and
-**Meeting** modes. These share the local speech engine while keeping ordinary
-dictation quiet and lightweight. Meeting capture requires a deliberate session
-start, clear capture state, and explicit save/discard behavior.
-
-Cloud accounts, bundled chat, team workspaces, engagement statistics, and
-automatic permanent recording history remain outside the plan. Optional models
-should be installed only for features the user enables.
-
-Live microphones, external editor delivery, clean-install packaging, and speech
-benchmarks still require direct validation. Automated unit tests do not substitute
-for those checks.
+Detailed implementation status belongs in the platform plans, avoiding duplicate
+backlogs with conflicting completion claims.

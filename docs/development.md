@@ -2,6 +2,10 @@
 
 [Back to Utterleaf](../README.md) · [Source installation](installation.md)
 
+This guide covers desktop development. Android has its own [build guide](../mobile/android/README.md).
+See [development boundaries](development-boundaries.md) for source ownership,
+independent dependencies, CI routing and release conventions.
+
 ## Local checks
 
 The interface uses native Tk widgets with no web runtime. UI tests use sample settings and mocked devices. On headless Linux, run the UI tests under a virtual display (such as Xvfb).
@@ -42,7 +46,7 @@ shipping — unsigned builds trip SmartScreen.
 
 `packaging\build.ps1` is the canonical Windows build entry point. It runs PyInstaller, writes executable checksums, ships `README.md` at the top of the dist folder, and collects third-party notices; invoking PyInstaller directly skips those release steps. Install the development dependencies above before running it. The script installs PyInstaller if needed.
 
-CI (`.github/workflows/build.yml`) runs pytest on Windows, macOS, and Linux, and builds native binaries for all three: the Windows CPU build via the same `packaging\build.ps1` script, and macOS/Linux bundles via the shared PyInstaller spec plus third-party notice collection. Pushes to `main` and pull requests run the full matrix; only `v*` tags publish a GitHub Release with all three archives. The CUDA release is prepared manually with the CUDA bundle flag. Signing is a manual pre-publish step.
+CI (`.github/workflows/build.yml`) runs pytest on Windows, macOS, and Linux, and builds native binaries for all three: the Windows CPU build via the same `packaging\build.ps1` script, and macOS/Linux bundles via the shared PyInstaller spec plus third-party notice collection. Pushes to `main` and pull requests run the full matrix except changes confined to mobile source, mobile guides, or Android CI. Only `v*` tags publish a desktop GitHub Release with all three archives. The CUDA release is prepared manually with the CUDA bundle flag. Signing is a manual pre-publish step.
 
 ## Platform verification
 

@@ -75,7 +75,8 @@ CPU inference. [Privacy & usage](docs/user-guide.md) · [GPU setup](docs/install
 ## Keep growing
 
 [Roadmap](docs/roadmap.md) · [Contribute & build](docs/development.md) ·
-[Mobile voice preview](docs/mobile.md) ·
+[Desktop plan](docs/desktop-roadmap.md) · [Mobile plan](docs/mobile-roadmap.md) ·
+[Mobile voice preview](docs/mobile.md) · [Ideas](docs/ideas.md) ·
 [Platform testing](docs/platform-testing.md) · [Brand & artwork](docs/branding.md) ·
 [Report a problem](https://github.com/RioPlay/utterleaf/issues)
 

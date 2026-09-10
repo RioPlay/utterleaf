@@ -2,21 +2,23 @@
 
 <img src="assets/brand/utterling-thinking.png" width="88" alt="Utterling considering mobile voice input" />
 
-[Documentation](README.md) · [Roadmap](roadmap.md) · [Android preview](../mobile/android/README.md)
+[Documentation](README.md) · [Mobile roadmap](mobile-roadmap.md) · [Android preview](../mobile/android/README.md)
 
-Mobile development follows the same priority as desktop: privacy and security
-first, convenience second. The Android project is a separate native application;
+Mobile development follows the same priority as desktop: security first, privacy
+second, convenience third. The Android project is a separate native application;
 it does not replace or add dependencies to the desktop Python application.
 
-## Android — compact voice companion first
+## Android — current voice preview, full keyboard planned
 
 [Download the installable Android alpha APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha02/Utterleaf-Voice-0.1.0-alpha02-debug.apk) ·
 [Setup and current limits](../mobile/android/README.md)
 
 The initial implementation uses Kotlin, Android's input-method framework, and
 local whisper.cpp inference. It offers a compact voice IME and an explicit
-speech-recognition activity result for compatible keyboards. A full keyboard is
-not required to test whether this solves the user's need.
+speech-recognition activity result for compatible keyboards. The accepted product
+direction is now a complete, customizable keyboard with integrated offline speech.
+That keyboard is not included in alpha02. Follow the [dedicated plan](mobile-roadmap.md)
+for licensing, security, accessibility, compatibility and release gates.
 
 See the [Android guide](../mobile/android/README.md) for exact implemented scope,
 setup, permissions, test evidence and remaining native-device acceptance work.

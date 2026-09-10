@@ -6,6 +6,10 @@ An experimental, offline voice companion. Keep a compatible keyboard, or select
 the compact Utterleaf voice panel through Android's keyboard switcher.
 **0.1.0-alpha02 is a development preview, not a production keyboard replacement.**
 
+The next product direction is a full customizable keyboard with integrated local
+dictation. See the [mobile roadmap](../../docs/mobile-roadmap.md); those planned
+features are not part of the current APK. Desktop development is tracked separately.
+
 ## What is implemented
 
 - Voice IME with explicit Speak, Stop, Insert, Discard, and return-to-keyboard actions.
@@ -111,8 +115,8 @@ but its unsigned output stays in the build directory and is not distributed.
 - Stable signing, dependency provenance, native 16 KB page compatibility, and
   distribution policy review. Debug APKs are for testing, not store publication.
 - Bounded incremental dictation, additional reviewed models/languages, local
-  vocabulary and shared desktop command behavior. No full QWERTY keyboard is planned
-  until evidence shows the companion approach is insufficient.
+  vocabulary and reviewed command behavior. A full keyboard is now planned,
+  with explicit security, accessibility and license acceptance gates.
 
 There is no affiliation with FUTO or GrapheneOS. Their designs inform product
 principles; the implementation uses Android APIs and whisper.cpp under the licenses

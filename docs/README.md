@@ -16,7 +16,8 @@ features are kept in the roadmap.
 | Fix a busy or missing microphone | [Microphone help](microphone-troubleshooting.md) |
 | Set up Wayland shortcuts and paste | [Wayland help](wayland.md) |
 | Restore default preferences | [Settings and recovery](user-guide.md#settings-and-recovery) |
-| Find out what's coming next | [Roadmap](roadmap.md) · [Feature plan](feature-plan.md) |
+| Find out what's coming next | [Roadmap hub](roadmap.md) · [Desktop](desktop-roadmap.md) · [Mobile](mobile-roadmap.md) |
+| See proposed ideas and product decisions | [Ideas](ideas.md) |
 | Try mobile voice input | [Android preview and iOS plans](mobile.md) |
 
 ## For contributors
@@ -24,6 +25,7 @@ features are kept in the roadmap.
 <img src="assets/brand/utterling-typing.png" width="72" alt="Utterling working on improvements" />
 
 [Development & builds](development.md) · [Platform validation](platform-testing.md) ·
+[Desktop/mobile boundaries](development-boundaries.md) ·
 [Interface guidelines](interface.md) · [Brand & assets](branding.md) ·
 [Product principles](consumer-experience.md)
 
