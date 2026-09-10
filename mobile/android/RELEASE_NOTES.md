@@ -9,8 +9,10 @@ and emoji remain roadmap work.
 - Compact Tools button reveals cursor controls, Caps Lock, settings and switching.
 - Dark/light keycaps with visible focus and selected states; larger keys retained.
 - Optional number row, independent of the optional terminal controls.
+- Guided keyboard setup with separate typing/voice readiness and verified
+  tiny.en, base.en and small.en model choices, sizes and browser download links.
 - Terminal controls provide Esc, Tab, Ctrl, Alt, arrows, Home/End, Page Up/Down and
-  F1–F12. Ctrl/Alt release after the next key and reset when the field changes.
+  F1–F12, Insert and forward Delete. Ctrl/Alt release after the next key and reset when the field changes.
   Raw terminal fields accept ASCII key events only when terminal mode is enabled;
   dictation stays disabled there. Terminal applications determine shortcut support.
 
@@ -39,7 +41,9 @@ privacy rules and live synthetic editor interactions. These are not physical
 terminal, TalkBack, Switch Access or landscape acceptance tests. Large keys and
 terminal rows may require scrolling on short displays. Modified input requires a
 single supported ASCII character; unsupported combinations are not inserted as
-plain text. Installation and upgrade checks run separately before publication.
+plain text. Small-model speed, memory use and accuracy still need physical-phone
+validation; its larger download is not a promise of a better result for every user.
+Installation and upgrade checks run separately before publication.
 
 The visual design uses independent native Android code; FUTO's public screenshots
 were a reference, with no FUTO source or artwork included.

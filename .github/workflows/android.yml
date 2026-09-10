@@ -34,6 +34,8 @@ jobs:
           mkdir -p app/src/androidTest/assets
           curl --fail --location --retry 3 https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin -o app/src/androidTest/assets/ggml-tiny.en.bin
           echo '921e4cf8686fdd993dcd081a5da5b6c365bfde1162e72b08d75ac75289920b1f  app/src/androidTest/assets/ggml-tiny.en.bin' | sha256sum --check
+          curl --fail --location --retry 3 https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin -o app/src/androidTest/assets/ggml-base.en.bin
+          echo 'a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002  app/src/androidTest/assets/ggml-base.en.bin' | sha256sum --check
           curl --fail --location --retry 3 https://raw.githubusercontent.com/ggml-org/whisper.cpp/2eeeba56e9edd762b4b38467bab96c2517163158/samples/jfk.wav -o app/src/androidTest/assets/jfk.wav
       - name: Enable KVM
         working-directory: .

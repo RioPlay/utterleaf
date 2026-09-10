@@ -112,6 +112,7 @@ class TypingPanel(private val context: Context, private val options: KeyboardOpt
     }
     private fun row() = LinearLayout(context).also {
         it.orientation = LinearLayout.HORIZONTAL
+        it.isBaselineAligned = false
         view.addView(it, LinearLayout.LayoutParams(-1, -2))
     }
     private fun spacer(row: LinearLayout, weight: Float) {

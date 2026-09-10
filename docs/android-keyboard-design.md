@@ -14,6 +14,10 @@ imported into the app.
   Android's keyboard switcher. Closing Tools restores the compact typing surface.
 - Symbols use two pages with a visible page key. Returning to letters does not
   require a gesture or long press.
+- Number row is independently optional. Terminal controls add Esc/Tab, one-shot
+  Ctrl/Alt, navigation and a function layer with F1–F12, Insert and forward Delete.
+  The function layer replaces letters rather than adding more height. Raw terminal
+  fields accept ASCII key events only with this preference enabled; voice stays off.
 - Neutral keycaps carry the letters; green marks the editor action and selected
   modifiers. Dark is the default, with light and larger-key preferences retained.
   Insets separate the visible keycaps without creating gaps in their touch areas.

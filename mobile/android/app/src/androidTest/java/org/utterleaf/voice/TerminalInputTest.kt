@@ -238,12 +238,56 @@ class TerminalInputTest {
             key("Function keys").performClick()
             assertFalse(buttons(terminal.view).any { it.contentDescription == "1" })
             key("F1").performClick(); key("F12").performClick()
+            key("Forward delete").performClick(); key("Insert").performClick()
             key("Page up").performClick(); key("Left arrow").performClick()
-            assertEquals(listOf(KeyEvent.KEYCODE_F1, KeyEvent.KEYCODE_F12, KeyEvent.KEYCODE_PAGE_UP, KeyEvent.KEYCODE_DPAD_LEFT), codes)
+            assertEquals(listOf(KeyEvent.KEYCODE_F1, KeyEvent.KEYCODE_F12, KeyEvent.KEYCODE_FORWARD_DEL,
+                KeyEvent.KEYCODE_INSERT, KeyEvent.KEYCODE_PAGE_UP, KeyEvent.KEYCODE_DPAD_LEFT), codes)
             assertTrue(buttons(terminal.view).all { !it.contentDescription.isNullOrBlank() && it.isFocusable })
             key("Function keys").performClick()
             assertTrue(buttons(terminal.view).any { it.contentDescription == "1" })
             assertFalse(buttons(terminal.view).any { it.contentDescription == "F1" })
+        }
+    }
+
+    @Test fun functionLayerDoesNotGrowKeyboardAndKeepsControlsInBounds() {
+        instrumentation.runOnMainSync {
+            val context = instrumentation.targetContext
+            for (widthDp in listOf(320, 412)) for (large in listOf(false, true)) {
+                val panel = TypingPanel(context, KeyboardOptions(terminal=true, large=large),
+                    { true }, {}, {}, {}, {}, {}, {}, { _, _, _, _ -> true })
+                fun buttons(view: View): List<android.widget.Button> = when (view) {
+                    is android.widget.Button -> listOf(view)
+                    is android.view.ViewGroup -> (0 until view.childCount).flatMap { buttons(view.getChildAt(it)) }
+                    else -> emptyList()
+                }
+                fun key(label: String) = buttons(panel.view).single { it.contentDescription == label }
+                fun layout(): Int {
+                    val width = Ui.dp(context, widthDp)
+                    panel.view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+                    panel.view.layout(0, 0, width, panel.view.measuredHeight)
+                    for (button in buttons(panel.view)) {
+                        val rect = android.graphics.Rect(0, 0, button.width, button.height)
+                        panel.view.offsetDescendantRectToMyCoords(button, rect)
+                        assertTrue("Terminal control outside ${widthDp}dp large=$large: ${button.contentDescription}",
+                            rect.left >= 0 && rect.right <= width && rect.top >= 0 && rect.bottom <= panel.view.height &&
+                                rect.width() > 0 && rect.height() > 0)
+                    }
+                    return panel.view.height
+                }
+                panel.reset(true, false, "Enter")
+                val typingHeight = layout()
+                key("Function keys").performClick()
+                assertTrue("Fn must replace rows, not append height", layout() <= typingHeight)
+                assertFalse(buttons(panel.view).any { it.contentDescription == "q" })
+                for (label in listOf("F1", "F12", "Shift off", "Insert", "Forward delete", "Return to letters", "Delete")) {
+                    assertTrue("Function control must remain focusable: $label", key(label).isFocusable)
+                }
+                key("Return to letters").performClick()
+                assertEquals(typingHeight, layout())
+                assertTrue(buttons(panel.view).any { it.contentDescription == "q" })
+                assertFalse(buttons(panel.view).any { it.contentDescription == "F1" })
+            }
         }
     }
 }

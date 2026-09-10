@@ -152,7 +152,8 @@ class DeviceTest {
                     val rectangles = keys().map { button ->
                         val rect = bounds(button)
                         assertTrue("Nonpositive key bounds: $description ${button.contentDescription}", rect.width() > 0 && rect.height() > 0)
-                        assertTrue("Key outside panel: $description ${button.contentDescription}",
+                        assertTrue("Key outside panel: $description ${button.contentDescription} rect=$rect panel=${width}x${panel.view.height} " +
+                            "local=${button.left},${button.top},${button.right},${button.bottom} scroll=${button.scrollX},${button.scrollY}",
                             rect.left >= 0 && rect.top >= 0 && rect.right <= width && rect.bottom <= panel.view.height)
                         assertTrue("Missing accessibility name: $description", !button.contentDescription.isNullOrBlank())
                         rect
@@ -241,8 +242,11 @@ class DeviceTest {
             activity = screen
             instrumentation.waitForIdleSync()
             fun show(field: android.widget.EditText) {
+                awaitCondition("Synthetic editor window did not acquire focus") { onMain { screen.hasWindowFocus() } }
                 onMain { field.requestFocus() }
-                awaitCondition("Synthetic field did not acquire its input connection") { onMain { manager.isActive(field) } }
+                awaitCondition("Synthetic ${if (field === screen.editor) "text" else "password"} field did not acquire its input connection") {
+                    onMain { manager.isActive(field) }
+                }
                 onMain { manager.showSoftInput(field, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT) }
                 awaitCondition("Typing keyboard did not appear") { findKey("a") != null }
             }

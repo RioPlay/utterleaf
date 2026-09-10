@@ -62,8 +62,8 @@ need the compatibility and lifecycle gates below.
 
 ## Prioritized capability and acceptance matrix
 
-**Implemented** describes the foundation above. **Next** is committed work after
-the alpha05 layout gate. **Later** requires the listed preceding foundation. None
+**Implemented** describes the foundation above. **Next** is active implementation
+or acceptance work. **Later** requires the listed preceding foundation. None
 of these labels asserts every physical/editor/accessibility acceptance gate passed.
 
 | Phase / priority | Capability and status | Acceptance gate |
@@ -137,8 +137,8 @@ screenshots supplement, and cannot replace, this acceptance evidence.
 ## Implementation ownership and completion rule
 
 - **Layout owner:** `TypingPanel.kt`, `KeyboardOptions.kt`,
-  `KeyboardSettingsActivity.kt` and direct-panel tests. Finish alpha05 visual
-  validation before introducing the optional P2 power layout.
+  `KeyboardSettingsActivity.kt` and direct-panel tests. Validate everyday and
+  optional power surfaces separately; release only after their P0/P1 gates.
 - **Editor/security owner:** `KeyboardIme.kt`, the in-progress `TerminalInput.kt`,
   future editing/modifier helpers, session gates and live-IME tests. Agree operation contracts
   with the layout owner before either changes constructor/callback interfaces.
