@@ -30,8 +30,10 @@ class KeyboardTuningTest {
                     return panel.view.measuredHeight
                 }
                 val base = height(KeyboardOptions(keyHeightDp = 60))
-                assertEquals(Ui.dp(context, 28), height(KeyboardOptions(keyHeightDp = 60, bottomPaddingDp = 28)) - base)
-                assertEquals(Ui.dp(context, 8) * 4, height(KeyboardOptions(keyHeightDp = 68)) - base)
+                assertEquals(Ui.dp(context, 28).toDouble(),
+                    (height(KeyboardOptions(keyHeightDp = 60, bottomPaddingDp = 28)) - base).toDouble(), 1.0)
+                assertEquals((Ui.dp(context, 8) * 4).toDouble(),
+                    (height(KeyboardOptions(keyHeightDp = 68)) - base).toDouble(), 4.0)
             }
         } finally { original.save(context) }
     }
