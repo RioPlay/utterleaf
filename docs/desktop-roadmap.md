@@ -78,6 +78,11 @@ These are implemented capabilities, not proof of end-to-end quality on every pla
 
 ## Privacy-first convenience milestones
 
+**Next planned desktop milestone:** [GitHub update checks and safe staged updates](desktop-updates.md).
+Start with manual checks and opt-in daily/weekly checks; authenticated downloads
+and explicit Windows replacement follow separate trust and recovery gates, then
+macOS/Linux validation. This updater is not implemented or included in v0.4.1.
+
 Mobile keyboard development has its own [roadmap](mobile-roadmap.md),
 build system, dependencies, acceptance gates, and release versions.
 
