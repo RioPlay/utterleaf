@@ -1,0 +1,123 @@
+name: Publish signed Android release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing android-v tag on main
+        type: string
+        required: true
+      build_run:
+        description: Successful Android build run for exactly that revision
+        type: string
+        required: true
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+jobs:
+  sign:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: android-release
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ inputs.tag }}
+      BUILD_RUN: ${{ inputs.build_run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify release identity and successful build
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^android-v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.]+)?$ ]]
+          [[ "$BUILD_RUN" =~ ^[0-9]+$ ]]
+          tag_sha=$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")
+          git merge-base --is-ancestor "$tag_sha" origin/main
+          gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN" > run.json
+          jq -e --arg sha "$tag_sha" '.head_sha == $sha and .conclusion == "success" and .path == ".github/workflows/android.yml" and .head_repository.full_name == .repository.full_name' run.json
+          # Published versions are immutable. A retry may continue a draft only.
+          if gh release view "$RELEASE_TAG" --json isDraft > existing.json 2>/dev/null; then
+            jq -e '.isDraft == true' existing.json
+          fi
+          git show "$tag_sha:mobile/android/RELEASE_NOTES.md" > release-notes.md
+          git show "$tag_sha:mobile/android/signing-certificate.sha256" > expected-certificate.txt
+          echo "VERSION=${RELEASE_TAG#android-v}" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.build_run }}
+          name: Android-release-input
+          path: input
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'build-tools;36.0.0' 'platform-tools'
+      - name: Verify package and sign with the release identity
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE"
+          test -n "$KEYSTORE_PASSWORD"
+          umask 077
+          key_path="$RUNNER_TEMP/utterleaf-release.p12"
+          trap 'rm -f "$key_path"' EXIT
+          printf '%s' "$KEYSTORE" | base64 --decode > "$key_path"
+          tools="$ANDROID_HOME/build-tools/36.0.0"
+          "$tools/aapt" dump badging input/app-release-unsigned.apk > badging.txt
+          grep -F "package: name='org.utterleaf.voice'" badging.txt
+          grep -F "versionName='$VERSION'" badging.txt
+          if grep -q '^application-debuggable' badging.txt; then exit 1; fi
+          mkdir -p release
+          "$tools/apksigner" sign --ks "$key_path" --ks-type PKCS12 --ks-key-alias utterleaf \
+            --ks-pass env:KEYSTORE_PASSWORD --out "release/Utterleaf-Android-$VERSION.apk" input/app-release-unsigned.apk
+          "$tools/apksigner" verify --verbose --print-certs "release/Utterleaf-Android-$VERSION.apk" > release/signing-certificate.txt
+          expected=$(tr -d '\r\n' < expected-certificate.txt)
+          [[ "$expected" =~ ^[a-f0-9]{64}$ ]]
+          grep -F "Signer #1 certificate SHA-256 digest: $expected" release/signing-certificate.txt
+          "$tools/zipalign" -c -P 16 4 "release/Utterleaf-Android-$VERSION.apk"
+          cd release && sha256sum *.apk > SHA256SUMS.txt
+      - name: Verify increasing version code and stable signer
+        # Metadata checks use only public release data; the signing key is already removed.
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/$GH_REPO/releases?per_page=100" --jq '.[]' | jq -s '.' > releases.json
+          python3 mobile/android/tools/release_contract.py badging.txt "$VERSION" expected-certificate.txt releases.json release/version.json
+      - name: Enable emulator virtualization
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Signed APK installation smoke test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          disable-animations: true
+          script: |
+            adb install release/Utterleaf-Android-${{ env.VERSION }}.apk
+            adb install -r release/Utterleaf-Android-${{ env.VERSION }}.apk
+            adb shell am start -W -n org.utterleaf.voice/.SetupActivity
+      - name: Publish Android prerelease independently of desktop
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --verify-tag --draft --prerelease --latest=false \
+              --title "Utterleaf Android $VERSION" --notes-file release-notes.md
+          fi
+          gh release upload "$RELEASE_TAG" release/* --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease --latest=false

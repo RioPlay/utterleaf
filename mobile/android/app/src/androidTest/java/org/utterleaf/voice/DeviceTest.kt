@@ -48,6 +48,24 @@ class DeviceTest {
         assertFalse(ime.getSubtypeAt(0).isAuxiliary)
         assertTrue(ime.getSubtypeAt(0).isAsciiCapable)
     }
+    @Test fun keyboardSettingsPreviewRendersWithoutEnteringText() {
+        val activity = instrumentation.startActivitySync(android.content.Intent(app, KeyboardSettingsActivity::class.java)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        try {
+            instrumentation.waitForIdleSync()
+            instrumentation.runOnMainSync {
+                val content = activity.findViewById<android.view.ViewGroup>(android.R.id.content)
+                (content.getChildAt(0) as android.widget.ScrollView).fullScroll(android.view.View.FOCUS_DOWN)
+            }
+            instrumentation.waitForIdleSync()
+            val screenshot = instrumentation.uiAutomation.takeScreenshot()
+            assertNotNull(screenshot)
+            java.io.File(app.getExternalFilesDir(null), "keyboard-preview.png").outputStream().use {
+                screenshot!!.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+            }
+            screenshot!!.recycle()
+        } finally { instrumentation.runOnMainSync { activity.finish() } }
+    }
     @Test fun typingKeysWorkWithoutSpeechAndResetSensitiveState() {
         instrumentation.runOnMainSync {
             val inserted = mutableListOf<String>()

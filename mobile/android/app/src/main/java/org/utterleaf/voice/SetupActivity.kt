@@ -25,6 +25,13 @@ class SetupActivity : Activity() {
             (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager).showInputMethodPicker()
         })
         column.addView(Ui.button(this, "Keyboard preferences and preview") { startActivity(Intent(this, KeyboardSettingsActivity::class.java)) })
+        column.addView(Ui.button(this, "Set up updates in Obtainium") {
+            val config = assets.open("obtainium.json").bufferedReader().use { it.readText() }
+            try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("obtainium://app/" + Uri.encode(config)))) }
+            catch (_: android.content.ActivityNotFoundException) {
+                status.text = "Obtainium is not installed. Install it separately, then return here. Utterleaf does not download or install updates itself."
+            }
+        })
         column.addView(Ui.text(this, "Choose Utterleaf Keyboard for typing and its Mic button for dictation. Utterleaf Voice is the separate voice-only option for compatible keyboards. Speech setup below is optional."))
         status = Ui.text(this, readiness())
         column.addView(status)
