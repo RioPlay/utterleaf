@@ -100,6 +100,79 @@ def test_windows_native_stream_lifecycle_stays_on_owner(capture, monkeypatch):
     assert recorder._owner is None
 
 
+def test_windows_liveness_waits_for_owner_teardown(capture, monkeypatch):
+    recorder = capture.recorder
+    recorder.close()
+    monkeypatch.setattr(audio.sys, "platform", "win32")
+    reads = []
+    stream_type = type(capture.streams[-1])
+
+    class OwnedStream(stream_type):
+        @property
+        def active(self):
+            reads.append(threading.get_ident())
+            return self._active
+
+        @active.setter
+        def active(self, value):
+            self._active = value
+
+    monkeypatch.setattr(audio.sd, "InputStream", OwnedStream)
+    recorder.start()
+    owner = recorder._owner
+    busy, release = threading.Event(), threading.Event()
+    closing, checking, checked = threading.Event(), threading.Event(), threading.Event()
+    failures, results = [], []
+
+    def block_owner():
+        busy.set()
+        if not release.wait(5):
+            raise TimeoutError("Synthetic owner was not released")
+
+    original_close = owner.close
+    def observed_close(teardown):
+        # Recorder detached _owner but still holds its lifecycle lock.
+        closing.set()
+        original_close(teardown)
+    monkeypatch.setattr(owner, "close", observed_close)
+
+    def run(action):
+        try:
+            action()
+        except BaseException as exc:
+            failures.append(exc)
+
+    def check():
+        checking.set()
+        results.append(recorder.capture_error())
+        checked.set()
+
+    worker = threading.Thread(target=lambda: run(lambda: owner.call(block_owner)), daemon=True)
+    closer = threading.Thread(target=lambda: run(recorder.close), daemon=True)
+    checker = threading.Thread(target=lambda: run(check), daemon=True)
+    started = []
+    try:
+        worker.start(); started.append(worker)
+        assert busy.wait(2)
+        closer.start(); started.append(closer)
+        assert closing.wait(2)
+        assert recorder._owner is None
+        checker.start(); started.append(checker)
+        assert checking.wait(2)
+        assert not checked.wait(.05)
+        assert reads == []  # No active query on caller while teardown is pending.
+    finally:
+        release.set()
+        for thread in started:
+            thread.join(3)
+    assert all(not thread.is_alive() for thread in started)
+    assert failures == []
+    assert results == [None]
+    assert reads == []
+    assert capture.streams[-1].closed
+    assert not owner._thread.is_alive()
+
+
 def test_no_first_callback_has_a_bounded_grace_period(capture):
     capture.clock[0] += audio.CALLBACK_TIMEOUT_SECONDS - .001
     assert capture.recorder.capture_error() is None

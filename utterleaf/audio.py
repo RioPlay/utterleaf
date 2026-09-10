@@ -212,6 +212,10 @@ class Recorder:
         The caller stops/closes and recovers the buffered audio. Checking alone
         never discards audio, reopens a stream, or chooses another microphone.
         """
+        with self._lifecycle_lock:
+            return self._capture_error()
+
+    def _capture_error(self) -> str | None:
         with self._lock:
             if not self.recording:
                 return None
