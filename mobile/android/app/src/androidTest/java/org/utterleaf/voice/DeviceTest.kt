@@ -83,6 +83,7 @@ class DeviceTest {
             panel.reset(false, false, "Done")
             assertFalse(key("Dictate").isEnabled)
             key("Shift off").performClick(); key("A").performClick(); key("a").performClick()
+            key("Keyboard tools").performClick()
             key("Caps lock off").performClick(); key("B").performClick(); key("B").performClick()
             key("Shift off").performClick(); key("a").performClick(); key("B").performClick()
             key("Delete").performClick(); key("Done").performClick()
@@ -95,6 +96,90 @@ class DeviceTest {
             assertEquals(listOf("A", "a", "B", "B", "a", "B", "1", "$", "a"), inserted)
             assertTrue(buttons(panel.view).all { !it.contentDescription.isNullOrBlank() })
             assertTrue(key("Shift off").isFocusable)
+        }
+    }
+    @Test fun keyboardToolsAndSymbolPagesRemainAccessible() {
+        instrumentation.runOnMainSync {
+            val inserted = mutableListOf<String>()
+            val panel = TypingPanel(app, KeyboardOptions(), { inserted.add(it); true }, {}, {}, {}, {}, {}, {})
+            fun buttons(view: android.view.View): List<android.widget.Button> = when (view) {
+                is android.widget.Button -> listOf(view)
+                is android.view.ViewGroup -> (0 until view.childCount).flatMap { buttons(view.getChildAt(it)) }
+                else -> emptyList()
+            }
+            fun keys() = buttons(panel.view).filter { it.visibility == android.view.View.VISIBLE }
+            fun key(label: String) = keys().single { it.contentDescription == label }
+            panel.reset(true, false, "Done")
+            assertFalse(keys().any { it.contentDescription == "Move cursor left" })
+            key("Keyboard tools").performClick()
+            for (label in listOf("Caps lock off", "Move cursor left", "Move cursor right", "Keyboard settings", "Switch keyboard")) {
+                assertTrue("Tool must be keyboard accessible: $label", key(label).isFocusable)
+            }
+            key("Keyboard tools").performClick()
+            assertFalse(keys().any { it.contentDescription == "Move cursor left" })
+            key("Switch letters and symbols").performClick()
+            key("$").performClick()
+            key("More symbols").performClick()
+            key("[").performClick()
+            key("More numbers and symbols").performClick()
+            key("1").performClick()
+            key("Switch letters and symbols").performClick()
+            key("a").performClick()
+            assertEquals(listOf("$", "[", "1", "a"), inserted)
+            assertTrue(keys().all { !it.contentDescription.isNullOrBlank() })
+        }
+    }
+    @Test fun keyboardGeometryFitsNarrowAndWideScreensWithConsistentStagger() {
+        instrumentation.runOnMainSync {
+            for (widthDp in listOf(320, 412)) for (light in listOf(false, true)) for (large in listOf(false, true)) {
+                val description = "${widthDp}dp light=$light large=$large"
+                val panel = TypingPanel(app, KeyboardOptions(light=light, large=large), { true }, {}, {}, {}, {}, {}, {})
+                fun buttons(view: android.view.View): List<android.widget.Button> = when (view) {
+                    is android.widget.Button -> listOf(view)
+                    is android.view.ViewGroup -> (0 until view.childCount).flatMap { buttons(view.getChildAt(it)) }
+                    else -> emptyList()
+                }
+                fun keys() = buttons(panel.view).filter { it.visibility == android.view.View.VISIBLE }
+                fun key(label: String) = keys().single { it.contentDescription == label }
+                fun bounds(button: android.widget.Button) = android.graphics.Rect(0, 0, button.width, button.height).also {
+                    panel.view.offsetDescendantRectToMyCoords(button, it)
+                }
+                fun layoutAndCheck() {
+                    val width = Ui.dp(app, widthDp)
+                    panel.view.measure(android.view.View.MeasureSpec.makeMeasureSpec(width, android.view.View.MeasureSpec.EXACTLY),
+                        android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED))
+                    panel.view.layout(0, 0, width, panel.view.measuredHeight)
+                    val rectangles = keys().map { button ->
+                        val rect = bounds(button)
+                        assertTrue("Nonpositive key bounds: $description ${button.contentDescription}", rect.width() > 0 && rect.height() > 0)
+                        assertTrue("Key outside panel: $description ${button.contentDescription}",
+                            rect.left >= 0 && rect.top >= 0 && rect.right <= width && rect.bottom <= panel.view.height)
+                        assertTrue("Missing accessibility name: $description", !button.contentDescription.isNullOrBlank())
+                        rect
+                    }
+                    for (index in rectangles.indices) for (other in 0 until index) {
+                        assertFalse("Overlapping keys: $description", android.graphics.Rect.intersects(rectangles[index], rectangles[other]))
+                    }
+                }
+                panel.reset(true, false, "Previous")
+                layoutAndCheck()
+                val letterWidths = "qwertyuiopasdfghjklzxcvbnm".map { bounds(key(it.toString())).width() }
+                assertTrue("Letter widths vary by row: $description", letterWidths.maxOrNull()!! - letterWidths.minOrNull()!! <= 2)
+                val q = bounds(key("q")); val w = bounds(key("w")); val a = bounds(key("a")); val z = bounds(key("z"))
+                val pitch = w.exactCenterX() - q.exactCenterX()
+                assertEquals("Home row must stagger half a cell: $description", pitch / 2, a.exactCenterX() - q.exactCenterX(), 3f)
+                assertEquals("Bottom letters must follow the wide Shift key: $description", pitch * 1.5f, z.exactCenterX() - q.exactCenterX(), 3f)
+                assertTrue("Space must remain broad: $description", bounds(key("Space")).width() >= q.width() * 4)
+                key("Keyboard tools").performClick()
+                layoutAndCheck()
+                key("Switch letters and symbols").performClick()
+                layoutAndCheck()
+                val digitWidth = bounds(key("1")).width()
+                assertTrue("Primary symbol width differs from digits: $description", kotlin.math.abs(bounds(key("@")).width() - digitWidth) <= 2)
+                key("More symbols").performClick()
+                layoutAndCheck()
+                assertTrue("Secondary symbol rows use different widths: $description", kotlin.math.abs(bounds(key("£")).width() - bounds(key("~")).width()) <= 2)
+            }
         }
     }
     @Test fun liveKeyboardEditsAndSurvivesFieldAndVisibilityChanges() {
@@ -164,6 +249,7 @@ class DeviceTest {
             show(screen.editor)
             press("a"); press("b"); press("c")
             awaitCondition("InputConnection did not commit letters") { onMain { screen.editor.text.toString() == "abc" } }
+            press("Keyboard tools")
             press("Move cursor left")
             awaitCondition("InputConnection did not move cursor") { onMain { screen.editor.selectionStart == 2 } }
             press("Delete")
@@ -172,6 +258,31 @@ class DeviceTest {
             awaitCondition("Cursor-right edit was incorrect") { onMain { screen.editor.text.toString() == "acd" } }
             press("Done")
             awaitCondition("Editor action did not reach editor") { onMain { screen.lastEditorAction == android.view.inputmethod.EditorInfo.IME_ACTION_DONE } }
+            press("Keyboard tools")
+
+            // Only this debug instrumentation run may expose this synthetic IME
+            // window for a screenshot. Production FLAG_SECURE remains unchanged.
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                val imeRoot = onMain {
+                    android.view.inspector.WindowInspector.getGlobalWindowViews().single {
+                        (it.layoutParams as? android.view.WindowManager.LayoutParams)?.type == android.view.WindowManager.LayoutParams.TYPE_INPUT_METHOD
+                    }
+                }
+                val originalFlags = onMain { (imeRoot.layoutParams as android.view.WindowManager.LayoutParams).flags }
+                assertTrue("Production IME window must be secure", originalFlags and android.view.WindowManager.LayoutParams.FLAG_SECURE != 0)
+                fun flags(value: Int) = onMain {
+                    val params = imeRoot.layoutParams as android.view.WindowManager.LayoutParams
+                    params.flags = value
+                    (imeRoot.context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager).updateViewLayout(imeRoot, params)
+                }
+                try {
+                    flags(originalFlags and android.view.WindowManager.LayoutParams.FLAG_SECURE.inv())
+                    instrumentation.waitForIdleSync()
+                    shell("screencap -p /data/local/tmp/utterleaf-keyboard-live.png")
+                } finally {
+                    flags(originalFlags)
+                }
+            }
 
             // Enter the real voice panel, then change fields. No microphone capture is started.
             press("Dictate")

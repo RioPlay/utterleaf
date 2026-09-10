@@ -38,12 +38,15 @@ class KeyboardSettingsActivity : Activity() {
         }
         toggle("Larger keys and labels", options.large) { options = options.copy(large = it) }
         toggle("Light keyboard", options.light) { options = options.copy(light = it) }
+        toggle("Number row", options.numberRow) { options = options.copy(numberRow = it) }
+        toggle("Terminal controls", options.terminal) { options = options.copy(terminal = it) }
+        column.addView(Ui.text(this, "Adds Esc, Tab, Ctrl, Alt, navigation and F1–F12. Ctrl and Alt apply to the next key, then release. Terminal apps decide which shortcuts they support."))
         toggle("Key vibration (respects device settings)", options.haptics) { options = options.copy(haptics = it) }
         toggle("Ignore repeated taps on the same key within 250 ms", options.repeatGuard) { options = options.copy(repeatGuard = it) }
         column.addView(Ui.text(this, "Repeat filtering can help with accidental double taps, but slows intentional double letters. It is off by default. All keys work with a single tap; there are no required holds or swipes."))
         column.addView(Ui.button(this, "Reset keyboard preferences") {
             AlertDialog.Builder(this).setTitle("Reset keyboard preferences?")
-                .setMessage("Restore standard key size, dark keys, no vibration, and no repeat filtering. Your model and microphone permission stay unchanged.")
+                .setMessage("Restore standard key size, dark keys, no extra rows, no vibration, and no repeat filtering. Your model and microphone permission stay unchanged.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Reset") { _, _ ->
                     options = KeyboardOptions(); options.save(this); render()
                 }.show()

@@ -27,16 +27,18 @@ class KeyboardIme : InputMethodService() {
     }
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        active = info != null && info.inputType != InputType.TYPE_NULL
+        active = info != null && (info.inputType != InputType.TYPE_NULL || KeyboardOptions.load(this).terminal)
         showTyping()
         if (!active) requestHideSelf(0)
     }
-    private fun commit(value: String) = active && currentInputConnection?.commitText(value, 1) == true
+    private fun commit(value: String): Boolean {
+        if (!active) return false
+        return TerminalInput.printable(currentInputConnection, value,
+            forceKeyEvents = currentInputEditorInfo?.inputType == InputType.TYPE_NULL)
+    }
     private fun keyEvent(code: Int) {
         if (!active) return
-        val connection = currentInputConnection ?: return
-        connection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
-        connection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
+        TerminalInput.send(currentInputConnection, code)
     }
     private fun showTyping() {
         voice?.clear(); voice = null
@@ -52,14 +54,20 @@ class KeyboardIme : InputMethodService() {
         } else "Enter"
         val panel = TypingPanel(this, KeyboardOptions.load(this), ::commit,
             { keyEvent(KeyEvent.KEYCODE_DEL) },
-            { if (active) { if (useAction) currentInputConnection?.performEditorAction(action) else commit("\n") }; Unit },
+            { if (active) {
+                if (info?.inputType == InputType.TYPE_NULL) TerminalInput.send(currentInputConnection, KeyEvent.KEYCODE_ENTER)
+                else if (useAction) currentInputConnection?.performEditorAction(action) else commit("\n")
+            }; Unit },
             { left -> keyEvent(if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT) },
             { showVoice() },
             {
                 voice?.clear(); requestHideSelf(0)
                 startActivity(Intent(this, KeyboardSettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             },
-            { (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker() })
+            { (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker() },
+            { code, ctrl, alt, shift -> active && TerminalInput.send(currentInputConnection, code, ctrl, alt, shift) },
+            { text, ctrl, alt -> active && TerminalInput.printable(currentInputConnection, text, ctrl, alt,
+                forceKeyEvents = currentInputEditorInfo?.inputType == InputType.TYPE_NULL) })
         val cls = (info?.inputType ?: 0) and InputType.TYPE_MASK_CLASS
         panel.reset(active && info != null && VoiceIme.safeField(info.inputType),
             cls in listOf(InputType.TYPE_CLASS_NUMBER, InputType.TYPE_CLASS_PHONE, InputType.TYPE_CLASS_DATETIME), label)
