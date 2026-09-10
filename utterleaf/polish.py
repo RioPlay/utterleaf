@@ -330,6 +330,35 @@ def _tidy_spacing(text: str) -> str:
     return _collapse(text)
 
 
+def _layout_sentence_spacing(text: str) -> str:
+    """Conservatively repair likely prose joins in layout-command text.
+
+    Layout paths preserve filenames and identifiers that ordinary prose cleanup
+    historically rewrites. Recognize common capitalized sentence openings while
+    excluding technical syntax and common member-access roots. Unmarked text
+    such as ``wrong.Maybe`` can also be an identifier: that ambiguity cannot be
+    resolved from spelling alone. Code/literal modes bypass this heuristic.
+    """
+    starters = r"(?:I|Maybe|Whatever|The|This|That|It|We|You|They|There|What|Why|How|But|And|So|Now)"
+    boundary = re.compile(rf"(?<=[a-z])[.!?](?={starters}\b)")
+    member_roots = {"object", "obj", "self", "cls", "super", "module", "package",
+                    "namespace", "member", "class", "instance", "config", "data"}
+    def repair(match):
+        token = match.group()
+        if any(char in token for char in "`/@\\_:()[]"):
+            return token
+        root = token.split(".", 1)[0].lstrip("\"'“‘").lower()
+        if root in member_roots:
+            return token
+        # Preserve dotted chains containing an unrecognized component (domains,
+        # extensions, versions, members), but allow wrong.Maybe.It and a final dot.
+        if any(not re.match(rf"{starters}\b", part)
+               for part in token.rstrip(".!?\"'”’").split(".")[1:]):
+            return token
+        return boundary.sub(lambda mark: mark.group() + " ", token)
+    return re.sub(r"`[^`]*`|\S+", repair, text)
+
+
 def stitch_to_previous(previous: str, incoming: str) -> str:
     """Insert this take after the last one as a new sentence, with a space."""
     incoming = (incoming or "").strip()
@@ -740,6 +769,8 @@ def polish_local(
     body = _merge_acronyms(body)
     body = _light_grammar(body)
     body = _apply_vocabulary(body, vocab if vocab is not None else load_vocabulary())
+    if command in {"newline", "paragraph", "bullets", "numbered"}:
+        body = _layout_sentence_spacing(body)
     body = _apply_command(body, command)
     if command == "discard":
         return PolishResult("", command=command, discarded=True)

@@ -451,6 +451,57 @@ def test_sentence_spacing_survives_adjacent_sentences() -> None:
     assert result.text == "The first sentence. The second sentence."
 
 
+@pytest.mark.parametrize("command, suffix", [("new line", "\n"), ("new paragraph", "\n\n")])
+def test_layout_command_repairs_fused_sentence_openings(command, suffix):
+    result = polish_local(f"That is wrong.Maybe say no.I have an idea.Whatever works {command}", vocab=[])
+    assert result.text == "That is wrong. Maybe say no. I have an idea. Whatever works" + suffix
+
+
+@pytest.mark.parametrize("token", [
+    "https://example.com/That", "name@example.com", "example.com", "object.member",
+    "Class.Method", "3.14", "v1.2.3", "C:\\folder\\file.txt", "value.Maybe()", "`wrong.Maybe`",
+])
+def test_layout_spacing_preserves_technical_tokens(token):
+    result = polish_local(f"Keep {token} new paragraph", vocab=[], remove_fillers=False, fix_corrections=False)
+    assert result.text == f"Keep {token}\n\n"
+
+
+def test_layout_spacing_does_not_change_literal_mode():
+    raw = "That is wrong.Maybe say no.I have an idea.Whatever works new line"
+    assert polish_local(raw, vocab=[], text_cleanup=False).text == raw
+
+
+@pytest.mark.parametrize("token", [
+    "object.That", "package.Now", "self.It", "cls.This", "super.That",
+    "module.The", "member.What", "obj.That.It", "namespace.This", "data.It",
+    "object.That.Maybe", "wrong.Maybe.txt", "module.member.That", "object[0].That",
+])
+def test_layout_spacing_protects_common_member_access(token):
+    assert polish_local(f"Keep {token} new line", vocab=[]).text == f"Keep {token}\n"
+
+
+@pytest.mark.parametrize("ending", ["", "."])
+def test_layout_spacing_repairs_multiple_prose_joins_in_one_token(ending):
+    raw = f"That is wrong.Maybe.It{ending} works new paragraph"
+    assert polish_local(raw, vocab=[]).text == f"That is wrong. Maybe. It{ending} works\n\n"
+
+
+def test_ambiguous_prose_spelling_remains_exact_in_literal_mode():
+    # An unmarked identifier can have the same spelling as the prose heuristic;
+    # literal mode is the explicit way to preserve it without guessing intent.
+    raw = "wrong.Maybe.It new paragraph"
+    assert polish_local(raw, vocab=[], text_cleanup=False).text == raw
+
+
+@pytest.mark.parametrize("style, expected", [
+    ("bulleted", "- That is wrong\n- Maybe it works"),
+    ("numbered", "1. That is wrong\n2. Maybe it works"),
+])
+def test_trailing_list_command_repairs_prose_before_item_splitting(style, expected):
+    result = polish_local(f"That is wrong.Maybe it works make this a {style} list", vocab=[])
+    assert result.text == expected
+
+
 def test_sentence_spacing_is_cased_before_final_cleanup() -> None:
     result = polish_local("The first sentence.the second sentence")
     assert result.text == "The first sentence. The second sentence."

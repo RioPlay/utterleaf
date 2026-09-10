@@ -117,6 +117,25 @@ def test_three_prose_passes_keep_separators_after_title_change_and_timeout(monke
     app.recent_dictation.clear()
 
 
+def test_layout_take_repairs_inner_sentences_and_keeps_next_take_separate(monkeypatch):
+    app = _app(monkeypatch)
+    takes = iter(["That is wrong.Maybe say no.I have an idea.Whatever works new paragraph",
+                  "Next thought.", "Another thought."])
+    pasted = []
+    monkeypatch.setattr("utterleaf.app.foreground_app", lambda: "Codex.exe")
+    monkeypatch.setattr("utterleaf.app.foreground_id", lambda: 123)
+    monkeypatch.setattr("utterleaf.app.transcribe", lambda *a: next(takes))
+    monkeypatch.setattr("utterleaf.app.paste", lambda text, **kw: pasted.append(text) or "pasted")
+    monkeypatch.setattr("utterleaf.app.edit_target.capture", lambda *a: None)
+    monkeypatch.setattr(app, "_schedule_edit_expiry", lambda: None)
+    for _ in range(3):
+        app._finish(np.ones(16000, dtype=np.float32), target=123)
+        app.last_paste_at -= 30
+    assert "".join(pasted) == ("That is wrong. Maybe say no. I have an idea. Whatever works\n\n"
+                                "Next thought. Another thought. ")
+    app.recent_dictation.clear()
+
+
 @pytest.mark.parametrize("outcome", ["replaced", "unavailable", "failed"])
 def test_spoken_replacement_uses_verified_entry_and_retains_correction(monkeypatch, outcome):
     app = _app(monkeypatch)
