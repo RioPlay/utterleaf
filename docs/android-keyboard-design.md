@@ -7,7 +7,17 @@ returns to typing. [Quick-action design, release evidence and editor limits](and
 record revision `aec275b`, its 74-test emulator pass and signed publication.
 The alpha11 and earlier sections below describe those releases unchanged.
 
-## QA follow-up (not released)
+## Released in alpha13
+
+[Signed Android alpha13](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha13)
+ships these fixes at revision `45da18a`. The release passed
+[CI 34516072857](https://github.com/RioPlay/utterleaf/actions/runs/34516072857),
+including 76 emulator tests, 8 JVM tests, lint, builds and 3 release contracts.
+[Publication 34517132892](https://github.com/RioPlay/utterleaf/actions/runs/34517132892)
+verified signed installation/upgrade, reinstallation and certificate continuity.
+The downloaded APK matched SHA-256
+`ba3d76557b4d10b76831b237283de71e34ccd70541e444652277afb47d78f223`.
+Physical-device, TalkBack and model/preference-retention acceptance remain open.
 
 Height and bottom-space sliders now expose their displayed value in the accessible
 description, including after Reset. Added tests cover description updates,

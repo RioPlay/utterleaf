@@ -27,13 +27,13 @@ roadmap without claiming those capabilities are already released.
   verified signing continuity and emulator install/upgrade. Physical-device and
   accessibility acceptance remain open. Earlier entries below are release history.
 
-- **QA follow-up, CI verified / unreleased:** slider accessibility values,
+- **Released alpha13:** slider accessibility values,
   preference snapshot synchronization, condition-based gesture tests and live-IME
   editing-action coverage. Revision `d942098` passed
   [CI 34513111803](https://github.com/RioPlay/utterleaf/actions/runs/34513111803):
   76 emulator tests, zero failures/skips, 8 JVM tests, lint, builds and 3 release
   contracts. Physical accessibility acceptance remains open; these changes are
-  not part of the alpha12 artifact above.
+  shipped in [alpha13 with additional release validation](android-keyboard-design.md#released-in-alpha13).
 
 - **Released alpha10:** held Ctrl/Alt chords, independently configurable
   delete repetition and retained model imports with between-take selection.
@@ -180,11 +180,11 @@ and primary platform references are in [the mobile guide](mobile.md).
 
 ## Before each mobile release
 
-The current released baseline is Android alpha12, revision `aec275b`: 74 emulator
-tests with zero failures/skips, JVM tests, lint and 3 release contracts passed in
-[CI 34498263015](https://github.com/RioPlay/utterleaf/actions/runs/34498263015).
-See [signed publication and APK checksum](android-quick-actions.md) and the
-historical [alpha11 evidence](android-keyboard-design.md#released-in-alpha11).
+The current released baseline is Android alpha13, revision `45da18a`: 76 emulator
+tests, 8 JVM tests, lint, builds and 3 release contracts passed in
+[CI 34516072857](https://github.com/RioPlay/utterleaf/actions/runs/34516072857).
+See [signed publication and APK checksum](android-keyboard-design.md#released-in-alpha13).
+Earlier alpha entries retain their historical validation scope.
 
 Track the [Android responsiveness and acceleration pass](android-performance.md)
 separately from feature completeness; hardware speedups require physical-device

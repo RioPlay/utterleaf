@@ -3,17 +3,17 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha12 is released as a signed development preview.**
+**0.1.0-alpha13 is released as a signed development preview.**
 
-New in alpha12: **Edit** opens Undo, Redo, Select all, Cut, Copy, Paste and
+Alpha12 introduced **Edit** opens Undo, Redo, Select all, Cut, Copy, Paste and
 navigation in a panel that replaces the letters. **ABC** returns to typing.
 [Validation and editor limits](../../docs/android-quick-actions.md).
 
-QA follow-up (not released): tuning sliders include their current value in
+New in alpha13: tuning sliders include their current value in
 accessible descriptions, and quick toggles refresh other saved preferences.
 Revision `d942098` passed 76 emulator tests, 8 JVM tests, lint, builds and release
 contracts in [Android CI](https://github.com/RioPlay/utterleaf/actions/runs/34513111803).
-Physical-device and TalkBack acceptance remain open. See the [design notes](../../docs/android-keyboard-design.md#qa-follow-up-not-released).
+Physical-device and TalkBack acceptance remain open. See the [design notes](../../docs/android-keyboard-design.md#released-in-alpha13).
 
 Alpha11 added the single-row toolbar with **123** (number row),
 **>_** (terminal controls) and the Utterleaf dictation icon. Quick toggles save
@@ -79,11 +79,11 @@ prediction, accessibility and device coverage remain on the
 
 ## Try it
 
-1. [Download and install Utterleaf Android alpha12](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha12/Utterleaf-Android-0.1.0-alpha12.apk)
+1. [Download and install Utterleaf Android alpha13](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha13/Utterleaf-Android-0.1.0-alpha13.apk)
    on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Use `Utterleaf-Android-0.1.0-alpha12.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha12).
+   Use `Utterleaf-Android-0.1.0-alpha13.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha13).
    If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
-   then install alpha12. Uninstalling removes the imported model and other app data.
+   then install alpha13. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
    the same release identity and should be updated in place rather than uninstalled.
 2. Open **Utterleaf Voice**. Under **Your keyboard**, enable **Utterleaf Keyboard**

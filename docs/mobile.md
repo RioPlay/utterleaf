@@ -10,14 +10,18 @@ it does not replace or add dependencies to the desktop Python application.
 
 ## Android — typing and local dictation preview
 
-[Download the signed Android alpha12 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha12/Utterleaf-Android-0.1.0-alpha12.apk) ·
-[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha12) ·
+[Download the signed Android alpha13 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha13/Utterleaf-Android-0.1.0-alpha13.apk) ·
+[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha13) ·
 [Setup and current limits](../mobile/android/README.md)
 
-Android **0.1.0-alpha12 is released as a signed preview**. Setup
+Android **0.1.0-alpha13 is released as a signed preview**. Setup
 separates the two keyboard activation steps from optional voice setup, reports
 whether the keyboard is enabled and selected, and shows model and microphone
 permission status independently.
+
+Alpha13 adds accessible slider values and synchronizes quick-toggle preferences,
+with expanded gesture and live-IME regression coverage.
+[Release validation and checksum](android-keyboard-design.md#released-in-alpha13).
 
 Alpha12 adds an **Edit** toolbar action for undo/redo, selection, copy/cut/paste
 and navigation, replacing letters while open. [Validation and limits](android-quick-actions.md).
@@ -74,8 +78,8 @@ prediction and broader accessibility/device coverage remain on the
 
 Existing alpha01/alpha02 users need a one-time uninstall because those builds used
 different debug signing keys. Uninstalling removes app data and the imported model;
-install alpha12 and import the model again. Alpha03 began the persistent signing
-channel, which alpha12 retains. See [migration details](mobile-obtainium.md#migrating-from-the-old-alpha).
+install alpha13 and import the model again. Alpha03 began the persistent signing
+channel, which alpha13 retains. See [migration details](mobile-obtainium.md#migrating-from-the-old-alpha).
 
 See the [Android guide](../mobile/android/README.md) for exact implemented scope,
 setup, permissions, test evidence and remaining native-device acceptance work.
