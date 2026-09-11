@@ -226,7 +226,9 @@ that host process/activity, text and geometry survive. It restores the previous
 enabled/default IME and animation settings, then removes only its token-owned files.
 The API 35 run passed **after one same-field user re-show**; automatic keyboard
 reappearance was not established. This probe does not establish physical-device,
-saved-task, voice or model recovery. Foundation CI includes it but has not run remotely.
+saved-task, voice or model recovery. Foundation CI includes it; its first remote run
+stopped at an earlier IME fixture readiness failure before reaching this probe.
+See [PR #19](https://github.com/RioPlay/utterleaf/pull/19) for subsequent check results.
 
 Dictionary publication has a separate debug-only process-death probe. After installing
 the debug and androidTest APKs as above, run:

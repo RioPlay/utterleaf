@@ -271,7 +271,7 @@ The verifier also compares the 47 resolved dependency coordinates with the revie
 inventory, independent of protobuf ordering. Exact notice bytes are protected from
 Git line-ending conversion. Native link maps are local build evidence, not APK assets.
 Foundation CI now runs this source comparison and includes Markdown changes because
-notices are build inputs; the workflow has not run remotely.
+notices are build inputs; the first remote run passed the source comparison.
 
 ## Local verification
 
@@ -410,5 +410,13 @@ power-loss durability or physical storage behavior.
 These remain requirements; the foundation milestone does not remove them from scope.
 
 An isolated `android-foundation.yml` workflow now mirrors local build and emulator
-checks and uploads reports only. It has not run remotely; no foundation APK is
-published by this workflow.
+checks and uploads reports only; no foundation APK is published by this workflow.
+The [first remote run](https://github.com/RioPlay/utterleaf/actions/runs/34563567144)
+passed compilation, unit tests, lint and packaged-notice verification, then passed
+101 of 102 emulator tests. The real-IME fixture requested display before Android
+served the field (`PHASE_CLIENT_VIEW_SERVED`), so its helper now waits for an
+attached, focused-window, served editor before requesting display. CI also explicitly
+enables the software keyboard alongside its virtual hardware keyboard; this is
+disposable-emulator setup, separate from the observed ordering failure. External
+recovery probes were not reached in that run. Subsequent remote results are tracked
+in [PR #19](https://github.com/RioPlay/utterleaf/pull/19).

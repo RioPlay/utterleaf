@@ -129,7 +129,13 @@ class FoundationImeTest {
             assertTrue(main { screen.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0 })
             val manager = app.getSystemService(InputMethodManager::class.java)
             fun show(field: EditText) {
-                main { field.requestFocus(); manager.showSoftInput(field, InputMethodManager.SHOW_IMPLICIT) }
+                main { field.requestFocus() }
+                // A newly launched field may have focus before InputMethodManager serves it.
+                // Showing earlier is rejected at PHASE_CLIENT_VIEW_SERVED on a fresh emulator.
+                await("Editor was not ready for the IME") {
+                    field.isAttachedToWindow && field.hasWindowFocus() && manager.isActive(field)
+                }
+                main { manager.showSoftInput(field, InputMethodManager.SHOW_IMPLICIT) }
                 // A laid-out keyboard can precede its input surface becoming visible.
                 // Do not inject the first key while the framework is still showing it.
                 await("IME did not appear") {
