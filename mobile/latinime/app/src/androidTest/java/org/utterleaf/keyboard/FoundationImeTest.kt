@@ -44,7 +44,8 @@ class FoundationImeTest {
         return result!!.getOrThrow()
     }
 
-    private fun await(message: String, condition: () -> Boolean) {
+    private fun await(message: String, diagnostics: (() -> String)? = null,
+        condition: () -> Boolean) {
         val deadline = SystemClock.uptimeMillis() + 10_000
         while (SystemClock.uptimeMillis() < deadline) {
             instrumentation.waitForIdleSync()
@@ -53,9 +54,11 @@ class FoundationImeTest {
             SystemClock.sleep(20)
         }
         fail(message + main {
-            val view = keyboard()
-            "; keyboard=${view?.keyboard?.mId}, height=${view?.height}, bottom=" +
-                view?.rootView?.findViewById<View>(R.id.main_keyboard_frame)?.paddingBottom
+            diagnostics?.invoke() ?: run {
+                val view = keyboard()
+                "; keyboard=${view?.keyboard?.mId}, height=${view?.height}, bottom=" +
+                    view?.rootView?.findViewById<View>(R.id.main_keyboard_frame)?.paddingBottom
+            }
         })
     }
 
@@ -155,11 +158,31 @@ class FoundationImeTest {
             assertTrue(main { screen.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0 })
             val manager = app.getSystemService(InputMethodManager::class.java)
             fun show(field: EditText) {
+                fun readinessDiagnostics(): String {
+                    val decor = screen.window.decorView
+                    val currentFocus = screen.currentFocus
+                    return "; fieldAttached=${field.isAttachedToWindow}, fieldLaidOut=${field.isLaidOut}, " +
+                        "fieldShown=${field.isShown}, fieldWindowFocus=${field.hasWindowFocus()}, " +
+                        "fieldFocus=${field.hasFocus()}, decorAttached=${decor.isAttachedToWindow}, " +
+                        "decorLaidOut=${decor.isLaidOut}, decorShown=${decor.isShown}, " +
+                        "decorWindowFocus=${decor.hasWindowFocus()}, currentFocus=" +
+                        "${currentFocus?.javaClass?.name}/${currentFocus?.id}, active=${manager.isActive(field)}"
+                }
+                await("Editor window was not ready for the IME", diagnostics = ::readinessDiagnostics) {
+                    val decor = screen.window.decorView
+                    field.isAttachedToWindow && field.isLaidOut && field.hasWindowFocus() &&
+                        decor.isAttachedToWindow && decor.isLaidOut && decor.hasWindowFocus()
+                }
                 main { field.requestFocus() }
-                // A newly launched field may have focus before InputMethodManager serves it.
-                // Showing earlier is rejected at PHASE_CLIENT_VIEW_SERVED on a fresh emulator.
-                await("Editor was not ready for the IME") {
-                    field.isAttachedToWindow && field.hasWindowFocus() && manager.isActive(field)
+                await("Editor did not receive focus", diagnostics = ::readinessDiagnostics) {
+                    field.hasFocus()
+                }
+                // Establish the framework's served editor once after its window and focus settle.
+                // This is fixture setup, not a retry: the following active and visible assertions
+                // still require the selected IME to own and show the field.
+                main { manager.restartInput(field) }
+                await("Editor was not ready for the IME", diagnostics = ::readinessDiagnostics) {
+                    manager.isActive(field)
                 }
                 main { manager.showSoftInput(field, InputMethodManager.SHOW_IMPLICIT) }
                 // A laid-out keyboard can precede its input surface becoming visible.
@@ -297,14 +320,27 @@ class FoundationImeTest {
             touch(Constants.CODE_DELETE)
             touch('e'.code)
             await("Privacy protection broke literal password editing") { fields[1].text.toString() == "e" }
+            val viewBeforeDeallocation = main { keyboard()!! }
             val beforeHide = ime.mEditorSession.capture()
             main { manager.hideSoftInputFromWindow(fields[1].windowToken, 0) }
             await("Hide did not invalidate pending editor work") {
                 !ime.mEditorSession.isCurrent(beforeHide) &&
                     screen.window.decorView.rootWindowInsets?.isVisible(WindowInsets.Type.ime()) == false
             }
+            main {
+                LatinIME::class.java.getDeclaredMethod("deallocateMemory").apply {
+                    isAccessible = true
+                }.invoke(ime)
+            }
             show(fields[1])
-            assertTrue(ime.mEditorSession.isCurrent(ime.mEditorSession.capture()))
+            await("Keyboard did not reuse its deallocated view") {
+                keyboard() === viewBeforeDeallocation &&
+                    ime.mEditorSession.isCurrent(ime.mEditorSession.capture())
+            }
+            touch('r'.code)
+            await("Typing failed after owner-valid deallocation") { fields[1].text.toString() == "er" }
+            touch(Constants.CODE_DELETE)
+            await("Delete failed after owner-valid deallocation") { fields[1].text.toString() == "e" }
             val originalView = main { keyboard()!! }
             val originalHeight = main { originalView.height }
             comfort.save(originalComfort.copy(heightPercent = 125, bottomSpaceDp = 24))

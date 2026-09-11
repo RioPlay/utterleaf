@@ -219,6 +219,19 @@ public final class PointerTrackerQueue {
         }
     }
 
+    /**
+     * Discards every queue reference without delivering a synthetic pointer event.
+     *
+     * The normal release methods notify their elements. Service teardown cannot do that because
+     * the process-static listener may already belong to a replacement input view.
+     */
+    public void clear() {
+        synchronized (mExpandableArrayOfActivePointers) {
+            mExpandableArrayOfActivePointers.clear();
+            mArraySize = 0;
+        }
+    }
+
     @Override
     public String toString() {
         synchronized (mExpandableArrayOfActivePointers) {

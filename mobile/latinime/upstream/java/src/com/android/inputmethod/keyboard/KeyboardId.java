@@ -26,6 +26,8 @@ import com.android.inputmethod.compat.EditorInfoCompatUtils;
 import com.android.inputmethod.latin.RichInputMethodSubtype;
 import com.android.inputmethod.latin.utils.InputTypeUtils;
 
+import org.utterleaf.keyboard.KeyboardEditorInfo;
+
 import java.util.Arrays;
 import java.util.Locale;
 
@@ -76,7 +78,7 @@ public final class KeyboardId {
     public final int mHeight;
     public final int mMode;
     public final int mElementId;
-    public final EditorInfo mEditorInfo;
+    public final KeyboardEditorInfo mEditorMetadata;
     public final boolean mClobberSettingsKey;
     public final boolean mLanguageSwitchKeyEnabled;
     public final String mCustomActionLabel;
@@ -91,11 +93,10 @@ public final class KeyboardId {
         mHeight = params.mKeyboardHeight;
         mMode = params.mMode;
         mElementId = elementId;
-        mEditorInfo = params.mEditorInfo;
+        mEditorMetadata = params.mEditorMetadata;
         mClobberSettingsKey = params.mNoSettingsKey;
         mLanguageSwitchKeyEnabled = params.mLanguageSwitchKeyEnabled;
-        mCustomActionLabel = (mEditorInfo.actionLabel != null)
-                ? mEditorInfo.actionLabel.toString() : null;
+        mCustomActionLabel = mEditorMetadata.actionLabel;
         mHasShortcutKey = params.mVoiceInputKeyEnabled;
         mIsSplitLayout = params.mIsSplitLayoutEnabled;
 
@@ -151,27 +152,32 @@ public final class KeyboardId {
     }
 
     public boolean navigateNext() {
-        return (mEditorInfo.imeOptions & EditorInfo.IME_FLAG_NAVIGATE_NEXT) != 0
+        return (mEditorMetadata.imeOptions & EditorInfo.IME_FLAG_NAVIGATE_NEXT) != 0
                 || imeAction() == EditorInfo.IME_ACTION_NEXT;
     }
 
     public boolean navigatePrevious() {
-        return (mEditorInfo.imeOptions & EditorInfo.IME_FLAG_NAVIGATE_PREVIOUS) != 0
+        return (mEditorMetadata.imeOptions & EditorInfo.IME_FLAG_NAVIGATE_PREVIOUS) != 0
                 || imeAction() == EditorInfo.IME_ACTION_PREVIOUS;
     }
 
     public boolean passwordInput() {
-        final int inputType = mEditorInfo.inputType;
+        final int inputType = mEditorMetadata.inputType;
         return InputTypeUtils.isPasswordInputType(inputType)
                 || InputTypeUtils.isVisiblePasswordInputType(inputType);
     }
 
     public boolean isMultiLine() {
-        return (mEditorInfo.inputType & InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0;
+        return (mEditorMetadata.inputType & InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0;
     }
 
     public int imeAction() {
-        return InputTypeUtils.getImeOptionsActionIdFromEditorInfo(mEditorInfo);
+        if ((mEditorMetadata.imeOptions & EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0) {
+            return EditorInfo.IME_ACTION_NONE;
+        } else if (mCustomActionLabel != null) {
+            return InputTypeUtils.IME_ACTION_CUSTOM_LABEL;
+        }
+        return mEditorMetadata.imeOptions & EditorInfo.IME_MASK_ACTION;
     }
 
     public Locale getLocale() {

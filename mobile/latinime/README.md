@@ -10,7 +10,10 @@ and make height/theme changes take effect during same-field practice. Suggestion
 workers now use owner-captured composer/context inputs and deep pointer copies;
 dictionary loads reject retired generations and stale UI notifications. Native
 dictionary/proximity leases defer disposal until admitted operations finish without
-blocking the UI on decoding. Remaining native hardening and lifecycle/cache checks
+blocking the UI on decoding. Owner-checked service/view cleanup releases retired
+pointer state and timers while preserving successor state and verified view reuse.
+Cached keyboard layouts now keep immutable keyboard-only editor metadata.
+Remaining native hardening and lifecycle/cache checks
 continue; the external emulator probe verifies only bounded process-death behavior. See the
 [execution evidence](EXECUTION-EVIDENCE.md) for verified paths and remaining limits.
 The linked AOSP gesture policy is absent: native swipe recognition is not implemented

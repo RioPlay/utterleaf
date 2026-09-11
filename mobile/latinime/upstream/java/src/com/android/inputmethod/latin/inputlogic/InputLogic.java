@@ -2345,6 +2345,7 @@ public final class InputLogic {
         final Object requestIdentity = session.capture();
         final SuggestionComposerSnapshot composer = new SuggestionComposerSnapshot(mWordComposer,
                 () -> session.isCurrent(requestIdentity));
+        final com.android.inputmethod.keyboard.ProximityInfo proximityInfo = keyboard.getProximityInfo();
         final NgramContext context = getNgramContextFromNthPreviousWordForSuggestion(
                 settingsValues.mSpacingAndPunctuations, composer.isComposingWord() ? 2 : 1).snapshot();
         final SettingsValuesForSuggestion suggestionSettings =
@@ -2352,7 +2353,7 @@ public final class InputLogic {
         final boolean correctionEnabled = settingsValues.mAutoCorrectionEnabledPerUserSettings;
         final Suggest suggest = mSuggest;
         final float correctionThreshold = suggest.getAutoCorrectionThreshold();
-        return callback -> suggest.getSuggestedWords(composer, context, keyboard,
+        return callback -> suggest.getSuggestedWords(composer, context, proximityInfo,
                 suggestionSettings, correctionEnabled, correctionThreshold,
                 inputStyle, sequenceNumber, callback);
     }

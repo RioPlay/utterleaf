@@ -130,7 +130,12 @@ public final class AccessibilityUtils {
      */
     @SuppressWarnings("deprecation")
     public boolean shouldObscureInput(final EditorInfo editorInfo) {
-        if (editorInfo == null) return false;
+        return editorInfo != null && shouldObscureInput(editorInfo.inputType);
+    }
+
+    /** Returns whether accessibility should obscure a keyboard cached input type. */
+    @SuppressWarnings("deprecation")
+    public boolean shouldObscureInput(final int inputType) {
 
         // The user can optionally force speaking passwords.
         if (SettingsSecureCompatUtils.ACCESSIBILITY_SPEAK_PASSWORD != null) {
@@ -145,7 +150,7 @@ public final class AccessibilityUtils {
         }
 
         // Don't speak if the IME is connected to a password field.
-        return InputTypeUtils.isPasswordInputType(editorInfo.inputType);
+        return InputTypeUtils.isPasswordInputType(inputType);
     }
 
     /**

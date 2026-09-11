@@ -228,6 +228,8 @@ public final class TimerHandler extends LeakGuardHandlerWrapper<DrawingProxy>
     public void cancelAllMessages() {
         cancelAllKeyTimers();
         cancelAllUpdateBatchInputTimers();
+        removeMessages(MSG_TYPING_STATE_EXPIRED);
+        removeMessages(MSG_DOUBLE_TAP_SHIFT_KEY);
         removeMessages(MSG_DISMISS_KEY_PREVIEW);
         removeMessages(MSG_DISMISS_GESTURE_FLOATING_PREVIEW_TEXT);
     }

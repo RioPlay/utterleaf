@@ -2,9 +2,12 @@ package org.utterleaf.keyboard
 
 import android.content.ComponentName
 import android.content.Intent
+import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.view.accessibility.AccessibilityNodeInfo
+import android.view.inspector.WindowInspector
 import android.widget.Button
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -44,6 +47,39 @@ class PackagedNoticesTest {
         val activity = instrumentation.startActivitySync(Intent(context, NoticesActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as NoticesActivity
         try {
+            val decor = activity.window.decorView
+            fun readReady(): Boolean {
+                var ready = false
+                instrumentation.runOnMainSync {
+                    ready = decor.isAttachedToWindow && decor.isLaidOut && decor.isShown &&
+                        activity.hasWindowFocus()
+                }
+                return ready
+            }
+            val readinessDeadline = SystemClock.uptimeMillis() + 5_000L
+            while (SystemClock.uptimeMillis() < readinessDeadline && !readReady()) {
+                instrumentation.waitForIdleSync()
+                SystemClock.sleep(100L)
+            }
+            var roots = ""
+            var omittedRoots = 0
+            var ready = false
+            instrumentation.runOnMainSync {
+                ready = decor.isAttachedToWindow && decor.isLaidOut && decor.isShown &&
+                    activity.hasWindowFocus()
+                val allRoots = WindowInspector.getGlobalWindowViews()
+                val shownRoots = allRoots.take(8)
+                omittedRoots = allRoots.size - shownRoots.size
+                roots = shownRoots.joinToString { root ->
+                    "${root.context.packageName}/${root.javaClass.name}#${root.windowId} " +
+                        "attached=${root.isAttachedToWindow},laidOut=${root.isLaidOut},shown=${root.isShown}," +
+                        "focused=${root.hasWindowFocus()}"
+                }
+            }
+            assertTrue(
+                "Notice activity window not ready: ready=$ready, root=$roots, " +
+                    "omittedRoots=$omittedRoots",
+                ready)
             instrumentation.runOnMainSync {
                 assertTrue(activity.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0)
                 val buttons = descendants(activity.window.decorView).filterIsInstance<Button>()
@@ -54,10 +90,17 @@ class PackagedNoticesTest {
             }
             instrumentation.waitForIdleSync()
             val device = instrumentation.uiAutomation
-            val root = device.rootInActiveWindow
+            var root = device.rootInActiveWindow
+            var matches = emptyList<AccessibilityNodeInfo>()
+            val textDeadline = SystemClock.uptimeMillis() + 5_000L
+            while (SystemClock.uptimeMillis() < textDeadline && matches.isEmpty()) {
+                root?.recycle()
+                root = device.rootInActiveWindow
+                matches = root?.findAccessibilityNodeInfosByText("Lexiteria").orEmpty()
+                if (matches.isEmpty()) android.os.SystemClock.sleep(100L)
+            }
             try {
                 assertNotNull(root)
-                val matches = root.findAccessibilityNodeInfosByText("Lexiteria")
                 assertTrue("The dialog exposes the bundled notice text", matches.isNotEmpty())
                 @Suppress("DEPRECATION")
                 matches.forEach { it.recycle() }

@@ -18,6 +18,18 @@ Utterleaf changes so far:
   Retired groups detach under a short lock, then dispose outside it; locale changes
   close unretained dictionaries. A proximity lease now retains its native owner
   throughout decoding; absent/retired proximity resources return no results.
+- InputLogic, Suggest and facilitator APIs: capture proximity ownership before
+  worker dispatch instead of dereferencing a mutable Keyboard during decoding.
+  Excluded spellchecker call sites follow the updated signature.
+- LatinIME and KeyboardSwitcher: identity-check shared view, accessibility and
+  singleton cleanup so retired services cannot clear successor-owned state.
+  Terminal cleanup drops service/view/theme references. PointerTracker and its
+  queue silently detach retired touch state, including queue backing entries;
+  TimerHandler cancellation also removes typing and double-tap state messages.
+- KeyboardLayoutSet and KeyboardId: cached layout parameters use an owned
+  immutable keyboard-only metadata snapshot rather than retaining framework
+  EditorInfo. Accessibility reads the captured input type; live-editor callers
+  retain their existing overload. Action labels are copied to plain strings.
 - DictionaryFactory.java replaced by DictionaryFactory.kt: Kotlin literal-input
   factory; provider discovery, broken-provider reporting and bundled decoding removed.
   Original copyright/license notice retained in the replacement.

@@ -234,6 +234,26 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         }
     }
 
+    /** Drops touch state for a deallocated input view without delivering a synthetic event. */
+    static void clearForInputViewDeallocation() {
+        sPointerTrackerQueue.clear();
+        sTrackers.clear();
+        sInGesture = false;
+    }
+
+    /**
+     * Drops process-static touch state after its owning service has been destroyed.
+     *
+     * This deliberately does not cancel trackers through their normal paths: those paths can
+     * call the process-static listener after a replacement service has installed one.
+     */
+    static void resetForServiceDestroy() {
+        clearForInputViewDeallocation();
+        sListener = KeyboardActionListener.EMPTY_LISTENER;
+        sTimerProxy = null;
+        sDrawingProxy = null;
+    }
+
     private PointerTracker(final int id) {
         mPointerId = id;
         mBatchInputArbiter = new BatchInputArbiter(id, sGestureStrokeRecognitionParams);

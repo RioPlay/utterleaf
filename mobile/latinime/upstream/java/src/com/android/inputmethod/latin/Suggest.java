@@ -24,7 +24,7 @@ import android.text.TextUtils;
 import static com.android.inputmethod.latin.define.DecoderSpecificConstants.SHOULD_AUTO_CORRECT_USING_NON_WHITE_LISTED_SUGGESTION;
 import static com.android.inputmethod.latin.define.DecoderSpecificConstants.SHOULD_REMOVE_PREVIOUSLY_REJECTED_SUGGESTION;
 
-import com.android.inputmethod.keyboard.Keyboard;
+import com.android.inputmethod.keyboard.ProximityInfo;
 import com.android.inputmethod.latin.SuggestedWords.SuggestedWordInfo;
 import com.android.inputmethod.latin.common.Constants;
 import com.android.inputmethod.latin.common.StringUtils;
@@ -103,16 +103,16 @@ public final class Suggest {
     }
 
     public void getSuggestedWords(final SuggestionComposerSnapshot wordComposer,
-            final NgramContext ngramContext, final Keyboard keyboard,
+            final NgramContext ngramContext, final ProximityInfo proximityInfo,
             final SettingsValuesForSuggestion settingsValuesForSuggestion,
             final boolean isCorrectionEnabled, final float autoCorrectionThreshold,
             final int inputStyle, final int sequenceNumber,
             final OnGetSuggestedWordsCallback callback) {
         if (wordComposer.isBatchMode()) {
-            getSuggestedWordsForBatchInput(wordComposer, ngramContext, keyboard,
+            getSuggestedWordsForBatchInput(wordComposer, ngramContext, proximityInfo,
                     settingsValuesForSuggestion, inputStyle, sequenceNumber, callback);
         } else {
-            getSuggestedWordsForNonBatchInput(wordComposer, ngramContext, keyboard,
+            getSuggestedWordsForNonBatchInput(wordComposer, ngramContext, proximityInfo,
                     settingsValuesForSuggestion, inputStyle, isCorrectionEnabled, autoCorrectionThreshold,
                     sequenceNumber, callback);
         }
@@ -158,7 +158,7 @@ public final class Suggest {
     // Retrieves suggestions for non-batch input (typing, recorrection, predictions...)
     // and calls the callback function with the suggestions.
     private void getSuggestedWordsForNonBatchInput(final SuggestionComposerSnapshot wordComposer,
-            final NgramContext ngramContext, final Keyboard keyboard,
+            final NgramContext ngramContext, final ProximityInfo proximityInfo,
             final SettingsValuesForSuggestion settingsValuesForSuggestion,
             final int inputStyleIfNotPrediction, final boolean isCorrectionEnabled,
             final float autoCorrectionThreshold,
@@ -171,7 +171,7 @@ public final class Suggest {
                 : typedWordString;
 
         final SuggestionResults suggestionResults = mDictionaryFacilitator.getSuggestionResults(
-                wordComposer.getComposedDataSnapshot(), ngramContext, keyboard,
+                wordComposer.getComposedDataSnapshot(), ngramContext, proximityInfo,
                 settingsValuesForSuggestion, SESSION_ID_TYPING, inputStyleIfNotPrediction);
         final Locale locale = mDictionaryFacilitator.getLocale();
         final ArrayList<SuggestedWordInfo> suggestionsContainer =
@@ -296,12 +296,12 @@ public final class Suggest {
     // Retrieves suggestions for the batch input
     // and calls the callback function with the suggestions.
     private void getSuggestedWordsForBatchInput(final SuggestionComposerSnapshot wordComposer,
-            final NgramContext ngramContext, final Keyboard keyboard,
+            final NgramContext ngramContext, final ProximityInfo proximityInfo,
             final SettingsValuesForSuggestion settingsValuesForSuggestion,
             final int inputStyle, final int sequenceNumber,
             final OnGetSuggestedWordsCallback callback) {
         final SuggestionResults suggestionResults = mDictionaryFacilitator.getSuggestionResults(
-                wordComposer.getComposedDataSnapshot(), ngramContext, keyboard,
+                wordComposer.getComposedDataSnapshot(), ngramContext, proximityInfo,
                 settingsValuesForSuggestion, SESSION_ID_GESTURE, inputStyle);
         // For transforming words that don't come from a dictionary, because it's our best bet
         final Locale locale = mDictionaryFacilitator.getLocale();

@@ -36,7 +36,6 @@ import com.android.inputmethod.compat.UserManagerCompatUtils;
 import com.android.inputmethod.keyboard.internal.KeyboardBuilder;
 import com.android.inputmethod.keyboard.internal.KeyboardParams;
 import com.android.inputmethod.keyboard.internal.UniqueKeysCache;
-import com.android.inputmethod.latin.InputAttributes;
 import com.android.inputmethod.latin.R;
 import com.android.inputmethod.latin.RichInputMethodSubtype;
 import com.android.inputmethod.latin.define.DebugFlags;
@@ -44,6 +43,9 @@ import com.android.inputmethod.latin.utils.InputTypeUtils;
 import com.android.inputmethod.latin.utils.ScriptUtils;
 import com.android.inputmethod.latin.utils.SubtypeLocaleUtils;
 import com.android.inputmethod.latin.utils.XmlParseUtils;
+import com.android.inputmethod.latin.common.StringUtils;
+
+import org.utterleaf.keyboard.KeyboardEditorInfo;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -113,8 +115,8 @@ public final class KeyboardLayoutSet {
         String mKeyboardLayoutSetName;
         int mMode;
         boolean mDisableTouchPositionCorrectionDataForTest;
-        // TODO: Use {@link InputAttributes} instead of these variables.
-        EditorInfo mEditorInfo;
+        // Keyboard-only immutable copy; never retain the framework EditorInfo in cached layouts.
+        KeyboardEditorInfo mEditorMetadata;
         boolean mIsPasswordField;
         boolean mVoiceInputKeyEnabled;
         boolean mNoSettingsKey;
@@ -261,21 +263,18 @@ public final class KeyboardLayoutSet {
 
         private final Params mParams = new Params();
 
-        private static final EditorInfo EMPTY_EDITOR_INFO = new EditorInfo();
-
         public Builder(final Context context, @Nullable final EditorInfo ei) {
             mContext = context;
             mPackageName = context.getPackageName();
             mResources = context.getResources();
             final Params params = mParams;
 
-            final EditorInfo editorInfo = (ei != null) ? ei : EMPTY_EDITOR_INFO;
-            params.mMode = getKeyboardMode(editorInfo);
-            // TODO: Consolidate those with {@link InputAttributes}.
-            params.mEditorInfo = editorInfo;
-            params.mIsPasswordField = InputTypeUtils.isPasswordInputType(editorInfo.inputType);
-            params.mNoSettingsKey = InputAttributes.inPrivateImeOptions(
-                    mPackageName, NO_SETTINGS_KEY, editorInfo);
+            final KeyboardEditorInfo editorMetadata = KeyboardEditorInfo.from(ei);
+            params.mEditorMetadata = editorMetadata;
+            params.mMode = getKeyboardMode(editorMetadata.inputType);
+            params.mIsPasswordField = InputTypeUtils.isPasswordInputType(editorMetadata.inputType);
+            params.mNoSettingsKey = inPrivateImeOptions(mPackageName, NO_SETTINGS_KEY,
+                    editorMetadata.privateImeOptions);
 
             // When the device is still unlocked, features like showing the IME setting app need to
             // be locked down.
@@ -296,12 +295,10 @@ public final class KeyboardLayoutSet {
 
         public Builder setSubtype(@Nonnull final RichInputMethodSubtype subtype) {
             final boolean asciiCapable = InputMethodSubtypeCompatUtils.isAsciiCapable(subtype);
-            // TODO: Consolidate with {@link InputAttributes}.
-            @SuppressWarnings("deprecation")
-            final boolean deprecatedForceAscii = InputAttributes.inPrivateImeOptions(
-                    mPackageName, FORCE_ASCII, mParams.mEditorInfo);
+            final boolean deprecatedForceAscii = inPrivateImeOptions(mPackageName, FORCE_ASCII,
+                    mParams.mEditorMetadata.privateImeOptions);
             final boolean forceAscii = EditorInfoCompatUtils.hasFlagForceAscii(
-                    mParams.mEditorInfo.imeOptions)
+                    mParams.mEditorMetadata.imeOptions)
                     || deprecatedForceAscii;
             final RichInputMethodSubtype keyboardSubtype = (forceAscii && !asciiCapable)
                     ? RichInputMethodSubtype.getNoLanguageSubtype()
@@ -470,8 +467,13 @@ public final class KeyboardLayoutSet {
             }
         }
 
-        private static int getKeyboardMode(final EditorInfo editorInfo) {
-            final int inputType = editorInfo.inputType;
+        private static boolean inPrivateImeOptions(final String packageName, final String key,
+                final String privateImeOptions) {
+            final String findingKey = (packageName != null) ? packageName + "." + key : key;
+            return StringUtils.containsInCommaSplittableText(findingKey, privateImeOptions);
+        }
+
+        private static int getKeyboardMode(final int inputType) {
             final int variation = inputType & InputType.TYPE_MASK_VARIATION;
 
             switch (inputType & InputType.TYPE_MASK_CLASS) {
