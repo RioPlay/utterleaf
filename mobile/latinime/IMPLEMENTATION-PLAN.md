@@ -200,9 +200,9 @@ temporarily unavailable pending a reviewed format-conversion replacement workflo
 Ordinary dictionary write transactions passed fault tests and six external emulator
 process-death cases. Decoder suggestion requests now capture immutable
 `ProximityInfo` on the owner thread and pass that through native suggest admission
-instead of a mutable `Keyboard`. This closes the remaining cross-thread mutable
-state path in suggestion decode and keeps retirement/exception-safe results bounded
-to the active editor identity. Further JNI/lifecycle coverage, including newly identified
+instead of a mutable `Keyboard`. This removes that worker-side keyboard lookup;
+it does not establish complete cross-thread isolation of the decoder. Further
+JNI/lifecycle coverage, including newly identified
 static service/view/editor-metadata retention, remains. W2 is open.
 
 **Gate:** no unresolved wrong-field mutation, implicit submission, sensitive

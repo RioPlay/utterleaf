@@ -397,6 +397,15 @@ power-loss durability or physical storage behavior.
 
 ## Remaining release gates
 
+- September 11 recovery recheck at `a9952e7`: opt-in recovery-host assembly passed.
+  The first external API 35 run failed the host process/activity/geometry invariant
+  (`ime-proximity-recovery/6a952f92dc2c46caaf1fe6fa3a17302f/evidence.json`
+  under the local build root). The controller previously omitted rebound state
+  on this failure; it now records that state before checking and names the changed
+  field, without relaxing the invariant. The next run passed with same-field user
+  re-show (`99851cc02fcc41fbb2fc9c7b95caefb0`), as did one repeat
+  (`e0033c22432f47cc9a2fcaf33219c78c`). The initial intermittent failure
+  remains unexplained; this diagnostic change is not a lifecycle fix.
 - Service-destruction follow-up: source review found retained service/view references
   in KeyboardSwitcher and PointerTracker, including the pointer queue's backing
   entries. KeyboardLayoutSet's forced cache is not cleared with its ordinary cache,
@@ -415,6 +424,12 @@ power-loss durability or physical storage behavior.
 - Upgrade/data preservation, remote CI, signed release and Obtainium verification.
 
 These remain requirements; the foundation milestone does not remove them from scope.
+
+PR #19 merged on September 11 at `d7e1338fc0ba53b4a0774f7238c46ba8ee82a0c5`.
+Both its [final PR foundation run](https://github.com/RioPlay/utterleaf/actions/runs/34565781700)
+and the [main foundation run](https://github.com/RioPlay/utterleaf/actions/runs/34566337066)
+passed. Those results cover the earlier foundation checkpoint, not the subsequent
+proximity-input refactor. No foundation APK was published.
 
 An isolated `android-foundation.yml` workflow now mirrors local build and emulator
 checks and uploads reports only; no foundation APK is published by this workflow.

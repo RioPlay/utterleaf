@@ -155,11 +155,14 @@ def main():
         verified_pid(IME, new_pid)
         if adb("shell", "settings", "get", "secure", "default_input_method") != COMPONENT:
             raise RuntimeError("Experimental keyboard selection changed during recovery")
-        for field in ("host_pid", "instance", "window_width", "window_height", "ime_bottom"):
-            if rebound_host[field] != baseline[field]:
-                raise RuntimeError("Host process/activity/geometry changed across IME death")
+        # Preserve the observed state even when the invariant below fails.
         evidence["rebound_ime_pid"] = new_pid
         evidence["after_rebind"] = rebound_host
+        for field in ("host_pid", "instance", "window_width", "window_height", "ime_bottom"):
+            if rebound_host[field] != baseline[field]:
+                raise RuntimeError(
+                    f"Host process/activity/geometry changed across IME death: {field} "
+                    f"{baseline[field]!r} -> {rebound_host[field]!r}")
         tap(keys["b"])
         tap(keys["space"])
         typed = wait_for("Post-rebind touches did not type into original host", lambda: host_text("a b "))
