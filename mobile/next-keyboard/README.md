@@ -10,13 +10,20 @@ editor gateway and Incognito preference. No LatinIME/FUTO/Hacker's Keyboard rend
 decoder, dictionary or artwork is imported. The older apps remain separate.
 
 Implemented scope (verification recorded separately): English letters/symbols,
-Shift, Space, direct Backspace and named Enter; two-pointer taps; main-thread editor
+Shift, Space, direct Backspace and named Enter; optional number row; Latin accent
+and punctuation choices by tap or hold/slide/release; two-pointer taps; main-thread editor
 ownership; session/caret/privacy rejection; bounded synthetic decoder boundary;
 explicit local Incognito and forced sensitive-field policy. There is no live
 decoder, touch learning, correction, swipe, voice/model integration, terminal mode,
 composition pipeline, clipboard integration or preference history. Calibration
 is unavailable/off in every mode; Incognito is a real persisted policy, not proof
 that learning exists elsewhere.
+
+Typing preferences have a local draft, Apply, Discard and Reset. The number row
+defaults off; accent long-press defaults on and can be disabled while retaining
+the explicit Accents button. Applying a row change refreshes live geometry only
+after the preference save is acknowledged. Reset preserves manual Incognito and
+user assets. The keyboard switcher remains reachable in Settings → Choose keyboard.
 
 Ordinary Backspace uses a bounded ICU grapheme query and refuses an ambiguous full
 128-character window. Restricted fields never query context and use direct

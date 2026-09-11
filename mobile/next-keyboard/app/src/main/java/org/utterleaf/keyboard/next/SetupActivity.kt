@@ -10,9 +10,11 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.CheckBox
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import org.utterleaf.keyboard.next.settings.PrivacyPreferences
+import org.utterleaf.keyboard.next.settings.TypingPreferences
 
 class SetupActivity : Activity() {
     private lateinit var privacy: PrivacyPreferences
@@ -20,11 +22,21 @@ class SetupActivity : Activity() {
     private lateinit var retry: Button
     private lateinit var status: TextView
     private val listener: (PrivacyPreferences.State) -> Unit = { render(it) }
+    private lateinit var typing: TypingPreferences
+    private lateinit var numberRow: CheckBox
+    private lateinit var accentLongPress: CheckBox
+    private lateinit var applyTyping: Button
+    private lateinit var discardTyping: Button
+    private lateinit var resetTyping: Button
+    private lateinit var typingStatus: TextView
+    private var renderingTyping = false
+    private val typingListener: (TypingPreferences.State) -> Unit = { renderTyping(it) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         privacy = PrivacyPreferences.get(this)
+        typing = TypingPreferences.get(this)
         val column = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(20), dp(20), dp(20))
@@ -41,15 +53,33 @@ class SetupActivity : Activity() {
         text(R.string.core_description)
         button(R.string.enable_keyboard) { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }
         button(R.string.choose_keyboard) { getSystemService(InputMethodManager::class.java).showInputMethodPicker() }
+        text(R.string.typing_preferences, 20f)
+        numberRow = CheckBox(this).apply {
+            id = R.id.typing_number_row; setText(R.string.number_row); minHeight = dp(48)
+            setOnCheckedChangeListener { _, checked ->
+                if (!renderingTyping) typing.edit(typing.state.draft.copy(numberRow = checked))
+            }
+        }.also { column.addView(it) }
+        accentLongPress = CheckBox(this).apply {
+            id = R.id.typing_accent_long_press; setText(R.string.accent_long_press); minHeight = dp(48)
+            setOnCheckedChangeListener { _, checked ->
+                if (!renderingTyping) typing.edit(typing.state.draft.copy(accentLongPress = checked))
+            }
+        }.also { column.addView(it) }
+        text(R.string.accent_tap_help)
+        typingStatus = text(R.string.typing_loading)
+        applyTyping = button(R.string.apply_typing) { typing.apply() }.apply { id = R.id.typing_apply }
+        discardTyping = button(R.string.discard_typing) { typing.discard() }.apply { id = R.id.typing_discard }
         text(R.string.privacy_description)
         toggle = button(R.string.incognito_on) { privacy.setIncognito(!privacy.state.incognito) }
         status = text(R.string.privacy_loading)
         retry = button(R.string.retry_save) { privacy.retry() }
         text(R.string.learning_unavailable)
-        button(R.string.reset_preferences) {
+        resetTyping = button(R.string.reset_preferences) {
+            typing.reset()
             privacy.resetPreferences()
-            android.widget.Toast.makeText(this, R.string.reset_description, android.widget.Toast.LENGTH_LONG).show()
-        }
+        }.apply { id = R.id.typing_reset }
+        text(R.string.reset_description)
         val scroll = ScrollView(this).apply { addView(column) }
         ViewCompat.setOnApplyWindowInsetsListener(scroll) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -59,8 +89,31 @@ class SetupActivity : Activity() {
         setContentView(scroll)
     }
 
-    override fun onStart() { super.onStart(); privacy.observe(listener) }
-    override fun onStop() { privacy.removeObserver(listener); super.onStop() }
+    override fun onStart() { super.onStart(); privacy.observe(listener); typing.observe(typingListener) }
+    override fun onStop() {
+        privacy.removeObserver(listener); typing.removeObserver(typingListener)
+        if (!isChangingConfigurations) typing.discard()
+        super.onStop()
+    }
+
+    private fun renderTyping(state: TypingPreferences.State) {
+        renderingTyping = true
+        numberRow.isChecked = state.draft.numberRow
+        accentLongPress.isChecked = state.draft.accentLongPress
+        renderingTyping = false
+        val enabled = state.ready && !state.saving
+        numberRow.isEnabled = enabled; accentLongPress.isEnabled = enabled
+        applyTyping.isEnabled = enabled && (state.draft != state.saved || state.failed)
+        discardTyping.isEnabled = enabled && state.draft != state.saved
+        resetTyping.isEnabled = enabled
+        typingStatus.setText(when {
+            !state.ready -> R.string.typing_loading
+            state.saving -> R.string.typing_saving
+            state.failed -> R.string.typing_save_failed
+            state.draft != state.saved -> R.string.typing_unsaved
+            else -> R.string.privacy_saved
+        })
+    }
 
     private fun render(state: PrivacyPreferences.State) {
         toggle.isEnabled = state.ready && !state.saving

@@ -84,6 +84,9 @@ for the concrete contracts and the remaining decoder/transport decisions.
 
 [Reference review](REFERENCE-REVIEW.md) records primary sources, assumptions and
 the distinction between documented reference behavior and measured comparisons.
+The [FUTO capability matrix](FUTO-CAPABILITY-MATRIX.md) tracks the broader utility
+baseline: rows, alternates/hints, gestures, actions, languages, voice, modes and
+customization, including explicit privacy differences and unverified gates.
 
 ## Delivery with visible progress
 

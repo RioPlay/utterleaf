@@ -1,0 +1,7 @@
+<resources>
+    <item type="id" name="typing_number_row" />
+    <item type="id" name="typing_accent_long_press" />
+    <item type="id" name="typing_apply" />
+    <item type="id" name="typing_discard" />
+    <item type="id" name="typing_reset" />
+</resources>

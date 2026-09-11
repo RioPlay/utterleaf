@@ -8,6 +8,8 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.utterleaf.keyboard.next.settings.LocalPrivacyStorage
+import org.utterleaf.keyboard.next.settings.LocalTypingStorage
+import org.utterleaf.keyboard.next.settings.TypingOptions
 import java.io.File
 
 @RunWith(AndroidJUnit4::class)
@@ -61,6 +63,28 @@ class CapabilityTest {
             assertFalse(LocalPrivacyStorage(dir).read())
         } finally {
             record.delete(); backup.delete(); userAsset.delete(); dir.delete()
+        }
+    }
+
+    @Test fun typingRecordIsBoundedAndResetPreservesIncognitoAndAssets() {
+        val dir = File(context.cacheDir, "typing-storage-test").apply { mkdirs() }
+        val privacy = LocalPrivacyStorage(dir)
+        val record = File(dir, "typing.v1")
+        val asset = File(dir, "synthetic-dictionary.keep")
+        try {
+            privacy.write(true); asset.writeText("synthetic asset")
+            val typing = LocalTypingStorage(dir)
+            typing.write(TypingOptions(true, false))
+            assertEquals(TypingOptions(true, false), LocalTypingStorage(dir).read())
+            record.writeBytes(byteArrayOf(1, 3, 0))
+            assertTrue(runCatching { typing.read() }.isFailure)
+            typing.write(TypingOptions())
+            assertEquals(TypingOptions(), LocalTypingStorage(dir).read())
+            assertTrue(privacy.read())
+            assertEquals("synthetic asset", asset.readText())
+        } finally {
+            listOf("privacy.v1", "privacy.v1.bak", "privacy.v1.new", "typing.v1", "typing.v1.bak", "typing.v1.new", "synthetic-dictionary.keep").forEach { File(dir, it).delete() }
+            dir.delete()
         }
     }
 }

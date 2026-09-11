@@ -29,8 +29,9 @@ object KeyboardLayout {
     const val DEFAULT_GAP = 4f
     const val UTILITY_WIDTH = 48f
 
-    fun standard(width: Float, height: Float, rowHeight: Float = DEFAULT_ROW_HEIGHT, unitScale: Float = 1f): KeyboardSnapshot {
-        if (!width.isFinite() || !height.isFinite() || width <= 0f || height <= 0f || !rowHeight.isFinite() || !unitScale.isFinite() || unitScale <= 0f || rowHeight < 48f * unitScale || width < 240f * unitScale || height < 4f * rowHeight + 3f * DEFAULT_GAP * unitScale) return KeyboardSnapshot(width, height, emptyList())
+    fun standard(width: Float, height: Float, rowHeight: Float = DEFAULT_ROW_HEIGHT, unitScale: Float = 1f, numberRow: Boolean = false): KeyboardSnapshot {
+        val rows = if (numberRow) 5 else 4
+        if (!width.isFinite() || !height.isFinite() || width <= 0f || height <= 0f || !rowHeight.isFinite() || !unitScale.isFinite() || unitScale <= 0f || rowHeight < 48f * unitScale || width < 240f * unitScale || height < rows * rowHeight + (rows - 1) * DEFAULT_GAP * unitScale) return KeyboardSnapshot(width, height, emptyList())
         val gap = DEFAULT_GAP * unitScale
         val utility = UTILITY_WIDTH * unitScale
         val keys = ArrayList<KeyGeometry>()
@@ -49,6 +50,7 @@ object KeyboardLayout {
             }
             top += rowHeight + gap
         }
+        if (numberRow) row("1234567890".map { it.toString() to KeyAction(KeyAction.Kind.TEXT, it.toString()) })
         row("qwertyuiop".map { it.toString() to KeyAction(KeyAction.Kind.TEXT, it.toString()) })
         row("asdfghjkl".map { it.toString() to KeyAction(KeyAction.Kind.TEXT, it.toString()) }, inset = width * .045f)
         row(listOf("⇧" to KeyAction(KeyAction.Kind.SHIFT)) + "zxcvbnm".map { it.toString() to KeyAction(KeyAction.Kind.TEXT, it.toString()) } + listOf("⌫" to KeyAction(KeyAction.Kind.BACKSPACE)), inset = width * .02f, fixed = mapOf(0 to utility, 8 to utility))
@@ -57,12 +59,12 @@ object KeyboardLayout {
         return KeyboardSnapshot(width, height, Collections.unmodifiableList(ArrayList(if (valid) keys else emptyList())))
     }
 
-    fun symbols(width: Float, height: Float, rowHeight: Float = DEFAULT_ROW_HEIGHT, unitScale: Float = 1f): KeyboardSnapshot {
-        val base = standard(width, height, rowHeight, unitScale)
-        val values = "1234567890@#$%&*()-!?/\"':;".map { it.toString() }
+    fun symbols(width: Float, height: Float, rowHeight: Float = DEFAULT_ROW_HEIGHT, unitScale: Float = 1f, numberRow: Boolean = false): KeyboardSnapshot {
+        val base = standard(width, height, rowHeight, unitScale, numberRow)
+        val values = (if (numberRow) "@#$%&*()-!?/\"':;[]{}_=+\\|~" else "1234567890@#$%&*()-!?/\"':;").map { it.toString() }
         var textIndex = 0
         val replaced = base.keys.map { key ->
-            if (key.action.kind == KeyAction.Kind.TEXT) {
+            if (key.action.kind == KeyAction.Kind.TEXT && !(numberRow && key.label.length == 1 && key.label[0].isDigit())) {
                 val value = values.getOrElse(textIndex++) { "?" }
                 key.copy(action = KeyAction(KeyAction.Kind.PUNCTUATION, value), label = value)
             } else if (key.action.kind == KeyAction.Kind.SYMBOLS) key.copy(label = "ABC") else key

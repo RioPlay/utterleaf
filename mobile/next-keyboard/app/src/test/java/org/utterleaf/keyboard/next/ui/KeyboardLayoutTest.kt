@@ -46,6 +46,18 @@ class KeyboardLayoutTest {
         assertEquals("ABC", snapshot.keys.first { it.action.kind == KeyAction.Kind.SYMBOLS }.label)
     }
 
+    @Test fun optionalNumberRowAddsOneSharedRowWithoutSymbolDuplicates() {
+        val scale = 2.75f
+        val daily = KeyboardLayout.standard(320f * scale, 296f * scale, 56f * scale, scale, numberRow = true)
+        val symbols = KeyboardLayout.symbols(320f * scale, 296f * scale, 56f * scale, scale, numberRow = true)
+        assertEquals(296f * scale, daily.keyboardBounds.height, 1f)
+        assertEquals("1234567890".map { it.toString() }, daily.keys.take(10).map { it.label })
+        (0..9).forEach { digit -> assertEquals(1, symbols.keys.count { it.label == digit.toString() }) }
+        val bottomDaily = daily.keys.first { it.action.kind == KeyAction.Kind.SYMBOLS }.bounds.top
+        val bottomSymbols = symbols.keys.first { it.action.kind == KeyAction.Kind.SYMBOLS }.bounds.top
+        assertEquals(bottomDaily, bottomSymbols, 0.01f)
+    }
+
     @Test fun tinyGeometryFallsBackWithoutNegativeBounds() {
         assertTrue(KeyboardLayout.standard(10f, 10f).keys.isEmpty())
         assertTrue(KeyboardLayout.standard(960f, 660f, 154f, 2.75f).keys.isNotEmpty())

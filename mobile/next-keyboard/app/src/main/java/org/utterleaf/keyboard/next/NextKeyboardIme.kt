@@ -6,7 +6,6 @@ import android.inputmethodservice.InputMethodService
 import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -16,6 +15,8 @@ import org.utterleaf.keyboard.next.core.EditorGateway
 import org.utterleaf.keyboard.next.core.Outcome
 import org.utterleaf.keyboard.next.core.SelectionUpdate
 import org.utterleaf.keyboard.next.settings.PrivacyPreferences
+import org.utterleaf.keyboard.next.settings.TypingPreferences
+import org.utterleaf.keyboard.next.settings.TypingOptions
 import org.utterleaf.keyboard.next.ui.KeyAction
 import org.utterleaf.keyboard.next.ui.KeyboardSurface
 
@@ -23,10 +24,23 @@ import org.utterleaf.keyboard.next.ui.KeyboardSurface
 class NextKeyboardIme : InputMethodService() {
     internal val gateway = EditorGateway()
     private lateinit var privacy: PrivacyPreferences
+    private lateinit var typing: TypingPreferences
+    private var typingOptions = TypingOptions()
+    private val typingListener: (TypingPreferences.State) -> Unit = { state ->
+        if (typingOptions != state.saved) {
+            typingOptions = state.saved
+            surface?.cancelPointers()
+            refresh()
+        }
+    }
     private var surface: KeyboardSurface? = null
     private var privacyButton: Button? = null
     private var status: TextView? = null
+    private var accentsButton: Button? = null
     private var active = false
+    // A token can exist after onStartInput while the actual input view is still starting.
+    internal val isReadyForInput: Boolean
+        get() = active && isInputViewShown && surface?.isShown == true && gateway.currentToken() != null
     private var shift = false
     private var symbols = false
     private var imeOptions = 0
@@ -42,6 +56,8 @@ class NextKeyboardIme : InputMethodService() {
         window?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         privacy = PrivacyPreferences.get(this)
         privacy.observe(privacyListener)
+        typing = TypingPreferences.get(this)
+        typing.observe(typingListener)
     }
 
     override fun onEvaluateFullscreenMode() = false
@@ -81,16 +97,27 @@ class NextKeyboardIme : InputMethodService() {
             }
         }, LinearLayout.LayoutParams(0, dp(48), 1f))
         bar.addView(Button(this).apply {
-            text = "🌐"; contentDescription = getString(R.string.switch_keyboard)
-            setOnClickListener { surface?.cancelPointers(); getSystemService(InputMethodManager::class.java).showInputMethodPicker() }
-        }, LinearLayout.LayoutParams(dp(48), dp(48)))
+            setText(R.string.accents); isAllCaps = false; textSize = 13f
+            setOnClickListener {
+                if (active && isInputViewShown && surface?.beginAccentSelection() == true) {
+                    status?.setText(R.string.choose_accent_base)
+                }
+            }
+        }.also { accentsButton = it }, LinearLayout.LayoutParams(0, dp(48), 1f))
         root.addView(bar)
         val keyboard = KeyboardSurface(this)
         surface = keyboard
-        keyboard.onKey = { action ->
-            if (surface === keyboard && active && isInputViewShown && keyboard.isShown) dispatch(action)
+        keyboard.onAccentStateChanged = { choosing ->
+            if (surface === keyboard) {
+                accentsButton?.setText(if (choosing) R.string.cancel_accents else R.string.accents)
+                status?.setText(if (!choosing) R.string.literal_status else if (keyboard.hasAlternatePopup)
+                    R.string.choose_accent_option else R.string.choose_accent_base)
+            }
         }
-        root.addView(keyboard, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(236)))
+        keyboard.onKey = { action ->
+            if (surface === keyboard && isReadyForInput) dispatch(action)
+        }
+        root.addView(keyboard, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(if (typingOptions.numberRow) 296 else 236)))
         status = TextView(this).apply {
             setTextColor(0xffb5c3b7.toInt()); textSize = 12f
             gravity = android.view.Gravity.CENTER
@@ -144,7 +171,8 @@ class NextKeyboardIme : InputMethodService() {
     override fun onDestroy() {
         retire()
         privacy.removeObserver(privacyListener)
-        surface = null; privacyButton = null; status = null
+        typing.removeObserver(typingListener)
+        surface = null; privacyButton = null; status = null; accentsButton = null
         super.onDestroy()
     }
 
@@ -200,7 +228,13 @@ class NextKeyboardIme : InputMethodService() {
             EditorInfo.IME_ACTION_PREVIOUS -> R.string.enter_previous
             else -> R.string.enter_newline
         }
-        surface?.bindState(shift, symbols, getString(enter))
+        surface?.let { keyboard ->
+            val height = dp(if (typingOptions.numberRow) 296 else 236)
+            keyboard.layoutParams?.let { params ->
+                if (params.height != height) { params.height = height; keyboard.layoutParams = params }
+            }
+            keyboard.bindState(shift, symbols, getString(enter), typingOptions.numberRow, typingOptions.accentLongPress)
+        }
         status?.setText(if (gateway.currentToken() == null) R.string.unsupported_field else R.string.literal_status)
     }
 

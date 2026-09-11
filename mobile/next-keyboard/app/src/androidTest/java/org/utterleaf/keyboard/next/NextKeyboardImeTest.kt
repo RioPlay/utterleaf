@@ -16,6 +16,7 @@ import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.view.inspector.WindowInspector
 import android.widget.EditText
+import android.widget.CheckBox
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SdkSuppress
 import androidx.test.platform.app.InstrumentationRegistry
@@ -24,6 +25,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.utterleaf.keyboard.next.core.Outcome
 import org.utterleaf.keyboard.next.settings.PrivacyPreferences
+import org.utterleaf.keyboard.next.settings.TypingPreferences
+import org.utterleaf.keyboard.next.settings.TypingOptions
 import org.utterleaf.keyboard.next.ui.KeyboardSurface
 import java.io.File
 
@@ -67,14 +70,13 @@ class NextKeyboardImeTest {
             val ime = keyboard()?.context as? NextKeyboardIme
             field.hasFocus() && !activity.imeAnimating &&
                 activity.window.decorView.rootWindowInsets?.isVisible(WindowInsets.Type.ime()) == true &&
-                ime?.isInputViewShown == true && ime.currentInputEditorInfo?.fieldId == field.id &&
-                ime.gateway.currentToken() != null
+                ime?.isReadyForInput == true && ime.currentInputEditorInfo?.fieldId == field.id
         }
     }
 
     private fun point(label: String): Pair<Float, Float> = main {
         val view = keyboard() ?: error("No real IME view")
-        val key = view.keyBounds(label) ?: error("Missing key $label")
+        val key = view.alternateBounds(label) ?: view.keyBounds(label) ?: error("Missing key $label")
         val location = IntArray(2); view.getLocationOnScreen(location)
         val x = location[0] + (key.left + key.right) / 2f
         val y = location[1] + (key.top + key.bottom) / 2f
@@ -207,6 +209,98 @@ class NextKeyboardImeTest {
         } finally {
             main { preferences.setIncognito(original) }
             await("Privacy restore did not finish") { !preferences.state.saving }
+        }
+    }
+
+    @Test fun numberRowApplyResetAndBothAccentPathsUseRealTouches() = withIme { activity ->
+        val prefs = main { TypingPreferences.get(app) }
+        await("Typing preferences did not initialize") { prefs.state.ready && !prefs.state.saving }
+        val original = main { prefs.state.saved }
+        try {
+            main { prefs.edit(TypingOptions()); prefs.apply() }
+            await("Defaults did not save") { !prefs.state.saving && prefs.state.saved == TypingOptions() }
+            show(activity, activity.first); type("cafe")
+            val oldHeight = main { keyboard()!!.height }
+            main { prefs.edit(TypingOptions(numberRow = true)) }
+            assertEquals(oldHeight, main { keyboard()!!.height })
+            main { prefs.apply() }
+            await("Applied number row must resize live IME") {
+                !prefs.state.saving && !activity.imeAnimating && keyboard()?.keyBounds("1") != null && keyboard()!!.height > oldHeight
+            }
+            type("123")
+            await("Number row must commit digits") { activity.first.text.toString() == "cafe123" }
+            capture(activity, "next-core-number-row")
+
+            touch("⇧")
+            main {
+                val surface = keyboard()!!
+                val accents = descendants(surface.rootView).filterIsInstance<android.widget.Button>()
+                    .single { it.text.toString() == app.getString(R.string.accents) }
+                assertTrue(accents.performClick())
+            }
+            touch("e")
+            await("Tap route must expose uppercase alternatives") { keyboard()?.alternateBounds("É") != null }
+            touch("É")
+            await("Tap accent must commit once") { activity.first.text.toString() == "cafe123É" }
+
+            val (x, y) = point("a")
+            val down = SystemClock.uptimeMillis()
+            fun inject(action: Int, at: Pair<Float, Float>) {
+                val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, at.first, at.second, 0)
+                event.source = InputDevice.SOURCE_TOUCHSCREEN
+                try { assertTrue(instrumentation.uiAutomation.injectInputEvent(event, true)) } finally { event.recycle() }
+            }
+            inject(MotionEvent.ACTION_DOWN, x to y)
+            await("Hold must open accent picker") { keyboard()?.hasAlternatePopup == true }
+            capture(activity, "next-core-accents")
+            val accented = point("á")
+            inject(MotionEvent.ACTION_MOVE, accented); inject(MotionEvent.ACTION_UP, accented)
+            await("Hold-slide-release must commit only the selected accent") { activity.first.text.toString() == "cafe123Éá" }
+
+            main { prefs.reset() }
+            await("Reset must remove number row in same editor") {
+                !prefs.state.saving && !activity.imeAnimating && keyboard()?.keyBounds("1") == null && keyboard()?.height == oldHeight
+            }
+            type("z")
+            await("Typing after reset failed") { activity.first.text.toString() == "cafe123Éáz" }
+        } finally {
+            main { prefs.edit(original); prefs.apply() }
+            await("Restore typing preferences") { !prefs.state.saving }
+        }
+    }
+
+    @Test fun settingsControlsApplyDiscardAndResetWithoutExitingIncognito() {
+        val prefs = main { TypingPreferences.get(app) }
+        val privacy = main { PrivacyPreferences.get(app) }
+        await("Preferences not ready") { prefs.state.ready && privacy.state.ready && !prefs.state.saving && !privacy.state.saving }
+        val original = main { prefs.state.saved }
+        val originalPrivacy = main { privacy.state.incognito }
+        var setup: SetupActivity? = null
+        try {
+            main { prefs.reset(); privacy.setIncognito(true) }
+            await("Seed preferences") { !prefs.state.saving && !privacy.state.saving }
+            setup = instrumentation.startActivitySync(Intent(app, SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as SetupActivity
+            val screen = setup
+            main {
+                screen.findViewById<CheckBox>(R.id.typing_number_row).performClick()
+                assertTrue(prefs.state.draft.numberRow); assertFalse(prefs.state.saved.numberRow)
+                screen.findViewById<View>(R.id.typing_discard).performClick()
+                assertFalse(prefs.state.draft.numberRow)
+                screen.findViewById<CheckBox>(R.id.typing_number_row).performClick()
+                screen.findViewById<View>(R.id.typing_apply).performClick()
+            }
+            await("Apply control did not persist number row") { !prefs.state.saving && prefs.state.saved.numberRow }
+            main { screen.findViewById<View>(R.id.typing_reset).performClick() }
+            await("Reset control did not restore defaults") { !prefs.state.saving && prefs.state.saved == TypingOptions() }
+            main {
+                assertTrue(privacy.state.incognito)
+                screen.findViewById<CheckBox>(R.id.typing_number_row).performClick()
+                screen.finish()
+            }
+            await("Leaving settings must discard unapplied draft") { prefs.state.draft == prefs.state.saved }
+        } finally {
+            main { setup?.finish(); prefs.edit(original); prefs.apply(); privacy.setIncognito(originalPrivacy) }
+            await("Restore settings") { !prefs.state.saving && !privacy.state.saving }
         }
     }
 
