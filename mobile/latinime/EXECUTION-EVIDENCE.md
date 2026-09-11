@@ -54,6 +54,41 @@ Unsigned release SHA-256:
 These changes are newer than published preview01; no new APK publication or
 physical-device acceptance is implied. W2 remains open.
 
+[PR #21](https://github.com/RioPlay/utterleaf/pull/21) subsequently merged at
+`52abb29cc3c572e2a16cf06b6f0be46d9c1d8a24` after
+[CI 34615270665](https://github.com/RioPlay/utterleaf/actions/runs/34615270665)
+passed 119 emulator tests, build/unit/lint/notices, actual IME process recovery
+and all six dictionary publication crash cases. Downloaded report XML confirmed
+zero failures/errors/skips; both external-probe evidence files reported pass.
+
+## Hardware-keyboard suppression retirement
+
+Source review found that the immediate hardware-suppression configuration path
+cleared local input but left running suggestion requests valid. InputLogic now
+exposes its existing locked invalidation boundary; the suppression helper uses it
+before the existing composition finish attempt and clears transient state in
+finally. Active editor identity is renewed, never reopened if already closed.
+The subtype path uses the same extracted helper without changing its semantics.
+
+Terra implemented the two production-file changes; Luna owned the separate Kotlin
+regression; independent Terra review checked locking, null bootstrap and failure
+cleanup. Review corrected test gate timing, main-thread access and the fixture's
+expectation for the inherited composition-finish call. The final regression uses
+the actual helper and attached worker with controlled queues and a host connection.
+It verifies queued and late results reject, a current request succeeds, local
+state retires and a closed session stays closed. The transient-cleanup override
+observes invocation only; it does not validate the base resource cleanup effects.
+
+Full local verification passed 12 JVM / 121 API 35 x86-64 emulator tests, lint and
+unsigned release assembly (`foundation-hardware-suppression.log`). Both final-source
+focused tests and lint passed after test teardown hygiene edits
+(`foundation-hardware-suppression-final.log`). Zero failures/errors/skips; lint
+zero errors, 4,021 warnings and one hint. Both APKs verified 18 notice documents.
+Unsigned release SHA-256:
+`9ab553450253f3d2ec5acb20bd2d714e17ce5d695573a053bc2941fff3876ae9`.
+The controlled helper test does not establish physical keyboard-attachment behavior.
+No new signed APK is published by this follow-up.
+
 ## Implemented
 
 - Standalone public-SDK Gradle/CMake build, pinned AOSP source and separate app ID.

@@ -213,6 +213,14 @@ full editor reference, and clears strong cache slots on existing theme/locale
 invalidation. These bounded fixes do not establish complete editor-data retirement
 or decoder isolation. W2 is open.
 
+Hardware-keyboard suppression also uses the same locked suggestion invalidation
+boundary before its existing immediate composition finish and local retirement.
+It renews an active identity rather than closing the framework editor, and clears
+transient state even if the finish attempt fails. The separate same-editor
+overlapping-gesture gap remains: active-preview identity and ordered word completion
+need distinct handling. A generation-only rejection would lose the preceding word;
+the staged active-flag regression alone is not an acceptable ordering proof.
+
 **Gate:** no unresolved wrong-field mutation, implicit submission, sensitive
 persistence or cancellation defect in these tested paths. Do not use real private
 messages or credentials while those boundaries remain unproven.

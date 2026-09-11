@@ -1154,10 +1154,16 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     }
 
     private void cleanupInternalStateForFinishInput() {
-        // Remove pending messages related to update suggestions
+        // Hardware suppression leaves the framework editor active. Invalidate request work
+        // before clearing local state so a running decoder cannot republish it afterward.
+        mInputLogic.invalidatePendingSuggestionRequests();
         mHandler.cancelUpdateSuggestionStrip();
-        // This remaining caller is immediate hardware-suppression configuration handling.
-        mInputLogic.finishInput();
+        try {
+            // This remaining caller is immediate hardware-suppression configuration handling.
+            mInputLogic.finishInput();
+        } finally {
+            clearEditorTransientState();
+        }
     }
 
     protected void deallocateMemory() {

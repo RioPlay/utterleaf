@@ -181,6 +181,10 @@ Utterleaf changes so far:
   for deferred callback comparison and private options. Handler destruction clears
   pending lifecycle bookkeeping without issuing editor callbacks; rotation retains
   comparison metadata until deferred work is resolved.
+- LatinIME/InputLogic: immediate hardware-keyboard suppression renews pending
+  suggestion identity through the existing batch-lock boundary and clears transient
+  state after the existing composition finish attempt, without closing the active
+  framework editor session.
 
 The application's manifest and Kotlin entry points are supplied separately by
 Utterleaf. The placeholder raw empty resource is not a dictionary; its upstream
