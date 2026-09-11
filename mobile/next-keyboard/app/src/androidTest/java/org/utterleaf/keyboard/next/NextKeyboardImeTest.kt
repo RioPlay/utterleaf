@@ -1,12 +1,15 @@
 package org.utterleaf.keyboard.next
 
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.os.PowerManager
 import android.graphics.Rect
 import android.graphics.Bitmap
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.provider.Settings
+import android.app.KeyguardManager
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
@@ -22,6 +25,7 @@ import androidx.test.filters.SdkSuppress
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.Before
 import org.junit.runner.RunWith
 import org.utterleaf.keyboard.next.core.Outcome
 import org.utterleaf.keyboard.next.settings.PrivacyPreferences
@@ -38,6 +42,30 @@ class NextKeyboardImeTest {
     private val app = instrumentation.targetContext
     private val touchTrace = ArrayDeque<String>()
     private var tracedSurface: KeyboardSurface? = null
+    private fun isInteractive() = app.getSystemService(PowerManager::class.java)?.isInteractive == true
+    private fun isLocked() = app.getSystemService(KeyguardManager::class.java)?.isKeyguardLocked != false
+    @Suppress("DEPRECATION")
+    private fun focusedAccessibilityWindowPackage(): String {
+        return runCatching {
+            val node = instrumentation.uiAutomation.rootInActiveWindow
+            try { node?.packageName?.toString() ?: "none" } finally { node?.recycle() }
+        }.getOrElse { "unavailable:${it::class.java.simpleName}" }
+    }
+    private fun focusFailureDetails(activity: Activity?) = buildString {
+        append("; interactive=").append(isInteractive())
+        append(", keyguardLocked=").append(isLocked())
+        append(", activityDestroyed=").append(activity?.isDestroyed)
+        append(", activityWindowFocus=").append(activity?.hasWindowFocus())
+        append(", accessibilityFocusedWindowPackage=").append(focusedAccessibilityWindowPackage())
+    }
+    @Before
+    fun wakeAndUnlockForImeTests() {
+        shell("input keyevent KEYCODE_WAKEUP")
+        shell("wm dismiss-keyguard")
+        await("Device not interactive or keyguard still locked", details = { focusFailureDetails(null) }) {
+            isInteractive() && !isLocked()
+        }
+    }
     private fun trace(value: String) {
         if (touchTrace.size == 64) touchTrace.removeFirst()
         touchTrace.addLast(value)
@@ -68,13 +96,19 @@ class NextKeyboardImeTest {
         .singleOrNull { it.isShown && it.isLaidOut && !it.isLayoutRequested && it.width > 0 }
 
     private fun show(activity: CoreTestActivity, field: EditText) {
-        await("Fixture must own a focused window before requesting IME") { activity.hasWindowFocus() }
+        await("Fixture must own a focused window before requesting IME", details = { focusFailureDetails(activity) }) { activity.hasWindowFocus() }
         main {
             field.requestFocus()
             field.setSelection(field.length())
             activity.getSystemService(InputMethodManager::class.java).showSoftInput(field, 0)
         }
-        await("Framework keyboard did not become visible") {
+        await("Framework keyboard did not become visible", details = {
+            val surfaces = WindowInspector.getGlobalWindowViews().flatMap(::descendants).filterIsInstance<KeyboardSurface>()
+            "; focused=${field.hasFocus()}, window=${activity.hasWindowFocus()}, animating=${activity.imeAnimating}, insets=${activity.window.decorView.rootWindowInsets?.isVisible(WindowInsets.Type.ime())}, expectedField=${field.id}, surfaces=" + surfaces.map { view ->
+                val ime = view.context as NextKeyboardIme
+                "shown=${view.isShown},layout=${view.isLaidOut}/${view.isLayoutRequested},size=${view.width}x${view.height},ready=${ime.isReadyForInput},field=${ime.currentInputEditorInfo?.fieldId}"
+            }
+        }) {
             val ime = keyboard()?.context as? NextKeyboardIme
             field.hasFocus() && !activity.imeAnimating &&
                 activity.window.decorView.rootWindowInsets?.isVisible(WindowInsets.Type.ime()) == true &&
@@ -157,11 +191,25 @@ class NextKeyboardImeTest {
             block(activity)
         } finally {
             main { tracedSurface?.setOnTouchListener(null); tracedSurface = null }
-            activity?.let { main { it.finish() } }
-            if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
-            if (!enabled) shell("ime disable $component")
-            if (oldHardware == "null") shell("settings delete secure show_ime_with_hard_keyboard")
-            else shell("settings put secure show_ime_with_hard_keyboard $oldHardware")
+            try {
+                activity?.let { fixture ->
+                    main { fixture.finish() }
+                    await("Fixture activity did not finish teardown") { fixture.isDestroyed }
+                }
+            } finally {
+                try {
+                    if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
+                    // If this IME was already selected, it may legitimately serve another host.
+                    if (oldIme != component) await("Test IME window survived restoration") {
+                        WindowInspector.getGlobalWindowViews().flatMap(::descendants)
+                            .none { it is KeyboardSurface && it.isShown }
+                    }
+                } finally {
+                    if (!enabled) shell("ime disable $component")
+                    if (oldHardware == "null") shell("settings delete secure show_ime_with_hard_keyboard")
+                    else shell("settings put secure show_ime_with_hard_keyboard $oldHardware")
+                }
+            }
         }
     }
 
@@ -310,8 +358,9 @@ class NextKeyboardImeTest {
         try {
             main { prefs.reset(); privacy.setIncognito(true) }
             await("Seed preferences") { !prefs.state.saving && !privacy.state.saving }
-            setup = instrumentation.startActivitySync(Intent(app, SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as SetupActivity
-            val screen = setup
+            val screen = instrumentation.startActivitySync(Intent(app, SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as SetupActivity
+            setup = screen
+            await("Settings activity did not gain focus", details = { focusFailureDetails(screen) }) { screen.hasWindowFocus() }
             main {
                 screen.findViewById<CheckBox>(R.id.typing_number_row).performClick()
                 assertTrue(prefs.state.draft.numberRow); assertFalse(prefs.state.saved.numberRow)
@@ -332,6 +381,7 @@ class NextKeyboardImeTest {
         } finally {
             main { setup?.finish(); prefs.edit(original); prefs.apply(); privacy.setIncognito(originalPrivacy) }
             await("Restore settings") { !prefs.state.saving && !privacy.state.saving }
+            await("Settings activity did not finish teardown") { setup?.isDestroyed != false }
         }
     }
 

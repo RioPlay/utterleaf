@@ -137,8 +137,25 @@ disabled (`next-long-field-acceptance.log`). The new long-field gateway cases
 and real IME grapheme-deletion check passed. All six real-IME/settings tests then
 passed in a focused rerun (`next-touch-diagnostics.log`). These results are not
 a clean full-suite acceptance. The test harness retains only a bounded synthetic
-touch trace for failed assertions; production has no typing/touch logger. CI and
-merge remain blocked pending resolution of the intermittent typing failure.
+touch trace for failed assertions; production has no typing/touch logger.
+
+Follow-up local full verification passed **17 JVM and 38 emulator tests**, zero
+failures/errors/skips, with all three animation scales at zero and three-button
+navigation (`next-awake-acceptance.log`). Lint remains zero errors, five warnings
+and one hint; unsigned release assembly passes. Test setup now explicitly wakes
+the device, requests dismissal of an unsecured keyguard, and checks interactive/
+unlocked state. Both fixture activities must own window focus. Teardown waits for
+activity destruction and, when restoring a different IME, removal of the test IME
+window. Environment restoration remains in `finally`.
+
+Remote run `34650215180` at `8eb059f` failed all five real-IME tests while awaiting
+the host activity's initial window focus. Logs show resumed/displayed activities,
+but do not establish the device's interactive/keyguard state or the cause. Spark
+implemented the test readiness follow-up; root corrected Android API/threading
+mistakes and Terra independently reviewed the final source. The emulator-only CI
+runner now preserves power/window/input metadata on failure while retaining the
+original exit status. It never collects production typing or signs/publishes an
+APK. Remote verification of this revision is pending; no historical cause is claimed.
 
 ## Open gates
 

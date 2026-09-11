@@ -53,12 +53,7 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: >
-            cd mobile/next-keyboard &&
-            adb shell settings put secure show_ime_with_hard_keyboard 1 &&
-            adb shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton &&
-            adb shell wm size && adb shell wm density &&
-            bash gradlew --no-daemon :app:connectedDebugAndroidTest
+          script: cd mobile/next-keyboard && bash tools/run-emulator-tests.sh
       # Reports only: this workflow never signs, publishes, or uploads APKs.
       - name: Preserve verification reports
         uses: actions/upload-artifact@v4
