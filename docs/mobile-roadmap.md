@@ -20,11 +20,18 @@ roadmap without claiming those capabilities are already released.
 
 ## Current status
 
+- **New core design, not an implementation:** the user requested a smaller,
+  Kotlin-owned keyboard/voice system after reviewing LatinIME's integration cost.
+  [The next-system design](android-next/README.md) defines Daily/Edit/Terminal/Voice,
+  optional adaptive touch zones, Incognito, immutable worker inputs and one editor
+  gateway. Its interaction mockup and performance budgets are proposals. Preserve
+  alpha13 and the LatinIME comparison build until measured parity and migration
+  gates pass; neither is replaced by these documents.
 - **Foundation preview01, experimental:** a [signed test download](https://github.com/RioPlay/utterleaf/releases/tag/android-foundation-v0.1.0-preview01)
   is available separately from alpha13. A pinned AOSP LatinIME fork has been
   built and exercised locally with real IME touch input, restricted capabilities
   and comfort preferences. The [execution evidence](../mobile/latinime/EXECUTION-EVIDENCE.md)
-  records 12 JVM and 112 API 35 emulator tests, lint limitations, native compilation
+  records 12 JVM and 121 API 35 emulator tests, lint limitations, native compilation
   and remaining licensing/security/product gates. Suggestion workers now receive
   owner-captured composer/context inputs and deep pointer copies, and pass captured
   immutable proximity ownership into native suggestion admission instead of mutable
