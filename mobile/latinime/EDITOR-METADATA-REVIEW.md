@@ -1,7 +1,9 @@
 # Editor metadata retention review
 
-Status: audit and proposal only. This document records a bounded design for a
-future change; production code is unchanged and no behavior change is claimed.
+Status: the bounded snapshot below is implemented and independently reviewed.
+The original source anchors record the pre-change audit; validation results are
+tracked in [execution evidence](EXECUTION-EVIDENCE.md). Broader cache retirement,
+`mAppliedEditorInfo` and `InputAttributes` lifetime remain separate work.
 
 ## Retention and consumers
 
@@ -37,10 +39,10 @@ assigns it at line 528. `InputAttributes` also has its own editor reference.
 Removing `KeyboardId.mEditorInfo` does not remove those paths; they require a
 separate lifecycle review.
 
-## Proposed sanitized snapshot
+## Implemented sanitized snapshot
 
-Create an immutable, local snapshot while `KeyboardLayoutSet.Builder` still
-has the incoming framework object. Its fields should be exactly:
+Owned Kotlin `KeyboardEditorInfo` captures an immutable, local snapshot when
+`KeyboardLayoutSet.Builder` receives the framework object. Its fields are:
 
 ```text
 inputType: Int
@@ -79,5 +81,7 @@ snapshot against transient incoming fields without storing that object.
 - A separate test should cover `mAppliedEditorInfo`/`InputAttributes` once
   their lifecycle changes are designed.
 
-This review introduces no passive collection, logging, notice changes, or
-external data flow. It is a source-level handoff, not implementation evidence.
+The implementation introduces no passive collection, logging or external data
+flow. Upstream modifications are recorded in `upstream/UTTERLEAF-NOTICE.md`.
+The declared-field checks establish the cached object structure; they are not
+proof that all editor metadata or native cache lifetimes have been retired.

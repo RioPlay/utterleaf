@@ -207,7 +207,8 @@ static editor-metadata retention, remains. Owner-checked service/view teardown a
 silent pointer-state cleanup are implemented in a bounded follow-up; independent
 review also corrected surviving timers and stale shared-preview cleanup. See
 execution evidence for verification. The [editor metadata review](EDITOR-METADATA-REVIEW.md)
-records the next cache-retention change; it is still proposed. W2 is open.
+records an implemented immutable snapshot for cached keyboard layout/ID metadata;
+other editor references and cache retirement remain separate. W2 is open.
 
 **Gate:** no unresolved wrong-field mutation, implicit submission, sensitive
 persistence or cancellation defect in these tested paths. Do not use real private

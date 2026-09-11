@@ -23,7 +23,7 @@ roadmap without claiming those capabilities are already released.
 - **Foundation work, unreleased:** a separate pinned AOSP LatinIME fork has been
   built and exercised locally with real IME touch input, restricted capabilities
   and comfort preferences. The [execution evidence](../mobile/latinime/EXECUTION-EVIDENCE.md)
-  records 12 JVM and 104 API 35 emulator tests, lint limitations, native compilation
+  records 12 JVM and 112 API 35 emulator tests, lint limitations, native compilation
   and remaining licensing/security/product gates. Suggestion workers now receive
   owner-captured composer/context inputs and deep pointer copies, and pass captured
   immutable proximity ownership into native suggestion admission instead of mutable
@@ -31,7 +31,8 @@ roadmap without claiming those capabilities are already released.
   notifications. Native dictionary/proximity
   leases defer disposal during admitted operations; a bounded external process-death
   probe passed. Owner-checked service/view cleanup and real-touch view reuse are
-  verified locally. Remaining lifecycle/cache, native hardening and framework recovery
+  verified locally; cached layouts retain immutable keyboard-only editor metadata.
+  Remaining lifecycle/cache, native hardening and framework recovery
   checks continue. It is not yet integrated
   into the shipping keyboard; alpha13 remains the released implementation.
 

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Button
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -54,10 +55,17 @@ class PackagedNoticesTest {
             }
             instrumentation.waitForIdleSync()
             val device = instrumentation.uiAutomation
-            val root = device.rootInActiveWindow
+            var root = device.rootInActiveWindow
+            var matches = emptyList<AccessibilityNodeInfo>()
+            val deadline = android.os.SystemClock.uptimeMillis() + 5_000L
+            while (android.os.SystemClock.uptimeMillis() < deadline && matches.isEmpty()) {
+                root?.recycle()
+                root = device.rootInActiveWindow
+                matches = root?.findAccessibilityNodeInfosByText("Lexiteria").orEmpty()
+                if (matches.isEmpty()) android.os.SystemClock.sleep(100L)
+            }
             try {
                 assertNotNull(root)
-                val matches = root.findAccessibilityNodeInfosByText("Lexiteria")
                 assertTrue("The dialog exposes the bundled notice text", matches.isNotEmpty())
                 @Suppress("DEPRECATION")
                 matches.forEach { it.recycle() }

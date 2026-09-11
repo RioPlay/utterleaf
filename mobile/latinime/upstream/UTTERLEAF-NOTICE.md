@@ -26,6 +26,10 @@ Utterleaf changes so far:
   Terminal cleanup drops service/view/theme references. PointerTracker and its
   queue silently detach retired touch state, including queue backing entries;
   TimerHandler cancellation also removes typing and double-tap state messages.
+- KeyboardLayoutSet and KeyboardId: cached layout parameters use an owned
+  immutable keyboard-only metadata snapshot rather than retaining framework
+  EditorInfo. Accessibility reads the captured input type; live-editor callers
+  retain their existing overload. Action labels are copied to plain strings.
 - DictionaryFactory.java replaced by DictionaryFactory.kt: Kotlin literal-input
   factory; provider discovery, broken-provider reporting and bundled decoding removed.
   Original copyright/license notice retained in the replacement.

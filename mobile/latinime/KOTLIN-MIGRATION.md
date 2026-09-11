@@ -27,6 +27,11 @@ The current first build introduces Kotlin `UtterleafIme` and `FoundationActivity
 around the actual LatinIME service. These are foundation code, not proof of the
 planned voice, terminal, correction or full accessibility implementation.
 
+Owned Kotlin `KeyboardEditorInfo` now supplies the immutable input flags, private
+options and copied action label needed by cached layout parameters/KeyboardId.
+Inherited Java layout and accessibility logic consume that snapshot, preserving
+their existing decisions without retaining a framework EditorInfo in the cache.
+
 The suggestion boundary now adds Kotlin `SuggestionComposerSnapshot` and
 `SuggestionDecoder`. Captured text/flags and deep pointer copies isolate composer
 inputs; existing Java Suggest and native decoding remain in place. This is a bounded

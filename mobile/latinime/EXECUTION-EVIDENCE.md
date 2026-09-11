@@ -406,11 +406,11 @@ power-loss durability or physical storage behavior.
   re-show (`99851cc02fcc41fbb2fc9c7b95caefb0`), as did one repeat
   (`e0033c22432f47cc9a2fcaf33219c78c`). The initial intermittent failure
   remains unexplained; this diagnostic change is not a lifecycle fix.
-- Editor-metadata follow-up: KeyboardLayoutSet's forced cache is not cleared with its
-  ordinary cache, and cached KeyboardId objects retain full framework EditorInfo
-  objects. The [bounded metadata review](EDITOR-METADATA-REVIEW.md) records consumers
-  and a proposed immutable snapshot. This remains unimplemented; the service/view
-  cleanup below does not close all cache-retention or framework recreation gates.
+- Editor/cache follow-up: cached layout parameters and KeyboardId now retain only
+  immutable keyboard metadata. KeyboardLayoutSet's forced-cache retirement,
+  LatinIME's applied EditorInfo and InputAttributes references remain separate
+  lifetime work. The [bounded metadata review](EDITOR-METADATA-REVIEW.md) records
+  consumers and scope; no complete cache-retirement or framework recreation claim.
 - Remaining callback/data-lifetime audit, native hardening and framework process-recovery tests.
 - Real local dictionaries: provenance, import bounds, correction/language quality.
 - Daily gestures/refinements, compact actions and real terminal/editor integration.
@@ -475,6 +475,42 @@ The external IME process-recovery probe also passed against the final debug APK
 after same-field user re-show; evidence is under the local build root at
 `ime-teardown-acceptance/66d71e3f51f944a2b09643af668fdad4/evidence.json`.
 The earlier intermittent geometry failure remains an open investigation.
+
+## Immutable cached keyboard metadata
+
+Terra implemented owned Kotlin `KeyboardEditorInfo`; Luna supplied carrier tests,
+and a separate Terra reviewer checked source semantics and the expanded builder
+tests. KeyboardLayoutSet captures the four required values once at construction,
+including an immutable plain-string action label. KeyboardId and accessibility
+consume those copied values instead of retaining framework EditorInfo. Existing
+action precedence, navigation, password distinctions and equality are preserved.
+Later subtype selection reads the captured FORCE_ASCII/private options. No other
+editor reference or forced-cache retirement policy was changed.
+
+The tests cover source-object/label mutation, null-editor defaults, private-option
+handling during later subtype selection, action and navigation flags, equality,
+and declared cached-field structure. Fixture initialization and a mistaken custom
+label/Next expectation were corrected against existing source semantics before
+the passing run; production behavior was not changed to satisfy the tests.
+
+The [teardown CI run](https://github.com/RioPlay/utterleaf/actions/runs/34603501626)
+passed build/unit/lint/notices but failed two UI fixture assertions. Log inspection
+placed the first failure before keyboard creation: the fixture awaited an active
+editor before requesting serving after initial IME selection. It now requests
+one `restartInput` after focus readiness, then still requires active/visible IME
+state. The notice fixture now waits for its accessibility dialog text rather than
+checking one immediate root snapshot. Independent review retained the original
+security/text/lifecycle assertions. Fresh remote verification remains separate.
+
+Local final command passed unit tests, connected tests, lint and unsigned release
+assembly: 12 JVM and 112 API 35 x86-64 emulator tests, zero failures/errors/skips.
+Lint is unchanged at zero errors, 4,021 warnings and one hint. Both APKs passed
+the 18-document source-notice verifier; unsigned release SHA-256:
+`b627d47d5d1380aea14d61a43f01ce54db01b3629e0f2255c6c2d32c62bc2acd`.
+Log: `C:/Users/unknown/AppData/Local/UtterleafBuild/foundation-metadata-verified.log`.
+The final APK also passed external IME process recovery after same-field user
+re-show, with evidence under the local build root at
+`ime-metadata-acceptance/1c091d2af1a64a10aa7ddda419ffdf42/evidence.json`.
 
 An isolated `android-foundation.yml` workflow now mirrors local build and emulator
 checks and uploads reports only; no foundation APK is published by this workflow.
