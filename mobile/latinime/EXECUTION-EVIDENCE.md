@@ -420,3 +420,29 @@ enables the software keyboard alongside its virtual hardware keyboard; this is
 disposable-emulator setup, separate from the observed ordering failure. External
 recovery probes were not reached in that run. Subsequent remote results are tracked
 in [PR #19](https://github.com/RioPlay/utterleaf/pull/19).
+
+The [second remote run](https://github.com/RioPlay/utterleaf/actions/runs/34564523438)
+passed the same build checks and 101 of 102 emulator tests, exposing a separate
+three-button navigation overlap: the injected space activated Home. Switching the
+local emulator from gesture to three-button navigation reproduced it. Synthetic
+geometry diagnostics placed the space center at y=2305.5 while navigation began at
+y=2274 on the 1080x2400 display. The correction reserves navigation bottom insets
+on the input root independently of comfort padding and computes editor/touchable
+insets from the visible keyboard's actual window position. The fixture retains
+real touch injection, rejects navigation-overlapping coordinates, and exercises
+top-row typing as well as space/delete. Remote recovery probes were not reached
+in that failed run; PR #19 records subsequent verification.
+
+Local navigation acceptance: the full 12 JVM / 102 emulator test run, lint and
+unsigned assembly passed with three-button navigation
+(`foundation-navigation-acceptance.log`). After the final outline/popup local-coordinate
+correction, both `FoundationImeTest` methods passed separately in three-button and
+gesture modes (`foundation-navigation-final-threebutton.log` and
+`foundation-navigation-final-gestural.log`); lint and unsigned assembly passed again.
+Lint remains at zero errors, 4,021 warnings and one hint. Both APKs passed the
+18-document source-notice verifier; the final unsigned release SHA-256 was
+`7b5d40c9818d31f97b766387eb75f9cabfd82409dfee5f33e1640a1957d2be6a`.
+The external IME recovery probe also passed in three-button mode with the same
+editor and explicit user reshow, under
+`ime-navigation-recovery/a9af3bd6df8b4d7cb4afbce2edac1b5d/evidence.json` in the local
+build root. These remain API 35 x86-64 emulator results, not physical acceptance.

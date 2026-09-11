@@ -153,6 +153,9 @@ Utterleaf changes so far:
 - LatinIME and KeyboardSwitcher: changed height/theme geometry reloads on same-field
   restart; feedback refreshes from current settings. Ordinary unchanged restarts
   retain the existing lightweight path.
+- LatinIME: editor and touchable insets use the visible keyboard's window position
+  so system navigation and user comfort padding do not hide the upper keyboard
+  from the editor or its touch region. Owned Kotlin reserves navigation spacing.
 - Four tablet XML key resources also supply base fallbacks: key_settings,
   key_space_3kw, key_space_7kw and keys_exclamation_question; notices retained.
 - excluded-sources.txt defines source omitted from compilation, including obsolete

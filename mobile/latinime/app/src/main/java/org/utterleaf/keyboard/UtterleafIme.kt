@@ -4,6 +4,8 @@ import android.view.WindowManager
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.android.inputmethod.latin.R
 import com.android.inputmethod.latin.LatinIME
 
@@ -12,9 +14,24 @@ class UtterleafIme : LatinIME() {
     private var keyboardRoot: View? = null
 
     override fun setInputView(view: View) {
+        if (keyboardRoot !== view) {
+            keyboardRoot?.let { ViewCompat.setOnApplyWindowInsetsListener(it, null) }
+            val baseLeft = view.paddingLeft
+            val baseTop = view.paddingTop
+            val baseRight = view.paddingRight
+            val baseBottom = view.paddingBottom
+            ViewCompat.setOnApplyWindowInsetsListener(view) { root, insets ->
+                val bottom = baseBottom + insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+                if (root.paddingBottom != bottom) {
+                    root.setPadding(baseLeft, baseTop, baseRight, bottom)
+                }
+                insets
+            }
+        }
         super.setInputView(view)
         keyboardRoot = view
         applyBottomSpace()
+        ViewCompat.requestApplyInsets(view)
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -42,6 +59,7 @@ class UtterleafIme : LatinIME() {
     }
 
     override fun onDestroy() {
+        keyboardRoot?.let { ViewCompat.setOnApplyWindowInsetsListener(it, null) }
         keyboardRoot = null
         super.onDestroy()
     }

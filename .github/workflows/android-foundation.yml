@@ -49,6 +49,8 @@ jobs:
           script: >
             cd mobile/latinime &&
             adb shell settings put secure show_ime_with_hard_keyboard 1 &&
+            adb shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton &&
+            adb shell wm size && adb shell wm density &&
             bash gradlew --no-daemon :app:connectedDebugAndroidTest &&
             adb install -r -t app/build/outputs/apk/debug/app-debug.apk &&
             adb install -r -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk &&

@@ -1259,31 +1259,52 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             return;
         }
         final int inputHeight = mInputView.getHeight();
+        final int[] inputLocation = new int[2];
+        mInputView.getLocationInWindow(inputLocation);
         if (isImeSuppressedByHardwareKeyboard() && !visibleKeyboardView.isShown()) {
             // If there is a hardware keyboard and a visible software keyboard view has been hidden,
             // no visual element will be shown on the screen.
-            outInsets.contentTopInsets = inputHeight;
-            outInsets.visibleTopInsets = inputHeight;
-            mInsetsUpdater.setInsets(outInsets);
+            outInsets.contentTopInsets = inputLocation[1] + inputHeight;
+            outInsets.visibleTopInsets = inputLocation[1] + inputHeight;
+            final InputMethodService.Insets localInsets = new InputMethodService.Insets();
+            localInsets.contentTopInsets = inputHeight;
+            localInsets.visibleTopInsets = inputHeight;
+            mInsetsUpdater.setInsets(localInsets);
             return;
         }
         final int suggestionsHeight = (!mKeyboardSwitcher.isShowingEmojiPalettes()
                 && mSuggestionStripView.getVisibility() == View.VISIBLE)
                 ? mSuggestionStripView.getHeight() : 0;
-        final int visibleTopY = inputHeight - visibleKeyboardView.getHeight() - suggestionsHeight;
-        mSuggestionStripView.setMoreSuggestionsHeight(visibleTopY);
+        // Utterleaf: navigation and comfort spacing are below the keyboard. Use actual
+        // window coordinates so padding does not move the reported/touchable top downward.
+        final int[] keyboardLocation = new int[2];
+        visibleKeyboardView.getLocationInWindow(keyboardLocation);
+        final int visibleTopY;
+        if (suggestionsHeight > 0) {
+            final int[] stripLocation = new int[2];
+            mSuggestionStripView.getLocationInWindow(stripLocation);
+            visibleTopY = stripLocation[1];
+        } else {
+            visibleTopY = keyboardLocation[1];
+        }
+        final int localVisibleTop = Math.max(0, visibleTopY - inputLocation[1]);
+        mSuggestionStripView.setMoreSuggestionsHeight(localVisibleTop);
         // Need to set expanded touchable region only if a keyboard view is being shown.
         if (visibleKeyboardView.isShown()) {
-            final int touchLeft = 0;
+            final int touchLeft = keyboardLocation[0];
             final int touchTop = mKeyboardSwitcher.isShowingMoreKeysPanel() ? 0 : visibleTopY;
-            final int touchRight = visibleKeyboardView.getWidth();
-            final int touchBottom = inputHeight;
+            final int touchRight = touchLeft + visibleKeyboardView.getWidth();
+            final int touchBottom = inputLocation[1] + inputHeight;
             outInsets.touchableInsets = InputMethodService.Insets.TOUCHABLE_INSETS_REGION;
             outInsets.touchableRegion.set(touchLeft, touchTop, touchRight, touchBottom);
         }
         outInsets.contentTopInsets = visibleTopY;
         outInsets.visibleTopInsets = visibleTopY;
-        mInsetsUpdater.setInsets(outInsets);
+        // The outline belongs to the input view, unlike the framework's window Insets.
+        final InputMethodService.Insets localInsets = new InputMethodService.Insets();
+        localInsets.contentTopInsets = localVisibleTop;
+        localInsets.visibleTopInsets = localVisibleTop;
+        mInsetsUpdater.setInsets(localInsets);
     }
 
     public void startShowingInputView(final boolean needsToLoadKeyboard) {

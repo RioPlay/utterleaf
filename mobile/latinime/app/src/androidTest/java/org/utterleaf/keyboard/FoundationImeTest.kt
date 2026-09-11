@@ -4,8 +4,10 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.pm.PermissionInfo
+import android.graphics.Rect
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
+import android.util.Log
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
@@ -73,8 +75,32 @@ class FoundationImeTest {
             val key = view.keyboard!!.getKey(code)!!
             val location = IntArray(2)
             view.getLocationOnScreen(location)
-            floatArrayOf(location[0] + view.paddingLeft + key.x + key.width / 2f,
+            val point = floatArrayOf(location[0] + view.paddingLeft + key.x + key.width / 2f,
                 location[1] + view.paddingTop + key.y + key.height / 2f)
+            val visible = Rect()
+            val hasVisibleRect = view.getLocalVisibleRect(visible)
+            visible.offset(location[0], location[1])
+            val rootLocation = IntArray(2)
+            view.rootView.getLocationOnScreen(rootLocation)
+            val metrics = view.context.getSystemService(WindowManager::class.java).maximumWindowMetrics
+            val displayBounds = metrics.bounds
+            val navigation = metrics.windowInsets.getInsets(WindowInsets.Type.navigationBars())
+            val safeBounds = Rect(displayBounds.left + navigation.left,
+                displayBounds.top + navigation.top, displayBounds.right - navigation.right,
+                displayBounds.bottom - navigation.bottom)
+            // Synthetic key coordinates only; no editor text or user content is logged.
+            val geometry = "code=$code point=${point.contentToString()} view=${location.contentToString()} " +
+                "size=${view.width}x${view.height} padding=${view.paddingLeft},${view.paddingTop} " +
+                "key=${key.x},${key.y},${key.width},${key.height} visible=$visible " +
+                "root=${rootLocation.contentToString()}/${view.rootView.width}x${view.rootView.height} " +
+                "display=$displayBounds navigation=$navigation safe=$safeBounds"
+            Log.i("FoundationImeTouch", geometry)
+            assertTrue("Synthetic key center outside visible keyboard: $geometry",
+                hasVisibleRect && visible.contains(point[0].toInt(), point[1].toInt()))
+            // A center obscured by navigation is a geometry failure, even if the IME draws there.
+            assertTrue("Synthetic key center overlaps navigation: $geometry",
+                safeBounds.contains(point[0].toInt(), point[1].toInt()))
+            point
         }
         val down = SystemClock.uptimeMillis()
         for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
@@ -166,6 +192,26 @@ class FoundationImeTest {
             }
             touch(Constants.CODE_DELETE)
             await("Delete did not remove the space") { fields[0].text.toString() == "ab" }
+            touch('q'.code)
+            await("Top row did not reach editor") { fields[0].text.toString() == "abq" }
+            touch(Constants.CODE_DELETE)
+            await("Delete did not remove top-row input") { fields[0].text.toString() == "ab" }
+            main {
+                val view = keyboard()!!
+                val strip = view.rootView.findViewById<View>(R.id.suggestion_strip_view)
+                val topView = if (strip?.isShown == true) strip else view
+                val location = IntArray(2)
+                topView.getLocationInWindow(location)
+                val reported = android.inputmethodservice.InputMethodService.Insets()
+                ime.onComputeInsets(reported)
+                assertEquals("Reported content excludes visible top row", location[1], reported.contentTopInsets)
+                assertEquals("Reported visible region excludes top row", location[1], reported.visibleTopInsets)
+                val key = view.keyboard!!.getKey('q'.code)!!
+                view.getLocationInWindow(location)
+                assertTrue("Top-row center is outside reported touchable region", reported.touchableRegion.contains(
+                    location[0] + view.paddingLeft + key.x + key.width / 2,
+                    location[1] + view.paddingTop + key.y + key.height / 2))
+            }
             val logic = main {
                 LatinIME::class.java.getDeclaredField("mInputLogic").apply { isAccessible = true }
                     .get(ime) as com.android.inputmethod.latin.inputlogic.InputLogic
