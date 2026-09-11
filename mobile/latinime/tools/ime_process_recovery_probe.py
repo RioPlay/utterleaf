@@ -160,6 +160,23 @@ def main():
         evidence["after_rebind"] = rebound_host
         for field in ("host_pid", "instance", "window_width", "window_height", "ime_bottom"):
             if rebound_host[field] != baseline[field]:
+                diagnostics = {
+                    "field": field,
+                    "before": baseline[field],
+                    "after": rebound_host[field],
+                    "snapshots": [],
+                    "collection_errors": [],
+                }
+                for sample_index in range(6):
+                    try:
+                        diagnostics["snapshots"].append(state(HOST, "state.json"))
+                    except Exception as diagnostic_error:
+                        # Preserve the original invariant failure if diagnostics fail.
+                        diagnostics["collection_errors"].append(str(diagnostic_error))
+                        break
+                    if sample_index < 5:
+                        time.sleep(0.1)
+                evidence["geometry_mismatch"] = diagnostics
                 raise RuntimeError(
                     f"Host process/activity/geometry changed across IME death: {field} "
                     f"{baseline[field]!r} -> {rebound_host[field]!r}")

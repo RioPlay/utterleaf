@@ -734,14 +734,20 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
 
     @Override
     public void onDestroy() {
+        final boolean ownsSharedKeyboardState = mKeyboardSwitcher.isOwner(this);
         mEditorSession.finish();
         mHandler.cancelEditorWork();
         clearEditorTransientState();
+        mKeyboardSwitcher.onDestroy(this);
         mInputLogic.destroy();
         mDictionaryFacilitator.closeDictionaries();
-        mSettings.onDestroy();
+        if (ownsSharedKeyboardState) {
+            mSettings.onDestroy();
+        }
         unregisterReceiver(mRingerModeChangeReceiver);
-        mStatsUtilsManager.onDestroy(this /* context */);
+        if (ownsSharedKeyboardState) {
+            mStatsUtilsManager.onDestroy(this /* context */);
+        }
         super.onDestroy();
     }
 
@@ -1142,7 +1148,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     }
 
     protected void deallocateMemory() {
-        mKeyboardSwitcher.deallocateMemory();
+        mKeyboardSwitcher.deallocateMemory(this);
     }
 
     @Override
@@ -1565,11 +1571,15 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         mGestureConsumer.onGestureCanceled();
     }
 
-    /** Release transient decoder and view state without consulting the host editor. */
+    /** Release transient decoder state without consulting the host editor. */
     public void clearEditorTransientState() {
         mDictionaryFacilitator.clearSession();
         if (mSuggestionStripView != null) {
             mSuggestionStripView.clearEditorSession();
+        }
+        // The remaining state is process-static and belongs only to the active service.
+        if (!mKeyboardSwitcher.isOwner(this)) {
+            return;
         }
         AccessibilityUtils.getInstance().clearAutoCorrection();
         final MainKeyboardView view = mKeyboardSwitcher.getMainKeyboardView();

@@ -203,7 +203,11 @@ process-death cases. Decoder suggestion requests now capture immutable
 instead of a mutable `Keyboard`. This removes that worker-side keyboard lookup;
 it does not establish complete cross-thread isolation of the decoder. Further
 JNI/lifecycle coverage, including newly identified
-static service/view/editor-metadata retention, remains. W2 is open.
+static editor-metadata retention, remains. Owner-checked service/view teardown and
+silent pointer-state cleanup are implemented in a bounded follow-up; independent
+review also corrected surviving timers and stale shared-preview cleanup. See
+execution evidence for verification. The [editor metadata review](EDITOR-METADATA-REVIEW.md)
+records the next cache-retention change; it is still proposed. W2 is open.
 
 **Gate:** no unresolved wrong-field mutation, implicit submission, sensitive
 persistence or cancellation defect in these tested paths. Do not use real private

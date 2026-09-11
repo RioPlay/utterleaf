@@ -406,13 +406,11 @@ power-loss durability or physical storage behavior.
   re-show (`99851cc02fcc41fbb2fc9c7b95caefb0`), as did one repeat
   (`e0033c22432f47cc9a2fcaf33219c78c`). The initial intermittent failure
   remains unexplained; this diagnostic change is not a lifecycle fix.
-- Service-destruction follow-up: source review found retained service/view references
-  in KeyboardSwitcher and PointerTracker, including the pointer queue's backing
-  entries. KeyboardLayoutSet's forced cache is not cleared with its ordinary cache,
-  and cached KeyboardId objects retain full framework EditorInfo objects. A reviewed
-  follow-up must preserve successor-owner state during late cleanup, release terminal
-  queue/cache references after framework destruction, and retain only keyboard-needed
-  editor metadata. No teardown fix or recreation acceptance is claimed for this finding.
+- Editor-metadata follow-up: KeyboardLayoutSet's forced cache is not cleared with its
+  ordinary cache, and cached KeyboardId objects retain full framework EditorInfo
+  objects. The [bounded metadata review](EDITOR-METADATA-REVIEW.md) records consumers
+  and a proposed immutable snapshot. This remains unimplemented; the service/view
+  cleanup below does not close all cache-retention or framework recreation gates.
 - Remaining callback/data-lifetime audit, native hardening and framework process-recovery tests.
 - Real local dictionaries: provenance, import bounds, correction/language quality.
 - Daily gestures/refinements, compact actions and real terminal/editor integration.
@@ -430,6 +428,53 @@ Both its [final PR foundation run](https://github.com/RioPlay/utterleaf/actions/
 and the [main foundation run](https://github.com/RioPlay/utterleaf/actions/runs/34566337066)
 passed. Those results cover the earlier foundation checkpoint, not the subsequent
 proximity-input refactor. No foundation APK was published.
+
+The [PR #20 foundation run](https://github.com/RioPlay/utterleaf/actions/runs/34600392501)
+passed at `45430c8`: build/unit/lint checks, the 102-test emulator suite, actual
+IME recovery after same-field user re-show, and six dictionary publication
+process-death cases. This covers the proximity-input refactor and diagnostic
+change, but does not explain the earlier intermittent local geometry failure.
+
+Follow-up review: independent Terra source/JNI review found no blocker in the
+bounded proximity capture/admission change. The captured owner is leased across
+dictionary calls and stale request identity is checked independently. This is
+source review, not complete decoder isolation or new physical-device evidence.
+Luna's recovery audit identified first-visible inset settling as a hypothesis,
+not a proven cause. On an invariant mismatch the controller now keeps up to six
+subsequent synthetic host snapshots, stopping at the first collection exception
+and preserving the original failure. In-memory branch checks covered six samples
+and one transport error; the external probe passed after same-field user re-show
+at `ime-lifecycle-review-recovery/64ae4f2cca864473b03b5ea196beab06` under the local
+build root. Readiness and pass criteria were not relaxed.
+
+## Owner-checked service and view cleanup
+
+Terra implemented a bounded service/view lifetime correction, followed by a
+separate Terra adversarial review. KeyboardSwitcher checks the exact LatinIME
+owner before delayed deallocation or destruction. Valid deallocation cancels view
+events and silently clears pointer trackers and the queue's backing storage while
+preserving wiring for view reuse; destruction additionally drops shared service,
+view, theme and pointer-proxy references. Review caught two gaps and the final
+patch closes both: typing/double-tap timer messages are canceled, and stale service
+cleanup cannot clear successor-owned previews, accessibility or settings state.
+
+Two new Kotlin instrumentation tests exercise modeled stale-owner cleanup, silent
+queue disposal, non-null reference detachment and timer cancellation. The actual
+framework IME test also hides the keyboard, invokes its owner-valid deallocation,
+reopens the same view, then verifies literal typing and deletion through touches.
+This does not establish every Android service recreation or physical-device path.
+
+The final local command passed `:app:testDebugUnitTest`,
+`:app:connectedDebugAndroidTest`, `:app:lintDebug` and `:app:assembleRelease`:
+12 JVM tests and 104 API 35 x86-64 emulator tests, zero failures/errors/skips.
+Lint remains at zero errors, 4,021 warnings and one hint. Both debug and unsigned
+release APKs passed the 18-document current-source notice verifier. The unsigned
+release SHA-256 is `7000c8986996f34471e9fd5a28e361c9e17cc5b3dec557d22b5edf4f479863be`.
+Log: `C:/Users/unknown/AppData/Local/UtterleafBuild/foundation-teardown-acceptance.log`.
+The external IME process-recovery probe also passed against the final debug APK
+after same-field user re-show; evidence is under the local build root at
+`ime-teardown-acceptance/66d71e3f51f944a2b09643af668fdad4/evidence.json`.
+The earlier intermittent geometry failure remains an open investigation.
 
 An isolated `android-foundation.yml` workflow now mirrors local build and emulator
 checks and uploads reports only; no foundation APK is published by this workflow.

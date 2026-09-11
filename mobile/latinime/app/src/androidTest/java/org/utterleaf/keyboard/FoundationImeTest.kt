@@ -297,14 +297,27 @@ class FoundationImeTest {
             touch(Constants.CODE_DELETE)
             touch('e'.code)
             await("Privacy protection broke literal password editing") { fields[1].text.toString() == "e" }
+            val viewBeforeDeallocation = main { keyboard()!! }
             val beforeHide = ime.mEditorSession.capture()
             main { manager.hideSoftInputFromWindow(fields[1].windowToken, 0) }
             await("Hide did not invalidate pending editor work") {
                 !ime.mEditorSession.isCurrent(beforeHide) &&
                     screen.window.decorView.rootWindowInsets?.isVisible(WindowInsets.Type.ime()) == false
             }
+            main {
+                LatinIME::class.java.getDeclaredMethod("deallocateMemory").apply {
+                    isAccessible = true
+                }.invoke(ime)
+            }
             show(fields[1])
-            assertTrue(ime.mEditorSession.isCurrent(ime.mEditorSession.capture()))
+            await("Keyboard did not reuse its deallocated view") {
+                keyboard() === viewBeforeDeallocation &&
+                    ime.mEditorSession.isCurrent(ime.mEditorSession.capture())
+            }
+            touch('r'.code)
+            await("Typing failed after owner-valid deallocation") { fields[1].text.toString() == "er" }
+            touch(Constants.CODE_DELETE)
+            await("Delete failed after owner-valid deallocation") { fields[1].text.toString() == "e" }
             val originalView = main { keyboard()!! }
             val originalHeight = main { originalView.height }
             comfort.save(originalComfort.copy(heightPercent = 125, bottomSpaceDp = 24))

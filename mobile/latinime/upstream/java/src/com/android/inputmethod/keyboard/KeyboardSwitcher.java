@@ -76,6 +76,11 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
         return sInstance;
     }
 
+    /** Returns whether this process-static switcher still belongs to {@code owner}. */
+    public boolean isOwner(@Nonnull final LatinIME owner) {
+        return mLatinIME == owner;
+    }
+
     private KeyboardSwitcher() {
         // Intentional empty constructor for singleton.
     }
@@ -458,7 +463,38 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
         return mKeyboardView;
     }
 
-    public void deallocateMemory() {
+    public void deallocateMemory(@Nonnull final LatinIME owner) {
+        if (!isOwner(owner)) {
+            return;
+        }
+        deallocateMemoryInternal();
+        PointerTracker.clearForInputViewDeallocation();
+    }
+
+    /**
+     * Releases the process-static switcher's references only when {@code owner} still owns it.
+     * A delayed callback from a destroyed service must not deallocate a replacement service's
+     * view or clear its touch listener.
+     */
+    public void onDestroy(@Nonnull final LatinIME owner) {
+        if (!isOwner(owner)) {
+            return;
+        }
+        deallocateMemoryInternal();
+        PointerTracker.resetForServiceDestroy();
+        mCurrentInputView = null;
+        mMainKeyboardFrame = null;
+        mKeyboardView = null;
+        mEmojiPalettesView = null;
+        mKeyboardLayoutSet = null;
+        mThemeContext = null;
+        mKeyboardTheme = null;
+        mState = null;
+        mRichImm = null;
+        mLatinIME = null;
+    }
+
+    private void deallocateMemoryInternal() {
         if (mKeyboardView != null) {
             mKeyboardView.cancelAllOngoingEvents();
             mKeyboardView.deallocateMemory();
