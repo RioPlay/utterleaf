@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="comfort_title">Keyboard comfort</string>
+    <string name="comfort_description">Adjust your keyboard, apply your changes, then try them below.</string>
+    <string name="comfort_appearance">Appearance and spacing</string>
+    <string name="comfort_light">Light keyboard theme</string>
+    <string name="comfort_height">Key height: %1$d%%</string>
+    <string name="comfort_bottom">Bottom space: %1$d dp</string>
+    <string name="comfort_feedback">Key feedback</string>
+    <string name="comfort_sound">Key sounds</string>
+    <string name="comfort_vibration">Key vibration (when supported)</string>
+    <string name="comfort_preview">Key previews</string>
+    <string name="comfort_apply">Apply</string>
+    <string name="comfort_discard">Discard changes</string>
+    <string name="comfort_saved">Saved. Changes apply when the keyboard next opens.</string>
+    <string name="comfort_discarded">Unsaved changes discarded.</string>
+    <string name="comfort_reset">Reset to defaults</string>
+    <string name="comfort_reset_description">Restore appearance, spacing and key feedback? Models, dictionaries and other settings are kept.</string>
+    <string name="comfort_reset_confirm">Reset</string>
+    <string name="comfort_reset_done">Appearance, spacing and key feedback restored.</string>
+    <string name="comfort_status">Changes stay unsaved until you tap Apply.</string>
+    <string name="comfort_practice_title">Practice</string>
+    <string name="comfort_practice_hint">Try your keyboard here. Practice text is cleared when you leave.</string>
+</resources>

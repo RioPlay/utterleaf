@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="UtterleafTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:colorAccent">#83DA9A</item>
+        <item name="android:windowBackground">#171E20</item>
+        <item name="android:colorBackground">#171E20</item>
+        <item name="android:textColorPrimary">#E5EEE8</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

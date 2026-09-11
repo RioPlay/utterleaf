@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="utterleaf_app_name" translatable="false">Utterleaf Keyboard — experiment</string>
+    <string name="notices_title">Licenses and notices</string>
+    <string name="notices_close">Close</string>
+</resources>

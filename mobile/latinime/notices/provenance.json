@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "status": "Partial reviewed notice source bundle; no publication or full license-compliance approval",
+  "files": [
+    {
+      "file": "AOSP-NOTICE.txt",
+      "source": "mobile/latinime/upstream/NOTICE",
+      "sha256": "d04394c729fc9fda050d5733d8ee11663fb54fe54d94532de968cf85c1cc42fb",
+      "copy": "verbatim whole file"
+    },
+    {
+      "file": "AOSP-JAVA-NOTICE.txt",
+      "source": "mobile/latinime/upstream/java/NOTICE",
+      "sha256": "d04394c729fc9fda050d5733d8ee11663fb54fe54d94532de968cf85c1cc42fb",
+      "copy": "verbatim whole file"
+    },
+    {
+      "file": "UTTERLEAF-NOTICE.md",
+      "source": "mobile/latinime/upstream/UTTERLEAF-NOTICE.md",
+      "sha256": "7fcd7c0b65972258a2137cdff1cd79ff81d55005e29b99da55f2dff88455cf83",
+      "copy": "verbatim whole file"
+    },
+    {
+      "file": "LLVM-PROJECT-NOTICE.txt",
+      "source": "Android NDK 28.0.13004108/NOTICE.toolchain",
+      "source_sha256": "69f10d9ba1dd4b21b886b680926056ba43fe37dbbb7e41edf548a39125a17f2a",
+      "source_lines_inclusive": [
+        1833,
+        2112
+      ],
+      "sha256": "837f5d6ac67c8f7a5f43bf675a0f8afc1564600ebdc6f350411bc5dd790c2eda",
+      "copy": "verbatim line slice preserving source line endings"
+    },
+    {
+      "file": "COMPILER-RT-NOTICE.txt",
+      "source": "Android NDK 28.0.13004108/NOTICE.toolchain",
+      "source_sha256": "69f10d9ba1dd4b21b886b680926056ba43fe37dbbb7e41edf548a39125a17f2a",
+      "source_lines_inclusive": [
+        2113,
+        2424
+      ],
+      "sha256": "b606c871f483c0023ee92cb62e271fce42467407da220b7bc9e22208eada9d25",
+      "copy": "verbatim line slice preserving source line endings"
+    },
+    {
+      "file": "LIBCXX-NOTICE.txt",
+      "source": "Android NDK 28.0.13004108/NOTICE.toolchain",
+      "source_sha256": "69f10d9ba1dd4b21b886b680926056ba43fe37dbbb7e41edf548a39125a17f2a",
+      "source_lines_inclusive": [
+        2425,
+        2736
+      ],
+      "sha256": "3f3d1da78246d5c2ffc879f8239d6e856b19ba813b8349cbe48f85bd018ee3af",
+      "copy": "verbatim line slice preserving source line endings"
+    },
+    {
+      "file": "LIBCXXABI-NOTICE.txt",
+      "source": "Android NDK 28.0.13004108/NOTICE.toolchain",
+      "source_sha256": "69f10d9ba1dd4b21b886b680926056ba43fe37dbbb7e41edf548a39125a17f2a",
+      "source_lines_inclusive": [
+        2737,
+        3048
+      ],
+      "sha256": "b043b7c5fdaf8df24b2c3b50f7651e6acfc8bdd73cc152ec5d090b8a7e0ede33",
+      "copy": "verbatim line slice preserving source line endings"
+    },
+    {
+      "file": "APACHE-2.0.txt",
+      "source": "Android NDK 28.0.13004108/NOTICE.toolchain",
+      "source_sha256": "69f10d9ba1dd4b21b886b680926056ba43fe37dbbb7e41edf548a39125a17f2a",
+      "source_lines_inclusive": [
+        1837,
+        2039
+      ],
+      "sha256": "4e959ce1740611ec982bb2fdcfaed75f4fd76c491ac261c31108871758b279e0",
+      "copy": "verbatim line slice preserving source line endings"
+    },
+    {
+      "file": "runtime-dependencies.json",
+      "sha256": "4e3a7e8192dc29f70feba5671f04d9d006884f59f5101477871def61b3a310d1",
+      "copy": "derived resolved dependency report with local POM and cached artifact hashes"
+    },
+    {
+      "file": "ANDROIDX-CORE-LICENSE.txt",
+      "source_coordinate": "androidx.core:core:1.16.0",
+      "source_artifact_sha256": "6bf03d39dbe3744acce227d3b697374c3625aae1025fbec8ad9fd7bd58bce431",
+      "source_archive_entry": "META-INF/androidx/core/core/LICENSE.txt",
+      "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+      "copy": "verbatim archive entry"
+    },
+    {
+      "file": "ANDROIDX-CORE-VIEWTREE-LICENSE.txt",
+      "source_coordinate": "androidx.core:core-viewtree:1.0.0",
+      "source_artifact_sha256": "dc1b678d58ebcf2bfa1587be68ff826694ce3d221251b9ef30d4d4b36297e6de",
+      "source_archive_entry": "META-INF/androidx/core/core-viewtree/LICENSE.txt",
+      "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+      "copy": "verbatim archive entry"
+    },
+    {
+      "file": "LIBUNWIND-LICENSE.txt",
+      "source_url": "https://android.googlesource.com/toolchain/llvm-project/+/97a699bf4812a18fb657c2779f5296a4ab2694d2/libunwind/LICENSE.TXT?format=TEXT",
+      "source_sha256": "b5efebcaca80879234098e52d1725e6d9eb8fb96a19fce625d39184b705f7b6d",
+      "sha256": "b5efebcaca80879234098e52d1725e6d9eb8fb96a19fce625d39184b705f7b6d",
+      "copy": "verbatim whole file",
+      "source_revision_evidence": "NDK 28.0.13004108 toolchain manifest_12896553.xml; SHA256 3c77c503ce286fdf5a94bcf285bd72a2be479136dd06eca33ca289854cb214a2",
+      "scope": "Toolchain-manifest-pinned source attribution; not proof of reproducible CRT source-to-object identity or complete retained archive-member attribution."
+    },
+    {
+      "file": "ANDROID-CRT-2012-NOTICE.txt",
+      "source_url": "https://android.googlesource.com/platform/bionic/+/b86008a9cd14a7748867d2232e6de439e4809c10/libc/arch-common/bionic/crtbegin_so.c?format=TEXT",
+      "source_sha256": "7339e128550f8f90a254fef776c8a23b96a13190e93981cb20a588a2e6342bf3",
+      "sha256": "e62a242304a0b3a78227d9ebac5625cf611cb68136a7181ed2109b274dd47d82",
+      "copy": "verbatim line slice preserving source line endings",
+      "source_revision_evidence": "NDK 28.0.13004108 toolchain manifest_12896553.xml; SHA256 3c77c503ce286fdf5a94bcf285bd72a2be479136dd06eca33ca289854cb214a2",
+      "scope": "Toolchain-manifest-pinned source attribution; not proof of reproducible CRT source-to-object identity or complete retained archive-member attribution.",
+      "source_lines_inclusive": [
+        1,
+        27
+      ],
+      "identical_notice_sources": [
+        {
+          "source_url": "https://android.googlesource.com/platform/bionic/+/b86008a9cd14a7748867d2232e6de439e4809c10/libc/arch-common/bionic/atexit.h?format=TEXT",
+          "source_sha256": "8671df24f92b375fe8ff233e88d5b55f01e91c608ee838045431444101bf70af",
+          "source_lines_inclusive": [
+            1,
+            27
+          ]
+        },
+        {
+          "source_url": "https://android.googlesource.com/platform/bionic/+/b86008a9cd14a7748867d2232e6de439e4809c10/libc/arch-common/bionic/__dso_handle_so.h?format=TEXT",
+          "source_sha256": "50b6bbb9aaa1692175e45839c0b90810a962449d0b9842960caf8119595bdc32",
+          "source_lines_inclusive": [
+            1,
+            27
+          ]
+        }
+      ]
+    },
+    {
+      "file": "ANDROID-CRT-2013-NOTICE.txt",
+      "source_url": "https://android.googlesource.com/platform/bionic/+/b86008a9cd14a7748867d2232e6de439e4809c10/libc/arch-common/bionic/crtend_so.S?format=TEXT",
+      "source_sha256": "9063be0da8c746bdd5e98c967c52cc658e96d7434ba2829ea01cbbc6639c1a04",
+      "sha256": "53a2534f463c51169421317d8f9162214bb4cea117926c22e7bfac762506558f",
+      "copy": "verbatim line slice preserving source line endings",
+      "source_revision_evidence": "NDK 28.0.13004108 toolchain manifest_12896553.xml; SHA256 3c77c503ce286fdf5a94bcf285bd72a2be479136dd06eca33ca289854cb214a2",
+      "scope": "Toolchain-manifest-pinned source attribution; not proof of reproducible CRT source-to-object identity or complete retained archive-member attribution.",
+      "source_lines_inclusive": [
+        1,
+        27
+      ]
+    },
+    {
+      "file": "ANDROID-CRT-ATFORK-NOTICE.txt",
+      "source_url": "https://android.googlesource.com/platform/bionic/+/b86008a9cd14a7748867d2232e6de439e4809c10/libc/arch-common/bionic/pthread_atfork.h?format=TEXT",
+      "source_sha256": "bdc11ac701a0847a51a7e93760bb0fe12389b8d25b36080f1e0d1fb7ba07e2b1",
+      "sha256": "3b1f665ce521dd2573e4a55af96b38183615ec955358e688c1c3ae21b9b558a6",
+      "copy": "verbatim line slice preserving source line endings",
+      "source_revision_evidence": "NDK 28.0.13004108 toolchain manifest_12896553.xml; SHA256 3c77c503ce286fdf5a94bcf285bd72a2be479136dd06eca33ca289854cb214a2",
+      "scope": "Toolchain-manifest-pinned source attribution; not proof of reproducible CRT source-to-object identity or complete retained archive-member attribution.",
+      "source_lines_inclusive": [
+        1,
+        15
+      ]
+    },
+    {
+      "file": "ANDROID-CRT-ARM64-NOTICE.txt",
+      "source_url": "https://android.googlesource.com/platform/bionic/+/b86008a9cd14a7748867d2232e6de439e4809c10/libc/private/bionic_asm_arm64.h?format=TEXT",
+      "source_sha256": "c1c141e1463072e8181fd13936a99edb1599486904a3876bf981aa322a6f3ccc",
+      "sha256": "e19de2b5348860667029dda136cd9a2f78c2f64b7f84455f7f8f4b42cd4c9ef1",
+      "copy": "verbatim line slice preserving source line endings",
+      "source_revision_evidence": "NDK 28.0.13004108 toolchain manifest_12896553.xml; SHA256 3c77c503ce286fdf5a94bcf285bd72a2be479136dd06eca33ca289854cb214a2",
+      "scope": "Toolchain-manifest-pinned source attribution; not proof of reproducible CRT source-to-object identity or complete retained archive-member attribution.",
+      "source_lines_inclusive": [
+        1,
+        36
+      ]
+    }
+  ]
+}

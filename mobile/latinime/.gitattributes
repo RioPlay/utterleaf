@@ -1,0 +1,6 @@
+# Preserve imported source bytes and the executable Unix wrapper's line endings.
+upstream/** -text
+# Reviewed hashes describe exact notice bytes, including their original line endings.
+notices/** -text
+gradlew text eol=lf
+*.bat text eol=crlf

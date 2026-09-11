@@ -20,6 +20,18 @@ roadmap without claiming those capabilities are already released.
 
 ## Current status
 
+- **Foundation work, unreleased:** a separate pinned AOSP LatinIME fork has been
+  built and exercised locally with real IME touch input, restricted capabilities
+  and comfort preferences. The [execution evidence](../mobile/latinime/EXECUTION-EVIDENCE.md)
+  records 12 JVM and 102 API 35 emulator tests, lint limitations, native compilation
+  and remaining licensing/security/product gates. Suggestion workers now receive
+  owner-captured composer/context inputs and deep pointer copies. Dictionary loads
+  reject retired generations and stale UI notifications. Native dictionary/proximity
+  leases defer disposal during admitted operations; a bounded external process-death
+  probe passed. Remaining lifecycle/cache, native hardening and framework recovery
+  checks continue. It is not yet integrated
+  into the shipping keyboard; alpha13 remains the released implementation.
+
 - **Released alpha12:** compact [quick editing actions](android-quick-actions.md).
   Revision `aec275b` passed [Android CI 34498263015](https://github.com/RioPlay/utterleaf/actions/runs/34498263015):
   74 emulator tests with zero failures/skips, JVM tests, lint and 3 release contracts.

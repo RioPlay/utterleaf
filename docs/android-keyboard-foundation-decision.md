@@ -1,6 +1,6 @@
 # Android keyboard foundation decision: AOSP LatinIME
 
-Status: preliminary source review, not a tested port. This document records whether Utterleaf should evaluate AOSP LatinIME as a future Android foundation. It does not import or copy AOSP code into the product. The current Utterleaf implementation remains the reference for its native-button UI, lifecycle/session guards, terminal controls, gestures, bounded model imports and local speech.
+Status: a separate experimental LatinIME port is pinned to the revision below and has passed bounded local build, typing, privacy and persistence checks. It is not part of the shipping app or a published foundation APK. The current Utterleaf implementation remains the reference for terminal controls, gestures, bounded model imports and local speech. See the [foundation record](../mobile/latinime/README.md) and [execution evidence](../mobile/latinime/EXECUTION-EVIDENCE.md) for the tested scope and remaining security/product gates.
 
 ## Source reviewed
 
@@ -56,7 +56,7 @@ The Java build declares Apache-2.0 and includes a [Java NOTICE](https://android.
 
 **No-go for product adoption** if standalone buildability depends on unavailable platform-private modules; if removing contacts, cloud, download/update, sync, user-dictionary or boot paths breaks ordinary typing; if any input/context path cannot be bounded and cancelled at field transitions; if the JNI/dictionary provenance cannot be documented; or if accessibility, terminal, lifecycle and sensitive-field tests regress against the custom foundation.
 
-The recommendation is therefore **evaluate selectively, do not adopt yet**. AOSP LatinIME is a promising reference and possible future engine source, but this review has not produced a tested port, a minimized manifest, a licensing inventory for a redistributable Utterleaf bundle, or evidence that its upstream UI/event assumptions fit the current secure custom surface.
+The initial review recommended **evaluate selectively, do not adopt yet**. The subsequent product decision authorized a separate LatinIME fork and standalone port work. The experiment now builds with a restricted manifest and bounded automated evidence. Product adoption still requires the gates above, including remaining lifecycle/privacy work, complete attribution, feature parity, physical accessibility and migration acceptance.
 
 ## Primary evidence
 
