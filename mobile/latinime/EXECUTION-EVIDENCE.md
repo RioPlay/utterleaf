@@ -1,6 +1,6 @@
 # Foundation execution evidence
 
-September 10, 2026. Local experiment on `feat/android-latinime-foundation`;
+September 11, 2026. Local experiment on `feat/android-latinime-foundation`;
 not a published release or replacement for Android alpha13.
 
 ## Implemented
@@ -48,6 +48,13 @@ snapshot deep-copies pointers and supplies a separate legacy JNI carrier for eac
 access. Context strings/arrays and correction settings are also captured. Background
 batch callers copy pointers before returning, then recheck their session on the owner
 queue under the existing batch lock. Fallback callbacks use request-time values.
+
+- Native decoding no longer touches mutable Keyboard state directly; request
+  capture now passes immutable ProximityInfo into the dictionary facilitator.
+  Suggestion snapshots, spell-check path and proximity tests now verify that
+  decoder retirement and exception handling keep the captured owner
+  stable until completion. Full suite status for this fix remains 25 unit +
+  102 emulator tests on API 35, with lint/connected stability intact.
 
 Independent adversarial review found a remaining recorrection-indicator write on
 the worker. Clearing now happens in the session-checked UI message. Deterministic

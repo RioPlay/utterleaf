@@ -198,7 +198,11 @@ native mapping ranges passed. Cursor-session retirement, bounded scoring/statist
 and automatic dictionary-file preservation passed. Production format migration is
 temporarily unavailable pending a reviewed format-conversion replacement workflow.
 Ordinary dictionary write transactions passed fault tests and six external emulator
-process-death cases. Further JNI/lifecycle coverage, including newly identified
+process-death cases. Decoder suggestion requests now capture immutable
+`ProximityInfo` on the owner thread and pass that through native suggest admission
+instead of a mutable `Keyboard`. This closes the remaining cross-thread mutable
+state path in suggestion decode and keeps retirement/exception-safe results bounded
+to the active editor identity. Further JNI/lifecycle coverage, including newly identified
 static service/view/editor-metadata retention, remains. W2 is open.
 
 **Gate:** no unresolved wrong-field mutation, implicit submission, sensitive

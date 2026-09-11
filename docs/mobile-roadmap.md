@@ -2,7 +2,7 @@
 
 [Roadmap hub](roadmap.md) · [Execution plan](execution-plan.md) · [Current mobile preview](mobile.md) · [Ideas](ideas.md)
 
-Updated September 9, 2026. Product direction: a complete, customizable Utterleaf
+Updated September 11, 2026. Product direction: a complete, customizable Utterleaf
 keyboard with integrated offline speech, its own identity, and security first.
 The design uses historical public documentation as research context, not as a
 specification, dependency or source of product identity.
@@ -25,8 +25,10 @@ roadmap without claiming those capabilities are already released.
   and comfort preferences. The [execution evidence](../mobile/latinime/EXECUTION-EVIDENCE.md)
   records 12 JVM and 102 API 35 emulator tests, lint limitations, native compilation
   and remaining licensing/security/product gates. Suggestion workers now receive
-  owner-captured composer/context inputs and deep pointer copies. Dictionary loads
-  reject retired generations and stale UI notifications. Native dictionary/proximity
+  owner-captured composer/context inputs and deep pointer copies, and pass captured
+  immutable proximity ownership into native suggestion admission instead of mutable
+  keyboard state. Dictionary loads reject retired generations and stale UI
+  notifications. Native dictionary/proximity
   leases defer disposal during admitted operations; a bounded external process-death
   probe passed. Remaining lifecycle/cache, native hardening and framework recovery
   checks continue. It is not yet integrated
