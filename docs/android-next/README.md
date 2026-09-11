@@ -1,6 +1,12 @@
 # Utterleaf Keyboard and Voice — next system design
 
-Design revision 1 · September 11, 2026 · **Design and interaction prototype, not a new Android implementation.**
+Design revision 1 · September 11, 2026 · **Design baseline merged; first native N1 slice implemented.**
+
+The isolated [native candidate](../../mobile/next-keyboard/README.md) now implements
+English tap typing, a main-thread editor gateway and local Incognito. Its
+[execution evidence](../../mobile/next-keyboard/EXECUTION-EVIDENCE.md) is separate
+from the interaction mockup. Composition, live decoding, voice, editing/terminal,
+calibration and physical acceptance remain open; N1 is not complete.
 
 The user requested a new system after reviewing LatinIME's adaptation cost. This
 design chooses a Kotlin-owned keyboard core and UI, with explicit boundaries for
@@ -95,7 +101,7 @@ gateway contract stabilizes, with exclusive files. A linguistic-backend feasibil
 investigation starts during N1 so swipe/dictionary risk is discovered early. N3 is
 required for the everyday replacement; a useful N2 alpha is not renamed completion.
 
-Implementation starts with one vertical slice: ordinary typing → delayed suggestion
+Implementation proceeds through vertical slices: ordinary typing → delayed suggestion
 → field switch → rejected stale completion, plus balanced held modifiers. It must
 include real editor integration, not just a styled keyboard. This design authorizes
 no claim of a replacement APK; preserve the two existing applications during comparison.

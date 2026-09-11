@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Utterleaf Next · Core preview</string>
+    <string name="core_title">Utterleaf Next</string>
+    <string name="core_description">Early keyboard core for testing. English tap typing and Incognito are available. Voice, prediction, swipe, touch learning, and terminal tools are not available yet.</string>
+    <string name="enable_keyboard">Enable keyboard</string>
+    <string name="choose_keyboard">Choose keyboard</string>
+    <string name="settings">Settings</string>
+    <string name="incognito_off">Incognito</string>
+    <string name="incognito_on">Incognito on</string>
+    <string name="incognito_required">Incognito · required</string>
+    <string name="incognito_pending">Incognito · saving</string>
+    <string name="incognito_unsaved">Incognito · not saved</string>
+    <string name="privacy_loading">Privacy settings loading</string>
+    <string name="privacy_description">Incognito uses neutral touch zones and disables learning. It does not change what the app receiving your text records. This core preview never learns in any mode.</string>
+    <string name="privacy_saved">Saved on this device</string>
+    <string name="privacy_failed">Could not save. Incognito remains active for this session. Retry to save it across restarts.</string>
+    <string name="retry_save">Retry save</string>
+    <string name="reset_preferences">Reset preferences</string>
+    <string name="reset_description">No other preferences in this core preview. Reset preserves Incognito and user data.</string>
+    <string name="learning_unavailable">Touch learning: unavailable (off)</string>
+    <string name="unsupported_field">This field is not supported in the core preview</string>
+    <string name="action_unavailable">Action unavailable in this editor</string>
+    <string name="literal_status">English · tap typing</string>
+    <string name="switch_keyboard">Switch keyboard</string>
+    <string name="enter_done">Done</string><string name="enter_go">Go</string>
+    <string name="enter_next">Next</string><string name="enter_search">Search</string>
+    <string name="enter_send">Send</string><string name="enter_previous">Previous</string>
+    <string name="enter_newline">Enter</string>
+</resources>

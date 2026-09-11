@@ -20,11 +20,15 @@ roadmap without claiming those capabilities are already released.
 
 ## Current status
 
-- **New core design, not an implementation:** the user requested a smaller,
+- **New core, first native N1 slice:** the user requested a smaller,
   Kotlin-owned keyboard/voice system after reviewing LatinIME's integration cost.
   [The next-system design](android-next/README.md) defines Daily/Edit/Terminal/Voice,
   optional adaptive touch zones, Incognito, immutable worker inputs and one editor
-  gateway. Its interaction mockup and performance budgets are proposals. Preserve
+  gateway. The isolated [native candidate](../mobile/next-keyboard/README.md) now
+  implements English tap typing, session/privacy guards and local Incognito;
+  [verification and remaining gates](../mobile/next-keyboard/EXECUTION-EVIDENCE.md)
+  are recorded separately. Its interaction mockup and performance budgets remain
+  proposals. N1 composition, live decoding and physical acceptance are incomplete. Preserve
   alpha13 and the LatinIME comparison build until measured parity and migration
   gates pass; neither is replaced by these documents.
 - **Foundation preview01, experimental:** a [signed test download](https://github.com/RioPlay/utterleaf/releases/tag/android-foundation-v0.1.0-preview01)
