@@ -1,6 +1,15 @@
 # Android keyboard foundation decision: AOSP LatinIME
 
-Status: a separate experimental LatinIME port is pinned to the revision below and has passed bounded local build, typing, privacy and persistence checks. It is not part of the shipping app or a published foundation APK. The current Utterleaf implementation remains the reference for terminal controls, gestures, bounded model imports and local speech. See the [foundation record](../mobile/latinime/README.md) and [execution evidence](../mobile/latinime/EXECUTION-EVIDENCE.md) for the tested scope and remaining security/product gates.
+Status, September 11, 2026: the pinned experimental LatinIME port has bounded build,
+typing, privacy and persistence evidence, and a separate
+[signed preview01](https://github.com/RioPlay/utterleaf/releases/tag/android-foundation-v0.1.0-preview01).
+It is not the shipping keyboard replacement. The user has since requested a
+[new Kotlin-owned core design](android-next/README.md); that design supersedes the
+sole-LatinIME-renderer decision for the new candidate, while this document remains
+the experiment's provenance and historical evaluation. Preserve both current apps.
+See the [foundation record](../mobile/latinime/README.md) and
+[execution evidence](../mobile/latinime/EXECUTION-EVIDENCE.md) for tested scope and
+remaining gates. The following initial adoption analysis is historical.
 
 ## Source reviewed
 

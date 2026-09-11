@@ -1,0 +1,351 @@
+<div id="utterleaf-next-concept" aria-label="Utterleaf keyboard and voice concept">
+  <style>
+    #utterleaf-next-concept { --uk-bg:#181d1b; --uk-surface:#232b26; --uk-key:#343d37; --uk-text:#eff5ed; --uk-muted:#b5c3b7; --uk-line:#465149; --uk-accent:#c4e7ac; --uk-onaccent:#193017; font:15px/1.45 system-ui,sans-serif; color:var(--uk-text); }
+    #utterleaf-next-concept[data-theme="light"] { --uk-bg:#f4f7ef; --uk-surface:#e5ece1; --uk-key:#fff; --uk-text:#1e2d22; --uk-muted:#4b6351; --uk-line:#bccbbd; --uk-accent:#cee8b8; --uk-onaccent:#1d3618; }
+    #utterleaf-next-concept * { box-sizing:border-box; }
+    #utterleaf-next-concept [hidden] { display:none!important; }
+    #utterleaf-next-concept .uk-phone { max-width:440px; margin:0 auto; background:var(--uk-bg); border:1px solid var(--uk-line); border-radius:26px; overflow:hidden; }
+    #utterleaf-next-concept .uk-top { padding:17px 18px 10px; display:flex; justify-content:space-between; gap:12px; align-items:center; }
+    #utterleaf-next-concept .uk-brand { font-weight:500; letter-spacing:.02em; }
+    #utterleaf-next-concept .uk-caption { color:var(--uk-muted); font-size:12px; }
+    #utterleaf-next-concept .uk-note { padding:8px 18px 18px; }
+    #utterleaf-next-concept .uk-note label { display:block; margin-bottom:8px; font-weight:500; }
+    #utterleaf-next-concept textarea { width:100%; resize:vertical; padding:12px; background:var(--uk-key); border:1px solid var(--uk-line); color:var(--uk-text); border-radius:12px; font:16px/1.5 system-ui,sans-serif; }
+    #utterleaf-next-concept .uk-board { background:var(--uk-surface); padding:0 6px 8px; }
+    #utterleaf-next-concept button, #utterleaf-next-concept select { font:inherit; color:var(--uk-text); cursor:pointer; }
+    #utterleaf-next-concept button { border:0; border-radius:9px; background:var(--uk-key); min-height:44px; padding:5px 7px; }
+    #utterleaf-next-concept button:active { filter:brightness(1.18); }
+    #utterleaf-next-concept button:disabled { opacity:.45; cursor:default; }
+    #utterleaf-next-concept button[aria-pressed="true"], #utterleaf-next-concept button.uk-primary { background:var(--uk-accent); color:var(--uk-onaccent); }
+    #utterleaf-next-concept .uk-bar { min-height:52px; display:flex; align-items:center; gap:3px; }
+    #utterleaf-next-concept .uk-bar button { background:transparent; min-width:44px; padding:4px; }
+    #utterleaf-next-concept .uk-bar button[aria-pressed="true"] { background:var(--uk-accent); color:var(--uk-onaccent); }
+    #utterleaf-next-concept .uk-context { flex:1; min-width:0; display:flex; justify-content:center; align-items:center; overflow:hidden; gap:2px; color:var(--uk-muted); font-size:13px; }
+    #utterleaf-next-concept .uk-context button { min-width:0; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #utterleaf-next-concept .uk-deck { min-height:280px; }
+    #utterleaf-next-concept .uk-rows { display:flex; flex-direction:column; gap:6px; padding-top:4px; }
+    #utterleaf-next-concept .uk-row { display:flex; gap:4px; }
+    #utterleaf-next-concept .uk-row button { flex:1; min-width:0; min-height:var(--uk-height,56px); padding:2px; border-radius:var(--uk-radius,8px); position:relative; font-size:19px; box-shadow:0 1px 0 var(--uk-line); }
+    #utterleaf-next-concept .uk-row button.uk-small { font-size:13px; font-weight:500; }
+    #utterleaf-next-concept .uk-row button .uk-hint { position:absolute; top:2px; right:4px; color:var(--uk-muted); font-size:10px; }
+    #utterleaf-next-concept .uk-row.uk-stagger { padding:0 4.5%; }
+    #utterleaf-next-concept .uk-row.uk-utility button { font-size:13px; min-height:48px; }
+    #utterleaf-next-concept .uk-row.uk-number button { min-height:40px; font-size:16px; }
+    #utterleaf-next-concept .uk-terminal .uk-row button { min-height:46px; }
+    #utterleaf-next-concept .uk-terminal .uk-row.uk-utility button { min-height:48px; }
+    #utterleaf-next-concept .uk-pad { padding:6px; }
+    #utterleaf-next-concept .uk-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
+    #utterleaf-next-concept .uk-grid button { min-height:55px; font-size:13px; }
+    #utterleaf-next-concept .uk-tools { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    #utterleaf-next-concept .uk-tools button { min-height:70px; }
+    #utterleaf-next-concept .uk-panelhead { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:4px 0 12px; font-weight:500; }
+    #utterleaf-next-concept .uk-panelhead button { font-weight:400; min-height:40px; }
+    #utterleaf-next-concept .uk-voice { min-height:280px; padding:8px 10px; }
+    #utterleaf-next-concept .uk-center { min-height:155px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; }
+    #utterleaf-next-concept .uk-orb { background:var(--uk-accent); color:var(--uk-onaccent); border-radius:50%; width:56px; height:56px; display:grid; place-items:center; }
+    #utterleaf-next-concept .uk-actions { display:flex; gap:8px; margin-top:12px; }
+    #utterleaf-next-concept .uk-actions button { flex:1; }
+    #utterleaf-next-concept .uk-voice textarea { min-height:108px; }
+    #utterleaf-next-concept .uk-settings label { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; }
+    #utterleaf-next-concept .uk-settings input[type="range"] { max-width:160px; }
+    #utterleaf-next-concept .uk-settings input { accent-color:#578843; }
+    #utterleaf-next-concept .uk-settings select { background:var(--uk-key); border:1px solid var(--uk-line); border-radius:7px; min-height:36px; max-width:130px; }
+    #utterleaf-next-concept .uk-calibration-demo { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:10px 0; padding:8px; border-radius:10px; background:var(--uk-key); }
+    #utterleaf-next-concept .uk-calibration-key { min-height:72px; position:relative; background:transparent!important; border:1px solid var(--uk-line)!important; }
+    #utterleaf-next-concept .uk-calibration-key span { background:var(--uk-key); border:1px solid var(--uk-line); border-radius:5px; padding:3px 8px; }
+    #utterleaf-next-concept .uk-calibration-caption { margin-top:8px; }
+    #utterleaf-next-concept .uk-status { min-height:24px; padding:6px 8px 0; text-align:center; color:var(--uk-muted); font-size:12px; }
+    #utterleaf-next-concept .uk-nav { width:90px; height:4px; margin:9px auto 0; border-radius:2px; background:var(--uk-muted); }
+    #utterleaf-next-concept[data-contrast="true"] { --uk-bg:#080c09; --uk-surface:#101912; --uk-key:#1f2d22; --uk-text:#fff; --uk-muted:#e3efdf; --uk-line:#a3b59f; --uk-accent:#d9ffc5; --uk-onaccent:#082000; }
+    @media(max-width:360px) { #utterleaf-next-concept .uk-row { gap:3px; } #utterleaf-next-concept .uk-note { padding-left:12px; padding-right:12px; } #utterleaf-next-concept .uk-context button:last-child { display:none; } }
+  </style>
+  <div class="uk-phone">
+    <div class="uk-top"><span class="uk-brand">Utterleaf</span><span class="uk-caption">Interactive concept</span></div>
+    <div class="uk-note"><label for="uk-note-input">Practice note</label><textarea id="uk-note-input" rows="2" maxlength="512" inputmode="none" autocomplete="off" spellcheck="false">Let's make room for better ideas.</textarea></div>
+    <div class="uk-board">
+      <div class="uk-bar">
+        <button type="button" data-mode="edit" aria-pressed="false">Edit</button>
+        <button type="button" data-mode="tools" aria-pressed="false">Tools</button>
+        <div class="uk-context" id="uk-context">English · local</div>
+        <button type="button" id="uk-mic" aria-label="Dictate — simulated voice"><i data-lucide="mic" aria-hidden="true"></i></button>
+      </div>
+      <div class="uk-deck">
+        <div id="uk-keyboard" class="uk-rows"></div>
+        <div id="uk-tools" class="uk-pad" hidden>
+          <div class="uk-panelhead"><span>Tools</span><button type="button" data-mode="daily">ABC</button></div>
+          <div class="uk-grid uk-tools">
+            <button type="button" data-mode="edit">Edit text</button><button type="button" data-mode="terminal">Terminal</button><button type="button" data-mode="emoji">Emoji</button>
+            <button type="button" data-mode="accents">Accents</button><button type="button" data-mode="languages">Languages</button><button type="button" data-mode="settings">Comfort</button>
+            <button type="button" id="uk-incognito-toggle" aria-pressed="false">Incognito</button>
+          </div>
+        </div>
+        <div id="uk-edit" class="uk-pad" hidden>
+          <div class="uk-panelhead"><span>Edit text</span><button type="button" data-mode="daily">ABC</button></div>
+          <div class="uk-grid" id="uk-edit-grid"></div>
+        </div>
+        <div id="uk-picker" class="uk-pad" hidden>
+          <div class="uk-panelhead"><span id="uk-picker-title"></span><button type="button" data-mode="daily">ABC</button></div>
+          <div class="uk-grid" id="uk-picker-grid"></div>
+        </div>
+        <div id="uk-languages" class="uk-pad" hidden>
+          <div class="uk-panelhead"><span>Languages & resources</span><button type="button" data-mode="daily">ABC</button></div>
+          <div>English · QWERTY</div><div class="uk-caption">Layout concept · sample candidates</div>
+          <div class="uk-panelhead"><span>Offline voice</span><span class="uk-caption">Demo only</span></div>
+          <div class="uk-caption">Reviewed models appear here with installed status in the Android app.</div>
+          <div class="uk-actions"><button type="button" data-mode="voice">Try voice flow</button><button type="button" data-mode="settings">Comfort</button></div>
+        </div>
+        <div id="uk-settings" class="uk-pad uk-settings" hidden>
+          <div class="uk-panelhead"><span>Comfort · draft</span><button type="button" id="uk-discard">Discard</button></div>
+          <label>Appearance <select id="uk-theme"><option value="dark">Leaf dark</option><option value="light">Leaf light</option></select></label>
+          <label>Key height <span><output id="uk-height-label">56</output> <input id="uk-height" type="range" min="48" max="64" step="2" value="56" aria-label="Key height in concept pixels"></span></label>
+          <label>Number row <input id="uk-number" type="checkbox"></label>
+          <label>Secondary hints <input id="uk-hints" type="checkbox" checked></label>
+          <label>Touch calibration <select id="uk-calibration"><option value="off">Off (default)</option><option value="learn">Learn</option><option value="frozen">Frozen</option></select></label>
+          <div class="uk-actions"><button type="button" id="uk-inspect-calibration">Inspect synthetic zones</button><button type="button" id="uk-clear-calibration">Clear demo profile</button></div>
+          <div class="uk-actions"><button type="button" id="uk-reset">Reset draft</button><button type="button" id="uk-apply" class="uk-primary">Apply</button></div>
+          <div class="uk-caption" style="margin-top:8px">Preview only · changes last while open · no real learning</div>
+        </div>
+        <div id="uk-calibration-inspect" class="uk-pad" hidden>
+          <div class="uk-panelhead"><span>Touch calibration · inspect</span><button type="button" data-mode="settings">Back</button></div>
+          <label>Profile <select id="uk-calibration-profile"><option value="standard">Standard geometry</option><option value="illustrative">Illustrative learned profile</option></select></label>
+          <div class="uk-calibration-demo" aria-label="Synthetic calibration zones">
+            <div class="uk-calibration-key"><span>S</span></div><div class="uk-calibration-key"><span>D</span></div><div class="uk-calibration-key"><span>F</span></div>
+          </div>
+          <div id="uk-calibration-overlay" class="uk-caption uk-calibration-caption">Learning state: illustrative profile · overlay: standard hit geometry</div>
+          <div class="uk-caption uk-calibration-caption">Synthetic illustration only: visible keycaps stay fixed; colored offset/spread areas are not raw touch samples and do not train this concept.</div>
+          <div class="uk-actions"><button type="button" id="uk-clear-calibration-inspect">Clear demo profile</button><button type="button" data-mode="settings" class="uk-primary">Done</button></div>
+        </div>
+        <div id="uk-voice" class="uk-voice" hidden>
+          <div class="uk-panelhead"><span id="uk-voice-title">Voice</span><button type="button" id="uk-voice-back">ABC</button></div>
+          <div id="uk-voice-idle">
+            <div class="uk-center"><span class="uk-orb"><i data-lucide="mic" aria-hidden="true"></i></span><span>Say it, then make it yours.</span><span class="uk-caption">Voice demo · microphone off</span></div>
+            <div class="uk-actions"><button type="button" id="uk-speak" class="uk-primary">Speak</button></div>
+          </div>
+          <div id="uk-voice-capture" hidden>
+            <div class="uk-center"><span class="uk-orb"><i data-lucide="audio-lines" aria-hidden="true"></i></span><span>Listening preview</span><span class="uk-caption">Simulated take · no audio captured</span></div>
+            <div class="uk-actions"><button type="button" data-voice-cancel>Cancel</button><button type="button" id="uk-stop" class="uk-primary">Stop</button></div>
+          </div>
+          <div id="uk-voice-processing" hidden>
+            <div class="uk-center"><span>Microphone off</span><span class="uk-caption">Processing state preview</span></div>
+            <div class="uk-actions"><button type="button" data-voice-cancel>Cancel</button><button type="button" id="uk-sample" class="uk-primary">Show sample result</button></div>
+          </div>
+          <div id="uk-voice-review" hidden>
+            <label for="uk-transcript" class="uk-caption">Sample transcript · editable</label><textarea id="uk-transcript" rows="3" maxlength="512" spellcheck="false" inputmode="text">Meet me by the park at six.</textarea>
+            <div class="uk-actions"><button type="button" id="uk-expand">Expand</button><button type="button" id="uk-edit-transcript">Edit transcript</button></div>
+            <div class="uk-actions"><button type="button" data-voice-cancel>Discard</button><button type="button" id="uk-insert" class="uk-primary">Insert</button></div>
+            <div id="uk-voice-target" class="uk-caption" style="margin-top:8px">Into Practice note · no Send</div>
+          </div>
+        </div>
+      </div>
+      <div class="uk-status" id="uk-status" aria-live="polite">Local concept · no recording or system clipboard access</div>
+      <div class="uk-nav" aria-hidden="true"></div>
+    </div>
+  </div>
+  <script>
+    (() => {
+      const root = document.getElementById('utterleaf-next-concept');
+      const q = s => root.querySelector(s);
+      const note = q('#uk-note-input'), transcript = q('#uk-transcript');
+      const defaults = {theme:'dark', height:56, number:false, hints:true, calibration:'off', incognito:false};
+      let saved = {...defaults}, draft = {...saved};
+      let mode = 'daily', rawTerminal = false, shift = false, fn = false, selection = false, copied = '', voiceState = 'idle', voiceTarget = null;
+      let revision = 0, undo = [], redo = [], modifiers = new Set();
+      const design = {radius:8, highContrast:false, context:'Ordinary text'};
+      let calibrationProfile = 'illustrative';
+      const privateField = () => design.context !== 'Ordinary text';
+      const effectiveIncognito = () => privateField() || rawTerminal || saved.incognito;
+      const settingsDirty = () => JSON.stringify(draft) !== JSON.stringify(saved);
+      const status = text => { q('#uk-status').textContent = text; };
+      const button = (text, action, extra='') => {
+        const b = document.createElement('button'); b.type='button'; b.textContent=text;
+        if(extra) b.className=extra; b.addEventListener('click',action); return b;
+      };
+      const snapshot = () => ({value:note.value,start:note.selectionStart,end:note.selectionEnd});
+      const remember = () => { if(privateField()) return; undo.push(snapshot()); if(undo.length>32) undo.shift(); redo=[]; };
+      const change = text => {
+        remember(); note.setRangeText(text,note.selectionStart,note.selectionEnd,'end'); revision++;
+        if(note.value.length>512) note.value=note.value.slice(0,512);
+        updateContext();
+      };
+      const move = (where) => {
+        const start=note.selectionStart,end=note.selectionEnd;
+        const p=where==='Home'?0:where==='End'?note.value.length:Math.max(0,Math.min(note.value.length,end+(where==='←'?-1:1)));
+        if(selection) note.setSelectionRange(Math.min(start,p),Math.max(start,p)); else note.setSelectionRange(p,p);
+        revision++; status(selection?'Selection on':'Cursor moved');
+      };
+      const deleteKey = forward => {
+        if(note.selectionStart!==note.selectionEnd) { change(''); return; }
+        const p=note.selectionStart;
+        if((!forward&&p===0)||(forward&&p===note.value.length)) return;
+        let a=p,b=p;
+        const segments = globalThis.Intl?.Segmenter ? [...new Intl.Segmenter('en',{granularity:'grapheme'}).segment(note.value)] : null;
+        if(segments) { if(forward) b=segments.find(s=>s.index>p)?.index??note.value.length; else a=segments.filter(s=>s.index<p).at(-1)?.index??0; }
+        else { if(forward)b=p+(note.value.codePointAt(p)>65535?2:1); else a=p-(p>1&&note.value.charCodeAt(p-1)>=0xdc00&&note.value.charCodeAt(p-1)<=0xdfff?2:1); }
+        note.setSelectionRange(a,b); change('');
+      };
+      const updateContext = () => {
+        const c=q('#uk-context'); c.replaceChildren();
+        if(effectiveIncognito()) { c.textContent=(privateField()||rawTerminal)?'Incognito · required':'Incognito'; return; }
+        if(mode==='terminal') { c.textContent=modifiers.size?[...modifiers].join(' + '):'RAW terminal'; return; }
+        if(mode==='voice') { c.textContent='Voice demo'; return; }
+        if(privateField()) { c.textContent='Private field'; return; }
+        if(mode!=='daily'&&mode!=='symbols') { c.textContent='English'; return; }
+        ['better','clearer','simpler'].forEach(word=>{
+          const b=button(word,()=>{change((note.selectionStart>0&&!/\s$/.test(note.value.slice(0,note.selectionStart))?' ':'')+word);status('Sample candidate inserted · Undo available in Edit');});
+          b.setAttribute('aria-label','Insert sample candidate '+word); c.append(b);
+        });
+      };
+      const renderIncognito = () => {
+        const b=q('#uk-incognito-toggle');
+        b.setAttribute('aria-pressed',String(saved.incognito));
+        b.disabled=privateField()||rawTerminal;
+        b.textContent=(privateField()||rawTerminal)?'Private · required':saved.incognito?'Exit Incognito':'Incognito';
+      };
+      const renderCalibrationInspect = () => {
+        const el=q('#uk-calibration-overlay'), demo=q('.uk-calibration-demo'); if(!el||!demo)return;
+        const overlay=effectiveIncognito()?'Incognito neutral static geometry':calibrationProfile==='standard'?'standard hit geometry':'illustrative zones (inspection only)';
+        if(effectiveIncognito()) {
+          demo.style.background='var(--uk-key)';
+        } else if(calibrationProfile==='standard') {
+          demo.style.background='radial-gradient(circle at 16% 50%,var(--uk-accent) 0 12%,transparent 28%),radial-gradient(circle at 50% 50%,var(--uk-accent) 0 12%,transparent 28%),radial-gradient(circle at 84% 50%,var(--uk-accent) 0 12%,transparent 28%),var(--uk-key)';
+        } else {
+          demo.style.background='radial-gradient(circle at 24% 38%,var(--uk-accent) 0 23%,transparent 48%),radial-gradient(circle at 57% 64%,var(--uk-accent) 0 18%,transparent 42%),radial-gradient(circle at 78% 42%,var(--uk-accent) 0 25%,transparent 50%),var(--uk-key)';
+        }
+        const savedMode={off:'Off',learn:'Learn',frozen:'Frozen'}[saved.calibration]||'Off';
+        el.textContent='Saved mode: '+savedMode+' · inspecting: '+(calibrationProfile==='standard'?'standard profile':'illustrative learned profile')+' · overlay: '+overlay+' · synthetic preview only';
+      };
+      const key = (label,value=label,wide=1) => {
+        const b=button(label,()=>{
+          if(value==='SHIFT') {shift=!shift; renderKeys();return;}
+          if(value==='DELETE'){deleteKey(false);return;}
+          if(value==='PAGE'){setMode(mode==='symbols'?'daily':'symbols');return;}
+          if(value==='FN'){fn=!fn;renderKeys();return;}
+          if(value==='ABC'){const exited=setMode('daily');if(exited){rawTerminal=false;renderIncognito();q('#uk-mic').disabled=privateField();updateContext();}return;}
+          if(value==='FN_RETURN'){fn=false;renderKeys();return;}
+          if(['Ctrl','Alt'].includes(value)){modifiers.has(value)?modifiers.delete(value):modifiers.add(value);renderKeys();return;}
+          if(mode==='terminal'&&(modifiers.size||['Esc','Tab','Home','End','PgUp','PgDn','Insert','Del','↑','↓','←','→'].includes(value)||/^F\d+$/.test(value))){
+            status('Simulated key: '+[...modifiers,value].join(' + '));modifiers.clear();renderKeys();return;
+          }
+          change(value==='SPACE'?' ':value==='ENTER'?'\n':shift?value.toUpperCase():value);
+          if(shift){shift=false;renderKeys();}
+          status(mode==='terminal'?'Practice only · no terminal connected':'Inserted into practice note');
+        },label.length>2?'uk-small':'');
+        b.style.flex=String(wide);
+        b.setAttribute('aria-label',({DELETE:'Backspace',SHIFT:'Shift',SPACE:'Space',ENTER:'Enter',PAGE:'Symbols',FN:'Function keys',ABC:'Return to letters',FN_RETURN:'Return to terminal letters'})[value]||label);
+        if((value==='SHIFT'&&shift)||modifiers.has(value)||(value==='FN'&&fn)) b.setAttribute('aria-pressed','true');
+        return b;
+      };
+      const row = (items,cls='') => { const r=document.createElement('div');r.className='uk-row '+cls;items.forEach(i=>r.append(Array.isArray(i)?key(...i):key(i)));q('#uk-keyboard').append(r);return r; };
+      const renderKeys = () => {
+        const k=q('#uk-keyboard');k.replaceChildren();k.classList.toggle('uk-terminal',mode==='terminal');
+        if(mode==='terminal')row(['Esc','Tab','Ctrl','Alt',['Fn','FN']],'uk-utility');
+        if(mode==='terminal'&&fn){
+          row(['F1','F2','F3','F4']);row(['F5','F6','F7','F8']);row(['F9','F10','F11','F12']);row(['Home','End','Insert','Del'],'uk-utility');row(['←','↑','↓','→'],'uk-utility');row([['ABC','FN_RETURN',2]] ,'uk-utility');updateContext();return;
+        }
+        if(saved.number&&mode!=='terminal')row('1234567890'.split(''),'uk-number');
+        const lines=mode==='symbols'?['1234567890','@#$%&*()-','!"\'/:;?']:['qwertyuiop','asdfghjkl','zxcvbnm'];
+        const first=row(lines[0].split('').map(ch=>[shift?ch.toUpperCase():ch,ch]));
+        if(saved.hints&&mode!=='symbols')first.childNodes.forEach((b,i)=>{const hint=document.createElement('span');hint.className='uk-hint';hint.textContent=String((i+1)%10);hint.setAttribute('aria-hidden','true');b.append(hint);});
+        row(lines[1].split('').map(ch=>[shift?ch.toUpperCase():ch,ch]),'uk-stagger');
+        row([['⇧','SHIFT',1.4],...lines[2].split('').map(ch=>[shift?ch.toUpperCase():ch,ch]),['⌫','DELETE',1.4]]);
+        row([[mode==='terminal'?'ABC':mode==='symbols'?'ABC':'?123',mode==='terminal'?'ABC':'PAGE',1.4],',',['English','SPACE',4],'.',['↵','ENTER',1.4]]);
+        updateContext();
+      };
+      const applyAppearance = prefs => {
+        root.dataset.theme=prefs.theme;root.dataset.contrast=String(design.highContrast);
+        root.style.setProperty('--uk-height',prefs.height+'px');root.style.setProperty('--uk-radius',design.radius+'px');
+      };
+      const setMode = next => {
+        if(mode==='settings'&&next!=='settings'&&settingsDirty()){status('Comfort draft pending · Apply or Discard');return false;}
+        if(mode==='voice'&&next!=='voice'){voiceState='idle';voiceTarget=null;transcript.value='';}
+        if(next==='terminal') rawTerminal=true;
+        mode=next;modifiers.clear();fn=false;selection=false;
+        ['keyboard','tools','edit','picker','languages','settings','calibration-inspect','voice'].forEach(id=>q('#uk-'+id).hidden=true);
+        const panel=['daily','symbols','terminal'].includes(next)?'keyboard':['emoji','accents'].includes(next)?'picker':next;
+        q('#uk-'+panel).hidden=false;
+        root.querySelectorAll('.uk-bar [data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===next)));
+        q('#uk-mic').disabled=privateField()||rawTerminal||next==='terminal';
+        renderIncognito();
+        q('#uk-edit-grid').querySelectorAll('[data-edit-action]').forEach(b=>{
+          const blocked=(privateField()||rawTerminal)&&['Copy','Cut','Paste'].includes(b.dataset.editAction);
+          b.disabled=blocked;
+          b.setAttribute('aria-label',blocked?b.dataset.editAction+' unavailable in private or raw terminal field':b.dataset.editAction);
+        });
+        if(next==='settings') { draft={...saved}; syncSettings(); }
+        if(next==='calibration-inspect') { q('#uk-calibration-profile').value=calibrationProfile; renderCalibrationInspect(); }
+        if(next==='emoji'||next==='accents') {
+          q('#uk-picker-title').textContent=next==='emoji'?'Emoji':'Accents · a';
+          const grid=q('#uk-picker-grid');grid.replaceChildren();
+          (next==='emoji'?['🙂','😊','❤️','👍','🌿','✨','🎉','☕','👩🏽‍💻','👨‍👩‍👧','🙏','💡']:['à','á','â','ä','ã','å','ā','æ']).forEach(ch=>grid.append(button(ch,()=>{change(ch);status('Inserted '+ch);}))); }
+        if(next==='voice'){voiceState='idle';renderVoice();}
+        applyAppearance(saved);renderKeys();updateContext();
+        status(next==='terminal'?'RAW terminal · chords are simulated · voice unavailable':next==='settings'?'Changes apply only when you choose Apply':'Local concept · no recording or system clipboard access');
+        return true;
+      };
+      const renderVoice = () => {
+        ['idle','capture','processing','review'].forEach(s=>q('#uk-voice-'+s).hidden=s!==voiceState);
+        q('#uk-voice-title').textContent=voiceState==='review'?'Review & insert':'Voice';
+        q('#uk-insert').disabled=!voiceTarget||voiceTarget.revision!==revision;
+        q('#uk-voice-target').textContent=voiceTarget&&voiceTarget.revision===revision?'Into Practice note · no Send':'Target changed · discard and start a new take';
+      };
+      const startVoice = () => {if(privateField()||rawTerminal||mode==='terminal')return;voiceTarget={...snapshot(),revision};voiceState='capture';renderVoice();status(effectiveIncognito()?'Incognito · explicit local voice preview · microphone remains off':'Simulated capture · microphone remains off');};
+      q('#uk-mic').onclick=()=>{if(setMode('voice'))startVoice();};q('#uk-speak').onclick=startVoice;
+      q('#uk-stop').onclick=()=>{voiceState='processing';renderVoice();};
+      q('#uk-sample').onclick=()=>{transcript.value='Meet me by the park at six.';voiceState='review';renderVoice();};
+      q('#uk-insert').onclick=()=>{
+        if(!voiceTarget||voiceTarget.revision!==revision){status('Target changed · insertion blocked');renderVoice();return;}
+        note.setSelectionRange(voiceTarget.start,voiceTarget.end);change(transcript.value);setMode('daily');status('Transcript inserted once · no Send');
+      };
+      root.querySelectorAll('[data-voice-cancel]').forEach(b=>b.onclick=()=>{voiceState='idle';voiceTarget=null;transcript.value='';renderVoice();status('Take discarded');});
+      q('#uk-voice-back').onclick=()=>setMode('daily');
+      q('#uk-expand').onclick=()=>{transcript.rows=transcript.rows===3?6:3;q('#uk-expand').textContent=transcript.rows===3?'Expand':'Collapse';};
+      q('#uk-edit-transcript').onclick=()=>{transcript.focus();status('Edit locally; the practice note changes only on Insert');};
+      const editActions=['Undo','Redo','Select','Select all','Home','←','→','End','↑','↓','Word ←','Word →','Cut','Copy','Paste','Del →'];
+      editActions.forEach(label=>{const editButton=button(label,()=>{
+        if(label==='Undo'||label==='Redo'){
+          const from=label==='Undo'?undo:redo,to=label==='Undo'?redo:undo;
+          if(!from.length){status('Nothing to '+label.toLowerCase());return;}to.push(snapshot());const s=from.pop();note.value=s.value;note.setSelectionRange(s.start,s.end);revision++;
+        }else if(label==='Select'){selection=!selection;status('Selection '+(selection?'on':'off'));}
+        else if(label==='Select all'){note.setSelectionRange(0,note.value.length);revision++;status('All practice text selected');}
+        else if(['Home','End','←','→'].includes(label))move(label);
+        else if(label==='Copy'||label==='Cut'){
+          if(privateField()||rawTerminal){status('Unavailable in a private or raw terminal field');return;}
+          copied=note.value.slice(note.selectionStart,note.selectionEnd);if(label==='Cut')change('');status('Demo copy only · system clipboard untouched');
+        }else if(label==='Paste'){if(privateField()||rawTerminal){status('Unavailable in a private or raw terminal field');return;}change(copied);status('Pasted demo copy');}
+        else if(label==='Del →')deleteKey(true);
+        else status(label+' is a design control; host-dependent navigation is not simulated');
+        updateContext();
+      }); editButton.dataset.editAction=label; q('#uk-edit-grid').append(editButton);});
+      const syncSettings = () => {q('#uk-theme').value=draft.theme;q('#uk-height').value=draft.height;q('#uk-height-label').value=draft.height;q('#uk-number').checked=draft.number;q('#uk-hints').checked=draft.hints;q('#uk-calibration').value=draft.calibration;applyAppearance(draft);};
+      q('#uk-theme').onchange=e=>{draft.theme=e.target.value;applyAppearance(draft);};
+      q('#uk-height').oninput=e=>{draft.height=Number(e.target.value);q('#uk-height-label').value=draft.height;};
+      q('#uk-number').onchange=e=>draft.number=e.target.checked;q('#uk-hints').onchange=e=>draft.hints=e.target.checked;q('#uk-calibration').onchange=e=>draft.calibration=e.target.value;
+      q('#uk-reset').onclick=()=>{draft={...defaults,incognito:saved.incognito};syncSettings();status('Defaults staged · Incognito state preserved; Apply to save');};
+      q('#uk-discard').onclick=()=>{draft={...saved};syncSettings();setMode(rawTerminal?'terminal':'daily');status('Comfort draft discarded');};
+      q('#uk-apply').onclick=()=>{saved={...draft};setMode(rawTerminal?'terminal':'daily');status('Preferences applied to this concept');};
+      q('#uk-inspect-calibration').onclick=()=>setMode('calibration-inspect');
+      q('#uk-clear-calibration').onclick=()=>{calibrationProfile='standard';renderCalibrationInspect();status('Demo calibration profile cleared · no training data exists');};
+      q('#uk-clear-calibration-inspect').onclick=()=>{calibrationProfile='standard';q('#uk-calibration-profile').value='standard';renderCalibrationInspect();status('Demo calibration profile cleared');};
+      q('#uk-calibration-profile').onchange=e=>{calibrationProfile=e.target.value;renderCalibrationInspect();status('Showing synthetic '+(calibrationProfile==='standard'?'standard':'illustrative learned')+' zones');};
+      q('#uk-incognito-toggle').onclick=()=>{if(privateField()||rawTerminal)return;saved.incognito=!saved.incognito;draft={...saved};renderIncognito();renderCalibrationInspect();updateContext();status(saved.incognito?'Incognito on · no learning or calibration':'Incognito off · standard context restored');};
+      root.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{const target=b.dataset.mode,changed=setMode(target);if(target==='daily'&&changed){rawTerminal=false;renderIncognito();q('#uk-mic').disabled=privateField();updateContext();}});
+      note.addEventListener('input',()=>{revision++;if(mode==='voice')renderVoice();});
+      note.addEventListener('pointerup',()=>{revision++;if(mode==='voice')renderVoice();});
+      note.addEventListener('keyup',()=>{revision++;if(mode==='voice')renderVoice();});
+      let lastContext=design.context;
+      const tweakRender=()=>{
+        applyAppearance(saved);
+        if(design.context!==lastContext){
+          copied='';undo=[];redo=[];
+          if(mode==='voice'){voiceState='idle';voiceTarget=null;transcript.value='';setMode('daily');}
+          if(privateField())status('Private field · demo copy, undo, redo, and voice cleared');
+          lastContext=design.context;
+        }
+        q('#uk-mic').disabled=privateField()||rawTerminal||mode==='terminal';
+        renderIncognito();renderCalibrationInspect();updateContext();
+      };
+      note.setSelectionRange(note.value.length,note.value.length);renderIncognito();setMode('daily');
+      if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:tweakRender});tweak.addSlider(design,'radius',{label:'Key corner radius',min:2,max:16,unit:'px'});tweak.addToggle(design,'highContrast',{label:'High contrast'});tweak.addSelect(design,'context',{label:'Field scenario',options:['Ordinary text','Private field']});}
+    })();
+  </script>
+</div>
