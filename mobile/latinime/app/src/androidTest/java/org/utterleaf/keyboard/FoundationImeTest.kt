@@ -158,18 +158,30 @@ class FoundationImeTest {
             assertTrue(main { screen.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0 })
             val manager = app.getSystemService(InputMethodManager::class.java)
             fun show(field: EditText) {
+                fun readinessDiagnostics(): String {
+                    val decor = screen.window.decorView
+                    val currentFocus = screen.currentFocus
+                    return "; fieldAttached=${field.isAttachedToWindow}, fieldLaidOut=${field.isLaidOut}, " +
+                        "fieldShown=${field.isShown}, fieldWindowFocus=${field.hasWindowFocus()}, " +
+                        "fieldFocus=${field.hasFocus()}, decorAttached=${decor.isAttachedToWindow}, " +
+                        "decorLaidOut=${decor.isLaidOut}, decorShown=${decor.isShown}, " +
+                        "decorWindowFocus=${decor.hasWindowFocus()}, currentFocus=" +
+                        "${currentFocus?.javaClass?.name}/${currentFocus?.id}, active=${manager.isActive(field)}"
+                }
+                await("Editor window was not ready for the IME", diagnostics = ::readinessDiagnostics) {
+                    val decor = screen.window.decorView
+                    field.isAttachedToWindow && field.isLaidOut && field.hasWindowFocus() &&
+                        decor.isAttachedToWindow && decor.isLaidOut && decor.hasWindowFocus()
+                }
                 main { field.requestFocus() }
-                await("Editor window was not ready for the IME") {
-                    field.isAttachedToWindow && field.hasWindowFocus() && field.hasFocus()
+                await("Editor did not receive focus", diagnostics = ::readinessDiagnostics) {
+                    field.hasFocus()
                 }
                 // Establish the framework's served editor once after its window and focus settle.
                 // This is fixture setup, not a retry: the following active and visible assertions
                 // still require the selected IME to own and show the field.
                 main { manager.restartInput(field) }
-                await("Editor was not ready for the IME", diagnostics = {
-                    "; attached=${field.isAttachedToWindow}, windowFocus=${field.hasWindowFocus()}, " +
-                        "fieldFocus=${field.hasFocus()}, active=${manager.isActive(field)}"
-                }) {
+                await("Editor was not ready for the IME", diagnostics = ::readinessDiagnostics) {
                     manager.isActive(field)
                 }
                 main { manager.showSoftInput(field, InputMethodManager.SHOW_IMPLICIT) }

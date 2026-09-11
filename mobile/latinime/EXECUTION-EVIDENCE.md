@@ -512,6 +512,19 @@ The final APK also passed external IME process recovery after same-field user
 re-show, with evidence under the local build root at
 `ime-metadata-acceptance/1c091d2af1a64a10aa7ddda419ffdf42/evidence.json`.
 
+The [next CI run](https://github.com/RioPlay/utterleaf/actions/runs/34605220732)
+still failed the two UI fixtures; build/unit/lint/notices passed and 110 of 112
+emulator tests passed. The first keyboard readiness check failed before requesting
+serving, so the earlier serving/timing explanation was insufficient. Both
+activities reached resumed/displayed state in the logs; the failed focus predicate
+and notice root state were not recorded. A test-only follow-up now waits for
+layout/window readiness before its single focus/click request, records individual
+non-content readiness states and at most eight owned window roots, and retains
+the existing security/input/text assertions. Readiness property reads run on main.
+The four focused keyboard/notices tests passed locally with no failures/skips
+(`foundation-ui-readiness-final.log` in the local build root). Remote root cause
+and acceptance remain open until the new evidence resolves them.
+
 An isolated `android-foundation.yml` workflow now mirrors local build and emulator
 checks and uploads reports only; no foundation APK is published by this workflow.
 The [first remote run](https://github.com/RioPlay/utterleaf/actions/runs/34563567144)
