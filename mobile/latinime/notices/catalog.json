@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "status": "Partial reviewed notice bundle; packaged viewer verified, final component attribution remains open",
+  "documents": [
+    {
+      "id": "overview",
+      "file": "README.md",
+      "title": "About these notices",
+      "sha256": "783fbf3826c5b0fd34fccf2eaf808bf73a6bc6a5aab89367f2561f6363b1590f",
+      "license": "Utterleaf documentation",
+      "version": "foundation01",
+      "source_path": "mobile/latinime/notices/README.md"
+    },
+    {
+      "id": "aosp",
+      "file": "AOSP-NOTICE.txt",
+      "title": "AOSP LatinIME notice",
+      "sha256": "d04394c729fc9fda050d5733d8ee11663fb54fe54d94532de968cf85c1cc42fb",
+      "license": "Apache-2.0",
+      "version": "127336e9f29d69607eab55982324b210279ae8c5",
+      "source_path": "mobile/latinime/upstream/NOTICE",
+      "refresh_from_source": "mobile/latinime/upstream/NOTICE"
+    },
+    {
+      "id": "aosp-java",
+      "file": "AOSP-JAVA-NOTICE.txt",
+      "title": "AOSP LatinIME Java notice",
+      "sha256": "d04394c729fc9fda050d5733d8ee11663fb54fe54d94532de968cf85c1cc42fb",
+      "license": "Apache-2.0",
+      "version": "127336e9f29d69607eab55982324b210279ae8c5",
+      "source_path": "mobile/latinime/upstream/java/NOTICE",
+      "refresh_from_source": "mobile/latinime/upstream/java/NOTICE"
+    },
+    {
+      "id": "utterleaf",
+      "file": "UTTERLEAF-NOTICE.md",
+      "title": "Utterleaf modifications and exclusions",
+      "sha256": "7fcd7c0b65972258a2137cdff1cd79ff81d55005e29b99da55f2dff88455cf83",
+      "license": "Upstream provenance and modification record",
+      "version": "foundation01",
+      "source_path": "mobile/latinime/upstream/UTTERLEAF-NOTICE.md",
+      "refresh_from_source": "mobile/latinime/upstream/UTTERLEAF-NOTICE.md"
+    },
+    {
+      "id": "apache",
+      "file": "APACHE-2.0.txt",
+      "title": "Apache License 2.0",
+      "sha256": "4e959ce1740611ec982bb2fdcfaed75f4fd76c491ac261c31108871758b279e0",
+      "license": "Apache-2.0",
+      "version": "January 2004",
+      "source_path": "mobile/latinime/notices/APACHE-2.0.txt"
+    },
+    {
+      "id": "llvm",
+      "file": "LLVM-PROJECT-NOTICE.txt",
+      "title": "LLVM project notices",
+      "sha256": "837f5d6ac67c8f7a5f43bf675a0f8afc1564600ebdc6f350411bc5dd790c2eda",
+      "license": "Apache-2.0 WITH LLVM-exception; preserved legacy terms",
+      "version": "NDK 28.0.13004108",
+      "source_path": "mobile/latinime/notices/LLVM-PROJECT-NOTICE.txt"
+    },
+    {
+      "id": "compiler-rt",
+      "file": "COMPILER-RT-NOTICE.txt",
+      "title": "Compiler runtime notices",
+      "sha256": "b606c871f483c0023ee92cb62e271fce42467407da220b7bc9e22208eada9d25",
+      "license": "Apache-2.0 WITH LLVM-exception; preserved legacy terms",
+      "version": "NDK 28.0.13004108",
+      "source_path": "mobile/latinime/notices/COMPILER-RT-NOTICE.txt"
+    },
+    {
+      "id": "libcxx",
+      "file": "LIBCXX-NOTICE.txt",
+      "title": "C++ standard library notices",
+      "sha256": "3f3d1da78246d5c2ffc879f8239d6e856b19ba813b8349cbe48f85bd018ee3af",
+      "license": "Apache-2.0 WITH LLVM-exception; preserved legacy terms",
+      "version": "NDK 28.0.13004108",
+      "source_path": "mobile/latinime/notices/LIBCXX-NOTICE.txt"
+    },
+    {
+      "id": "libcxxabi",
+      "file": "LIBCXXABI-NOTICE.txt",
+      "title": "C++ ABI library notices",
+      "sha256": "b043b7c5fdaf8df24b2c3b50f7651e6acfc8bdd73cc152ec5d090b8a7e0ede33",
+      "license": "Apache-2.0 WITH LLVM-exception; preserved legacy terms",
+      "version": "NDK 28.0.13004108",
+      "source_path": "mobile/latinime/notices/LIBCXXABI-NOTICE.txt"
+    },
+    {
+      "id": "androidx-core",
+      "file": "ANDROIDX-CORE-LICENSE.txt",
+      "title": "AndroidX Core license",
+      "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+      "license": "Apache-2.0",
+      "version": "1.16.0",
+      "source_path": "mobile/latinime/notices/ANDROIDX-CORE-LICENSE.txt"
+    },
+    {
+      "id": "androidx-core-viewtree",
+      "file": "ANDROIDX-CORE-VIEWTREE-LICENSE.txt",
+      "title": "AndroidX Core ViewTree license",
+      "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+      "license": "Apache-2.0",
+      "version": "1.0.0",
+      "source_path": "mobile/latinime/notices/ANDROIDX-CORE-VIEWTREE-LICENSE.txt"
+    },
+    {
+      "id": "dependencies",
+      "file": "runtime-dependencies.json",
+      "title": "Resolved dependency evidence",
+      "sha256": "4e3a7e8192dc29f70feba5671f04d9d006884f59f5101477871def61b3a310d1",
+      "license": "Declared license evidence; see individual records",
+      "version": "release snapshot",
+      "source_path": "mobile/latinime/notices/runtime-dependencies.json"
+    },
+    {
+      "id": "provenance",
+      "file": "provenance.json",
+      "title": "Notice source and hash evidence",
+      "sha256": "ea05160d90f453d848d371dac9cc1cf3f7265f64472e76a956a947dc207ba328",
+      "license": "Source evidence; see individual records",
+      "version": "schema1",
+      "source_path": "mobile/latinime/notices/provenance.json"
+    },
+    {
+      "id": "libunwind",
+      "file": "LIBUNWIND-LICENSE.txt",
+      "title": "LLVM libunwind license",
+      "sha256": "b5efebcaca80879234098e52d1725e6d9eb8fb96a19fce625d39184b705f7b6d",
+      "license": "Apache-2.0 WITH LLVM-exception; preserved legacy NCSA/MIT alternatives",
+      "version": "NDK 28.0.13004108 toolchain-manifest source",
+      "source_path": "mobile/latinime/notices/LIBUNWIND-LICENSE.txt"
+    },
+    {
+      "id": "android-crt-2012",
+      "file": "ANDROID-CRT-2012-NOTICE.txt",
+      "title": "Android shared-library startup notice (2012)",
+      "sha256": "e62a242304a0b3a78227d9ebac5625cf611cb68136a7181ed2109b274dd47d82",
+      "license": "BSD-2-Clause",
+      "version": "NDK 28.0.13004108 toolchain-manifest source",
+      "source_path": "mobile/latinime/notices/ANDROID-CRT-2012-NOTICE.txt"
+    },
+    {
+      "id": "android-crt-2013",
+      "file": "ANDROID-CRT-2013-NOTICE.txt",
+      "title": "Android shared-library termination notice (2013)",
+      "sha256": "53a2534f463c51169421317d8f9162214bb4cea117926c22e7bfac762506558f",
+      "license": "BSD-2-Clause",
+      "version": "NDK 28.0.13004108 toolchain-manifest source",
+      "source_path": "mobile/latinime/notices/ANDROID-CRT-2013-NOTICE.txt"
+    },
+    {
+      "id": "android-crt-atfork",
+      "file": "ANDROID-CRT-ATFORK-NOTICE.txt",
+      "title": "Android startup atfork notice",
+      "sha256": "3b1f665ce521dd2573e4a55af96b38183615ec955358e688c1c3ae21b9b558a6",
+      "license": "Apache-2.0",
+      "version": "NDK 28.0.13004108 toolchain-manifest source",
+      "source_path": "mobile/latinime/notices/ANDROID-CRT-ATFORK-NOTICE.txt"
+    },
+    {
+      "id": "android-crt-arm64",
+      "file": "ANDROID-CRT-ARM64-NOTICE.txt",
+      "title": "ARM64 startup assembly notice",
+      "sha256": "e19de2b5348860667029dda136cd9a2f78c2f64b7f84455f7f8f4b42cd4c9ef1",
+      "license": "BSD-3-Clause",
+      "version": "NDK 28.0.13004108 toolchain-manifest source",
+      "source_path": "mobile/latinime/notices/ANDROID-CRT-ARM64-NOTICE.txt"
+    }
+  ]
+}

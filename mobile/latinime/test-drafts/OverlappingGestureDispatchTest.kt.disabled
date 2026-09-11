@@ -1,0 +1,73 @@
+// STAGED REGRESSION, deliberately outside all Gradle source sets until semantics are fixed.
+// Not executed or counted as acceptance evidence. It targets the active-gesture flag
+// failure only. Passing it would NOT prove correct
+// previous-word commit ordering, composer isolation, or intervening tap/cursor handling.
+package com.android.inputmethod.latin.inputlogic
+
+import android.os.Looper
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.android.inputmethod.latin.LatinIME
+import com.android.inputmethod.latin.Suggest
+import com.android.inputmethod.latin.SuggestedWords
+import com.android.inputmethod.latin.common.InputPointers
+import org.utterleaf.keyboard.SuggestionDecoder
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
+
+@RunWith(AndroidJUnit4::class)
+class OverlappingGestureDispatchTest {
+    private val instrumentation = InstrumentationRegistry.getInstrumentation()
+
+    private class TestIme : LatinIME() {
+        val captured = CountDownLatch(1)
+        val completion = AtomicReference<Suggest.OnGetSuggestedWordsCallback>()
+        val logic: InputLogic get() = LatinIME::class.java.getDeclaredField("mInputLogic")
+            .apply { isAccessible = true }.get(this) as InputLogic
+
+        override fun captureSuggestionRequest(style: Int, sequence: Int): SuggestionDecoder {
+            check(Looper.myLooper() == Looper.getMainLooper())
+            return SuggestionDecoder { callback -> completion.set(callback); captured.countDown() }
+        }
+    }
+
+    private fun <T> main(block: () -> T): T {
+        var result: Result<T>? = null
+        instrumentation.runOnMainSync { result = runCatching(block) }
+        return result!!.getOrThrow()
+    }
+
+    @Test fun priorTailMustNotEndTheFollowingGestureInTheSameEditor() {
+        val ime = main { TestIme().apply { mEditorSession.start() } }
+        val worker = InputLogicHandler(ime, ime.logic)
+        try {
+            main {
+                worker.onStartBatchInput() // Gesture A.
+                worker.updateTailBatchInput(InputPointers(0), 1)
+            }
+            assertTrue(ime.captured.await(5, TimeUnit.SECONDS))
+            main {
+                worker.onStartBatchInput() // Gesture B before A's decoder completes.
+                val completed = CountDownLatch(1)
+                worker.mNonUIThreadHandler.post {
+                    try { ime.completion.get().onGetSuggestedWords(SuggestedWords.getEmptyInstance()) }
+                    finally { completed.countDown() }
+                }
+                try {
+                    assertTrue(completed.await(5, TimeUnit.SECONDS))
+                    assertTrue("A's old tail must not end B's active gesture", worker.isInBatchInput)
+                } finally {
+                    // Prevent fake-service UI callbacks: the test only exercises worker dispatch.
+                    ime.mHandler.removeAllMessages()
+                }
+            }
+        } finally {
+            worker.destroy()
+            main { ime.mHandler.removeAllMessages() }
+        }
+    }
+}
