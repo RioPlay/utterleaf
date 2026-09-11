@@ -1,0 +1,11 @@
+<resources>
+    <string name="next_key_shift">Shift</string>
+    <string name="next_key_backspace">Backspace</string>
+    <string name="next_key_space">Space</string>
+    <string name="next_key_enter">Enter</string>
+    <string name="next_key_symbols">Symbols</string>
+    <string name="next_key_letters">Letters</string>
+    <string name="next_key_cancel">Cancel</string>
+    <string name="next_choose_accent">Choose a letter or punctuation key for accents</string>
+    <string name="next_key_unavailable">Unavailable</string>
+</resources>

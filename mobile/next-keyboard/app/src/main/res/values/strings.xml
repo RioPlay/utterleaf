@@ -1,0 +1,42 @@
+<resources>
+    <string name="app_name">Utterleaf Next · Core preview</string>
+    <string name="core_title">Utterleaf Next</string>
+    <string name="core_description">Early keyboard core for testing. English typing, accents, an optional number row, and Incognito are available. Voice, prediction, swipe, touch learning, and terminal tools are not available yet.</string>
+    <string name="enable_keyboard">Enable keyboard</string>
+    <string name="choose_keyboard">Choose keyboard</string>
+    <string name="settings">Settings</string>
+    <string name="incognito_off">Incognito</string>
+    <string name="incognito_on">Incognito on</string>
+    <string name="incognito_required">Incognito · required</string>
+    <string name="incognito_pending">Incognito · saving</string>
+    <string name="incognito_unsaved">Incognito · not saved</string>
+    <string name="privacy_loading">Privacy settings loading</string>
+    <string name="privacy_description">Incognito stays on until you turn it off. This core preview never learns or adapts touch zones in any mode. Incognito does not change what the app receiving your text records.</string>
+    <string name="privacy_saved">Saved on this device</string>
+    <string name="privacy_failed">Could not save. Incognito remains active for this session. Retry to save it across restarts.</string>
+    <string name="retry_save">Retry save</string>
+    <string name="reset_preferences">Reset preferences</string>
+    <string name="reset_description">Reset turns the number row off and accent long-press on. Incognito and user data are preserved.</string>
+    <string name="typing_preferences">Typing preferences</string>
+    <string name="number_row">Number row</string>
+    <string name="accent_long_press">Hold keys for accents</string>
+    <string name="accent_tap_help">Accents are also available by tapping Accents, then a letter and a choice.</string>
+    <string name="apply_typing">Apply typing preferences</string>
+    <string name="discard_typing">Discard changes</string>
+    <string name="typing_loading">Loading typing preferences</string>
+    <string name="typing_saving">Saving typing preferences</string>
+    <string name="typing_unsaved">Changes have not been applied</string>
+    <string name="typing_save_failed">Could not save. The keyboard keeps its previous settings. Apply to retry.</string>
+    <string name="accents">Accents</string>
+    <string name="cancel_accents">Cancel accents</string>
+    <string name="choose_accent_base">Choose a letter or punctuation key</string>
+    <string name="choose_accent_option">Choose an alternate or Cancel</string>
+    <string name="learning_unavailable">Touch learning: unavailable (off)</string>
+    <string name="unsupported_field">This field is not supported in the core preview</string>
+    <string name="action_unavailable">Action unavailable in this editor</string>
+    <string name="literal_status">English · tap typing</string>
+    <string name="enter_done">Done</string><string name="enter_go">Go</string>
+    <string name="enter_next">Next</string><string name="enter_search">Search</string>
+    <string name="enter_send">Send</string><string name="enter_previous">Previous</string>
+    <string name="enter_newline">Enter</string>
+</resources>
