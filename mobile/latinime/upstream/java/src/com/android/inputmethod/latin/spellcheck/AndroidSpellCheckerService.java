@@ -26,6 +26,7 @@ import android.view.inputmethod.InputMethodSubtype;
 import android.view.textservice.SuggestionsInfo;
 
 import com.android.inputmethod.keyboard.Keyboard;
+import com.android.inputmethod.keyboard.ProximityInfo;
 import com.android.inputmethod.keyboard.KeyboardId;
 import com.android.inputmethod.keyboard.KeyboardLayoutSet;
 import com.android.inputmethod.latin.DictionaryFacilitator;
@@ -170,7 +171,7 @@ public final class AndroidSpellCheckerService extends SpellCheckerService
 
     public SuggestionResults getSuggestionResults(final Locale locale,
             final ComposedData composedData, final NgramContext ngramContext,
-            @Nonnull final Keyboard keyboard) {
+            @Nonnull final ProximityInfo proximityInfo) {
         Integer sessionId = null;
         mSemaphore.acquireUninterruptibly();
         try {
@@ -178,7 +179,7 @@ public final class AndroidSpellCheckerService extends SpellCheckerService
             DictionaryFacilitator dictionaryFacilitatorForLocale =
                     mDictionaryFacilitatorCache.get(locale);
             return dictionaryFacilitatorForLocale.getSuggestionResults(composedData, ngramContext,
-                    keyboard, mSettingsValuesForSuggestion,
+                    proximityInfo, mSettingsValuesForSuggestion,
                     sessionId, SuggestedWords.INPUT_STYLE_TYPING);
         } finally {
             if (sessionId != null) {

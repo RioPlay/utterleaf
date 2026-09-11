@@ -36,7 +36,7 @@ class ProximityLifetimeTest {
             facilitator.resetDictionaries(InstrumentationRegistry.getInstrumentation().targetContext,
                 Locale.US, false, false, false, null, "", null)
             assertTrue(facilitator.getSuggestionResults(ComposedData(InputPointers(1), false, ""),
-                NgramContext.EMPTY_PREV_WORDS_INFO, keyboard, SettingsValuesForSuggestion(true),
+                NgramContext.EMPTY_PREV_WORDS_INFO, keyboard.proximityInfo, SettingsValuesForSuggestion(true),
                 0, SuggestedWords.INPUT_STYLE_TYPING).isEmpty())
         } finally { facilitator.closeDictionaries() }
     }
@@ -79,7 +79,7 @@ class ProximityLifetimeTest {
         val worker = Thread {
             try {
                 facilitator.getSuggestionResults(ComposedData(InputPointers(1), false, ""),
-                    NgramContext.EMPTY_PREV_WORDS_INFO, keyboard, SettingsValuesForSuggestion(true),
+                    NgramContext.EMPTY_PREV_WORDS_INFO, proximity, SettingsValuesForSuggestion(true),
                     0, SuggestedWords.INPUT_STYLE_TYPING)
                 if (throws) fail("Expected decoder exception")
             } catch (error: Throwable) {
@@ -98,7 +98,7 @@ class ProximityLifetimeTest {
             assertEquals(0L, nativePointer.getLong(proximity))
             // A retired owner cannot supply a handle to another decoder.
             assertTrue(facilitator.getSuggestionResults(ComposedData(InputPointers(1), false, ""),
-                NgramContext.EMPTY_PREV_WORDS_INFO, keyboard, SettingsValuesForSuggestion(true),
+                NgramContext.EMPTY_PREV_WORDS_INFO, proximity, SettingsValuesForSuggestion(true),
                 0, SuggestedWords.INPUT_STYLE_TYPING).isEmpty())
         } finally {
             release.countDown(); worker.join(5000); facilitator.closeDictionaries()

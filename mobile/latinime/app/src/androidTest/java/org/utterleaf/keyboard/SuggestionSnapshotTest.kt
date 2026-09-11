@@ -3,6 +3,8 @@ package org.utterleaf.keyboard
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.inputmethod.event.Event
+import com.android.inputmethod.keyboard.Keyboard
+import com.android.inputmethod.keyboard.internal.KeyboardParams
 import com.android.inputmethod.latin.*
 import com.android.inputmethod.latin.common.ComposedData
 import com.android.inputmethod.latin.common.InputPointers
@@ -103,6 +105,10 @@ class SuggestionSnapshotTest {
         val observed = AtomicReference<ComposedData>()
         val result = AtomicReference<SuggestedWords>()
         val failure = AtomicReference<Throwable>()
+        val proximity = Keyboard(KeyboardParams().apply {
+            GRID_WIDTH = 1
+            GRID_HEIGHT = 1
+        }).proximityInfo
         val composer = main {
             WordComposer().apply {
                 if (batch) setBatchInputWord("AB") else type(this, "AB")
@@ -134,7 +140,7 @@ class SuggestionSnapshotTest {
         val worker = Thread {
             try {
                 Suggest(facilitator).getSuggestedWords(snapshot, NgramContext.EMPTY_PREV_WORDS_INFO,
-                    null, SettingsValuesForSuggestion(true), false, 1f,
+                    proximity, SettingsValuesForSuggestion(true), false, 1f,
                     if (batch) SuggestedWords.INPUT_STYLE_TAIL_BATCH else SuggestedWords.INPUT_STYLE_TYPING,
                     7) { result.set(it) }
             } catch (error: Throwable) { failure.set(error) }

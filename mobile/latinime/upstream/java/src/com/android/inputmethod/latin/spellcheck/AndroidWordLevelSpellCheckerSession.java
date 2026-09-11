@@ -287,7 +287,8 @@ public abstract class AndroidWordLevelSpellCheckerSession extends Session {
             composer.setComposingWord(codePoints, coordinates);
             // TODO: Don't gather suggestions if the limit is <= 0 unless necessary
             final SuggestionResults suggestionResults = mService.getSuggestionResults(
-                    mLocale, composer.getComposedDataSnapshot(), ngramContext, keyboard);
+                    mLocale, composer.getComposedDataSnapshot(), ngramContext,
+                    keyboard.getProximityInfo());
             final Result result = getResult(capitalizeType, mLocale, suggestionsLimit,
                     mService.getRecommendedThreshold(), text, suggestionResults);
             if (DebugFlags.DEBUG_ENABLED) {

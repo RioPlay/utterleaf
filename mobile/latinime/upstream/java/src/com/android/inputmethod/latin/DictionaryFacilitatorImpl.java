@@ -26,7 +26,6 @@ import android.util.Log;
 import android.util.LruCache;
 
 import com.android.inputmethod.annotations.UsedForTesting;
-import com.android.inputmethod.keyboard.Keyboard;
 import com.android.inputmethod.keyboard.ProximityInfo;
 
 import org.utterleaf.keyboard.NativeOperationGate;
@@ -625,13 +624,12 @@ public class DictionaryFacilitatorImpl implements DictionaryFacilitator {
     // TODO: Revise the way to fusion suggestion results.
     @Override
     @Nonnull public SuggestionResults getSuggestionResults(ComposedData composedData,
-            NgramContext ngramContext, @Nonnull final Keyboard keyboard,
+            NgramContext ngramContext, @Nonnull final ProximityInfo proximityInfo,
             SettingsValuesForSuggestion settingsValuesForSuggestion, int sessionId,
             int inputStyle) {
         final SuggestionResults suggestionResults = new SuggestionResults(
                 SuggestedWords.MAX_SUGGESTIONS, ngramContext.isBeginningOfSentenceContext(),
                 false /* firstSuggestionExceedsConfidenceThreshold */);
-        final ProximityInfo proximityInfo = keyboard.getProximityInfo();
         final NativeOperationGate.Lease proximityOperation = proximityInfo.acquireNativeOperation();
         if (proximityOperation == null) {
             return suggestionResults;
