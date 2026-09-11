@@ -21,6 +21,7 @@ class EditorGatewayTest {
         var deletedCodePoints = 0
         var action = 0
         var before: CharSequence? = null
+        var honorRequestedBeforeLength = false
         var commitResult = true
         var deleteResult = true
         var onCommit: (() -> Unit)? = null
@@ -35,7 +36,8 @@ class EditorGatewayTest {
         override fun getTextBeforeCursor(length: Int, flags: Int): CharSequence? {
             beforeReads++
             onRead?.invoke()
-            return before
+            val value = before ?: return null
+            return if (honorRequestedBeforeLength && value.length > length) value.subSequence(value.length - length, value.length) else value
         }
         override fun deleteSurroundingTextInCodePoints(beforeLength: Int, afterLength: Int): Boolean {
             deletedCodePoints = beforeLength
@@ -84,6 +86,50 @@ class EditorGatewayTest {
         }
         assertEquals(1, deleteFor("a😀"))
         assertEquals(2, deleteFor("e\u0301"))
+    }
+
+    @Test fun ordinaryBackspaceAcceptsProvenFinalClustersFromFullBoundedTail() {
+        fun deleteFor(before: String): Int {
+            val connection = RecordingConnection().apply {
+                this.before = before
+                honorRequestedBeforeLength = true
+            }
+            val gateway = EditorGateway(AnyThread())
+            val token = gateway.open(connection, InputType.TYPE_CLASS_TEXT, 0, before.length, before.length)!!
+            assertEquals(Outcome.APPLIED, gateway.backspace(token))
+            return connection.deletedCodePoints
+        }
+        assertEquals(1, deleteFor("a".repeat(200)))
+        assertEquals(2, deleteFor("a".repeat(198) + "e\u0301"))
+        assertEquals(2, deleteFor("a".repeat(198) + "\r\n"))
+        assertEquals(7, deleteFor("a".repeat(190) + "👨‍👩‍👧‍👦"))
+    }
+
+    @Test fun ordinaryBackspaceRefusesAmbiguousOrOverlongBoundedContext() {
+        fun outcomeFor(before: CharSequence, honorLimit: Boolean = true): Outcome {
+            val connection = RecordingConnection().apply {
+                this.before = before
+                honorRequestedBeforeLength = honorLimit
+            }
+            val gateway = EditorGateway(AnyThread())
+            val token = gateway.open(connection, InputType.TYPE_CLASS_TEXT, 0, before.length, before.length)!!
+            val outcome = gateway.backspace(token)
+            assertEquals(0, connection.deletedCodePoints)
+            return outcome
+        }
+        // The final flag's prior RI is not a proof of its pairing parity before the tail.
+        assertEquals(Outcome.REFUSED, outcomeFor("a".repeat(116) + "🇺🇸🇨🇦🇩🇪"))
+        assertEquals(Outcome.REFUSED, outcomeFor("\u0301".repeat(128)))
+        assertEquals(Outcome.REFUSED, outcomeFor("a".repeat(127) + "\uD83D"))
+        // A faulty host that ignores the requested maximum remains bounded and refused.
+        assertEquals(Outcome.REFUSED, outcomeFor("a".repeat(129), honorLimit = false))
+        val oversized = object : CharSequence {
+            override val length = 129
+            override fun get(index: Int): Char = error("Oversized context must not be read")
+            override fun subSequence(startIndex: Int, endIndex: Int): CharSequence = error("Oversized context must not be copied")
+            override fun toString(): String = error("Oversized context must be rejected before copying")
+        }
+        assertEquals(Outcome.REFUSED, outcomeFor(oversized, honorLimit = false))
     }
 
     @Test fun ordinaryDeletePredictsCaretForImmediateCommitAndCoalescedAck() {

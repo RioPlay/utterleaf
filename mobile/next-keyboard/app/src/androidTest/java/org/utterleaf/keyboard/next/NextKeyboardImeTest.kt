@@ -36,6 +36,14 @@ import java.io.File
 class NextKeyboardImeTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val app = instrumentation.targetContext
+    private val touchTrace = ArrayDeque<String>()
+    private var tracedSurface: KeyboardSurface? = null
+    private fun trace(value: String) {
+        if (touchTrace.size == 64) touchTrace.removeFirst()
+        touchTrace.addLast(value)
+    }
+    private fun syntheticDetails(activity: CoreTestActivity): String =
+        "; synthetic actual=${activity.first.text}, ready=${(keyboard()?.context as? NextKeyboardIme)?.isReadyForInput}, touches=$touchTrace"
     private fun shell(command: String) = ParcelFileDescriptor.AutoCloseInputStream(
         instrumentation.uiAutomation.executeShellCommand(command)
     ).bufferedReader().use { it.readText().trim() }
@@ -44,14 +52,14 @@ class NextKeyboardImeTest {
         instrumentation.runOnMainSync { result = runCatching(block) }
         return result!!.getOrThrow()
     }
-    private fun await(label: String, block: () -> Boolean) {
+    private fun await(label: String, details: () -> String = { "" }, block: () -> Boolean) {
         val deadline = SystemClock.uptimeMillis() + 10_000
         while (SystemClock.uptimeMillis() < deadline) {
             instrumentation.waitForIdleSync()
             if (main(block)) return
             SystemClock.sleep(20)
         }
-        fail(label)
+        fail(label + main(details))
     }
     private fun descendants(view: View): List<View> = listOf(view) +
         if (view is ViewGroup) (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) } else emptyList()
@@ -76,6 +84,15 @@ class NextKeyboardImeTest {
 
     private fun point(label: String): Pair<Float, Float> = main {
         val view = keyboard() ?: error("No real IME view")
+        if (tracedSurface !== view) {
+            tracedSurface?.setOnTouchListener(null)
+            tracedSurface = view
+            // Test-only bounded diagnostics. Return false to leave all real touch handling intact.
+            view.setOnTouchListener { _, event ->
+                trace("received=${event.actionMasked}@${event.x},${event.y} age=${SystemClock.uptimeMillis() - event.downTime} popup=${view.hasAlternatePopup}")
+                false
+            }
+        }
         val key = view.alternateBounds(label) ?: view.keyBounds(label) ?: error("Missing key $label")
         val location = IntArray(2); view.getLocationOnScreen(location)
         val x = location[0] + (key.left + key.right) / 2f
@@ -90,6 +107,7 @@ class NextKeyboardImeTest {
         val geometry = "key=$label center=$x,$y view=${location.contentToString()} visible=$visible safe=$safe"
         assertTrue("Key center is outside visible keyboard: $geometry", visible.contains(x.toInt(), y.toInt()))
         assertTrue("Key center overlaps navigation: $geometry", safe.contains(x.toInt(), y.toInt()))
+        trace("aim=$label@$x,$y")
         x to y
     }
 
@@ -138,6 +156,7 @@ class NextKeyboardImeTest {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)) as CoreTestActivity
             block(activity)
         } finally {
+            main { tracedSurface?.setOnTouchListener(null); tracedSurface = null }
             activity?.let { main { it.finish() } }
             if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
             if (!enabled) shell("ime disable $component")
@@ -149,7 +168,7 @@ class NextKeyboardImeTest {
     @Test fun actualTypingSymbolsDeleteAndTwoThumbs() = withIme { activity ->
         show(activity, activity.first)
         type("hello world")
-        await("Typed text missing") { activity.first.text.toString() == "hello world" }
+        await("Typed text missing", details = { syntheticDetails(activity) }) { activity.first.text.toString() == "hello world" }
         touch("⌫")
         await("Direct deletion failed") { activity.first.text.toString() == "hello worl" }
         touch("?123"); type("29")
@@ -185,6 +204,18 @@ class NextKeyboardImeTest {
         main { assertEquals("a", activity.first.text.toString()); assertEquals("sd", activity.second.text.toString()) }
     }
 
+    @Test fun longOrdinaryFieldBackspaceKeepsWholeGrapheme() = withIme { activity ->
+        val prefix = "a".repeat(200)
+        main { activity.first.setText(prefix + "e\u0301") }
+        show(activity, activity.first)
+        touch("⌫")
+        await("Long-field Backspace must remove the whole final grapheme", details = { syntheticDetails(activity) }) {
+            activity.first.text.toString() == prefix
+        }
+        type("z")
+        await("Typing after long-field deletion failed") { activity.first.text.toString() == prefix + "z" }
+    }
+
     @Test fun incognitoPersistenceAndSyntheticScreenshots() = withIme { activity ->
         val preferences = main { PrivacyPreferences.get(app) }
         await("Privacy preferences did not initialize") { preferences.state.ready && !preferences.state.saving }
@@ -193,7 +224,7 @@ class NextKeyboardImeTest {
             main { preferences.setIncognito(false) }
             await("Off preference did not save") { !preferences.state.saving && !preferences.state.incognito }
             show(activity, activity.first); type("hello from utterleaf")
-            await("Synthetic capture must contain the complete touch-typed text") { activity.first.text.toString() == "hello from utterleaf" }
+            await("Synthetic capture must contain the complete touch-typed text", details = { syntheticDetails(activity) }) { activity.first.text.toString() == "hello from utterleaf" }
             capture(activity, "next-core-typing")
             val ime = main { keyboard()!!.context as NextKeyboardIme }
             val old = main { ime.gateway.currentToken()!! }
@@ -228,7 +259,7 @@ class NextKeyboardImeTest {
                 !prefs.state.saving && !activity.imeAnimating && keyboard()?.keyBounds("1") != null && keyboard()!!.height > oldHeight
             }
             type("123")
-            await("Number row must commit digits") { activity.first.text.toString() == "cafe123" }
+            await("Number row must commit digits", details = { syntheticDetails(activity) }) { activity.first.text.toString() == "cafe123" }
             capture(activity, "next-core-number-row")
 
             touch("⇧")

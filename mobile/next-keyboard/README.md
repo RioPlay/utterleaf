@@ -25,8 +25,9 @@ the explicit Accents button. Applying a row change refreshes live geometry only
 after the preference save is acknowledged. Reset preserves manual Incognito and
 user assets. The keyboard switcher remains reachable in Settings → Choose keyboard.
 
-Ordinary Backspace uses a bounded ICU grapheme query and refuses an ambiguous full
-128-character window. Restricted fields never query context and use direct
+Ordinary Backspace uses a bounded 128-UTF-16-unit ICU grapheme query. A full window
+is accepted only when a printable ASCII predecessor proves the final cluster's
+boundary; ambiguous truncated context is refused. Restricted fields never query context and use direct
 code-point deletion. Broad Unicode/editor behavior and physical touch quality remain
 open. Virtual accessibility nodes are implemented; this is not TalkBack acceptance.
 

@@ -92,7 +92,11 @@ Log: `C:/Users/unknown/AppData/Local/UtterleafBuild/next-number-accents-acceptan
   `onStartInputView` activated dispatch. The test now waits for the exact shared
   readiness predicate used by key delivery and still checks the host field ID.
   This closes a real readiness gap; it does not establish the historical failure's
-  cause. Remote verification of this increment is pending.
+  cause. Remote run `34649191986` at `1dd1b32` still failed the initial typing
+  assertion and the number-row text assertion (33 of 35 passed). Merge remains
+  gated on resolving the remote failures. Local verification with all three
+  animation scales set to zero also passed; disabling animations alone does not
+  reproduce the remote result.
 
 Terra implemented the initial layout/popup slice and tests; Luna audited the
 [official FUTO capability inventory](../../docs/android-next/FUTO-CAPABILITY-MATRIX.md).
@@ -104,16 +108,48 @@ validated against source, including framework callbacks absent from the graph.
 Actual emulator captures: [number row](evidence/number-row.png) and
 [accent picker](evidence/accents.png). Only disposable synthetic host text was used.
 
+## Process-death spot check
+
+On the same API 35 emulator at `1dd1b32`, a fresh disposable debug installation
+was driven through its real Setup UI. Number row on, accent hold off and Incognito
+on were applied and both saved acknowledgements observed. `am force-stop` removed
+the process (PID 6918); relaunch created PID 7065 and restored all three choices.
+Changing Number row to off without Apply, then force-stopping and relaunching
+(PID 7156), restored the saved on state. This verifies a draft is not persisted
+even when `onStop` cannot discard it. Original default values were restored through
+the UI and the temporary debug installation removed. No private files or production
+hooks were used. This is a host-driven emulator spot check, not automated CI,
+mid-write/crash recovery, IME process-death or physical-device acceptance.
+
+## Bounded long-field deletion and touch diagnostics
+
+Ordinary Backspace now permits a full 128-unit suffix only when ICU's final
+grapheme starts after printable ASCII. That context proves a boundary independent
+of an omitted prefix; ambiguous RI/combining/ZWJ/Indic context remains refused.
+The pre-copy and post-copy size bounds and sensitive-field no-query path remain.
+The guard was proposed by a Terra specialist and independently reviewed against
+[Unicode grapheme rules](https://www.unicode.org/reports/tr29/). Root restored the
+pre-copy guard after review caught its omission in the initial implementation.
+
+The expanded run had 17 passing JVM tests and 38 emulator tests with one
+intermittent synthetic-typing failure, now reproduced locally with animations
+disabled (`next-long-field-acceptance.log`). The new long-field gateway cases
+and real IME grapheme-deletion check passed. All six real-IME/settings tests then
+passed in a focused rerun (`next-touch-diagnostics.log`). These results are not
+a clean full-suite acceptance. The test harness retains only a bounded synthetic
+touch trace for failed assertions; production has no typing/touch logger. CI and
+merge remain blocked pending resolution of the intermittent typing failure.
+
 ## Open gates
 
 N1 is incomplete: composition, a real linguistic-backend feasibility result,
 matched LatinIME sequences/measurements and a named physical-phone sample remain.
 The candidate has no live correction/suggestions, swipe, calibration, voice,
 Edit/Terminal or height/theme/feedback preferences. Ordinary deletion conservatively refuses
-a full 128-character context window; restricted deletion is code-point based
+ambiguous full 128-unit context windows; restricted deletion is code-point based
 and waits for host selection acknowledgement before another delete.
 
-Process-death acceptance, broader Unicode/editor compatibility, TalkBack/physical
+Broader process-death acceptance, Unicode/editor compatibility, TalkBack/physical
 touch acceptance, complete dependency/asset notices, signing, upgrade/Obtainium
 and replacement release gates remain open. No physical or publication result is claimed.
 

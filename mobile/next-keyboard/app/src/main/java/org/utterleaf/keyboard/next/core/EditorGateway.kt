@@ -160,7 +160,7 @@ class EditorGateway(private val mainThread: MainThreadCheck = AndroidMainThread)
      * Deletes through direct editor APIs. Sensitive fields never query surrounding
      * text: selected metadata deletes by replacement; a known collapsed caret deletes
      * one code point. Ordinary fields use a bounded character boundary and refuse
-     * truncation/malformed input rather than guessing a grapheme boundary.
+     * malformed or ambiguous truncated input rather than guessing a grapheme boundary.
      */
     fun backspace(token: EditorToken): Outcome {
         mainThread.check()
@@ -180,14 +180,15 @@ class EditorGateway(private val mainThread: MainThreadCheck = AndroidMainThread)
             } else {
                 val rawBefore = target.getTextBeforeCursor(MAX_DELETE_CONTEXT, 0) ?: return Outcome.UNAVAILABLE
                 if (!stillCurrent(current, target, token)) return Outcome.STALE
-                if (rawBefore.length >= MAX_DELETE_CONTEXT) return Outcome.REFUSED
+                if (rawBefore.length > MAX_DELETE_CONTEXT) return Outcome.REFUSED
                 val before = rawBefore.toString()
-                if (before.isEmpty() || before.length >= MAX_DELETE_CONTEXT || !wellFormedUtf16(before)) return Outcome.REFUSED
+                if (before.isEmpty() || before.length > MAX_DELETE_CONTEXT || !wellFormedUtf16(before)) return Outcome.REFUSED
                 val iterator = BreakIterator.getCharacterInstance(Locale.ROOT)
                 iterator.setText(before)
                 val end = iterator.last()
                 val start = iterator.previous()
                 if (start == BreakIterator.DONE || start >= end) return Outcome.REFUSED
+                if (before.length == MAX_DELETE_CONTEXT && !hasKnownAsciiBoundaryBefore(before, start)) return Outcome.REFUSED
                 val codePoints = before.codePointCount(start, end)
                 val utf16Count = end - start
                 if (codePoints <= 0 || utf16Count <= 0 || current.selectionStart < utf16Count) return Outcome.REFUSED
@@ -316,6 +317,14 @@ class EditorGateway(private val mainThread: MainThreadCheck = AndroidMainThread)
         }
         return true
     }
+
+    /**
+     * A full look-behind may omit arbitrary text. Accept only when the final ICU
+     * cluster starts after a printable ASCII scalar, whose UAX #29 break cannot
+     * depend on omitted RI, Extend, ZWJ, or Indic context.
+     */
+    private fun hasKnownAsciiBoundaryBefore(text: String, start: Int): Boolean =
+        start > 0 && text.codePointBefore(start) in 0x20..0x7e
 
     private fun publishPermit(current: State): EditorToken {
         val token = token(current)
