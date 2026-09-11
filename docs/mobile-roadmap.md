@@ -20,7 +20,8 @@ roadmap without claiming those capabilities are already released.
 
 ## Current status
 
-- **Foundation work, unreleased:** a separate pinned AOSP LatinIME fork has been
+- **Foundation preview01, experimental:** a [signed test download](https://github.com/RioPlay/utterleaf/releases/tag/android-foundation-v0.1.0-preview01)
+  is available separately from alpha13. A pinned AOSP LatinIME fork has been
   built and exercised locally with real IME touch input, restricted capabilities
   and comfort preferences. The [execution evidence](../mobile/latinime/EXECUTION-EVIDENCE.md)
   records 12 JVM and 112 API 35 emulator tests, lint limitations, native compilation

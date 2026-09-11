@@ -5,6 +5,7 @@ import android.view.inputmethod.InputConnection
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.inputmethod.latin.LatinIME
+import org.utterleaf.keyboard.AppliedEditorInfo
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -94,5 +95,20 @@ class DeferredFinishConnectionTest {
         assertEquals("", ime.logic.mWordComposer.typedWord)
         drainAgainstReplacement(ime, next)
         assertEquals(1, old.finishes)
+    }
+
+    @Test fun handlerDestroyDropsDeferredSnapshotWithoutFinishingAnEditor() = fixture { ime, old, _ ->
+        val handlerClass = LatinIME.UIHandler::class.java
+        val marker = handlerClass.getDeclaredField("MSG_PENDING_IMS_CALLBACK")
+            .apply { isAccessible = true }.getInt(null)
+        handlerClass.getDeclaredField("mAppliedEditorInfo").apply { isAccessible = true }
+            .set(ime.mHandler, AppliedEditorInfo.from(EditorInfo()))
+
+        ime.mHandler.destroy()
+
+        assertFalse(ime.mHandler.hasMessages(marker))
+        assertNull(handlerClass.getDeclaredField("mAppliedEditorInfo").apply { isAccessible = true }
+            .get(ime.mHandler))
+        assertEquals(0, old.finishes)
     }
 }

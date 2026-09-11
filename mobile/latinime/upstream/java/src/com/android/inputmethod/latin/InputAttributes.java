@@ -51,12 +51,12 @@ public final class InputAttributes {
     final public boolean mDisableGestureFloatingPreviewText;
     final public boolean mIsGeneralTextInput;
     final private int mInputType;
-    final private EditorInfo mEditorInfo;
+    final private String mPrivateImeOptions;
     final private String mPackageNameForPrivateImeOptions;
 
     public InputAttributes(final EditorInfo editorInfo, final boolean isFullscreenMode,
             final String packageNameForPrivateImeOptions) {
-        mEditorInfo = editorInfo;
+        mPrivateImeOptions = null != editorInfo ? editorInfo.privateImeOptions : null;
         mPackageNameForPrivateImeOptions = packageNameForPrivateImeOptions;
         mTargetApplicationPackageName = null != editorInfo ? editorInfo.packageName : null;
         final int inputType = null != editorInfo ? editorInfo.inputType : 0;
@@ -118,7 +118,7 @@ public final class InputAttributes {
         mShouldShowVoiceInputKey = !noMicrophone;
 
         mDisableGestureFloatingPreviewText = InputAttributes.inPrivateImeOptions(
-                mPackageNameForPrivateImeOptions, NO_FLOATING_GESTURE_PREVIEW, editorInfo);
+                mPackageNameForPrivateImeOptions, NO_FLOATING_GESTURE_PREVIEW, mPrivateImeOptions);
 
         // If it's a browser edit field and auto correct is not ON explicitly, then
         // disable auto correction, but keep suggestions on.
@@ -152,9 +152,9 @@ public final class InputAttributes {
     private boolean hasNoMicrophoneKeyOption() {
         @SuppressWarnings("deprecation")
         final boolean deprecatedNoMicrophone = InputAttributes.inPrivateImeOptions(
-                null, NO_MICROPHONE_COMPAT, mEditorInfo);
+                null, NO_MICROPHONE_COMPAT, mPrivateImeOptions);
         final boolean noMicrophone = InputAttributes.inPrivateImeOptions(
-                mPackageNameForPrivateImeOptions, NO_MICROPHONE, mEditorInfo);
+                mPackageNameForPrivateImeOptions, NO_MICROPHONE, mPrivateImeOptions);
         return noMicrophone || deprecatedNoMicrophone;
     }
 
@@ -296,8 +296,13 @@ public final class InputAttributes {
 
     public static boolean inPrivateImeOptions(final String packageName, final String key,
             final EditorInfo editorInfo) {
-        if (editorInfo == null) return false;
+        return inPrivateImeOptions(packageName, key,
+                editorInfo == null ? null : editorInfo.privateImeOptions);
+    }
+
+    private static boolean inPrivateImeOptions(final String packageName, final String key,
+            final String privateImeOptions) {
         final String findingKey = (packageName != null) ? packageName + "." + key : key;
-        return StringUtils.containsInCommaSplittableText(findingKey, editorInfo.privateImeOptions);
+        return StringUtils.containsInCommaSplittableText(findingKey, privateImeOptions);
     }
 }

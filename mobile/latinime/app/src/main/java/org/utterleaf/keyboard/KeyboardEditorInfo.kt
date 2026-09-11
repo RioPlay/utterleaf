@@ -19,3 +19,21 @@ class KeyboardEditorInfo private constructor(
         )
     }
 }
+
+/** Immutable editor metadata used only to compare deferred framework callbacks. */
+class AppliedEditorInfo private constructor(
+    @JvmField val inputType: Int,
+    @JvmField val imeOptions: Int,
+    @JvmField val privateImeOptions: String?
+) {
+    companion object {
+        @JvmStatic
+        fun from(editorInfo: EditorInfo?): AppliedEditorInfo? = editorInfo?.let {
+            AppliedEditorInfo(
+                inputType = it.inputType,
+                imeOptions = it.imeOptions,
+                privateImeOptions = it.privateImeOptions
+            )
+        }
+    }
+}

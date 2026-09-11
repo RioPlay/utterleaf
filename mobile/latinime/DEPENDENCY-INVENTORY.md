@@ -1,7 +1,9 @@
 # Foundation dependency and asset inventory
 
 This records the standalone `mobile/latinime` experiment. It does not change the
-shipping `mobile/android` app or approve publication. The source bundle in
+shipping `mobile/android` app. The user subsequently authorized the separate
+[preview01 test download](https://github.com/RioPlay/utterleaf/releases/tag/android-foundation-v0.1.0-preview01).
+The source bundle in
 `notices/` has been reviewed for the bounded selections below; final APK packaging,
 component-specific attribution and native member mapping remain separate checks.
 
@@ -240,12 +242,21 @@ sources in both debug and release APKs after this build. The unsigned release AP
 SHA-256 is `badab22b179d96c5f41f19036dc39eb1359e2f34e65dc05a211b18e7b1a8edf2`.
 This verifies packaging; it does not resolve all component licensing obligations.
 
-## Remaining checks before publication
+## Preview review and continuing checks
+
+September 11 preview01 review: the runtime-artifact audit inspected every resolved
+cached JAR/AAR and nested AAR `classes.jar`. The only embedded legal entries found
+were AndroidX Core/Core ViewTree LICENSE files, already included verbatim. Selected
+static native runtime notices were checked against the documented member closure;
+independent review found no concrete missing notice text. The exact signed APK's
+18 documents verified against source. This closes the identified notice-delivery
+checks for that bounded test artifact, not every future component or a legal
+certification. The remaining general diligence below applies to subsequent changes.
 
 - Keep the verified 18-document APK catalog synchronized with build inputs;
   refreshed upstream modification notes must have fresh output hashes.
-- Finish component-specific attribution review, including nested AAR material and
-  any notices absent from published JAR/POM metadata. POM license fields are evidence,
+- Repeat component-specific attribution review when the runtime closure changes,
+  including nested AAR material and notices absent from JAR/POM metadata. POM fields are evidence,
   not a substitute for applicable source notices.
 - Reconcile the selected libunwind and Android CRT/bionic attribution against
   the retained link members, and resolve the CRT source-to-object provenance
@@ -254,5 +265,5 @@ This verifies packaging; it does not resolve all component licensing obligations
 - Keep newly imported dictionaries, models and any gesture implementation outside
   this inventory until their source, license, bounds and verification are reviewed.
 
-This is a partial provenance/notice implementation, not a completed legal audit,
-signed release, verified upgrade or publication approval.
+This inventory is not a completed legal audit or verified upgrade. The separate
+preview01 signing, publication and artifact evidence is in EXECUTION-EVIDENCE.md.

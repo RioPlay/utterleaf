@@ -59,7 +59,7 @@ jobs:
             --logs app/build/reports/ime-process-recovery &&
             python3 tools/dictionary_storage_crash_probe.py --adb adb --serial emulator-5554
             --logs app/build/reports/dictionary-storage-crash
-      # This experiment is not approved for binary distribution yet.
+      # CI publishes reports only; signed experimental downloads are separately verified.
       - name: Preserve verification reports
         uses: actions/upload-artifact@v4
         if: always()

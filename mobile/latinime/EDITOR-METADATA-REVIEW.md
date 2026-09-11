@@ -5,7 +5,7 @@ The original source anchors record the pre-change audit; validation results are
 tracked in [execution evidence](EXECUTION-EVIDENCE.md). Broader cache retirement,
 `mAppliedEditorInfo` and `InputAttributes` lifetime remain separate work.
 
-## Retention and consumers
+## Original retention findings and consumers
 
 `KeyboardLayoutSet` keeps `EditorInfo` in `Params` at
 `upstream/java/src/com/android/inputmethod/keyboard/KeyboardLayoutSet.java:117`,
@@ -80,6 +80,22 @@ snapshot against transient incoming fields without storing that object.
   reachable from either the soft cache or forcible cache after retirement.
 - A separate test should cover `mAppliedEditorInfo`/`InputAttributes` once
   their lifecycle changes are designed.
+
+## Deferred metadata and cache retirement follow-up
+
+`UIHandler.mAppliedEditorInfo` now holds an owned three-field `AppliedEditorInfo`
+snapshot: full input type, IME options and nullable private options. The comparator
+preserves both-null and one-null semantics. Deferred rotation retains the snapshot;
+normal finish and terminal handler cleanup clear it. Terminal cleanup cancels
+deferred bookkeeping without calling the current editor. `InputAttributes` keeps
+only the private-options string needed by its later checks, preserving exact
+comma-token matching and package qualification.
+
+Existing theme/locale cache invalidation now clears all four forcible references
+alongside the soft map. It does not explicitly dispose proximity resources; active
+Java keyboard owners retain their native handles. The regression builds four real
+layouts, invalidates both caches, checks retained owners and reconstructs a layout.
+This does not add global cache clearing to service destruction.
 
 The implementation introduces no passive collection, logging or external data
 flow. Upstream modifications are recorded in `upstream/UTTERLEAF-NOTICE.md`.

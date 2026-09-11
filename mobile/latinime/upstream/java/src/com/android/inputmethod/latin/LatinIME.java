@@ -17,6 +17,7 @@
 // Utterleaf modification: isolate the offline foundation experiment.
 package com.android.inputmethod.latin;
 
+import org.utterleaf.keyboard.AppliedEditorInfo;
 import org.utterleaf.keyboard.SuggestionDecoder;
 
 import static com.android.inputmethod.latin.common.Constants.ImeOption.FORCE_ASCII;
@@ -454,7 +455,15 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         private boolean mHasPendingStartInput;
         private boolean mHasPendingFinishInputView;
         private boolean mHasPendingFinishInput;
-        private EditorInfo mAppliedEditorInfo;
+        private AppliedEditorInfo mAppliedEditorInfo;
+
+        public void destroy() {
+            removeMessages(MSG_PENDING_IMS_CALLBACK);
+            resetPendingImsCallback();
+            mIsOrientationChanging = false;
+            mPendingSuccessiveImsCallback = false;
+            mAppliedEditorInfo = null;
+        }
 
         public void startOrientationChanging() {
             removeMessages(MSG_PENDING_IMS_CALLBACK);
@@ -511,7 +520,8 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             final LatinIME latinIme = getOwnerInstance();
             if (latinIme != null && !latinIme.mInputLogic.isInputStateRetired()
                     && hasMessages(MSG_PENDING_IMS_CALLBACK)
-                    && KeyboardId.equivalentEditorInfoForKeyboard(editorInfo, mAppliedEditorInfo)) {
+                    && KeyboardId.equivalentEditorInfoForKeyboardSnapshot(editorInfo,
+                            mAppliedEditorInfo)) {
                 // Typically this is the second onStartInputView after orientation changed.
                 resetPendingImsCallback();
             } else {
@@ -525,7 +535,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                 if (latinIme != null) {
                     executePendingImsCallback(latinIme, editorInfo, restarting);
                     latinIme.onStartInputViewInternal(editorInfo, restarting);
-                    mAppliedEditorInfo = editorInfo;
+                    mAppliedEditorInfo = AppliedEditorInfo.from(editorInfo);
                 }
                 cancelDeallocateMemory();
             }
@@ -539,8 +549,8 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                 final LatinIME latinIme = getOwnerInstance();
                 if (latinIme != null) {
                     latinIme.onFinishInputViewInternal(finishingInput);
-                    mAppliedEditorInfo = null;
                 }
+                mAppliedEditorInfo = null;
                 if (!hasPendingDeallocateMemory()) {
                     postDeallocateMemory();
                 }
@@ -557,6 +567,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                     executePendingImsCallback(latinIme, null, false);
                     latinIme.onFinishInputInternal();
                 }
+                mAppliedEditorInfo = null;
             }
         }
     }
@@ -737,6 +748,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         final boolean ownsSharedKeyboardState = mKeyboardSwitcher.isOwner(this);
         mEditorSession.finish();
         mHandler.cancelEditorWork();
+        mHandler.destroy();
         clearEditorTransientState();
         mKeyboardSwitcher.onDestroy(this);
         mInputLogic.destroy();
@@ -754,6 +766,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     @UsedForTesting
     public void recycle() {
         unregisterReceiver(mRingerModeChangeReceiver);
+        mHandler.destroy();
         mInputLogic.recycle();
     }
 

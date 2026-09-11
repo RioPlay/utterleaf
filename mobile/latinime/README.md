@@ -5,6 +5,9 @@ has requested Kotlin as the target for the Android port. Earlier local-only and
 approval-pending notes below are historical planning context, superseded by that
 instruction. Publication still requires honest verification and license compliance.
 The experimental build is now under `app/`; it is not yet the replacement product.
+A signed [preview01 test APK](https://github.com/RioPlay/utterleaf/releases/tag/android-foundation-v0.1.0-preview01)
+is available alongside alpha13, under a separate application ID and signing identity.
+It provides basic typing and comfort settings; voice, correction and swipe are unfinished.
 The latest local corrections guard delayed suggestion results across editor sessions
 and make height/theme changes take effect during same-field practice. Suggestion
 workers now use owner-captured composer/context inputs and deep pointer copies;
@@ -25,7 +28,7 @@ work packages, UI/defaults, ownership, dependencies and approval/acceptance gate
 It is the canonical plan for the complete agreed hybrid.
 
 Status: the isolated foundation debug APK built locally on September 10, 2026.
-It is not yet the replacement keyboard or a published release. This standalone
+It is not yet the replacement keyboard; preview01 is an experimental prerelease. This standalone
 Gradle project remains separate from the shipping `mobile/android` app and desktop.
 Implementation, testing and shipment have been authorized; compliance and release
 verification remain required. The [community research](COMMUNITY-RESEARCH.md)

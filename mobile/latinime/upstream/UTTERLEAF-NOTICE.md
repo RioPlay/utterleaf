@@ -175,6 +175,13 @@ Utterleaf changes so far:
   Imported originals remain available for provenance. The build also excludes
   obsolete setup/download resources.
 
+- KeyboardLayoutSet: existing theme/locale invalidation clears all strong keyboard
+  cache slots as well as soft references, without closing retained proximity owners.
+- LatinIME/UIHandler and InputAttributes: retain only immutable metadata required
+  for deferred callback comparison and private options. Handler destruction clears
+  pending lifecycle bookkeeping without issuing editor callbacks; rotation retains
+  comparison metadata until deferred work is resolved.
+
 The application's manifest and Kotlin entry points are supplied separately by
 Utterleaf. The placeholder raw empty resource is not a dictionary; its upstream
 provider is not registered. No binary dictionary/model is shipped in this experiment.
