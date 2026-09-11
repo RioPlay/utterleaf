@@ -157,6 +157,20 @@ runner now preserves power/window/input metadata on failure while retaining the
 original exit status. It never collects production typing or signs/publishes an
 APK. Remote verification of this revision is pending; no historical cause is claimed.
 
+Remote `34651126377` at `c09ff27` narrowed the remaining failure: 36 of 38 passed,
+but the initial `h` and a test's initial Backspace generated no received events
+on the keyboard surface. Subsequent taps arrived normally (`ello world`), and
+the IME remained ready. Failure metadata showed an awake device and enabled input
+dispatch; it was collected after teardown and cannot prove the routing at the
+time of injection. The harness now waits for a public
+`ViewTreeObserver.registerFrameCommitCallback` before resolving the first key's
+coordinates and creating its DOWN timestamp, including after live height changes.
+It waits off-main, unregisters callbacks in `finally`, and rechecks view identity,
+layout and size; only frame readiness may retry, never an injected gesture.
+Full local verification again passed 17 JVM/38 emulator tests with unchanged lint
+and unsigned assembly results (`next-frame-acceptance.log`). This frame barrier
+is test synchronization, not a claim that InputManager routing has been proved.
+
 ## Open gates
 
 N1 is incomplete: composition, a real linguistic-backend feasibility result,

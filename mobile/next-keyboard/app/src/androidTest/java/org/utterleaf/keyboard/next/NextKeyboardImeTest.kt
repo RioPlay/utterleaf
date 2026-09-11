@@ -33,6 +33,8 @@ import org.utterleaf.keyboard.next.settings.TypingPreferences
 import org.utterleaf.keyboard.next.settings.TypingOptions
 import org.utterleaf.keyboard.next.ui.KeyboardSurface
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /** Real framework-created IME, screen-coordinate touches, and disposable synthetic text. */
 @RunWith(AndroidJUnit4::class)
@@ -114,6 +116,33 @@ class NextKeyboardImeTest {
                 activity.window.decorView.rootWindowInsets?.isVisible(WindowInsets.Type.ime()) == true &&
                 ime?.isReadyForInput == true && ime.currentInputEditorInfo?.fieldId == field.id
         }
+        awaitKeyboardFrame()
+    }
+
+    /** Wait for a submitted frame before resolving coordinates or creating a DOWN timestamp. */
+    private fun awaitKeyboardFrame() {
+        val deadline = SystemClock.uptimeMillis() + 10_000
+        while (SystemClock.uptimeMillis() < deadline) {
+            val submitted = CountDownLatch(1)
+            val callback = Runnable { submitted.countDown() }
+            val (view, observer, size) = main {
+                val surface = keyboard() ?: error("No visible IME for frame synchronization")
+                check(surface.isHardwareAccelerated) { "Frame synchronization requires hardware rendering" }
+                val observer = surface.viewTreeObserver
+                observer.registerFrameCommitCallback(callback)
+                surface.postInvalidateOnAnimation()
+                Triple(surface, observer, surface.width to surface.height)
+            }
+            val committed = try { submitted.await(2, TimeUnit.SECONDS) } finally {
+                main { if (observer.isAlive) observer.unregisterFrameCommitCallback(callback) }
+            }
+            if (committed && main {
+                keyboard() === view && view.width == size.first && view.height == size.second &&
+                    (view.context as NextKeyboardIme).isReadyForInput
+            }) return
+            // Retrying readiness is safe: no gesture has been injected yet.
+        }
+        fail("IME did not submit a stable frame before input")
     }
 
     private fun point(label: String): Pair<Float, Float> = main {
@@ -306,6 +335,7 @@ class NextKeyboardImeTest {
             await("Applied number row must resize live IME") {
                 !prefs.state.saving && !activity.imeAnimating && keyboard()?.keyBounds("1") != null && keyboard()!!.height > oldHeight
             }
+            awaitKeyboardFrame()
             type("123")
             await("Number row must commit digits", details = { syntheticDetails(activity) }) { activity.first.text.toString() == "cafe123" }
             capture(activity, "next-core-number-row")
@@ -340,6 +370,7 @@ class NextKeyboardImeTest {
             await("Reset must remove number row in same editor") {
                 !prefs.state.saving && !activity.imeAnimating && keyboard()?.keyBounds("1") == null && keyboard()?.height == oldHeight
             }
+            awaitKeyboardFrame()
             type("z")
             await("Typing after reset failed") { activity.first.text.toString() == "cafe123Éáz" }
         } finally {
