@@ -186,15 +186,7 @@ public final class InputLogic {
      * @param settingsValues the current settings values
      */
     public void onSubtypeChanged(final String combiningSpec, final SettingsValues settingsValues) {
-        // A running decoder can outlive queue removal. Renew while holding the handler's
-        // existing batch lock before any composer/cache reset or new subtype request.
-        if (mInputLogicHandler == InputLogicHandler.NULL_HANDLER) {
-            // Bootstrap has no worker or batch-lock owner yet.
-            mLatinIME.mEditorSession.renewIfActive();
-            mLatinIME.mHandler.cancelPendingSuggestionResults();
-        } else {
-            mInputLogicHandler.invalidatePendingRequests();
-        }
+        invalidatePendingSuggestionRequests();
         if (mLatinIME.mEditorSession.capture() == null) {
             // A subtype may change while the input view is closed. The next actual start
             // supplies the current RichInputMethodManager combining spec; do not query or
@@ -210,6 +202,19 @@ public final class InputLogic {
         mConnection.resetCachesUponCursorMoveAndReturnSuccess(
                 selectionStart, selectionEnd, false /* shouldFinishComposition */);
         startInput(combiningSpec, settingsValues);
+    }
+
+    /** Reject queued and running suggestion work without ending the framework editor session. */
+    public void invalidatePendingSuggestionRequests() {
+        // A running decoder can outlive queue removal. Renew while holding the handler's
+        // existing batch lock before any composer/cache reset or new request.
+        if (mInputLogicHandler == InputLogicHandler.NULL_HANDLER) {
+            // Bootstrap has no worker or batch-lock owner yet.
+            mLatinIME.mEditorSession.renewIfActive();
+            mLatinIME.mHandler.cancelPendingSuggestionResults();
+        } else {
+            mInputLogicHandler.invalidatePendingRequests();
+        }
     }
 
     /**
