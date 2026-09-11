@@ -1,7 +1,58 @@
 # Foundation execution evidence
 
-September 11, 2026. Local experiment on `feat/android-latinime-foundation`;
-not a published release or replacement for Android alpha13.
+September 11, 2026. Foundation development on `feat/android-latinime-foundation`;
+signed preview01 is published for testing, separately from Android alpha13.
+
+## Published experimental preview01
+
+[PR #20](https://github.com/RioPlay/utterleaf/pull/20) merged at
+`3c79ae9487e1f37aa11dc5c0e91acc0f186cba80` after
+[CI 34606586960](https://github.com/RioPlay/utterleaf/actions/runs/34606586960)
+passed all 112 emulator tests without failures/errors/skips, build/unit/lint/notices,
+actual IME recovery and six dictionary publication process-death cases.
+
+At the user's explicit request, a [signed test download](https://github.com/RioPlay/utterleaf/releases/tag/android-foundation-v0.1.0-preview01)
+was published from verified source `d2965d3fc856cd006961c1395575bc7924c970d6`.
+Package `org.utterleaf.keyboard.experimental`, version `0.1.0-foundation01`/1,
+Android API 26+, ARM64/x86-64. It is a non-debuggable release APK signed with a
+dedicated experimental identity, independent of alpha13 and developer debug keys.
+APK SHA-256: `de8623794cce675d0ea43e640db65c7cbf2609b01107cbbccde44753960199d3`.
+Certificate SHA-256: `ef9c0ef959df3e0828f204975a6f7c64ec2dc64655399e206940c61fb730a4bb`.
+
+Signatures v2/v3, 16KB ZIP alignment and 18 exact notice documents verified. A fresh
+API 35 x86-64 emulator installed that signed APK and passed both real-IME typing
+and capability tests (`foundation-signed-release-ime-test.log` in the local build
+root). Independent release/notice review found no concrete missing notice text in
+the selected runtime closure; this is not a complete legal certification. The
+public download was fetched and matched byte-for-byte. Release assets include
+checksums, build identity and a companion copy of the embedded notices.
+
+No completed replacement, physical-phone or assistive-technology acceptance is
+claimed. Voice, production dictionaries/correction and swipe remain unfinished.
+
+## Editor reference and theme/locale cache retirement follow-up
+
+Luna and Terra implemented disjoint cache and editor-lifetime changes, followed by
+independent Terra review. Theme/locale invalidation now clears the four strong
+keyboard slots without disposing proximity resources retained by active owners.
+Deferred callback comparison uses a three-field immutable Kotlin snapshot;
+InputAttributes retains private options rather than the full framework EditorInfo.
+Handler terminal cleanup cancels deferred bookkeeping without editor callbacks.
+
+Review corrected a test that restored retired caches and the real-IME fixture's
+reflective assignment to the new snapshot type. Added regressions cover cache
+reconstruction/retained proximity owners, handler destruction, captured private
+options, snapshot mutation and null comparison semantics.
+
+The final local command `:app:testDebugUnitTest :app:connectedDebugAndroidTest
+:app:lintDebug :app:assembleRelease` passed: 12 JVM and 119 API 35 x86-64 emulator
+tests, zero failures/errors/skips. Lint: zero errors, 4,021 warnings and one hint.
+Both APKs verified all 18 notice documents against current source. Local log:
+`foundation-reference-retirement-final.log` under the UtterleafBuild root.
+Unsigned release SHA-256:
+`b446dee46efac970856f4acaedf169fefb7fc841ba97f8015cb03b0bbf8bfd40`.
+These changes are newer than published preview01; no new APK publication or
+physical-device acceptance is implied. W2 remains open.
 
 ## Implemented
 

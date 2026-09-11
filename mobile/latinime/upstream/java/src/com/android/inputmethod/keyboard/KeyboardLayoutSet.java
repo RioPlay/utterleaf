@@ -148,6 +148,9 @@ public final class KeyboardLayoutSet {
     private static void clearKeyboardCache() {
         sKeyboardCache.clear();
         sUniqueKeysCache.clear();
+        for (int i = sForcibleKeyboardCache.length - 1; i >= 0; --i) {
+            sForcibleKeyboardCache[i] = null;
+        }
     }
 
     public static int getScriptId(final Resources resources,

@@ -208,7 +208,10 @@ silent pointer-state cleanup are implemented in a bounded follow-up; independent
 review also corrected surviving timers and stale shared-preview cleanup. See
 execution evidence for verification. The [editor metadata review](EDITOR-METADATA-REVIEW.md)
 records an implemented immutable snapshot for cached keyboard layout/ID metadata;
-other editor references and cache retirement remain separate. W2 is open.
+the follow-up also snapshots deferred callback metadata, removes InputAttributes'
+full editor reference, and clears strong cache slots on existing theme/locale
+invalidation. These bounded fixes do not establish complete editor-data retirement
+or decoder isolation. W2 is open.
 
 **Gate:** no unresolved wrong-field mutation, implicit submission, sensitive
 persistence or cancellation defect in these tested paths. Do not use real private

@@ -31,6 +31,8 @@ Owned Kotlin `KeyboardEditorInfo` now supplies the immutable input flags, privat
 options and copied action label needed by cached layout parameters/KeyboardId.
 Inherited Java layout and accessibility logic consume that snapshot, preserving
 their existing decisions without retaining a framework EditorInfo in the cache.
+The smaller Kotlin `AppliedEditorInfo` carrier supplies only the three fields
+needed for deferred lifecycle comparison, preserving nullable framework semantics.
 
 The suggestion boundary now adds Kotlin `SuggestionComposerSnapshot` and
 `SuggestionDecoder`. Captured text/flags and deep pointer copies isolate composer

@@ -27,6 +27,7 @@ import com.android.inputmethod.latin.RichInputMethodSubtype;
 import com.android.inputmethod.latin.utils.InputTypeUtils;
 
 import org.utterleaf.keyboard.KeyboardEditorInfo;
+import org.utterleaf.keyboard.AppliedEditorInfo;
 
 import java.util.Arrays;
 import java.util.Locale;
@@ -220,6 +221,15 @@ public final class KeyboardId {
         return a.inputType == b.inputType
                 && a.imeOptions == b.imeOptions
                 && TextUtils.equals(a.privateImeOptions, b.privateImeOptions);
+    }
+
+    public static boolean equivalentEditorInfoForKeyboardSnapshot(final EditorInfo editorInfo,
+            final AppliedEditorInfo snapshot) {
+        if (editorInfo == null && snapshot == null) return true;
+        if (editorInfo == null || snapshot == null) return false;
+        return editorInfo.inputType == snapshot.inputType
+                && editorInfo.imeOptions == snapshot.imeOptions
+                && TextUtils.equals(editorInfo.privateImeOptions, snapshot.privateImeOptions);
     }
 
     public static String elementIdToName(final int elementId) {

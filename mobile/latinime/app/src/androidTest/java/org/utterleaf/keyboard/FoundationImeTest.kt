@@ -279,7 +279,7 @@ class FoundationImeTest {
                 val pending = handlerClass.getDeclaredField("MSG_PENDING_IMS_CALLBACK")
                     .apply { isAccessible = true }.getInt(null)
                 handlerClass.getDeclaredField("mAppliedEditorInfo").apply { isAccessible = true }
-                    .set(ime.mHandler, restartInfo)
+                    .set(ime.mHandler, AppliedEditorInfo.from(restartInfo))
                 ime.mHandler.sendEmptyMessageDelayed(pending, 60_000)
                 try {
                     ime.onFinishInput()

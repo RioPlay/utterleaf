@@ -10,7 +10,8 @@ Utterleaf's security/privacy rules apply at every stage.
 
 Status: baseline acceptance checklist, September 10, 2026. Implementation, testing
 and shipment are authorized; this checklist does not establish verified parity.
-The isolated experiment remains incomplete and unpublished. This ordering refines the
+The isolated experiment remains incomplete; signed preview01 is published for testing.
+This ordering refines the
 [adversarial review](ADVERSARIAL-PLAN-REVIEW.md): an early experimental APK can be
 small, but a claimed replacement cannot quietly omit key baseline capabilities.
 
