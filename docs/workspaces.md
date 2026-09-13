@@ -8,7 +8,7 @@ source checkout stays intact. Use the following workspaces for new work.
 | --- | --- | --- |
 | `checkpoint/mixed-work-20260912` | Preserved mixed development snapshot; not a release or PR | Recovery/reference only; leave the original source environment intact |
 | `release/desktop-0.4.6rc2` | Published Windows x64 CPU prerelease with runtime notice corrections; PR #26 merged | Preserve the immutable RC2 tag and release evidence; continue desktop work from main |
-| `feat/desktop-dictation-layout` | Partial Dictation settings layout work at `e05a2cf`, with local uncommitted edits | Frozen for Android priority; compact-window acceptance is incomplete and this work is not released |
+| `feat/desktop-dictation-layout` | Compact Dictation settings follow-up; prior partial work checkpointed at `20ed5fa`, then main integrated at `330f9de` | Active desktop UI slice; validate compact layout, focus and preference behavior before review. Not part of published RC2 |
 | `release/desktop-0.4.6rc1` | Unpublished RC1 candidate retained for audit | Reference only; its immutable tag and downloaded artifact are unchanged |
 | `release/android-alpha14` | Published signed original keyboard snapshot; PR #25 merged | Preserve alpha14 evidence; physical-phone testing remains deferred follow-up |
 | `release/android-alpha15` | Published signed alpha15 compact keyboard and Utterleaf naming snapshot; PR #29 merged | Preserve alpha15 release evidence; physical-phone testing remains deferred follow-up |

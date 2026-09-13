@@ -3,14 +3,24 @@
 [Back to Utterleaf](../README.md) · [User guide](user-guide.md)
 
 Real Windows screenshots captured with sample settings and vocabulary.
-Speech & privacy shows the v0.4.1 model setup; other screens show v0.3.7.
+Dictation and Vocabulary show the September 13 source layout, after the published
+Windows RC2 preview. Speech & privacy shows v0.4.1; the other screens show v0.3.7.
 The app uses bundled artwork and local fonts; no remote content is loaded by Settings.
 
 ## Dictation
 
 Choose a shortcut, select your microphone, and check that Utterleaf can hear you.
+The source layout groups activation with the shortcut and moves Output style to
+Dictation. The published RC2 keeps Output style under Vocabulary.
 
 ![Dark Dictation settings with Utterling](assets/screenshots/dictation-dark.png)
+
+At 770 × 655 with default Windows font metrics, the everyday controls and optional
+speech-end toggle remain visible. Larger text can stack the two input groups;
+the page scrolls while Save and Close stay visible. These source captures do not
+establish physical display-scaling or screen-reader acceptance.
+
+![Compact source Dictation settings at 770 by 655](assets/screenshots/dictation-compact.png)
 
 ## Vocabulary
 
