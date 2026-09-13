@@ -95,7 +95,7 @@ def test_microphone_check_cannot_report_ready_after_stream_loss(window, monkeypa
         assert probes[0].checks == 2
     else:
         assert "ready" in window.mic_message.get().lower()
-    assert window.mic_button.cget("text") == "Test microphone"
+    assert window.mic_button.cget("text") == "Test"
 
 
 def test_model_status_updates_without_saving_or_downloading(window, tmp_path, monkeypatch):
@@ -206,7 +206,7 @@ def test_microphone_check_mascot_follows_result(window, monkeypatch, result, exp
     assert expressions[-1] == "listening"
     callbacks[0](result)
     assert expressions[-1] == expression
-    assert str(window.mic_button.cget("text")) == "Test microphone"
+    assert str(window.mic_button.cget("text")) == "Test"
 
 
 def test_refresh_microphones_preserves_missing_selection_and_explains_recovery(window, monkeypatch):
@@ -304,14 +304,27 @@ def test_discarded_markdown_choice_reopens_with_last_saved_value(window, monkeyp
         reopened.root.destroy()
 
 
-def test_invalid_output_format_returns_to_vocabulary_page(window, monkeypatch):
+def test_invalid_output_format_reveals_dictation_control(window, monkeypatch):
     from utterleaf.settings import FormValidationError
 
-    pages = []
-    monkeypatch.setattr(window, "show_page", pages.append)
+    window.root.deiconify()
+    window.root.geometry("770x655")
+    window.show_page("Vocabulary")
+    window.root.update()
+    field = window.fields["output_format"]
+    focus_requests = []
+    monkeypatch.setattr(field, "focus_set", lambda: focus_requests.append(field))
     monkeypatch.setattr("utterleaf.settings_ui.messagebox.showerror", lambda *a, **k: None)
     window._show_invalid_field(FormValidationError("output_format", "Choose prose or Markdown output."))
-    assert pages == ["Vocabulary"]
+    window.root.update()
+    assert window.pages["Dictation"].grid_info()
+    assert not window.pages["Vocabulary"].grid_info()
+    assert focus_requests == [field]
+    assert field.winfo_ismapped()
+    assert field.winfo_rooty() >= window.canvas.winfo_rooty()
+    assert field.winfo_rooty() + field.winfo_height() <= (
+        window.canvas.winfo_rooty() + window.canvas.winfo_height()
+    )
 
 
 def test_speech_end_preferences_save_discard_reopen_and_reset(window, monkeypatch):
@@ -555,13 +568,17 @@ def test_first_button_click_activates_without_focus_scroll(window, monkeypatch):
     calls = []
     button = window.mic_button
     button.configure(command=lambda: calls.append("mic"))
-    window.canvas.yview_moveto(.25)
+    # Reveal through the real focus path; its position changes with layout and
+    # platform metrics. A fixed scroll fraction can put it above the viewport.
+    button.event_generate("<FocusIn>")
     window.root.update()
     assert button.winfo_rooty() >= window.canvas.winfo_rooty()
+    initial_scroll = window.canvas.yview()
     button.event_generate("<ButtonPress-1>", x=10, y=10)
     button.event_generate("<ButtonRelease-1>", x=10, y=10)
     window.root.update()
     assert calls == ["mic"]
+    assert window.canvas.yview() == pytest.approx(initial_scroll)
 
 
 def test_vocabulary_explanatory_labels_are_not_clipped_at_compact_size(window):
@@ -611,3 +628,78 @@ def test_reset_preserves_offline_and_clipboard_preferences(window, monkeypatch):
     assert not window.vars["allow_network"].get()
     assert not window.vars["restore_clipboard"].get()
     assert window.vars["device"].get() == "auto"
+
+
+@pytest.mark.parametrize("geometry,scale", [
+    ("770x655", 1.0), ("760x560", 1.0),
+    ("770x655", 1.5), ("770x655", 2.0),
+])
+def test_dictation_primary_controls_remain_readable_and_focusable(tk_root, monkeypatch, geometry, scale):
+    monkeypatch.setattr("utterleaf.settings_ui.startup_enabled", lambda: False)
+    monkeypatch.setattr("utterleaf.settings_ui.dictionary_text", lambda: "utter leaf = Utterleaf")
+    baseline = float(tk_root.tk.call("tk", "scaling"))
+    root = tk.Toplevel(tk_root)
+    root.tk.call("tk", "scaling", baseline * scale)
+    app = SettingsWindow(root, Config(), background=False)
+    try:
+        root.geometry(geometry)
+        root.update()
+        controls = [app.hotkey_box, app.hold_mode, app.toggle_mode, app.mic_box,
+                    app.mic_button, app.refresh_button, app.output_format_control,
+                    app.markdown_control, app.speech_end_toggle]
+        left = app.canvas.winfo_rootx()
+        right = left + app.canvas.winfo_width()
+        for control in controls:
+            assert control.winfo_rootx() >= left
+            assert control.winfo_rootx() + control.winfo_width() <= right
+            assert control.winfo_width() >= control.winfo_reqwidth()
+            if str(control.cget("state")) == "disabled":
+                continue
+            control.event_generate("<FocusIn>")
+            root.update()
+            top = app.canvas.winfo_rooty()
+            bottom = top + app.canvas.winfo_height()
+            assert control.winfo_rooty() >= top
+            assert control.winfo_rooty() + control.winfo_height() <= bottom
+            assert app.close_button.winfo_rooty() >= bottom
+
+        assert app.privacy_label.winfo_height() >= app.privacy_label.winfo_reqheight()
+        assert app.privacy_label.winfo_rooty() >= app.nav["Help & diagnostics"].winfo_rooty() + app.nav["Help & diagnostics"].winfo_height()
+        assert app.privacy_label.winfo_rooty() + app.privacy_label.winfo_height() <= app.close_button.master.winfo_rooty() - 8
+
+        # Resizing a scrolled page must keep controls readable in either column
+        # arrangement, including status text after a failed microphone check.
+        app.mic_message.set("The selected microphone is disconnected. Reconnect it and refresh devices.")
+        root.geometry("960x780")
+        root.update()
+        root.geometry(geometry)
+        root.update()
+        for label in app._column_labels:
+            if not label.winfo_ismapped():
+                continue
+            assert label.winfo_width() >= int(label.cget("wraplength"))
+            assert label.winfo_height() >= label.winfo_reqheight()
+    finally:
+        app.closed = True
+        root.after_cancel(app.poll_id)
+        if app._page_reset is not None:
+            root.after_cancel(app._page_reset)
+        root.destroy()
+        tk_root.tk.call("tk", "scaling", baseline)
+
+
+def test_compact_microphone_button_starts_stops_and_recovers(window, monkeypatch):
+    callbacks = []
+    monkeypatch.setattr(window, "_worker", lambda action, done: callbacks.append(done))
+    window.mic_button.invoke()
+    assert window.mic_button.cget("text") == "Stop"
+    assert not window.mic_stop.is_set()
+    window.mic_button.invoke()
+    assert window.mic_stop.is_set()
+    assert len(callbacks) == 1
+    callbacks.pop()(0.0)
+    assert window.mic_button.cget("text") == "Test"
+    window.mic_button.invoke()
+    assert not window.mic_stop.is_set()
+    callbacks.pop()(RuntimeError("unavailable"))
+    assert window.mic_button.cget("text") == "Test"

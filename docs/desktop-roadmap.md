@@ -53,6 +53,19 @@ verification passed. RC2 remains the published immutable tag; this evidence
 does not extend to stable desktop release status or unverified physical/editor
 acceptance. PR #26 merged into main at `bf4dfda`.
 
+### Active: compact Dictation settings
+
+The [compact Dictation plan](plans/active/desktop-dictation-layout.md) groups
+shortcut, activation and microphone controls near the top, moves Output style
+to Dictation, and places speech-end stopping before secondary recording options.
+The two input groups stack when text needs more width. This is a source follow-up
+to RC2; the published preview keeps Output style under Vocabulary. All **49**
+focused settings/configuration tests pass with no skips, including resize, focus,
+validation, microphone Test/Stop/retry, and save/discard/reset checks. Default and
+compact captures and controlled larger-font checks pass. Independent review is clear;
+CI remains the integration gate. Physical display-scaling and assistive-technology
+behavior remain separate.
+
 ### Active: continuous recording, long files and OBS
 
 The [continuous transcription plan](plans/active/desktop-continuous-transcription.md)
@@ -140,7 +153,7 @@ automatic insertion, and explicit manual start for each take. Hold/toggle,
 cancellation remain; the newer continuous-recording work supersedes the duration
 cutoff. A visible two-minute review offers
 Copy/Insert/Discard; insertion requires the original supported native field/text/
-caret. Other editors use Copy. The [speech-endpoint plan](plans/active/desktop-speech-endpoint.md)
+caret. Other editors use Copy. The [speech-endpoint plan](plans/completed/desktop-speech-endpoint.md)
 records tests, resolved review findings and remaining verification. The final
 integrated suite passed 827 tests with 12 skips (11 explicit FFmpeg-fixture
 requirements and one unavailable symlink privilege); all Tk/UI tests ran and

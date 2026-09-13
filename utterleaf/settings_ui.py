@@ -31,7 +31,7 @@ class SettingsWindow:
         self.mascots = {}
         self.mascot_labels = {}
         self._mascot_heading_labels = set()
-        self._compact_labels = set()
+        self._column_labels = set()
         self.appearance_guide = None
         self.report = ""
         self.vars = {}
@@ -73,16 +73,22 @@ class SettingsWindow:
         logo.thumbnail((154, 46), Image.Resampling.LANCZOS)
         self.wordmark = ImageTk.PhotoImage(logo, master=root)
         tk.Label(sidebar, image=self.wordmark, bg=theme.SURFACE_LOW,
-                 takefocus=False).pack(anchor="w", padx=18, pady=(28, 30))
+                 takefocus=False).pack(anchor="w", padx=18, pady=(20, 22))
         for name in ("Dictation", "Vocabulary", "Voice commands", "Engine", "Help & diagnostics"):
             label = {"Engine": "Speech & privacy", "Help & diagnostics": "Help"}.get(name, name)
-            button = ttk.Button(sidebar, text=label, style="Nav.TButton",
+            button = ttk.Button(sidebar, text=label, style="Nav.TButton", padding=(16, 8),
                                 command=lambda n=name: self.show_page(n))
             button.pack(fill="x", padx=12, pady=3)
             self.nav[name] = button
-        tk.Label(sidebar, text="On-device dictation.\nNo account required.", justify="left",
+        self.privacy_label = tk.Label(sidebar, text="Local dictation.\nNo account.", justify="left",
                  font=(ui_font(), 9), fg=theme.ON_VARIANT, bg=theme.SURFACE_LOW,
-                 wraplength=150).pack(side="bottom", anchor="w", padx=24, pady=18)
+                 wraplength=150)
+        self.privacy_label.pack(side="bottom", anchor="w", padx=24, pady=12)
+        def wrap_privacy(event):
+            width = max(1, event.width - 52)
+            if int(self.privacy_label.cget("wraplength")) != width:
+                self.privacy_label.configure(wraplength=width)
+        sidebar.bind("<Configure>", wrap_privacy)
 
         content = ttk.Frame(root)
         content.grid(row=0, column=1, sticky="nsew")
@@ -209,18 +215,33 @@ class SettingsWindow:
         box = ttk.Combobox(
             parent,
             textvariable=self.vars[key],
-            values=list(values),
+            values=list(values), width=12,
             state="normal" if editable else "readonly",
         )
         box.pack(fill="x", pady=(0, 4))
         self.fields[key] = box
         return box
 
+    def _column_hint(self, parent, text="", *, textvariable=None):
+        label = ttk.Label(parent, text=text, textvariable=textvariable,
+                          style="Hint.TLabel", wraplength=180, justify="left")
+        label.pack(fill="x", pady=(2, 0))
+        self._column_labels.add(label)
+        def wrap_hint(event):
+            # Leave room for the label's border. Wrapping at its outer width
+            # can request an extra pixel and make uniform columns oscillate.
+            width = max(1, event.width - 4)
+            if event.width > 1 and int(label.cget("wraplength")) != width:
+                label.configure(wraplength=width)
+        label.bind("<Configure>", wrap_hint)
+        return label
+
     def _check(self, parent, title, key, hint=""):
         button = ttk.Checkbutton(parent, text=title, variable=self.vars[key])
         button.pack(anchor="w", pady=(8, 2))
         if hint:
-            ttk.Label(parent, text=hint, style="Hint.TLabel", wraplength=510).pack(anchor="w", padx=(24, 0), pady=(0, 4))
+            label = self._column_hint(parent, hint)
+            label.pack_configure(padx=(24, 0), pady=(0, 4))
         return button
 
     def _text(self, parent, height=6):
@@ -249,75 +270,103 @@ class SettingsWindow:
                  bg=theme.PRIMARY_CONTAINER, fg=theme.ON_PRIMARY_CONTAINER,
                  font=(ui_font(), 10), wraplength=490, justify="left").pack(anchor="w", pady=(10, 0))
 
-        overview = ttk.Frame(page)
-        overview.pack(fill="x", pady=(0, 2))
-        overview.columnconfigure(0, weight=1, uniform="dictation-overview")
-        overview.columnconfigure(1, weight=1, uniform="dictation-overview")
+        overview = ttk.Frame(page, style="Page.TFrame")
+        overview.pack(fill="x")
+        self.dictation_overview = overview
+        shortcut = ttk.Frame(overview, style="Page.TFrame")
+        microphone = ttk.Frame(overview, style="Page.TFrame")
 
-        shortcut = ttk.Frame(overview)
-        shortcut.grid(row=0, column=0, sticky="nsew", padx=(0, 7))
-        p = self._section(shortcut, "Your shortcut", "Choose how you start a take.")
+        p = self._section(shortcut, "Shortcut")
+        p.configure(padding=12)
         self.hotkey_box = self._compact_choice(
             p, "Keyboard shortcut", "hotkey",
             [v for _, v in hotkey_presets() if v], editable=True,
         )
+        mode_state = "disabled" if is_wayland() else "normal"
+        self.hold_mode = ttk.Radiobutton(
+            p, text="Hold to talk", variable=self.vars["mode"],
+            value="hold", state=mode_state,
+        )
+        self.hold_mode.pack(anchor="w", pady=(6, 2))
+        self.toggle_mode = ttk.Radiobutton(
+            p, text="Press to start / stop", variable=self.vars["mode"],
+            value="toggle", state=mode_state,
+        )
+        self.toggle_mode.pack(anchor="w", pady=2)
         if is_wayland():
             self.hotkey_box.configure(state="disabled")
-            ttk.Label(p, text="Set your shortcut in desktop keyboard settings to the executable path followed by --toggle.",
-                      style="Hint.TLabel", wraplength=240).pack(anchor="w", pady=(0, 8))
-        mode_state = "disabled" if is_wayland() else "normal"
-        self.limit_hint = tk.StringVar(self.root)
-        limit_label = ttk.Label(p, textvariable=self.limit_hint,
-                                style="Hint.TLabel", wraplength=210)
-        limit_label.pack(anchor="w", pady=(0, 4))
-        self._compact_labels.add(limit_label)
+            self._column_hint(p, "Set a desktop keyboard shortcut to the executable path followed by --toggle.")
 
-        microphone = ttk.Frame(overview)
-        microphone.grid(row=0, column=1, sticky="nsew", padx=(7, 0))
-        p = self._section(microphone, "Microphone", "Test audio is discarded.")
+        p = self._section(microphone, "Microphone")
+        p.configure(padding=12)
         self.mic_box = self._compact_choice(p, "Input device", "microphone", [SYSTEM_DEFAULT])
         actions = ttk.Frame(p)
         actions.pack(fill="x", pady=(6, 4))
-        self.mic_button = ttk.Button(actions, text="Test", command=self.test_mic)
+        self.mic_button = ttk.Button(actions, text="Test", width=5, command=self.test_mic)
         self.mic_button.pack(side="left")
-        self.refresh_button = ttk.Button(actions, text="Refresh", command=self.refresh_mics)
-        self.refresh_button.pack(side="left", padx=6)
-        self.mic_message = tk.StringVar(self.root, value="Ready for a quick, five-second check.")
+        self.refresh_button = ttk.Button(actions, text="Refresh", width=7, command=self.refresh_mics)
+        self.refresh_button.pack(side="left", padx=(6, 0))
+        self.mic_message = tk.StringVar(self.root, value="Five-second check. Audio is discarded.")
         self.meter = ttk.Progressbar(p, maximum=100)
-        self.meter.pack(fill="x", pady=(6, 4))
-        mic_label = ttk.Label(p, textvariable=self.mic_message, style="Hint.TLabel", wraplength=210)
-        mic_label.pack(anchor="w")
-        self._compact_labels.add(mic_label)
+        self.meter.pack(fill="x", pady=(4, 4))
+        self._column_hint(p, textvariable=self.mic_message)
 
-        activation = ttk.Frame(overview)
-        activation.grid(row=1, column=0, sticky="nsew", padx=(0, 7))
-        p = self._section(activation, "Activation", "How a take begins and ends.")
-        ttk.Radiobutton(p, text="Hold to talk", variable=self.vars["mode"], value="hold", state=mode_state).pack(anchor="w", pady=3)
-        ttk.Radiobutton(p, text="Press to start / stop", variable=self.vars["mode"], value="toggle", state=mode_state).pack(anchor="w", pady=3)
+        column_state = None
 
-        output = ttk.Frame(overview)
-        output.grid(row=1, column=1, sticky="nsew", padx=(7, 0))
-        p = self._section(output, "Output style", "Explicit local formatting commands only.")
-        ttk.Radiobutton(p, text="Prose", variable=self.vars["output_format"], value="prose").pack(anchor="w", pady=3)
-        ttk.Radiobutton(p, text="Markdown", variable=self.vars["output_format"], value="markdown").pack(anchor="w", pady=3)
+        def arrange_columns(event):
+            nonlocal column_state
+            # Use the controls' requested width, not an assumed DPI percentage.
+            column_min = max(self.toggle_mode.winfo_reqwidth(), actions.winfo_reqwidth()) + 28
+            two_columns = event.width >= 2 * column_min + 14
+            if two_columns == column_state:
+                return
+            column_state = two_columns
+            overview.columnconfigure(0, weight=1, uniform="dictation" if two_columns else "")
+            overview.columnconfigure(1, weight=1 if two_columns else 0,
+                                     uniform="dictation" if two_columns else "")
+            shortcut.grid(row=0, column=0, sticky="nsew", padx=(0, 7) if two_columns else 0)
+            microphone.grid(row=0 if two_columns else 1, column=1 if two_columns else 0,
+                            sticky="nsew", padx=(7, 0) if two_columns else 0)
 
-        p = self._section(page, "Stop after speech", "Optional local pause detection; manual stop and Esc remain available.")
+        overview.bind("<Configure>", arrange_columns)
+        shortcut.grid(row=0, column=0, sticky="nsew")
+        microphone.grid(row=0, column=1, sticky="nsew")
+
+        output = ttk.Frame(page, padding=(12, 4))
+        output.pack(fill="x", pady=(0, 4))
+        ttk.Label(output, text="Output style").pack(anchor="w")
+        output_modes = ttk.Frame(output)
+        output_modes.pack(anchor="w", pady=(4, 0))
+        self.output_format_control = ttk.Radiobutton(
+            output_modes, text="Prose", variable=self.vars["output_format"], value="prose"
+        )
+        self.output_format_control.pack(side="left", padx=(0, 18))
+        self.markdown_control = ttk.Radiobutton(
+            output_modes, text="Markdown", variable=self.vars["output_format"], value="markdown"
+        )
+        self.markdown_control.pack(side="left")
+        self.fields["output_format"] = self.output_format_control
+
+        p = self._section(page, "Stop after speech")
         self.speech_end_toggle = self._check(
             p, "Stop after speech and a pause", "speech_end_enabled",
-            "Quiet speech, noise, and thinking pauses can affect detection.",
+            "Only during a take you start. It never opens the microphone or starts another take. "
+            "Manual stop and Esc remain available. Quiet speech, noise, and thinking pauses can affect detection.",
         )
         self.speech_end_pause = self._choice(p, "Pause (seconds)", "speech_end_pause_seconds", ["0.5", "0.8", "1.2", "1.8", "2.5", "3.0"])
         self.speech_end_insert_toggle = self._check(
             p, "Insert immediately after automatic stop", "speech_end_insert",
-            "Off by default; review, copy, insert, or discard remain available.",
+            "Off by default. When off, or when the original field cannot be verified, a review window lets you copy, insert, or discard the text.",
         )
-        ttk.Label(p, text="If the detector is unavailable, recording continues until you stop it manually.",
+        ttk.Label(p, text="Uses only the reviewed detector bundled with an installed local speech engine. If it is unavailable, recording continues until you stop it manually.",
                   style="Hint.TLabel", wraplength=510).pack(anchor="w", pady=(2, 6))
 
         p = self._section(page, "Recording feedback", "Keep things quiet, or add guidance while you speak.")
+        self.limit_hint = tk.StringVar(self.root)
+        ttk.Label(p, textvariable=self.limit_hint, style="Hint.TLabel", wraplength=510).pack(fill="x", pady=(0, 6))
         ttk.Radiobutton(p, text="Tray icon only", variable=self.vars["indicator"], value=False).pack(anchor="w", pady=4)
         ttk.Radiobutton(p, text="Tray + floating indicator", variable=self.vars["indicator"], value=True).pack(anchor="w", pady=4)
-        ttk.Label(p, text="The floating indicator includes your remaining recording time.",
+        ttk.Label(p, text="The floating indicator shows recording state and guidance.",
                   style="Hint.TLabel", wraplength=510).pack(anchor="w", pady=(0, 4))
         self.preview_toggle = self._check(p, "Preview dictation while recording", "live_preview",
                                          "Optional draft words while you speak. Uses additional processing power.")
@@ -553,10 +602,8 @@ class SettingsWindow:
         # Wrap copy to the actual content width, including high-DPI displays.
         def wrap(widget):
             for child in widget.winfo_children():
-                if isinstance(child, (ttk.Label, tk.Label)) and int(child.cget("wraplength") or 0):
-                    if child in self._compact_labels:
-                        wrap(child)
-                        continue
+                if (isinstance(child, (ttk.Label, tk.Label))
+                        and int(child.cget("wraplength") or 0) and child not in self._column_labels):
                     inset = 140 if child.master is self.shortcut_card else 104
                     if child in self._mascot_heading_labels:
                         inset += 92
@@ -707,16 +754,16 @@ class SettingsWindow:
             elif self.vars["microphone"].get() not in ("", SYSTEM_DEFAULT, *result):
                 self.mic_message.set("Selected microphone is unavailable. Reconnect it or choose another input and Save.")
             else:
-                self.mic_message.set("Devices refreshed. Choose an input, then Test microphone. Save to apply changes.")
+                self.mic_message.set("Devices refreshed. Choose an input, then select Test. Save to apply changes.")
         self._worker(query, done)
 
     def test_mic(self):
-        if str(self.mic_button.cget("text")) == "Stop check":
+        if str(self.mic_button.cget("text")) == "Stop":
             self.mic_stop.set()
             return
         device = self.vars["microphone"].get()
         self.mic_stop.clear()
-        self.mic_button.configure(text="Stop check")
+        self.mic_button.configure(text="Stop")
         self._set_mascot("Dictation", "thinking")
         self.mic_message.set("Opening your microphone…")
         def check():
@@ -740,7 +787,7 @@ class SettingsWindow:
                 recorder.close()
             return peak
         def done(result):
-            self.mic_button.configure(text="Test microphone")
+            self.mic_button.configure(text="Test")
             self.meter.configure(value=0)
             if isinstance(result, Exception):
                 self._set_mascot("Dictation", "error")
@@ -857,9 +904,10 @@ class SettingsWindow:
         self._worker(commit, done)
 
     def _show_invalid_field(self, error):
-        page = ("Vocabulary" if error.field in {"names", "output_format"} else "Dictation"
+        page = ("Vocabulary" if error.field in {"names"} else "Dictation"
                 if error.field in {"hotkey", "mode", "speech_end_enabled",
-                                   "speech_end_pause_seconds", "speech_end_insert"} else "Engine")
+                                   "speech_end_pause_seconds", "speech_end_insert",
+                                   "output_format"} else "Engine")
         self.show_page(page)
         if self._page_reset is not None:
             self.root.after_cancel(self._page_reset)
@@ -875,7 +923,7 @@ class SettingsWindow:
                 field.tag_add("sel", f"{line}.0", f"{line}.end")
                 field.mark_set("insert", f"{line}.0")
                 field.see(f"{line}.0")
-            else:
+            elif isinstance(field, (tk.Entry, ttk.Entry, ttk.Combobox)):
                 field.selection_range(0, "end")
             from types import SimpleNamespace
             self._reveal_focus(SimpleNamespace(widget=field))
