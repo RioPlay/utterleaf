@@ -76,7 +76,8 @@ that version before Arm. Final integration passes 873 affected desktop tests,
 refusal. Independent review is clear, including normal stop/Disarm metadata drain,
 stale refresh, retirement/publication races and nonblocking callback scheduling.
 The 488-comparison hash audit includes current UI source and eleven captures.
-Source CI remains pending. OBS frontend/audio acceptance, application entry,
+Source CI is tracked on [draft PR #41](https://github.com/RioPlay/utterleaf/pull/41).
+OBS frontend/audio acceptance, application entry,
 export integration and native distribution remain open.
 
 The native test driver needs the desktop virtualenv for NumPy-backed

@@ -570,7 +570,9 @@ def test_mix_tabs_support_keyboard_navigation_without_actions(opened, tk_root):
     window.root.event_generate("<Control-Tab>")
     tk_root.update()
     assert window.preview_tabs.index("current") == 0
-    window.root.event_generate("<Alt-m>")
+    # ttk binds tab mnemonics to Option on Aqua and Alt on other backends.
+    modifier = "Option" if tk_root.tk.call("tk", "windowingsystem") == "aqua" else "Alt"
+    window.root.event_generate(f"<{modifier}-m>")
     tk_root.update()
     assert window.preview_tabs.index("current") == 1
     assert actions.calls == []

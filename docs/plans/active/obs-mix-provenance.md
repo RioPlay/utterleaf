@@ -134,7 +134,13 @@ Independent receiver/controller/pipe, private-history, view, native integration
 and build-driver reviews are clear. Review corrected cached private metadata
 retention on explicit close and external destruction. Keyboard traversal and the
 full six-bus, 128-source display bounds are covered. These checks used no OBS
-application, audio device, consumer profile or model. Source CI remains pending.
+application, audio device, consumer profile or model. Source CI results are
+tracked on [draft PR #41](https://github.com/RioPlay/utterleaf/pull/41).
+
+The first integration CI run exposed a platform assumption in the keyboard
+navigation fixture: ttk uses Option for tab mnemonics on Aqua and Alt elsewhere.
+The fixture now sends the native modifier and still requires the tab change and
+zero session actions. Runtime and render inputs are unchanged by this correction.
 
 Native observation uses fixed watcher/snapshot limits and an OBS monotonic clock
 declared by the newly pinned public `util/platform.h`; its ISC notice is retained.

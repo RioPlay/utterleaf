@@ -262,8 +262,9 @@ commands, the 25-command linked build and headless refusal. Eleven UI captures
 were inspected; 488 recorded hash comparisons match the final inputs and outputs.
 Independent review is clear after correcting stop/drain, stale refresh and
 metadata retirement races, callback scheduling contention and cancellation cleanup.
-Production source requires audio version 2 before Arm. Source CI remains pending;
-the integration receipts are separate from the earlier codec evidence. Live OBS,
+Production source requires audio version 2 before Arm. Source CI is tracked on
+[draft PR #41](https://github.com/RioPlay/utterleaf/pull/41); the integration
+receipts are separate from the earlier codec evidence. Live OBS,
 export, distribution and application-entry gates remain open.
 
 Current integrated desktop regression: **1,432 passed, 13 skipped in 39.47 seconds**,
