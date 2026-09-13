@@ -4,10 +4,11 @@
 
 #include <obs.h>
 
-/* Enable only after both endpoints are registered. Disable before teardown. */
+/* Enable only after every endpoint is registered. Disable before teardown. */
 void ul_vendor_set_enabled(bool enabled);
 
 /* Static callbacks; private_data is unused and must never own runtime memory. */
+void ul_vendor_status(obs_data_t *request, obs_data_t *response, void *private_data);
 void ul_vendor_issue(obs_data_t *request, obs_data_t *response, void *private_data);
 void ul_vendor_prepare(obs_data_t *request, obs_data_t *response, void *private_data);
 

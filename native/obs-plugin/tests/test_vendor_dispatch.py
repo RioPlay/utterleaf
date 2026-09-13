@@ -15,12 +15,16 @@ class VendorTests(unittest.TestCase):
     def setUp(self):
         VENDOR.ul_vendor_test_reset(True)
 
-    def dispatch(self, payload, *, prepare=False):
+    def dispatch(self, payload, *, operation="issue"):
         request = OBS.obs_data_create_from_json(json.dumps(payload).encode())
         response = OBS.obs_data_create()
         self.assertTrue(request and response)
         try:
-            callback = VENDOR.ul_vendor_prepare if prepare else VENDOR.ul_vendor_issue
+            callback = {
+                "status": VENDOR.ul_vendor_status,
+                "issue": VENDOR.ul_vendor_issue,
+                "prepare": VENDOR.ul_vendor_prepare,
+            }[operation]
             callback(request, response, None)
             return json.loads(OBS.obs_data_get_json(response))
         finally:
@@ -57,33 +61,33 @@ class VendorTests(unittest.TestCase):
 
     def test_prepare_accepts_only_canonical_fixed_fields(self):
         payload = {"challenge": "ab" * 60, "proof": "12" * 32}
-        self.assertEqual(self.dispatch(payload, prepare=True), {"ok": True, "protocolVersion": 1})
+        self.assertEqual(self.dispatch(payload, operation="prepare"), {"ok": True, "protocolVersion": 1})
         self.assertEqual(VENDOR.ul_vendor_test_count(1), 1)
         self.assertEqual(VENDOR.ul_vendor_test_count(2), 0)
         for field in payload:
             for invalid in [True, 7, [], {}, "", "a", "A" * len(payload[field]), payload[field] + "0"]:
                 with self.subTest(field=field, value=invalid):
                     VENDOR.ul_vendor_test_reset(True)
-                    self.assertEqual(self.dispatch({**payload, field: invalid}, prepare=True), {"ok": False})
+                    self.assertEqual(self.dispatch({**payload, field: invalid}, operation="prepare"), {"ok": False})
                     self.assertEqual(VENDOR.ul_vendor_test_count(1), 1)
                     self.assertEqual(VENDOR.ul_vendor_test_count(2), 1)
         for changed in [{}, {"challenge": payload["challenge"]}, {**payload, "extra": False}]:
             with self.subTest(changed=changed):
                 VENDOR.ul_vendor_test_reset(True)
-                self.assertEqual(self.dispatch(changed, prepare=True), {"ok": False})
+                self.assertEqual(self.dispatch(changed, operation="prepare"), {"ok": False})
                 self.assertEqual(VENDOR.ul_vendor_test_count(2), 1)
 
     def test_closed_runtime_returns_only_generic_refusal(self):
         VENDOR.ul_vendor_test_reset(False)
         self.assertEqual(self.dispatch(ISSUE), {"ok": False})
-        self.assertEqual(self.dispatch({"challenge": "ab" * 60, "proof": "12" * 32}, prepare=True), {"ok": False})
+        self.assertEqual(self.dispatch({"challenge": "ab" * 60, "proof": "12" * 32}, operation="prepare"), {"ok": False})
         self.assertEqual(VENDOR.ul_vendor_test_count(0), 0)
         self.assertEqual(VENDOR.ul_vendor_test_count(1), 0)
 
     def test_disabled_registration_gate_refuses_before_runtime(self):
         VENDOR.ul_vendor_set_enabled(False)
         self.assertEqual(self.dispatch(ISSUE), {"ok": False})
-        self.assertEqual(self.dispatch({"challenge": "ab" * 60, "proof": "12" * 32}, prepare=True), {"ok": False})
+        self.assertEqual(self.dispatch({"challenge": "ab" * 60, "proof": "12" * 32}, operation="prepare"), {"ok": False})
         self.assertEqual(VENDOR.ul_vendor_test_count(0), 0)
         self.assertEqual(VENDOR.ul_vendor_test_count(1), 0)
 
@@ -99,6 +103,27 @@ class VendorTests(unittest.TestCase):
         finally:
             OBS.obs_data_release(request)
             OBS.obs_data_release(response)
+
+    def test_status_is_exact_read_only_compatibility_metadata(self):
+        expected = {"ok": True, "protocolVersion": 1, "commandVersion": 1,
+                    "audioVersion": 1, "maxBusMask": 63}
+        self.assertEqual(self.dispatch({}, operation="status"), expected)
+        self.assertEqual(self.dispatch({}, operation="status"), expected)
+        self.assertEqual([VENDOR.ul_vendor_test_count(i) for i in range(3)], [0, 0, 0])
+        self.assertEqual(self.dispatch({"extra": 1}, operation="status"), {"ok": False})
+        self.assertEqual([VENDOR.ul_vendor_test_count(i) for i in range(3)], [0, 0, 0])
+
+    def test_status_does_not_consume_issue_or_prepare(self):
+        payload = {"challenge": "ab" * 60, "proof": "12" * 32}
+        self.assertTrue(self.dispatch(ISSUE)["ok"])
+        self.assertTrue(self.dispatch({}, operation="status")["ok"])
+        self.assertTrue(self.dispatch(payload, operation="prepare")["ok"])
+        self.assertEqual([VENDOR.ul_vendor_test_count(i) for i in range(3)], [1, 1, 0])
+
+    def test_disabled_status_returns_only_generic_refusal(self):
+        VENDOR.ul_vendor_set_enabled(False)
+        self.assertEqual(self.dispatch({}, operation="status"), {"ok": False})
+        self.assertEqual([VENDOR.ul_vendor_test_count(i) for i in range(3)], [0, 0, 0])
 
 
 if __name__ == "__main__":
@@ -118,7 +143,7 @@ if __name__ == "__main__":
             ("obs_data_set_default_string", [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p], None),
         ]:
             getattr(OBS, name).argtypes, getattr(OBS, name).restype = arguments, result
-        for name in ["ul_vendor_issue", "ul_vendor_prepare"]:
+        for name in ["ul_vendor_status", "ul_vendor_issue", "ul_vendor_prepare"]:
             getattr(VENDOR, name).argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
             getattr(VENDOR, name).restype = None
         VENDOR.ul_vendor_test_reset.argtypes, VENDOR.ul_vendor_test_reset.restype = [ctypes.c_bool], None

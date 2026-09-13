@@ -142,10 +142,13 @@ server authentication and live non-interference measurements remain open.
 The Utterleaf state machine is `disabled -> ready -> armed -> active -> finalizing`
 with separate `error` and `incomplete` results. "Ready" means authenticated
 WebSocket and compatible vendor API; it is not capture. Arming opens the mutually
-authenticated audio session while idle. `OBS_WEBSOCKET_OUTPUT_STARTED` begins one
-transcript only after the plugin confirms the streaming mix and first ordered PCM
-block. `RECONNECTING` and `RECONNECTED` remain within that same session; they do
-not reset time or create another transcript. `STOPPED` finalizes it.
+authenticated audio session while idle. The matching native Start record begins
+one transcript only after the plugin confirms the post-Arm frontend start,
+streaming mix and first ordered PCM block. Standard WebSocket lifecycle events
+have no session identifier and can arrive late; they cannot authorize or finalize
+a different native epoch. Reconnection remains within the same session and does
+not reset time or create another transcript. The native End record finalizes it.
+See the [controller authority correction](obs-session-controller.md).
 
 If WebSocket disconnects while the authenticated pipe and original session remain
 healthy, continue that already-visible session while showing control degraded;

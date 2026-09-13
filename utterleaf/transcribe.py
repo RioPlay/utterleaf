@@ -37,6 +37,10 @@ EN_ONLY = {"tiny", "base", "small", "medium"}
 PREVIEW_SECONDS = 4.0
 
 
+class TranscriptionLimitError(ValueError):
+    """A bounded recognition caller refused excessive model output."""
+
+
 def _dictionary_prompt() -> str:
     try:
         from utterleaf.polish import load_vocabulary
@@ -59,8 +63,15 @@ class CTranslateEngine:
         self.model = model
 
     def transcribe_segments(self, audio: np.ndarray, cfg: Config, *, cancel=None,
-                            progress=None) -> Transcript:
+                            progress=None, max_segments: int | None = None,
+                            max_segment_text_bytes: int | None = None,
+                            max_total_text_bytes: int | None = None) -> Transcript:
         """Preserve model timing and words, without dictation cleanup or commands."""
+        limits = (max_segments, max_segment_text_bytes, max_total_text_bytes)
+        if any(limit is not None and (isinstance(limit, bool) or not isinstance(limit, int)
+                                     or limit < 0) for limit in limits):
+            raise ValueError("Transcription output limits must be nonnegative integers")
+
         def check_cancel():
             if cancel is not None and cancel.is_set():
                 raise TranscriptionCancelled("File transcription cancelled")
@@ -68,6 +79,7 @@ class CTranslateEngine:
         check_cancel()
         while not _infer_lock.acquire(timeout=0.1):
             check_cancel()
+        iterator = None
         try:
             check_cancel()
             language = None if cfg.language.lower() in {"auto", ""} else cfg.language
@@ -75,16 +87,43 @@ class CTranslateEngine:
                 audio, language=language, vad_filter=len(audio) >= 22400,
                 beam_size=5, condition_on_previous_text=False,
             )
+            iterator = iter(segments)
             result = []
-            for segment in segments:
+            total_text_bytes = 0
+            for segment in iterator:
                 check_cancel()
+                if max_segments is not None and len(result) >= max_segments:
+                    raise TranscriptionLimitError("The model returned too many transcript segments")
+                text = segment.text
+                if max_segment_text_bytes is not None or max_total_text_bytes is not None:
+                    if not isinstance(text, str):
+                        raise TranscriptionLimitError("The model returned invalid transcript text")
+                    if (max_segment_text_bytes is not None
+                            and len(text) > max_segment_text_bytes):
+                        raise TranscriptionLimitError("The model returned an oversized transcript segment")
+                    if (max_total_text_bytes is not None
+                            and len(text) > max_total_text_bytes - total_text_bytes):
+                        raise TranscriptionLimitError("The model returned too much transcript text")
+                    text_bytes = len(text.encode("utf-8"))
+                    total_text_bytes += text_bytes
+                    if (max_segment_text_bytes is not None
+                            and text_bytes > max_segment_text_bytes):
+                        raise TranscriptionLimitError("The model returned an oversized transcript segment")
+                    if (max_total_text_bytes is not None
+                            and total_text_bytes > max_total_text_bytes):
+                        raise TranscriptionLimitError("The model returned too much transcript text")
                 result.append(Segment(float(segment.start), float(segment.end), segment.text))
                 if progress is not None:
                     progress("recognizing", min(1.0, segment.end / (len(audio) / 16000)))
             check_cancel()
             return Transcript(tuple(result), getattr(info, "language", language))
         finally:
-            _infer_lock.release()
+            try:
+                close = getattr(iterator, "close", None)
+                if close is not None:
+                    close()
+            finally:
+                _infer_lock.release()
 
     def transcribe(self, audio: np.ndarray, cfg: Config) -> str:
         language = None if cfg.language.lower() in {"auto", ""} else cfg.language

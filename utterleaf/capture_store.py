@@ -2,12 +2,16 @@
 
 Only explicitly started recording owns a store. Audio is not encrypted; the OS
 temporary-file protections apply. Deletion is lifecycle cleanup, not secure erase.
-The callback never waits for disk I/O. One writer owns the file until sealed.
+The callback never waits for disk I/O. One writer owns file writes; readers use
+bounded committed prefixes.
 """
 
 from __future__ import annotations
 
 from collections import deque
+from dataclasses import dataclass
+from enum import Enum
+import operator
 import shutil
 import tempfile
 import threading
@@ -27,12 +31,53 @@ class CaptureStorageError(OSError):
     """The temporary recording cannot start on the selected local filesystem."""
 
 
+class CaptureReadState(str, Enum):
+    """Outcome of a nonblocking incremental read."""
+
+    UNAVAILABLE = "unavailable"
+    READY = "ready"
+    COMPLETE = "complete"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True)
+class CaptureRead:
+    """One bounded live read, positioned in source-rate samples."""
+
+    state: CaptureReadState
+    source_offset: int
+    source_samples: int = 0
+    audio: np.ndarray | None = None
+    error: str | None = None
+
+    @property
+    def next_source_offset(self) -> int:
+        return self.source_offset + self.source_samples
+
+
+@dataclass(frozen=True)
+class CaptureProgress:
+    """A consistent snapshot of the committed capture prefix."""
+
+    written_source_samples: int
+    writer_done: bool
+    closed: bool
+    error: str | None
+
+    @property
+    def terminal(self) -> bool:
+        return self.writer_done or self.closed
+
+
 class CaptureStore:
     def __init__(self, sample_rate: float):
         if not np.isfinite(sample_rate) or not 8000 <= sample_rate <= 192000:
             raise ValueError("Unsupported capture sample rate")
         self.sample_rate = float(sample_rate)
         self._condition = threading.Condition()
+        # File positioning is separate from producer coordination so the audio
+        # callback never waits for a disk read or write.
+        self._file_lock = threading.Lock()
         self._pending = deque()
         self._pending_bytes = 0
         self._accepted_samples = 0
@@ -89,6 +134,16 @@ class CaptureStore:
         with self._condition:
             return self._pending_bytes
 
+    @property
+    def progress(self) -> CaptureProgress:
+        with self._condition:
+            return CaptureProgress(
+                written_source_samples=self._written_samples,
+                writer_done=self._ready.is_set(),
+                closed=self._closed,
+                error=self._error,
+            )
+
     def append(self, audio: np.ndarray) -> bool:
         """Accept a callback block without waiting for storage; refuse atomically."""
         if (not isinstance(audio, np.ndarray) or audio.dtype != np.float32 or
@@ -132,18 +187,81 @@ class CaptureStore:
         from utterleaf.audio import resample_audio
 
         self.wait_ready(cancelled)
-        self._file.seek(0)
         block_samples = int(round(WINDOW_SECONDS * self.sample_rate))
-        remaining = self._written_samples
+        with self._condition:
+            remaining = self._written_samples
+        source_offset = 0
         while remaining:
             if cancelled() or self._closed:
                 raise TranscriptionCancelled("Recording cancelled")
             count = min(remaining, block_samples)
-            data = self._file.read(count * 4)
-            if len(data) != count * 4:
-                raise OSError("Temporary audio could not be read completely")
+            data = self._read_bytes(source_offset, count, blocking=True)
             remaining -= count
+            source_offset += count
             yield resample_audio(np.frombuffer(data, dtype=np.float32), self.sample_rate)
+
+    def read_window(self, source_offset: int, cancelled=lambda: False) -> CaptureRead:
+        """Read one committed live window without waiting for future audio.
+
+        Offsets and counts use the capture source rate. Returned audio is mono
+        float32 at 16 kHz. A full window is exposed while the writer is active;
+        its final partial window is exposed only after the writer has drained.
+        A busy file lock returns unavailable; the bounded filesystem read itself
+        may still block.
+        """
+        if isinstance(source_offset, bool):
+            raise ValueError("Capture offset must be a nonnegative integer")
+        try:
+            source_offset = operator.index(source_offset)
+        except TypeError:
+            raise ValueError("Capture offset must be a nonnegative integer") from None
+        if source_offset < 0:
+            raise ValueError("Capture offset must be a nonnegative integer")
+        if cancelled():
+            raise TranscriptionCancelled("Recording cancelled")
+
+        block_samples = int(round(WINDOW_SECONDS * self.sample_rate))
+        with self._condition:
+            if self._closed:
+                raise TranscriptionCancelled("Recording cancelled")
+            written = self._written_samples
+            writer_done = self._ready.is_set()
+            error = self._error
+
+        available = max(0, written - source_offset)
+        if available >= block_samples:
+            count = block_samples
+        elif writer_done and available:
+            count = available
+        elif writer_done:
+            state = CaptureReadState.FAILED if error else CaptureReadState.COMPLETE
+            return CaptureRead(state, source_offset, error=error)
+        else:
+            return CaptureRead(CaptureReadState.UNAVAILABLE, source_offset)
+
+        data = self._read_bytes(source_offset, count, blocking=False)
+        if data is None:
+            return CaptureRead(CaptureReadState.UNAVAILABLE, source_offset)
+        if cancelled():
+            raise TranscriptionCancelled("Recording cancelled")
+        with self._condition:
+            if self._closed:
+                raise TranscriptionCancelled("Recording cancelled")
+
+        from utterleaf.audio import resample_audio
+
+        audio = resample_audio(np.frombuffer(data, dtype=np.float32), self.sample_rate)
+        if cancelled():
+            raise TranscriptionCancelled("Recording cancelled")
+        with self._condition:
+            if self._closed:
+                raise TranscriptionCancelled("Recording cancelled")
+        return CaptureRead(
+            CaptureReadState.READY,
+            source_offset,
+            source_samples=count,
+            audio=audio,
+        )
 
     def close(self):
         """Cancel pending writes; the writer closes its handle after in-flight I/O."""
@@ -154,8 +272,36 @@ class CaptureStore:
             self._pending.clear()
             self._pending_bytes = 0
             self._condition.notify_all()
-            if self._ready.is_set():
+            writer_done = self._ready.is_set()
+        if writer_done:
+            self._close_file_if_idle()
+
+    def _read_bytes(self, source_offset: int, count: int, *, blocking: bool):
+        if not self._file_lock.acquire(blocking=blocking):
+            return None
+        try:
+            with self._condition:
+                if self._closed:
+                    raise TranscriptionCancelled("Recording cancelled")
+            self._file.seek(source_offset * 4)
+            data = self._file.read(count * 4)
+            if len(data) != count * 4:
+                raise OSError("Temporary audio could not be read completely")
+            return data
+        finally:
+            self._file_lock.release()
+            self._close_file_if_idle()
+
+    def _close_file_if_idle(self):
+        if not self._file_lock.acquire(blocking=False):
+            return
+        try:
+            with self._condition:
+                should_close = self._closed
+            if should_close and not self._file.closed:
                 self._file.close()
+        finally:
+            self._file_lock.release()
 
     def _write(self):
         checked_at = -int(self.sample_rate)
@@ -176,15 +322,18 @@ class CaptureStore:
                         raise OSError("Temporary audio reserve reached")
                 data = memoryview(audio).cast("B")
                 written = 0
-                try:
-                    while written < len(data):
-                        count = self._file.write(data[written:])
-                        if count is None or count <= 0:
-                            raise OSError("Temporary audio write made no progress")
-                        written += count
-                finally:
-                    with self._condition:
-                        self._written_samples += written // 4
+                with self._file_lock:
+                    try:
+                        self._file.seek(0, 2)
+                        while written < len(data):
+                            count = self._file.write(data[written:])
+                            if count is None or count <= 0:
+                                raise OSError("Temporary audio write made no progress")
+                            written += count
+                    finally:
+                        with self._condition:
+                            self._written_samples += written // 4
+                            self._condition.notify_all()
         except Exception:
             with self._condition:
                 self._error = "Temporary audio storage failed. Only the stored portion can be recovered."
@@ -192,7 +341,10 @@ class CaptureStore:
                 self._pending.clear()
                 self._pending_bytes = 0
         finally:
-            with self._condition:
-                if self._closed:
+            with self._file_lock:
+                with self._condition:
+                    should_close = self._closed
+                if should_close and not self._file.closed:
                     self._file.close()
                 self._ready.set()
+            self._close_file_if_idle()

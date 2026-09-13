@@ -5,7 +5,8 @@ write build receipts into a separate output directory. The current increment
 proves the native build prerequisite and adds linked pairing, plugin-state,
 frontend Tools and vendor-dispatch components. It defines an exclusive
 per-user owner, bounded admission worker, pairing TaskDialog and strict
-`IssueAuthorization`/`PrepareSession` vendor requests. The x64 DLL builds from
+`IssueAuthorization`/`PrepareSession` vendor requests and an inert `GetStatus`
+compatibility response. The x64 DLL builds from
 pinned public resources. The headless `libobs` fixture verifies that it refuses
 initialization before opening pairing state. Actual frontend load, UI interaction
 and real OBS acceptance remain unverified.
@@ -48,6 +49,20 @@ outcome, and the receipt exchange keeps one deadline. Its 24-command linked buil
 independent final review is clear. The local evidence and remaining limits are
 recorded in the Disarm plan. This does not install the plugin or add a
 live-capture app entry point.
+
+The [session-controller follow-up](../../docs/plans/active/obs-session-controller.md)
+adds the exact empty `GetStatus` request and strict protocol/command/audio version
+and bus-mask checks. It performs no authorization, preparation, store or OBS
+state mutation. The desktop controller combines reviewed control and pipe
+ownership with committed-window local recognition and an isolated compact Tk
+view. Native Start/End identify the accepted one-use session, so delayed untagged
+WebSocket stream lifecycle events cannot start or finalize another session.
+OBS Exit and identity/protocol failures remain terminal. This is development source without
+an application entry point; actual OBS acceptance and native redistribution
+remain open. All 647 focused desktop tests, 41 Tk tests, 51 native verification
+commands, the linked build and headless smoke pass. Independent source and
+render review is clear; its plan records exact evidence and remaining gates.
+
 The native test driver needs the desktop virtualenv for NumPy-backed
 protocol validation, and `--build` plus `--headers` for conversion fixtures.
 

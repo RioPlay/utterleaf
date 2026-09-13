@@ -81,6 +81,23 @@ static void encode_hex(const uint8_t *value, size_t length, char *output)
     output[length * 2u] = '\0';
 }
 
+void ul_vendor_status(obs_data_t *request, obs_data_t *response, void *private_data)
+{
+    (void)private_data;
+    if (response == NULL)
+        return;
+    obs_data_clear(response);
+    obs_data_set_bool(response, "ok", false);
+    if (InterlockedCompareExchange(&dispatch_enabled, 0, 0) == 0 ||
+        !exact_fields(request, NULL, NULL, 0u))
+        return;
+    obs_data_set_int(response, "protocolVersion", 1);
+    obs_data_set_int(response, "commandVersion", 1);
+    obs_data_set_int(response, "audioVersion", 1);
+    obs_data_set_int(response, "maxBusMask", 63);
+    obs_data_set_bool(response, "ok", true);
+}
+
 void ul_vendor_issue(obs_data_t *request, obs_data_t *response, void *private_data)
 {
     static const char *const names[] = {"clientPid", "sessionId", "additionalMixMask"};

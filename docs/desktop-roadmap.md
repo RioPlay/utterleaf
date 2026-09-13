@@ -104,9 +104,11 @@ audio delivery after TCP loss and wrong-process rejection with zero secret bytes
 received. This checks the originally attributed process and current path/file
 identity; it is not historical loaded-image attestation.
 
-There is no live-capture app entry point. Actual OBS enrollment, the original server plugin's
-restrictive DACL/client authentication, atomic arming/start coordination,
-controller/UI, live recognition and streaming-load acceptance remain open.
+There is no live-capture app entry point. The component checkpoints below record
+enrollment, native client authentication, atomic arming and PCM work. The current
+session-controller increment connects those components to local recognition and
+an isolated view; actual OBS enrollment, frontend/audio and streaming-load
+acceptance remain open.
 The original C-only [development module](../native/obs-plugin/README.md) first
 established the inert build/load prerequisite through PR #32 at `e61c7dd`.
 The current linked module builds against 42 pinned OBS/frontend/vendor public
@@ -222,6 +224,28 @@ Independent final review is clear, and 383 recorded hash comparisons match the
 final inputs and outputs. This remains development source, with no live-capture
 app entry point or new release; visible control, local recognition and real OBS
 acceptance remain open.
+
+The [session-controller increment](plans/active/obs-session-controller.md) now
+implements one explicit connect/Arm session, manual Stop, cancellation and
+committed-window local recognition before capture ends. A narrow `GetStatus`
+request checks compatibility without consuming authorization. The authenticated
+native session identifier binds Start and End to the current Arm; late untagged
+WebSocket events cannot start or stop another session. Ordinary control loss
+after accepted PCM leaves healthy audio capture running, with visible degraded
+status. Identity/protocol failures remain terminal.
+
+Recognition honors the saved accelerator with networking disabled, preserves
+per-bus timing, bounds model segments/text while consuming them and retains a
+4,000-character preview over a private temporary journal. Cancel is nonblocking;
+completion waits for audio, recognition and requested journal cleanup. The
+compact Tk view receives snapshots and forwards explicit actions. It has no
+application entry point, pairing-key ownership, export implementation or live
+OBS acceptance yet. Accurate mix/routing metadata, recorded-file timelines and
+separate native distribution review remain product gates. All 647 focused backend
+tests, 41 Tk tests, 51 native verification commands, the 24-command linked build
+and headless smoke pass. Nine synthetic UI renders were inspected; independent
+source review is clear. Its active plan records exact commands and remaining
+acceptance limits.
 
 Current integrated desktop regression: **1,432 passed, 13 skipped in 39.47 seconds**,
 including the reviewed OBS control, native identity, pipe and audio handshake.
