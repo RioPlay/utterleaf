@@ -6,8 +6,8 @@ Obtainium checks GitHub and installs Android updates. Utterleaf itself keeps **n
 Internet permission** and does not add an updater service. The signed channel
 begins with Android alpha03; alpha01/alpha02 used disposable debug keys.
 
-Current release: [Android alpha13](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha13) ·
-[Signed APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha13/Utterleaf-Android-0.1.0-alpha13.apk).
+Current release: [Android alpha15](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha15) ·
+[Signed APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha15/Utterleaf-Android-0.1.0-alpha15.apk).
 
 ## Set up
 
@@ -39,7 +39,7 @@ installed, uninstall it once, install the signed alpha03-or-later APK and re-imp
 the speech model. Uninstalling removes app data. Do not disable Android's signature
 checks or protection settings to force an update.
 
-Signed alpha03 and alpha04 use the same persistent release identity. An installed
+Signed alpha03 and later releases use the same persistent release identity. An installed
 signed alpha03 should be updated in place. The
 [successful alpha04 signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34428171272)
 verified the unchanged certificate, upgraded signed alpha03 to alpha04 on an
