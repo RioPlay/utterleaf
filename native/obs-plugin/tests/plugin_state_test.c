@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "../src/plugin_state.h"
+#include "../src/session_protocol.h"
 
 static BOOL WINAPI shim_GetModuleHandleExW(DWORD flags, LPCWSTR address,
                                             HMODULE *module);
@@ -41,6 +42,12 @@ static void shim_ul_authorizer_release(ul_authorizer *authorizer);
 static void shim_ul_authorizer_destroy(ul_authorizer *authorizer);
 static int shim_ul_admission_authenticate(ul_admission *admission,
                                           DWORD timeout_ms);
+static int shim_ul_admission_read_exact(ul_admission *admission, void *buffer,
+                                        DWORD size, DWORD timeout_ms);
+static int shim_ul_admission_write_all(ul_admission *admission,
+                                       const void *buffer, DWORD size,
+                                       DWORD timeout_ms);
+static int shim_ul_admission_probe(ul_admission *admission, DWORD *available);
 static void shim_ul_admission_cancel(ul_admission *admission);
 static HANDLE shim_ul_admission_pipe(const ul_admission *admission);
 
@@ -62,10 +69,14 @@ static HANDLE shim_ul_admission_pipe(const ul_admission *admission);
 #define ul_authorizer_release shim_ul_authorizer_release
 #define ul_authorizer_destroy shim_ul_authorizer_destroy
 #define ul_admission_authenticate shim_ul_admission_authenticate
+#define ul_admission_read_exact shim_ul_admission_read_exact
+#define ul_admission_write_all shim_ul_admission_write_all
+#define ul_admission_probe shim_ul_admission_probe
 #define ul_admission_cancel shim_ul_admission_cancel
 #define ul_admission_pipe shim_ul_admission_pipe
 #define UL_PLUGIN_AUTH_TIMEOUT_MS 40u
 #define UL_PLUGIN_READY_TIMEOUT_MS 40u
+#define UL_PLUGIN_START_TIMEOUT_MS 80u
 #include "../src/plugin_state.c"
 #undef GetModuleHandleExW
 #undef ul_pairing_store_open
@@ -85,6 +96,9 @@ static HANDLE shim_ul_admission_pipe(const ul_admission *admission);
 #undef ul_authorizer_release
 #undef ul_authorizer_destroy
 #undef ul_admission_authenticate
+#undef ul_admission_read_exact
+#undef ul_admission_write_all
+#undef ul_admission_probe
 #undef ul_admission_cancel
 #undef ul_admission_pipe
 
@@ -95,12 +109,16 @@ struct ul_pairing_store {
 struct ul_admission {
     HANDLE cancelled;
     int authenticate_result;
+    bool command_ready;
+    uint8_t command[UL_SESSION_COMMAND_BYTES];
 };
 
 struct ul_authorizer {
     bool outstanding;
     bool revoked;
     ul_admission *admission;
+    uint8_t session[16];
+    uint8_t mask;
 };
 
 static bool fake_pin = true;
@@ -119,6 +137,15 @@ static HANDLE fake_issue_release;
 static volatile LONG fake_release_count;
 static volatile LONG fake_destroy_count;
 static volatile LONG fake_store_destroy_count;
+static bool fake_arm_command;
+static int fake_arm_command_corrupt;
+static bool fake_schedule_result = true;
+static DWORD fake_probe_available;
+static int fake_probe_result = UL_ADMISSION_AUTH_OK;
+static HANDLE fake_schedule_entered;
+static HANDLE fake_reply_written;
+static uintptr_t fake_scheduled_generation;
+static uint8_t fake_reply[UL_SESSION_COMMAND_BYTES];
 
 static int check(bool condition, const char *message)
 {
@@ -265,6 +292,8 @@ static bool shim_ul_authorizer_issue(ul_authorizer *authorizer,
         return false;
     memset(out_challenge, 0x33, 60);
     authorizer->outstanding = true;
+    memcpy(authorizer->session, session, sizeof(authorizer->session));
+    authorizer->mask = mask;
     return true;
 }
 
@@ -291,8 +320,22 @@ static ul_admission *shim_ul_authorizer_prepare(
         return NULL;
     }
     admission->authenticate_result = fake_authenticate_result;
+    if (fake_arm_command) {
+        memcpy(admission->command, "ULAC", 4);
+        admission->command[4] = 1;
+        admission->command[5] = 1;
+        memcpy(admission->command + 8, authorizer->session, 16);
+        admission->command[24] = authorizer->mask;
+        if (fake_arm_command_corrupt == 1)
+            admission->command[8] ^= 0x80;
+        else if (fake_arm_command_corrupt == 2)
+            admission->command[24] ^= 1;
+        admission->command_ready = true;
+    }
     authorizer->admission = admission;
     options->client_pid = 100;
+    memcpy(options->session, authorizer->session, sizeof(options->session));
+    options->additional_mix_mask = authorizer->mask;
     return admission;
 }
 
@@ -335,6 +378,49 @@ static int shim_ul_admission_authenticate(ul_admission *admission,
     return admission->authenticate_result;
 }
 
+static int shim_ul_admission_read_exact(ul_admission *admission, void *buffer,
+                                        DWORD size, DWORD timeout_ms)
+{
+    DWORD waited;
+
+    if (buffer == NULL || size != sizeof(admission->command))
+        return UL_ADMISSION_IO_ERROR;
+    if (admission->command_ready) {
+        memcpy(buffer, admission->command, size);
+        admission->command_ready = false;
+        return UL_ADMISSION_AUTH_OK;
+    }
+    waited = WaitForSingleObject(admission->cancelled, timeout_ms);
+    SecureZeroMemory(buffer, size);
+    return waited == WAIT_OBJECT_0 ? UL_ADMISSION_CANCELLED
+                                   : UL_ADMISSION_TIMEOUT;
+}
+
+static int shim_ul_admission_write_all(ul_admission *admission,
+                                       const void *buffer, DWORD size,
+                                       DWORD timeout_ms)
+{
+    (void)timeout_ms;
+    if (WaitForSingleObject(admission->cancelled, 0) == WAIT_OBJECT_0)
+        return UL_ADMISSION_CANCELLED;
+    if (buffer == NULL || size != sizeof(fake_reply))
+        return UL_ADMISSION_IO_ERROR;
+    memcpy(fake_reply, buffer, size);
+    if (fake_reply_written != NULL)
+        SetEvent(fake_reply_written);
+    return UL_ADMISSION_AUTH_OK;
+}
+
+static int shim_ul_admission_probe(ul_admission *admission, DWORD *available)
+{
+    if (WaitForSingleObject(admission->cancelled, 0) == WAIT_OBJECT_0)
+        return UL_ADMISSION_CANCELLED;
+    if (available == NULL)
+        return UL_ADMISSION_IO_ERROR;
+    *available = fake_probe_available;
+    return fake_probe_result;
+}
+
 static void shim_ul_admission_cancel(ul_admission *admission)
 {
     SetEvent(admission->cancelled);
@@ -344,6 +430,14 @@ static HANDLE shim_ul_admission_pipe(const ul_admission *admission)
 {
     (void)admission;
     return NULL;
+}
+
+static bool queued_arm_scheduler(uintptr_t generation)
+{
+    fake_scheduled_generation = generation;
+    if (fake_schedule_entered != NULL)
+        SetEvent(fake_schedule_entered);
+    return fake_schedule_result;
 }
 
 static DWORD WINAPI export_thread(void *unused)
@@ -380,6 +474,337 @@ static bool bytes_are_zero(const uint8_t *bytes, size_t size)
             return false;
     }
     return true;
+}
+
+static bool wait_phase(ul_session_phase expected, DWORD timeout_ms)
+{
+    ULONGLONG deadline = GetTickCount64() + timeout_ms;
+
+    do {
+        if (ul_plugin_session_status() == expected)
+            return true;
+        Sleep(1);
+    } while (GetTickCount64() < deadline);
+    return ul_plugin_session_status() == expected;
+}
+
+static bool wait_worker_inactive(DWORD timeout_ms)
+{
+    ULONGLONG deadline = GetTickCount64() + timeout_ms;
+    ul_plugin_snapshot snapshot;
+
+    do {
+        snapshot = ul_plugin_get_status();
+        if (!snapshot.admission_pending) {
+            HANDLE worker = plugin_global.runtime == NULL
+                                ? NULL
+                                : plugin_global.runtime->worker;
+            return worker == NULL ||
+                   WaitForSingleObject(worker, timeout_ms) == WAIT_OBJECT_0;
+        }
+        Sleep(1);
+    } while (GetTickCount64() < deadline);
+    if (ul_plugin_get_status().admission_pending)
+        return false;
+    return plugin_global.runtime == NULL || plugin_global.runtime->worker == NULL ||
+           WaitForSingleObject(plugin_global.runtime->worker, timeout_ms) ==
+               WAIT_OBJECT_0;
+}
+
+static bool wait_current_worker_signaled(DWORD timeout_ms)
+{
+    ul_plugin_runtime *runtime = plugin_global.runtime;
+    HANDLE worker = runtime == NULL ? NULL : runtime->worker;
+
+    return worker != NULL &&
+           WaitForSingleObject(worker, timeout_ms) == WAIT_OBJECT_0;
+}
+
+static int prepare_arm(const uint8_t session[16], uint8_t mask)
+{
+    uint8_t challenge[60];
+    uint8_t proof[32] = {0x44};
+    int failures = 0;
+
+    ResetEvent(fake_schedule_entered);
+    ResetEvent(fake_reply_written);
+    SecureZeroMemory(fake_reply, sizeof(fake_reply));
+    fake_scheduled_generation = 0;
+    failures += check(ul_plugin_issue(100, session, mask, challenge),
+                      "Arm issue succeeds");
+    failures += check(ul_plugin_prepare(challenge, sizeof(challenge), proof,
+                                        sizeof(proof)),
+                      "Arm prepare succeeds");
+    failures += check(WaitForSingleObject(fake_schedule_entered, 2000) ==
+                          WAIT_OBJECT_0,
+                      "Arm scheduler receives queued generation");
+    failures += check(fake_scheduled_generation != 0,
+                      "Arm scheduler receives nonzero generation");
+    failures += check(wait_phase(UL_SESSION_ARM_PENDING, 2000),
+                      "Arm reaches pending phase");
+    return failures;
+}
+
+static int start_arm_runtime(void)
+{
+    int failures = 0;
+
+    fake_load_result = UL_PAIRING_OK;
+    fake_arm_command = true;
+    fake_schedule_entered = CreateEventW(NULL, TRUE, FALSE, NULL);
+    fake_reply_written = CreateEventW(NULL, TRUE, FALSE, NULL);
+    failures += check(fake_schedule_entered != NULL &&
+                          fake_reply_written != NULL,
+                      "create deterministic Arm events");
+    failures += check(ul_plugin_start(), "Arm runtime starts paired");
+    failures += check(ul_plugin_set_arm_scheduler(queued_arm_scheduler),
+                      "install Arm scheduler once before worker");
+    return failures;
+}
+
+static void close_arm_events(void)
+{
+    if (fake_schedule_entered != NULL)
+        CloseHandle(fake_schedule_entered);
+    if (fake_reply_written != NULL)
+        CloseHandle(fake_reply_written);
+    fake_schedule_entered = NULL;
+    fake_reply_written = NULL;
+}
+
+static int scenario_arm_valid(void)
+{
+    uint8_t session[16] = {0x21, 2, 3, 4};
+    uint8_t expected[UL_SESSION_COMMAND_BYTES];
+    ul_plugin_snapshot snapshot;
+    int failures = start_arm_runtime();
+
+    failures += prepare_arm(session, 37);
+    ul_plugin_arm_checked(fake_scheduled_generation, true);
+    failures += check(WaitForSingleObject(fake_reply_written, 2000) ==
+                          WAIT_OBJECT_0,
+                      "committed Arm reply written");
+    failures += check(ul_session_arm_reply(session, 37, true, expected) &&
+                          memcmp(fake_reply, expected, sizeof(expected)) == 0,
+                      "Arm reply binds exact prepared session and mask");
+    failures += check(wait_phase(UL_SESSION_ARMED, 2000),
+                      "idle callback commits Arm");
+    Sleep(120);
+    snapshot = ul_plugin_get_status();
+    failures += check(snapshot.admission_pending &&
+                          ul_plugin_session_status() == UL_SESSION_ARMED,
+                      "armed session persists beyond READY timeout");
+    ul_plugin_stream_event(UL_STREAM_STARTING);
+    failures += check(ul_plugin_session_status() == UL_SESSION_STARTING,
+                      "post-Arm STARTING accepted");
+    ul_plugin_stream_event(UL_STREAM_STARTED);
+    failures += check(ul_plugin_session_status() == UL_SESSION_STARTED,
+                      "ordered STARTED accepted once");
+    ul_plugin_stream_event(UL_STREAM_STOPPING);
+    failures += check(wait_phase(UL_SESSION_TERMINAL, 2000),
+                      "stop terminates active consent");
+    ul_plugin_close();
+    close_arm_events();
+    return failures;
+}
+
+static int scenario_arm_ordering(void)
+{
+    uint8_t session[16] = {0x31};
+    uint8_t expected[UL_SESSION_COMMAND_BYTES];
+    int failures = start_arm_runtime();
+
+    failures += prepare_arm(session, 3);
+    ul_plugin_arm_checked(fake_scheduled_generation, false);
+    failures += check(WaitForSingleObject(fake_reply_written, 2000) ==
+                          WAIT_OBJECT_0,
+                      "busy Arm writes refusal");
+    failures += check(ul_session_arm_reply(session, 3, false, expected) &&
+                          memcmp(fake_reply, expected, sizeof(expected)) == 0,
+                      "already-busy Arm reply is exact refusal");
+    failures += check(wait_worker_inactive(2000),
+                      "busy refusal retires worker");
+
+    session[0]++;
+    failures += prepare_arm(session, 4);
+    ul_plugin_stream_event(UL_STREAM_STARTING);
+    failures += check(wait_phase(UL_SESSION_TERMINAL, 2000),
+                      "STARTING before callback refuses pending Arm");
+    failures += check(WaitForSingleObject(fake_reply_written, 2000) ==
+                          WAIT_OBJECT_0 &&
+                          ul_session_arm_reply(session, 4, false, expected) &&
+                          fake_reply[25] == 2 &&
+                          memcmp(fake_reply, expected, sizeof(expected)) == 0,
+                      "STARTING race returns exact status-2 refusal");
+    ul_plugin_arm_checked(fake_scheduled_generation, true);
+    failures += check(wait_worker_inactive(2000),
+                      "late callback cannot revive STARTING race");
+
+    session[0]++;
+    failures += prepare_arm(session, 5);
+    ul_plugin_arm_checked(fake_scheduled_generation, true);
+    failures += check(WaitForSingleObject(fake_reply_written, 2000) ==
+                          WAIT_OBJECT_0 &&
+                          wait_phase(UL_SESSION_ARMED, 2000),
+                      "fresh Arm commits after retired race");
+    ul_plugin_stream_event(UL_STREAM_STARTED);
+    failures += check(wait_phase(UL_SESSION_TERMINAL, 2000),
+                      "STARTED without STARTING is terminal");
+    ul_plugin_close();
+    close_arm_events();
+    return failures;
+}
+
+static int scenario_arm_stale_and_commands(void)
+{
+    uint8_t session[16] = {0x41};
+    uintptr_t stale_generation;
+    int failures = start_arm_runtime();
+
+    failures += prepare_arm(session, 6);
+    stale_generation = fake_scheduled_generation;
+    failures += check(wait_worker_inactive(2000),
+                      "unanswered Arm expires at READY deadline");
+    session[0]++;
+    failures += prepare_arm(session, 7);
+    ul_plugin_arm_checked(stale_generation, true);
+    failures += check(ul_plugin_session_status() == UL_SESSION_ARM_PENDING,
+                      "late callback cannot arm new generation");
+    ul_plugin_arm_checked(fake_scheduled_generation, true);
+    failures += check(WaitForSingleObject(fake_reply_written, 2000) ==
+                          WAIT_OBJECT_0 &&
+                          wait_phase(UL_SESSION_ARMED, 2000),
+                      "current generation still arms");
+    fake_probe_available = UL_SESSION_COMMAND_BYTES;
+    failures += check(wait_worker_inactive(2000),
+                      "duplicate command bytes terminate armed worker");
+
+    fake_probe_available = 0;
+    session[0]++;
+    failures += prepare_arm(session, 8);
+    ul_plugin_arm_checked(fake_scheduled_generation, true);
+    failures += check(WaitForSingleObject(fake_reply_written, 2000) ==
+                          WAIT_OBJECT_0,
+                      "EOF case Arm reply written");
+    fake_probe_result = UL_ADMISSION_IO_ERROR;
+    failures += check(wait_worker_inactive(2000),
+                      "authenticated EOF terminates armed worker");
+    ul_plugin_close();
+    close_arm_events();
+    return failures;
+}
+
+static int scenario_arm_start_timeout(void)
+{
+    uint8_t session[16] = {0x39};
+    int failures = start_arm_runtime();
+
+    failures += prepare_arm(session, 15);
+    ul_plugin_arm_checked(fake_scheduled_generation, true);
+    failures += check(WaitForSingleObject(fake_reply_written, 2000) ==
+                          WAIT_OBJECT_0 &&
+                          wait_phase(UL_SESSION_ARMED, 2000),
+                      "start-timeout session arms");
+    ul_plugin_stream_event(UL_STREAM_STARTING);
+    failures += check(ul_plugin_session_status() == UL_SESSION_STARTING,
+                      "start-timeout session records STARTING");
+    failures += check(wait_current_worker_signaled(2000) &&
+                          ul_plugin_session_status() == UL_SESSION_TERMINAL,
+                      "missing matching STARTED terminally expires worker");
+    ul_plugin_stream_event(UL_STREAM_STARTED);
+    failures += check(ul_plugin_session_status() == UL_SESSION_TERMINAL,
+                      "late STARTED cannot resurrect expired generation");
+
+    session[0]++;
+    failures += prepare_arm(session, 16);
+    ul_plugin_arm_checked(fake_scheduled_generation, true);
+    failures += check(WaitForSingleObject(fake_reply_written, 2000) ==
+                          WAIT_OBJECT_0 &&
+                          wait_phase(UL_SESSION_ARMED, 2000),
+                      "new manual session arms after STARTING timeout");
+    ul_plugin_close();
+    close_arm_events();
+    return failures;
+}
+
+static int scenario_arm_bound_command(void)
+{
+    uint8_t session[16] = {0x51};
+    uint8_t challenge[60];
+    uint8_t proof[32] = {0x44};
+    int failures = start_arm_runtime();
+
+    fake_arm_command_corrupt = 1;
+    failures += check(ul_plugin_issue(100, session, 9, challenge) &&
+                          ul_plugin_prepare(challenge, sizeof(challenge), proof,
+                                            sizeof(proof)),
+                      "submit wrong-session Arm command");
+    failures += check(wait_worker_inactive(2000),
+                      "wrong prepared session is refused");
+    fake_arm_command_corrupt = 2;
+    session[0]++;
+    failures += check(ul_plugin_issue(100, session, 10, challenge) &&
+                          ul_plugin_prepare(challenge, sizeof(challenge), proof,
+                                            sizeof(proof)),
+                      "submit wrong-mask Arm command");
+    failures += check(wait_worker_inactive(2000),
+                      "wrong prepared mix mask is refused");
+    ul_plugin_close();
+    close_arm_events();
+    return failures;
+}
+
+static int scenario_arm_teardown(void)
+{
+    uint8_t session[16] = {0x61};
+    bool saved = false;
+    LONG releases;
+    int failures = start_arm_runtime();
+
+    failures += prepare_arm(session, 11);
+    releases = InterlockedCompareExchange(&fake_release_count, 0, 0);
+    failures += check(ul_plugin_forget() == UL_PAIRING_OK,
+                      "forget completes while Arm callback pending");
+    failures += check(InterlockedCompareExchange(&fake_release_count, 0, 0) >
+                          releases,
+                      "forget cancels and joins pending Arm worker");
+    failures += check(ul_plugin_pair(L"C:\\new.ulpair", false, &saved) ==
+                          UL_PAIRING_OK && saved,
+                      "re-pair after forget");
+
+    session[0]++;
+    failures += prepare_arm(session, 12);
+    releases = InterlockedCompareExchange(&fake_release_count, 0, 0);
+    saved = false;
+    failures += check(ul_plugin_pair(L"C:\\replace.ulpair", true, &saved) ==
+                          UL_PAIRING_OK && saved,
+                      "replace completes while Arm callback pending");
+    failures += check(InterlockedCompareExchange(&fake_release_count, 0, 0) >
+                          releases,
+                      "replace cancels and joins pending Arm worker");
+
+    session[0]++;
+    failures += prepare_arm(session, 13);
+    ul_plugin_stop_accepting();
+    failures += check(wait_worker_inactive(2000),
+                      "stop accepting cancels pending Arm worker");
+    ul_plugin_close();
+    close_arm_events();
+    return failures;
+}
+
+static int scenario_arm_close_pending(void)
+{
+    uint8_t session[16] = {0x71};
+    int failures = start_arm_runtime();
+
+    failures += prepare_arm(session, 14);
+    ul_plugin_close();
+    failures += check(ul_plugin_get_status().status == UL_PLUGIN_CLOSED &&
+                          ul_plugin_session_status() == UL_SESSION_NONE,
+                      "close joins pending Arm and closes public gate");
+    close_arm_events();
+    return failures;
 }
 
 static int scenario_pin_failure(void)
@@ -770,6 +1195,20 @@ static int run_child(const char *scenario)
         return scenario_close_cancels_mutation();
     if (strcmp(scenario, "dispatch") == 0)
         return scenario_close_drains_issue();
+    if (strcmp(scenario, "arm-valid") == 0)
+        return scenario_arm_valid();
+    if (strcmp(scenario, "arm-order") == 0)
+        return scenario_arm_ordering();
+    if (strcmp(scenario, "arm-start-timeout") == 0)
+        return scenario_arm_start_timeout();
+    if (strcmp(scenario, "arm-stale") == 0)
+        return scenario_arm_stale_and_commands();
+    if (strcmp(scenario, "arm-bound") == 0)
+        return scenario_arm_bound_command();
+    if (strcmp(scenario, "arm-teardown") == 0)
+        return scenario_arm_teardown();
+    if (strcmp(scenario, "arm-close") == 0)
+        return scenario_arm_close_pending();
     return 1;
 }
 
@@ -802,7 +1241,9 @@ int main(int argc, char **argv)
 {
     static const wchar_t *scenarios[] = {
         L"pin", L"reload", L"fallback", L"states", L"pair", L"prepare",
-        L"expiry", L"cancel", L"dispatch"};
+        L"expiry", L"cancel", L"dispatch", L"arm-valid", L"arm-order",
+        L"arm-start-timeout", L"arm-stale", L"arm-bound", L"arm-teardown",
+        L"arm-close"};
     wchar_t executable[32768];
     size_t index;
     int failures = 0;

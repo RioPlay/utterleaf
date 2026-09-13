@@ -17,8 +17,14 @@ storage, cancellation and gap handling, visible control, local recognition,
 and live OBS acceptance. Separate native Hello/ACK and retained-process pipe
 admission components now have an explicit test build, described below, and the
 bounded admission worker is linked into the module. Frontend/device behavior
-and real OBS acceptance remain unverified; stream-following, PCM, controller,
-Arm and live capture remain unimplemented.
+and real OBS acceptance remain unverified. The separate
+[Arm increment](../../docs/plans/active/obs-session-arm.md) now implements fixed
+authenticated-pipe commands, bounded exact I/O and native/desktop Arm state in
+reviewed development source. Its 199 desktop tests, 34 native build/test commands,
+linked build and headless smoke pass. Startup remains busy until a real STOPPED
+event: a synchronous OBS failure lacking that event can require a later completed
+stream lifecycle or OBS restart before fresh Arm. PCM, the visible capture
+controller, live recognition and actual frontend acceptance remain open.
 
 ## Inputs and legal boundary
 

@@ -60,11 +60,24 @@ class Pipe:
     def write_all(self, data, *, deadline):
         self.writes.append(data)
         # Independent server record construction, not the client's private helpers.
-        assert len(data) == 56
-        assert data[:8] == b"ULAH\x01\x01\x00\x00"
-        mac = hmac.new(data[24:], DOMAIN + data[:24], hashlib.sha256).digest()
-        ack = b"ULAH\x01\x02\x00\x00" + data[8:24] + mac
-        self.pending.extend(self.mutate_ack(ack))
+        if len(data) == 56:
+            assert data[:8] == b"ULAH\x01\x01\x00\x00"
+            mac = hmac.new(data[24:], DOMAIN + data[:24], hashlib.sha256).digest()
+            ack = b"ULAH\x01\x02\x00\x00" + data[8:24] + mac
+            self.pending.extend(self.mutate_ack(ack))
+        elif len(data) == 28:
+            magic, version, kind, reserved, session, mask, status, trailing = struct.unpack(
+                "<4sBBH16sBBH", data
+            )
+            assert (magic, version, kind, reserved, session, status, trailing) == (
+                b"ULAC", 1, 1, 0, SESSION, 0, 0
+            )
+            assert 0 <= mask <= 63
+            self.pending.extend(struct.pack(
+                "<4sBBH16sBBH", b"ULAC", 1, 2, 0, session, mask, 1, 0
+            ))
+        else:
+            raise AssertionError(f"unexpected protocol record length {len(data)}")
         self.after_write()
 
     def read(self, maximum, *, deadline):
@@ -89,6 +102,10 @@ def connect(monkeypatch, pipe=None, peer=None, *, cancelled=lambda: False, sessi
     result = audio_pipe.connect(session, peer, cancelled=cancelled,
                                 deadline=time.monotonic() + 2)
     return result, pipe, peer
+
+
+def arm(connection):
+    connection.arm(deadline=time.monotonic() + 2)
 
 
 def test_fragmented_ack_has_exact_role_bound_mac_and_retains_no_secret(monkeypatch):
@@ -202,6 +219,7 @@ def audio_frames(session=SESSION):
 
 def test_fragmented_audio_retains_receiver_consent_and_actual_primary_bus(monkeypatch):
     connection, pipe, peer = connect(monkeypatch)
+    arm(connection)
     frames = audio_frames()
     pipe.pending.extend(b"".join(protocol.encode_frame(frame) for frame in frames))
     pipe.max_chunk = 31
@@ -231,6 +249,7 @@ def test_fragmented_audio_retains_receiver_consent_and_actual_primary_bus(monkey
 
 def test_authenticated_pipe_does_not_grant_permission_to_capture(monkeypatch):
     connection, pipe, _ = connect(monkeypatch)
+    arm(connection)
     pipe.pending.extend(protocol.encode_frame(audio_frames()[0]))
     receiver = ObsCaptureSession(SESSION, stream_active=False,
                                  store_factory=lambda rate: pytest.fail("Unarmed storage"))
@@ -246,6 +265,7 @@ def test_authenticated_pipe_does_not_grant_permission_to_capture(monkeypatch):
 @pytest.mark.parametrize("suffix", [b"U", protocol.encode_frame(audio_frames()[0])])
 def test_end_with_trailing_partial_or_complete_frame_fails(monkeypatch, suffix):
     connection, pipe, peer = connect(monkeypatch)
+    arm(connection)
     pipe.pending.extend(protocol.encode_frame(audio_frames()[-1]) + suffix)
     with pytest.raises(audio_pipe.ObsAudioPipeError):
         connection.read_frames(deadline=time.monotonic() + 1)
@@ -254,6 +274,7 @@ def test_end_with_trailing_partial_or_complete_frame_fails(monkeypatch, suffix):
 
 def test_identity_loss_after_read_prevents_returning_audio(monkeypatch):
     connection, pipe, peer = connect(monkeypatch)
+    arm(connection)
     pipe.pending.extend(protocol.encode_frame(audio_frames()[0]))
     peer.fail_at = len(peer.checks) + 2
     with pytest.raises(audio_pipe.ObsAudioPipeError):
@@ -263,6 +284,7 @@ def test_identity_loss_after_read_prevents_returning_audio(monkeypatch):
 
 def test_foreign_audio_session_is_terminal(monkeypatch):
     connection, pipe, peer = connect(monkeypatch)
+    arm(connection)
     pipe.pending.extend(protocol.encode_frame(protocol.StartFrame(b"x" * 16, 16000, 0, 1, 0)))
     with pytest.raises(audio_pipe.ObsAudioPipeError):
         connection.read_frames(deadline=time.monotonic() + 1)
@@ -274,7 +296,8 @@ def test_native_child_pipe_auth_and_receiver_continue_after_tcp_loss():
     session = secrets.token_bytes(16)
     expected_frames = audio_frames(session)
     server = start_native_pipe_server(
-        "audio", b"".join(protocol.encode_frame(frame) for frame in expected_frames),
+        "audio",
+        b"".join(protocol.encode_frame(frame) for frame in expected_frames),
         session_id=session,
     )
     connection = retained = None
@@ -291,10 +314,11 @@ def test_native_child_pipe_auth_and_receiver_continue_after_tcp_loss():
                                                    deadline=time.monotonic() + 2)
                     connection = audio_pipe.connect(session, retained, cancelled=lambda: False,
                                                      deadline=time.monotonic() + 3)
+                    arm(connection)
                     client.shutdown(socket.SHUT_RDWR)
                     client.close()
-                    # The original TCP-based identity fails; the independent
-                    # pipe identity must still authenticate the same child.
+                    # The original TCP-based identity fails; the independently
+                    # retained process lease must still authenticate the pipe.
                     with pytest.raises(identity.PeerIdentityError):
                         peer.revalidate(cancelled=lambda: False, deadline=time.monotonic() + 1)
         receiver.notify_stream_started(session)

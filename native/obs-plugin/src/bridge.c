@@ -16,6 +16,59 @@ OBS_DECLARE_MODULE()
 static obs_websocket_vendor vendor;
 static bool issue_registered;
 static bool prepare_registered;
+static SRWLOCK frontend_gate = SRWLOCK_INIT;
+static bool frontend_open;
+static uintptr_t queued_arm;
+/* Public active queries can stay false during startup. Once STARTING arrives,
+ * only STOPPED proves idle; a synchronous failure emits no public STOPPED and
+ * therefore remains fail closed. */
+static bool stream_busy;
+
+/* OBS 32.2.2 queues worker UI tasks through Qt. The only task parameter is a
+ * numeric generation, never a borrowed runtime/event/admission pointer. */
+static void check_arm_on_frontend(void *parameter)
+{
+    uintptr_t generation = (uintptr_t)parameter;
+    obs_output_t *output;
+    bool idle;
+    AcquireSRWLockExclusive(&frontend_gate);
+    if (!frontend_open || generation == 0u || queued_arm != generation) {
+        ReleaseSRWLockExclusive(&frontend_gate);
+        return;
+    }
+    queued_arm = 0u;
+    idle = !stream_busy && !obs_frontend_streaming_active();
+    output = obs_frontend_get_streaming_output();  /* Already a new reference. */
+    if (output != NULL) {
+        idle = idle && !obs_output_active(output);
+        obs_output_release(output);
+    }
+    ul_plugin_arm_checked(generation, idle);
+    ReleaseSRWLockExclusive(&frontend_gate);
+}
+
+static bool queue_arm(uintptr_t generation)
+{
+    bool queued = false;
+    AcquireSRWLockExclusive(&frontend_gate);
+    if (frontend_open && generation != 0u && queued_arm == 0u) {
+        queued_arm = generation;
+        obs_queue_task(OBS_TASK_UI, check_arm_on_frontend,
+                        (void *)generation, false);
+        queued = true;
+    }
+    ReleaseSRWLockExclusive(&frontend_gate);
+    return queued;
+}
+
+static void close_frontend(void)
+{
+    AcquireSRWLockExclusive(&frontend_gate);
+    frontend_open = false;
+    queued_arm = 0u;
+    stream_busy = true;
+    ReleaseSRWLockExclusive(&frontend_gate);
+}
 
 static void pairing_menu(void *private_data)
 {
@@ -27,8 +80,29 @@ static void pairing_menu(void *private_data)
 static void frontend_event(enum obs_frontend_event event, void *private_data)
 {
     (void)private_data;
-    if (event != OBS_FRONTEND_EVENT_EXIT)
+    if (event != OBS_FRONTEND_EVENT_EXIT) {
+        AcquireSRWLockExclusive(&frontend_gate);
+        if (frontend_open) {
+            switch (event) {
+            case OBS_FRONTEND_EVENT_STREAMING_STARTING:
+                stream_busy = true;
+                ul_plugin_stream_event(UL_STREAM_STARTING); break;
+            case OBS_FRONTEND_EVENT_STREAMING_STARTED:
+                stream_busy = true;
+                ul_plugin_stream_event(UL_STREAM_STARTED); break;
+            case OBS_FRONTEND_EVENT_STREAMING_STOPPING:
+                stream_busy = true;
+                ul_plugin_stream_event(UL_STREAM_STOPPING); break;
+            case OBS_FRONTEND_EVENT_STREAMING_STOPPED:
+                stream_busy = false;
+                ul_plugin_stream_event(UL_STREAM_STOPPED); break;
+            default: break;
+            }
+        }
+        ReleaseSRWLockExclusive(&frontend_gate);
         return;
+    }
+    close_frontend();
     ul_vendor_set_enabled(false);
     ul_plugin_stop_accepting();
     if (prepare_registered)
@@ -48,6 +122,13 @@ bool obs_module_load(void)
         return false;
     if (!ul_plugin_start())
         return false;
+    if (!ul_plugin_set_arm_scheduler(queue_arm)) {
+        ul_plugin_close();
+        return false;
+    }
+    AcquireSRWLockExclusive(&frontend_gate);
+    frontend_open = true;
+    ReleaseSRWLockExclusive(&frontend_gate);
     obs_frontend_add_event_callback(frontend_event, NULL);
     obs_frontend_add_tools_menu_item("Utterleaf pairing...", pairing_menu, NULL);
     blog(LOG_INFO, "[Utterleaf OBS bridge] pairing controls loaded; recording remains off");
@@ -82,6 +163,7 @@ void obs_module_post_load(void)
 void obs_module_unload(void)
 {
     /* Native-only fallback: frontend/websocket teardown order is not assumed. */
+    close_frontend();
     ul_vendor_set_enabled(false);
     ul_plugin_close();
 }
