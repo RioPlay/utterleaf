@@ -91,10 +91,15 @@ identity; it is not historical loaded-image attestation.
 There is no app entry point. Actual OBS enrollment, the original server plugin's
 restrictive DACL/client authentication, atomic arming/start coordination,
 controller/UI, live recognition and streaming-load acceptance remain open.
-Installed OBS is
-32.2.2; its development headers/import libraries are not prepared. An existing
-LLVM-MinGW compiler provides a proposed original C-only plugin build route, with
-compile/load proof still required in the [build plan](plans/active/obs-plugin-build.md). The
+The original C-only [development module](../native/obs-plugin/README.md) now
+builds against 39 verified OBS 32.2.2 public resources. It opens, initializes and
+unloads through the installed libobs runtime in an isolated fixture without
+starting the OBS application or creating audio sources. This establishes only
+the inert build/load prerequisite: frontend/vendor registration, authenticated
+pipe server, arming and PCM capture remain unimplemented. The installed toolchain
+is not fully pinned and native redistribution review remains open; no plugin
+binary is included in desktop or Android releases. The
+[build plan](plans/active/obs-plugin-build.md) retains the complete native gates. The
 [control dependency record](desktop-obs-control-resource.md) records the pinned
 library, reviewed full license and development-wheel provenance.
 
