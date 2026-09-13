@@ -1,8 +1,8 @@
-# Android alpha14 snapshot
+# Android alpha14 snapshot — published
 
 ## Goal
 
-Prepare a signed, installable alpha14 snapshot of the original Utterleaf
+Prepare and publish a signed, installable alpha14 snapshot of the original Utterleaf
 keyboard so alpha13 users can update in place while the broader Android
 roadmap continues independently.
 
@@ -11,8 +11,7 @@ roadmap continues independently.
 - `mobile/android/app/build.gradle.kts` — versionCode 14 and versionName
   `0.1.0-alpha14`.
 - `mobile/android/RELEASE_NOTES.md` — bounded feature scope and known limits.
-- Existing shipping keyboard source and tests at the integration revision
-  `ece1109`.
+- Existing shipping keyboard source and tests tagged at revision `46893f2`.
 
 ## Constraints
 
@@ -23,10 +22,10 @@ roadmap continues independently.
 - Keep no-network, no-ambient-capture, no-clipboard-history, secure-field and
   model-import boundaries unchanged. No permission bypass or unsigned APK is
   acceptable.
-- This preparation does not tag, publish, sign or download release inputs. Local
-  verification may build debug/test artifacts and install them only on the
-  dedicated emulator. A successful emulator run remains evidence for tested
-  paths, not physical-device or accessibility certification.
+- Local preparation does not tag, publish, sign or download release inputs.
+  Publication runs only through the protected main-branch release workflow.
+  Local emulator evidence remains evidence for tested paths, not physical-device
+  or accessibility certification.
 
 ## Snapshot scope
 
@@ -73,26 +72,26 @@ passed the build, JVM, lint and tooling steps, then ran all 135 API 35 tests wit
 the same ready accessibility node within its existing wait, include the Hold
 timing slider in tuning expectations, open Tools before using a Tools-only quick
 toggle, and persist the terminal-mode one-hand fixture before preference
-synchronization. The corrected test sources compile locally; the complete
-workflow must pass on their exact commit before release signing.
+synchronization. The corrected tagged revision `46893f2` then passed
+[Android CI 34740122401](https://github.com/RioPlay/utterleaf/actions/runs/34740122401):
+all 135 API 35 tests with zero failures or skips, the release build, 31 JVM tests,
+lint and 14 tooling tests. The workflow preserved the unsigned release input for
+isolated signing.
 
-The signed path is the main-only `.github/workflows/android-release.yml`
-workflow: dispatch with the existing `android-v0.1.0-alpha14` tag and exact
-successful Android build run, use the protected `android-release` environment,
-verify package/version/non-debuggable status, zip alignment, certificate
-continuity and increasing versionCode, then exercise signed install/upgrade and
-reinstall before publishing the prerelease assets.
+The main-only `.github/workflows/android-release.yml` path completed in
+[signed publication 34741640577](https://github.com/RioPlay/utterleaf/actions/runs/34741640577).
+It verified the `android-v0.1.0-alpha14` tag against the successful build,
+package/version/non-debuggable state, zip alignment, certificate continuity and
+increasing versionCode, then passed signed install/upgrade/reinstall before
+publishing the [prerelease APK and metadata](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha14).
 
 ## Pending gates
 
-The full Android CI workflow for the final exact SHA, `assembleRelease`, protected
-release signing, certificate/version checks, signed install/upgrade/reinstall and
-artifact publication remain pending. TalkBack, Switch Access, landscape and broad
-editor compatibility, and real Obtainium import/update behavior remain unverified.
-Physical-phone testing is also unverified; for alpha14 it is deferred to follow-up
-user feedback rather than blocking publication. These limits must stay in the
-release notes and publication description, and no physical-device verification
-may be claimed.
+TalkBack, Switch Access, landscape and broad editor compatibility, and a real
+Obtainium update remain unverified. Physical-phone testing is also unverified;
+for alpha14 it is deferred to follow-up user feedback rather than blocking the
+completed publication. These limits stay in the release notes and publication
+description, and no physical-device verification is claimed.
 
 ## Stop
 

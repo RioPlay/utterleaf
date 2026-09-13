@@ -59,6 +59,7 @@ class PrivateDraftImeTest {
     }
 
     private fun findNode(description: String): AccessibilityNodeInfo? {
+        if (android.os.Build.VERSION.SDK_INT >= 34) instrumentation.uiAutomation.clearCache()
         fun find(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
             if (node.contentDescription?.toString() == description) return node
             for (index in 0 until node.childCount) node.getChild(index)?.let(::find)?.let { return it }
@@ -85,6 +86,15 @@ class PrivateDraftImeTest {
 
     private fun descendants(view: View): List<View> = listOf(view) + if (view is ViewGroup)
         (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) } else emptyList()
+
+    private fun shownButtonOnMain(description: String): Button? =
+        android.view.inspector.WindowInspector.getGlobalWindowViews()
+            .flatMap(::descendants)
+            .filterIsInstance<Button>()
+            .firstOrNull { button ->
+                button.isAttachedToWindow && button.isShown && button.isEnabled &&
+                    button.contentDescription?.toString() == description
+            }
 
     private fun draftPanelOnMain(): View =
         android.view.inspector.WindowInspector.getGlobalWindowViews()
@@ -128,7 +138,14 @@ class PrivateDraftImeTest {
     }
 
     private fun openDraft() {
+        val previousTools = main { shownButtonOnMain("Keyboard tools") }
+            ?: throw AssertionError("Missing current Tools view")
         press("Keyboard tools")
+        await("Tools did not publish the replacement private-draft action") {
+            main {
+                !previousTools.isAttachedToWindow && shownButtonOnMain("Private draft") != null
+            }
+        }
         press("Private draft")
         await("Private draft panel did not appear") { findNode("Insert private draft") != null }
     }

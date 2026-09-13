@@ -75,7 +75,8 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private val editorAction: (EditorAction) -> Boolean = { false },
     private val privateEditing: Boolean = false,
     private val openDraft: (() -> Unit)? = null,
-    private val actionAvailable: (EditorAction) -> Boolean = { true }) {
+    private val actionAvailable: (EditorAction) -> Boolean = { true },
+    private val backspaceSelection: BackspaceSelection? = null) {
     private val surface = Color.parseColor(if (options.light) "#E8EEEB" else "#171E20")
     private val keyColor = Color.parseColor(if (options.light) "#FFFFFF" else "#303A3D")
     private val utilityColor = Color.parseColor(if (options.light) "#D1DFD6" else "#24322D")
@@ -107,6 +108,12 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         else options.holdDelayMs.toLong()
     }
     private val deleteRepeater = DeleteRepeater()
+    private val selectableBackspace = backspaceSelection?.let { selection -> object : BackspaceSelection {
+        override fun begin(): Boolean = !options.terminal && selection.begin()
+        override fun move(left: Boolean): Boolean = !options.terminal && selection.move(left)
+        override fun finish(): Boolean = !options.terminal && selection.finish()
+        override fun cancel() = selection.cancel()
+    } }
     private var availableWidth = 0
     private var disposed = false
     private var needsRenderOnAttach = false
@@ -348,13 +355,17 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
                 "Number row on", "Number row off", "Terminal controls on", "Terminal controls off"))
             view.modifiers.key(button)
         if (description in listOf("Delete", "Forward delete", "Delete to right")) {
-            deleteRepeater.attach(button, options.deleteRepeat && !options.repeatGuard) {
+            deleteRepeater.attach(button, options.deleteRepeat && !options.repeatGuard,
+                if (description == "Delete") selectableBackspace else null,
+                selectionUnavailable = { if (generation == layoutGeneration) {
+                    clearUnavailable(); unavailable()
+                } }, erase = {
                 if (generation == layoutGeneration) {
                     // A one-shot modified delete must not become an unmodified repeat.
                     if (ctrl || alt || shift) deleteRepeater.stop()
                     action()
                 }
-            }
+            })
         }
         return button
     }

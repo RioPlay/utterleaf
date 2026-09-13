@@ -2,7 +2,7 @@
 
 [Roadmap hub](roadmap.md) · [Execution plan](execution-plan.md) · [Current mobile preview](mobile.md) · [Ideas](ideas.md)
 
-Updated September 12, 2026. Product direction: a complete, customizable Utterleaf
+Updated September 13, 2026. Product direction: a complete, customizable Utterleaf
 keyboard with integrated offline speech, its own identity, and security first.
 The design uses historical public documentation as research context, not as a
 specification, dependency or source of product identity.
@@ -28,7 +28,19 @@ One-hand reach and visual polish can proceed alongside foundation work.
 
 ## Current status
 
-- **Long-press hint default implemented in unreleased source:** holding a letter
+- **Backspace selection gesture implemented in post-alpha14 unreleased source:**
+  dragging left from Backspace previews a bounded editor-native or private-draft
+  selection, deterministic reversal shrinks it without crossing the origin, and
+  a valid release deletes it once. Tap and held-repeat deletion remain separate;
+  cancellation, stale or unconfirmed editors, restricted fields and private-draft
+  Unicode boundaries fail closed. Ten focused gesture tests and a 47-test API 35
+  emulator regression set pass. Physical-phone, assistive-technology and broader
+  OEM-editor acceptance remain open. Existing text highlighting also retains the
+  tested two-finger Shift+Space chord; tapping Shift and later swiping Space is
+  not claimed. See the
+  [implementation contract](plans/active/android-backspace-selection-gesture.md).
+
+- **Long-press hint default released in alpha14:** holding a letter
   preselects the same positional symbol or digit shown as its secondary hint.
   Releasing without intentional travel inserts that hint once; sliding beyond
   touch slop selects another displayed alternate. Ordinary taps, Shift/Caps,
@@ -40,7 +52,7 @@ One-hand reach and visual polish can proceed alongside foundation work.
   [alpha14 snapshot record](plans/active/android-alpha14-snapshot.md); physical-phone
   and assistive-technology acceptance remain open.
 
-- **Accent composition implemented in unreleased source:** **Tools → Compose**
+- **Accent composition released in alpha14:** **Tools → Compose**
   chooses one of ten named Latin marks and then a supported letter, committing one
   complete character with Shift/Caps support. Pending choices clear on cancellation
   and session changes; private drafts use the local editor, while terminal/raw mode
@@ -51,9 +63,9 @@ One-hand reach and visual polish can proceed alongside foundation work.
   18 owned theme/alignment/stage views and existing-panel regression evidence,
   including repeated-session emulator uncertainty. See the
   [accent composition guide](android-latin-compose.md). Dictionaries, reversible
-  correction, full language/complex-script support and physical/release gates remain.
+  correction, full language/complex-script support and physical acceptance remain.
 
-- **Local emoji implemented in unreleased source:** the reviewed
+- **Local emoji released in alpha14:** the reviewed
   [picker and acceptance record](plans/active/android-local-emoji.md) provides
   3,944 fully-qualified Emoji 17 sequences, nine categories, bounded paging,
   local CLDR 48 English search and explicit tone variants. Exact selection
@@ -62,10 +74,9 @@ One-hand reach and visual polish can proceed alongside foundation work.
   75 distinct API 35 instrumentation tests, 19 JVM tests, 14 tooling tests, lint
   with 0 errors and visual review of all 18 owned states. No runtime network,
   clipboard query, history or saved search exists. See the [Android emoji guide](android-emoji.md).
-  Release, physical-phone, landscape, TalkBack/Switch Access and broad-editor
-  gates remain open.
+  Physical-phone, landscape, TalkBack/Switch Access and broad-editor gates remain open.
 
-- **Private draft implemented in unreleased source:** the local editor opens
+- **Private draft released in alpha14:** the local editor opens
   empty from Tools, keeps intermediate edits out of the host and clipboard, and
   inserts the exact completed draft once through the current guarded connection.
   Field/subtype/hide/finish boundaries clear it; password/raw fields do not expose
@@ -74,12 +85,21 @@ One-hand reach and visual polish can proceed alongside foundation work.
   tests and lint (0 errors, 54 warnings). Both themes across all three large
   alignments have been visually inspected. Independent integration review passes.
   The seven-test typing/emoji/voice regression bundle passes after a controlled
-  cold boot of the dedicated emulator. Earlier repeated-session runs lost the IME
-  amid invalid window-token/system-session errors; long-session reliability remains
-  an explicit investigation gap. The
+  cold boot of the dedicated emulator. A post-release test-only fix now clears
+  stale API 34+ UIAutomation state and confirms the Tools view generation before
+  opening a draft; three consecutive five-test class runs and an 18-test mixed IME
+  regression pass on API 35. Broader long-session reliability remains monitored. The
   [acceptance record](plans/active/android-private-draft.md) holds exact evidence.
   See the [private draft guide](android-private-draft.md). Physical, assistive-tech,
-  landscape and release gates remain open.
+  landscape and broad-editor gates remain open.
+
+- **Editing strip and touch preview planned:** Select all, Cut, Copy and Paste
+  already exist in the full Edit panel; a compact banner and explicit local
+  touch-density preview are specified in
+  [the active plan](plans/active/android-editing-strip-and-touch-preview.md).
+  The original keyboard does not yet implement Incognito or a touch preview.
+  Any preview must be Off by default, exclude sensitive fields, avoid text/app
+  identity and persistent touch history, and clear at lifecycle boundaries.
 
 - **Direction decided; implementation in progress:** build Utterleaf's own Android
   foundation. The earlier LatinIME extraction experiment is superseded; no FUTO or
@@ -112,7 +132,7 @@ One-hand reach and visual polish can proceed alongside foundation work.
   and observes the accessibility announcement. Physical-phone comfort and
   TalkBack/Switch Access acceptance remain open.
 
-- **One-hand alignment implemented in source:** Full width (default), Left hand
+- **One-hand alignment released in alpha14:** Full width (default), Left hand
   and Right hand are local preferences, available in Settings and Tools with a
   visible return to Full. Sizing applies on the first measure; narrow displays
   retain the available width. Geometry changes cancel pending gestures, repeated
@@ -122,10 +142,10 @@ One-hand reach and visual polish can proceed alongside foundation work.
   8 JVM tests, 7 tooling tests and lint (0 errors, 47 warnings). The
   [one-hand acceptance record](plans/active/android-one-hand.md) records exact
   runs and owned-view captures. One-hand states and Settings passed visual review
-  with no clipping or theme mismatch. This has not been published in a signed release;
-  physical reach, landscape and assistive-technology acceptance remain open.
+  with no clipping or theme mismatch. Physical reach, landscape and
+  assistive-technology acceptance remain open.
 
-- **Original letter layouts implemented in source:** QWERTY (default), QWERTZ
+- **Original letter layouts released in alpha14:** QWERTY (default), QWERTZ
   and AZERTY are available in Settings and Tools. Letter positions and hints
   follow the choice; accents remain attached to letters. Switching cancels stale
   touch/modifier/delete state, and reset restores QWERTY without deleting models.
@@ -135,26 +155,24 @@ One-hand reach and visual polish can proceed alongside foundation work.
   empty Settings passed visual review;
   see the [letter-layout acceptance record](plans/active/android-letter-layouts.md).
   This is letter-position support, not complete German/French language support,
-  dictionaries or speech-language switching. Physical and release gates remain open.
+  dictionaries or speech-language switching. Physical acceptance remains open.
 
-- **Unreleased after alpha13:** native decode generations, IME subtype/session
-  gates, and optional hold timing. Task list:
+- **Released in alpha14:** native decode generations, IME subtype/session gates,
+  and optional hold timing. Task list:
   [android-keyboard-hardening](plans/active/android-keyboard-hardening.md).
   LatinIME is not imported or scheduled for adoption. Physical-device, TalkBack and
   preference/model upgrade-preservation checks remain open.
 
-- **Alpha14 snapshot preparation:** the current release checkout stages the
-  integrated hardening, rollover, QWERTY/QWERTZ/AZERTY layouts, one-hand
-  alignment, local emoji, Latin compose, private drafts and visible-hint
-  long-press default as an experimental update to the original keyboard.
-  Version code 14 must preserve the alpha03+ signing identity and
-  `org.utterleaf.voice` package. Local snapshot checks pass 14 tooling tests, 31
-  JVM tests, lint with 0 errors and 51 warnings, debug/test APK builds, and the
-  16-test focused API 35 long-press/layout run. The first 135-test PR run exposed
-  four stale instrumentation fixtures after its build/JVM/lint/tooling steps
-  passed; the bounded corrections await a complete exact-SHA rerun. Release build,
-  protected signing and signed update/reinstall remain required. Physical-phone
-  testing is deferred to follow-up user feedback for alpha14 and is not claimed;
+- **Released alpha14:** the [signed experimental update](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha14)
+  publishes the integrated hardening, rollover, QWERTY/QWERTZ/AZERTY layouts,
+  one-hand alignment, local emoji, Latin compose, private drafts and visible-hint
+  long-press default for the original `org.utterleaf.voice` keyboard. Tagged source
+  `46893f2` passed [Android CI 34740122401](https://github.com/RioPlay/utterleaf/actions/runs/34740122401):
+  all 135 API 35 emulator tests, the release build, 31 JVM tests, lint and 14 tooling
+  tests. [Signed publication 34741640577](https://github.com/RioPlay/utterleaf/actions/runs/34741640577)
+  verified the protected signer, increasing version code, package identity, signed
+  install/upgrade/reinstall and published APK/checksum metadata. Physical-phone
+  testing was deferred to follow-up user feedback and is not claimed;
   assistive-technology, landscape, broad-editor and real Obtainium update checks
   remain open.
 
@@ -167,10 +185,10 @@ One-hand reach and visual polish can proceed alongside foundation work.
   [verification and remaining gates](../mobile/next-keyboard/EXECUTION-EVIDENCE.md)
   are recorded separately. Its interaction mockup and performance budgets remain
   proposals. N1 composition, live decoding and physical acceptance are incomplete. Preserve
-  alpha13 and the LatinIME comparison build until measured parity and migration
+  alpha14 and the LatinIME comparison build until measured parity and migration
   gates pass; neither is replaced by these documents.
 - **Foundation preview01, experimental:** a [signed test download](https://github.com/RioPlay/utterleaf/releases/tag/android-foundation-v0.1.0-preview01)
-  is available separately from alpha13. A pinned AOSP LatinIME fork has been
+  is available separately from alpha14. A pinned AOSP LatinIME fork has been
   built and exercised locally with real IME touch input, restricted capabilities
   and comfort preferences. The [execution evidence](../mobile/latinime/EXECUTION-EVIDENCE.md)
   records 12 JVM and 121 API 35 emulator tests, lint limitations, native compilation
@@ -184,7 +202,7 @@ One-hand reach and visual polish can proceed alongside foundation work.
   verified locally; cached layouts retain immutable keyboard-only editor metadata.
   Remaining lifecycle/cache, native hardening and framework recovery
   checks continue. It is not yet integrated
-  into the shipping keyboard; alpha13 remains the released implementation.
+  into the shipping keyboard; alpha14 remains the released implementation.
 
 - **Released alpha12:** compact [quick editing actions](android-quick-actions.md).
   Revision `aec275b` passed [Android CI 34498263015](https://github.com/RioPlay/utterleaf/actions/runs/34498263015):
@@ -280,9 +298,9 @@ Visible toolbar space does not establish implemented suggestions or correction.
 | --- | --- | --- |
 | M1 — Independent foundation selected; security/resource review continues | Independently implemented keyboard; preserve existing session/speech safeguards | Follow the [foundation decision](android-keyboard-foundation-decision.md). Record provenance, required notices, license compatibility, permissions, input-data lifetime, import boundaries and update trust for every resource. Do not import keyboard code/assets merely because their source is visible. |
 | M2 — Partial implementation released; broader everyday/terminal acceptance open | Polished everyday typing, integrated voice and optional power layout | Complete [P1/P2 editing and modifier gates](android-keyboard-capabilities.md#prioritized-capability-and-acceptance-matrix): selection/Unicode/Enter plus Ctrl/Alt, Esc/Tab, navigation and Fn/function keys. Meta and further power features remain planned. Verify text/composition versus raw-key dispatch in named editors/terminals. Type → dictate → correct → type without switching IMEs. Password typing stays available; speech/learning stay disabled there. No stale edit or modifier reaches a new field. |
-| M3 — Partial implementation; alpha06 released, hold refinements in unreleased source | Accessibility and useful customization | Verify enabled/selected keyboard status independently from model/microphone readiness; optional companion steps must not block typing. Validate number row, adjustable key/label sizing, contrast, reachable layouts and independent feedback/repeat preferences. Alpha06 provides optional secondary hints and common Latin accent/symbol selection by long press or Tools → Accents → letter; current source adds adjustable hold timing and makes the visible hint the no-travel hold default while preserving deliberate slide selection. Physical, TalkBack and Switch Access validation remains open. Complete setup, typing, correction, dictation, cancellation and reset using TalkBack and Switch Access. Test system-bar/cutout bounds, large fonts, landscape and stable geometry across symbol pages. |
+| M3 — Partial implementation; alpha14 released, broader accessibility open | Accessibility and useful customization | Verify enabled/selected keyboard status independently from model/microphone readiness; optional companion steps must not block typing. Validate number row, adjustable key/label sizing, contrast, reachable layouts and independent feedback/repeat preferences. Alpha14 includes adjustable hold timing and makes the visible hint the no-travel hold default while preserving deliberate slide selection. Physical, TalkBack and Switch Access validation remains open. Complete setup, typing, correction, dictation, cancellation and reset using TalkBack and Switch Access. Test system-bar/cutout bounds, large fonts, landscape and stable geometry across symbol pages. |
 | M4 — Partial implementation; three English model choices in alpha05 | Comfortable offline speech | Keep one active model; exact catalog size/hash and atomic replacement preserve the previous model on failure. Tiny.en/base.en fixture inference passed CI; small.en inference remains unverified. Measure memory, quality and latency on real hardware. Clear mic/loading/error state, tap start/stop, pause tolerance and accessible preview warning/extension; optional hold mode, longer takes and fuller correction remain work. No promise of recognition for every speech pattern. |
-| M5 — First layout and emoji slices implemented in unreleased source; broader work planned | Languages, correction, composition and optional swipe | Follow [P3/P4 language gates](android-keyboard-capabilities.md#prioritized-capability-and-acceptance-matrix): build from the reviewed QWERTY/QWERTZ/AZERTY positions and local emoji into reviewed dictionaries, accents/compose, snippets and reversible correction, then bounded prediction and licensed swipe. Complex scripts need separate composition evidence. Learning is explicit, local and erasable; no password learning or automatic clipboard history. Power mode preserves literal typing. |
+| M5 — First layout, emoji and Compose slices released in alpha14; broader work planned | Languages, correction, composition and optional swipe | Follow [P3/P4 language gates](android-keyboard-capabilities.md#prioritized-capability-and-acceptance-matrix): build from the reviewed QWERTY/QWERTZ/AZERTY positions and local emoji into reviewed dictionaries, accents/compose, snippets and reversible correction, then bounded prediction and licensed swipe. Complex scripts need separate composition evidence. Learning is explicit, local and erasable; no password learning or automatic clipboard history. Power mode preserves literal typing. |
 | M6 — In progress; persistent signed channel began with alpha03 | Broad compatibility and sustainable distribution | Defined Android/API and ABI support, diverse physical-device matrix, stable protected signing, install/update/rollback-policy testing, reproducible build inputs and release checksums. No forced downgrade or unsigned consumer APK. |
 
 Security and accessibility gates apply to every milestone; they are not deferred
