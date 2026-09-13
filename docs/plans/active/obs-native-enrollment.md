@@ -65,8 +65,8 @@ strictly bounded package with DPAPI CurrentUser and a protected user file DACL.
 Desktop Settings imports this user-selected package into its own private store.
 Neither UI displays or copies the key. Removal of the transfer file is best-effort
 and visible; a copied package remains usable by its Windows user until plugin
-revocation. Forget pairing is separate from Reset defaults. This flow and its
-stores are planned, not implemented by the proof component.
+revocation. Forget pairing is separate from Reset defaults. The storage component
+below implements persistence; the app pairing flow is not exposed yet.
 
 The capability proves possession, not executable identity. It does not protect
 against a compromised process under the same Windows user. DPAPI normally binds
@@ -159,18 +159,18 @@ $output = "C:\Users\unknown\Projects\Mindict\.grok\obs-native-enrollment\integra
 The driver records native and Python client source hashes, compiler, artifacts
 and logs. The test-only heap shim retains the three previously documented local
 import warnings; normal translation units compile with warnings as errors.
-Final independent source/evidence review is clear for this component. The pairing-file flow,
-DPAPI stores, persistence/cancel/forget/reset behavior, vendor JSON adapter,
-atomic Arm, actual OBS invocation and audio integration are not implemented or
-verified. Existing desktop/Android binaries remain unchanged.
+Final independent source/evidence review is clear for this component. Its proof
+tests do not verify the later stores, app pairing flow, vendor JSON adapter,
+atomic Arm or actual OBS/audio integration. Storage evidence is recorded below.
+Existing desktop/Android binaries remain unchanged.
 
-### Next increment: private pairing stores
+### Private pairing stores: contract
 
-Implement the selected export/import and persistence boundary in original native
+The selected export/import and persistence boundary lives in original native
 `src/pairing_store.c/.h` and desktop `utterleaf/obs_pairing_store.py`, with their
-own tests. The existing authorization component accepts a key but neither
-provisions nor persists it. The following is the next implementation contract,
-not a claim that stores or pairing UI already exist.
+own tests. The authorization component accepts a key but neither provisions nor
+persists it. The following contract covers storage; implementation evidence and
+remaining UI/integration gates are separate below.
 
 Use one bounded binary envelope in both languages:
 
@@ -271,8 +271,8 @@ consumer's actual pairing, settings, OBS profile, audio or permissions. Add no
 third-party dependency. Keep native store/test ownership separate from the
 desktop module/tests, with the test driver and docs owned by the integrator.
 
-Once the new module/tests exist, run from the owning worktree with the `$py`,
-`PYTHONPATH` and `$toolchain` values above:
+Run from the owning worktree with the `$py`, `PYTHONPATH` and `$toolchain` values
+above:
 
 ```powershell
 & $py -m pytest tests/test_obs_pairing_store.py tests/test_obs_authorization.py tests/test_obs_control.py tests/test_obs_audio_pipe.py tests/test_windows_pipe.py tests/test_privacy.py tests/test_config.py tests/test_backup.py tests/test_backup_store.py tests/test_repo_boundaries.py -o addopts='' -q
@@ -282,6 +282,50 @@ Once the new module/tests exist, run from the owning worktree with the `$py`,
 Obtain independent source/test/evidence review. Stop editing this component when
 those checks pass, then continue explicit pairing UI and vendor/Arm/audio
 integration.
+
+### Implemented store component and verification
+
+The native store now resolves LocalAppData, creates and validates its private
+directories, generates/persists a role-1 capability, exports role 2, reloads,
+explicitly replaces and forgets. Status codes distinguish missing state,
+existing destinations, corrupt records, unsafe permissions, cancellation,
+cryptographic/I/O failure and a committed write that could not be verified.
+Output keys are cleared on failure. The store does not own a live authorizer;
+the integration owner still must implement the dispatch/revocation ordering
+above. Native destruction requires the caller to quiesce other operations.
+
+Desktop `ObsPairingStore` imports a user-selected role-2 package into its own
+role-3 store, reloads and forgets it. Import requires an explicit replacement
+option for existing state; corrupt/inaccessible state fails visibly. It retains
+the package when deletion is unavailable or final commit verification fails.
+Both implementations hold verified directory handles, reject insecure existing
+objects and keep data out of ordinary config/backup/model/transcript paths.
+Desktop operations serialize within a process; cross-process store ownership
+remains an integration requirement. Construction creates private directories,
+never a capability, capture or connection. Explicit test-root substitutions
+exercise disposable storage; production callers use LocalAppData.
+
+Local verification on September 13 passes **292** targeted desktop tests,
+including **48** pairing tests, with no skips. Real Windows checks cover import,
+reload, explicit replacement, cancellation, corrupt existing state, unsafe ACLs,
+write/commit/delete failures, post-commit uncertainty and unrelated-file
+preservation. The full explicit native driver passes the existing admission,
+authorization and crypto checks, the new five-group store state/fault fixture,
+and five cross-language cases. The latter independently decrypt native role 1,
+import native role 2 into desktop role 3, reload it and use that key for a native
+authorization proof admitting a disposable child process. No pipe worker or PCM
+delivery is started by that interoperability check. A real Windows directory
+junction is rejected by both implementations without creating descendants in
+its target. Native fixture cleanup checks for unexpected temporary artifacts,
+refuses to follow reparse entries and reports cleanup failures.
+
+Normal native translation units compile with warnings as errors; standalone
+native static analysis also passes. The existing test-only heap shim retains
+its three documented local-import warnings. Independent production-source and
+test and final receipt review is clear. These results do not
+verify different-user DPAPI behavior, power-loss durability, consumer pairing
+UI, real OBS dispatch, durable live-authorizer revocation or audio. No components
+are linked into the inert module and no binary is published by this increment.
 
 ### Full enrollment checks
 
