@@ -22,7 +22,8 @@ typedef enum ul_pairing_result {
     UL_PAIRING_CORRUPT = 7,
     UL_PAIRING_CRYPTO_ERROR = 8,
     UL_PAIRING_IO_ERROR = 9,
-    UL_PAIRING_POSTCOMMIT_INVALID = 10
+    UL_PAIRING_POSTCOMMIT_INVALID = 10,
+    UL_PAIRING_IN_USE = 11
 } ul_pairing_result;
 
 typedef struct ul_pairing_cancel {
@@ -51,6 +52,14 @@ ul_pairing_store_open_test_root(const wchar_t *root,
 
 /* The caller must quiesce operations before destroying the store. */
 void ul_pairing_store_destroy(ul_pairing_store *store);
+
+/*
+ * Claim the sole live plugin owner for this user's store. The verified,
+ * noninheritable share-zero owner-v1.lock handle is retained until destroy.
+ * Existing store primitives remain usable without a claim for isolated codec
+ * and migration callers; live plugin state must require a successful claim.
+ */
+ul_pairing_result ul_pairing_store_claim_owner(ul_pairing_store *store);
 
 /* Loads the authoritative role-1 capability. */
 ul_pairing_result ul_pairing_store_load(ul_pairing_store *store,

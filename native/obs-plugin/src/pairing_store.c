@@ -46,9 +46,11 @@ struct ul_pairing_store {
     SRWLOCK lock;
     PSID user_sid;
     DWORD user_sid_size;
+    HANDLE owner;
     ul_handle_set directories;
     wchar_t directory[UL_PAIRING_MAX_PATH_CHARS];
     wchar_t store_path[UL_PAIRING_MAX_PATH_CHARS];
+    wchar_t owner_path[UL_PAIRING_MAX_PATH_CHARS];
 };
 
 static void wipe_free(void *memory, SIZE_T size)
@@ -918,6 +920,7 @@ static ul_pairing_result store_open_root(const wchar_t *root,
     if (store == NULL)
         return UL_PAIRING_IO_ERROR;
     InitializeSRWLock(&store->lock);
+    store->owner = INVALID_HANDLE_VALUE;
     if (!bounded_token_user(&store->user_sid, &store->user_sid_size)) {
         result = UL_PAIRING_IO_ERROR;
         goto cleanup;
@@ -936,6 +939,10 @@ static ul_pairing_result store_open_root(const wchar_t *root,
     if (result != UL_PAIRING_OK)
         goto cleanup;
     if (!join_path(store->directory, L"pairing-v1.dat", store->store_path)) {
+        result = UL_PAIRING_UNSUPPORTED;
+        goto cleanup;
+    }
+    if (!join_path(store->directory, L"owner-v1.lock", store->owner_path)) {
         result = UL_PAIRING_UNSUPPORTED;
         goto cleanup;
     }
@@ -999,10 +1006,69 @@ void ul_pairing_store_destroy(ul_pairing_store *store)
 {
     if (store == NULL)
         return;
+    if (store->owner != INVALID_HANDLE_VALUE)
+        CloseHandle(store->owner);
     handles_close(&store->directories);
     wipe_free(store->user_sid, store->user_sid_size);
     SecureZeroMemory(store, sizeof(*store));
     HeapFree(GetProcessHeap(), 0, store);
+}
+
+ul_pairing_result ul_pairing_store_claim_owner(ul_pairing_store *store)
+{
+    ul_private_security security;
+    HANDLE owner = INVALID_HANDLE_VALUE;
+    LARGE_INTEGER size;
+    ul_pairing_result result = UL_PAIRING_IO_ERROR;
+    DWORD error;
+    bool created = false;
+
+    if (store == NULL)
+        return UL_PAIRING_INVALID_ARGUMENT;
+    SecureZeroMemory(&security, sizeof(security));
+    SecureZeroMemory(&size, sizeof(size));
+    AcquireSRWLockExclusive(&store->lock);
+    if (store->owner != INVALID_HANDLE_VALUE) {
+        result = UL_PAIRING_OK;
+        goto cleanup;
+    }
+    if (!private_security_init(store->user_sid, store->user_sid_size,
+                               &security))
+        goto cleanup;
+    SetLastError(ERROR_SUCCESS);
+    owner = CreateFileW(store->owner_path,
+                        GENERIC_READ | GENERIC_WRITE | READ_CONTROL, 0,
+                        &security.attributes, OPEN_ALWAYS,
+                        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT,
+                        NULL);
+    error = GetLastError();
+    private_security_clear(&security);
+    if (owner == INVALID_HANDLE_VALUE) {
+        result = (error == ERROR_SHARING_VIOLATION || error == ERROR_LOCK_VIOLATION)
+                     ? UL_PAIRING_IN_USE
+                     : UL_PAIRING_IO_ERROR;
+        goto cleanup;
+    }
+    created = error != ERROR_ALREADY_EXISTS;
+    result = validate_disk_object(owner, store->owner_path, false, false);
+    if (result == UL_PAIRING_OK)
+        result = verify_private_security(owner, store->user_sid);
+    if (result == UL_PAIRING_OK &&
+        (!GetFileSizeEx(owner, &size) || size.QuadPart != 0))
+        result = UL_PAIRING_UNSAFE_SECURITY;
+    if (result != UL_PAIRING_OK)
+        goto cleanup;
+    store->owner = owner;
+    owner = INVALID_HANDLE_VALUE;
+
+cleanup:
+    if (owner != INVALID_HANDLE_VALUE)
+        CloseHandle(owner);
+    if (created && result != UL_PAIRING_OK)
+        DeleteFileW(store->owner_path);
+    private_security_clear(&security);
+    ReleaseSRWLockExclusive(&store->lock);
+    return result;
 }
 
 ul_pairing_result ul_pairing_store_load(ul_pairing_store *store,
