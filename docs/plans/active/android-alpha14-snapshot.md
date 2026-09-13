@@ -67,6 +67,15 @@ release signing:
   the displayed alternate strip and keeps the layout-switch cancellation,
   stale-release and modifier assertions intact. Independent test review passed.
 
+The first pull-request CI run, [34738528821](https://github.com/RioPlay/utterleaf/actions/runs/34738528821),
+passed the build, JVM, lint and tooling steps, then ran all 135 API 35 tests with
+4 failures and 0 skips. The bounded corrections make the Geometry test click
+the same ready accessibility node within its existing wait, include the Hold
+timing slider in tuning expectations, open Tools before using a Tools-only quick
+toggle, and persist the terminal-mode one-hand fixture before preference
+synchronization. The corrected test sources compile locally; the complete
+workflow must pass on their exact commit before release signing.
+
 The signed path is the main-only `.github/workflows/android-release.yml`
 workflow: dispatch with the existing `android-v0.1.0-alpha14` tag and exact
 successful Android build run, use the protected `android-release` environment,
@@ -78,10 +87,12 @@ reinstall before publishing the prerelease assets.
 
 The full Android CI workflow for the final exact SHA, `assembleRelease`, protected
 release signing, certificate/version checks, signed install/upgrade/reinstall and
-artifact publication remain pending. Physical phones, TalkBack, Switch Access,
-landscape and broad editor compatibility, and real Obtainium import/update
-behavior remain unverified. These limits must stay in the release notes and
-publication description.
+artifact publication remain pending. TalkBack, Switch Access, landscape and broad
+editor compatibility, and real Obtainium import/update behavior remain unverified.
+Physical-phone testing is also unverified; for alpha14 it is deferred to follow-up
+user feedback rather than blocking publication. These limits must stay in the
+release notes and publication description, and no physical-device verification
+may be claimed.
 
 ## Stop
 

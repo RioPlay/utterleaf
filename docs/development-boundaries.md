@@ -48,6 +48,9 @@ source revision. Android release publication uses a separate manually dispatched
 do not upload Android artifacts to a desktop release or replace desktop's stable
 latest release with a mobile alpha. The mobile release key is kept in a main-only GitHub environment. Physical update
 testing and offline key backup remain acceptance gates.
+For the alpha14 snapshot only, physical-phone testing is deferred to follow-up
+feedback; automated signed install/upgrade/reinstall, signing and certificate
+checks remain release gates.
 
 If branch protection later requires always-present checks, use a routing/gate job
 instead of workflow path skipping so unrelated changes do not wait on missing checks.

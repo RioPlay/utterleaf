@@ -143,8 +143,9 @@ class KeyboardGeometryTest {
     }
 
     private fun press(label: String) {
-        await("Missing $label") { node(label)?.isEnabled == true }
-        assertTrue("Could not press $label", node(label)!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+        await("Could not press $label") {
+            node(label)?.let { it.isEnabled && it.performAction(AccessibilityNodeInfo.ACTION_CLICK) } == true
+        }
         instrumentation.waitForIdleSync()
     }
 

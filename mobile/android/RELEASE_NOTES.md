@@ -10,9 +10,10 @@
   default for long-press alternate selection.
 - The long-press hint behavior has source and independent review evidence, and
   its focused API 35 gesture/layout run passes all 16 tests. Full exact-SHA CI,
-  protected signing, signed upgrade/reinstall, physical-phone, TalkBack, Switch
-  Access, landscape, broad editor and real Obtainium update acceptance remain
-  open.
+  protected signing and signed upgrade/reinstall remain required. TalkBack,
+  Switch Access, landscape, broad editor and real Obtainium update acceptance
+  remain open. Physical-phone testing is deferred to follow-up user feedback for
+  this alpha and has not been performed.
 - This release does not include the separate experimental foundation package
   (`org.utterleaf.keyboard.experimental`) or any code from `mobile/latinime`.
 

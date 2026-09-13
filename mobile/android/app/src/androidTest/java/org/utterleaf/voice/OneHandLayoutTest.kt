@@ -178,6 +178,7 @@ class OneHandLayoutTest {
         val original = KeyboardOptions.load(context)
         val f = attachedFixture()
         try {
+            KeyboardOptions(terminal = true, holdDelayMs = 250).save(context)
             instrumentation.runOnMainSync {
                 fun key(description: String) = buttons(f.panel.view).single { it.contentDescription == description }
                 key("Keyboard tools").performClick()

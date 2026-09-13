@@ -150,10 +150,13 @@ One-hand reach and visual polish can proceed alongside foundation work.
   Version code 14 must preserve the alpha03+ signing identity and
   `org.utterleaf.voice` package. Local snapshot checks pass 14 tooling tests, 31
   JVM tests, lint with 0 errors and 51 warnings, debug/test APK builds, and the
-  16-test focused API 35 long-press/layout run. Full exact-SHA CI, release build,
-  protected signing, signed update/reinstall, physical, assistive-technology,
-  landscape, broad-editor and real Obtainium update checks remain open; this
-  preparation does not make those claims.
+  16-test focused API 35 long-press/layout run. The first 135-test PR run exposed
+  four stale instrumentation fixtures after its build/JVM/lint/tooling steps
+  passed; the bounded corrections await a complete exact-SHA rerun. Release build,
+  protected signing and signed update/reinstall remain required. Physical-phone
+  testing is deferred to follow-up user feedback for alpha14 and is not claimed;
+  assistive-technology, landscape, broad-editor and real Obtainium update checks
+  remain open.
 
 - **New core, first native N1 slice:** the user requested a smaller,
   Kotlin-owned keyboard/voice system after reviewing LatinIME's integration cost.
