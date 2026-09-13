@@ -26,12 +26,22 @@ event: a synchronous OBS failure lacking that event can require a later complete
 stream lifecycle or OBS restart before fresh Arm. PCM, the visible capture
 controller, live recognition and actual frontend acceptance remain open.
 
+The next [PCM increment](../../docs/plans/active/obs-pcm-stream.md) adds a native
+wire encoder, fixed-size planar callback queue and worker-only libobs stereo
+conversion. All 42 canonical verification commands, the linked build and
+headless smoke pass. Synthetic checks cover ordering/loss, independent wire
+vectors and six rates across all seven known OBS speaker layouts. Surround
+uses OBS's stereo downmix, which omits LFE. These components are not yet connected
+to session capture; actual mix attachment, PCM delivery and live support remain
+open. The native test driver needs the desktop virtualenv for NumPy-backed
+protocol validation, and `--build` plus `--headers` for conversion fixtures.
+
 ## Inputs and legal boundary
 
 `dependencies.json` pins the exact OBS source revision
-`ba2f32bdf791005443988a4955e963663e16b1ed` for 40 public resources, including the
-frontend header, configuration template and license. The obs-websocket API header
-is pinned separately at `1ef34bf48110c2a18184e50e41cd0b1a855e2147`, for 41 total
+`ba2f32bdf791005443988a4955e963663e16b1ed` for 41 public resources, including the
+frontend and audio-resampler headers, configuration template and license. The obs-websocket API header
+is pinned separately at `1ef34bf48110c2a18184e50e41cd0b1a855e2147`, for 42 total
 resources. The build verifies every
 resource's URL, byte count and SHA-256 before compiling. It generates
 `obsconfig.h`, derives local import libraries from installed `obs.dll` and

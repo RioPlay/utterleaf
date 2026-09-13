@@ -1,0 +1,3 @@
+LIBRARY utterleaf-audio-convert-test
+EXPORTS
+    main

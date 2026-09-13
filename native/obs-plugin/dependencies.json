@@ -2,6 +2,12 @@
   "obs_revision": "ba2f32bdf791005443988a4955e963663e16b1ed",
   "obs_websocket_revision": "1ef34bf48110c2a18184e50e41cd0b1a855e2147",
   "resources": {
+    "libobs/media-io/audio-resampler.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/media-io/audio-resampler.h",
+      "sha256": "f10fe20d41dab554661ea590b9274bb58035dd7d0ffbda91ba5e197b407b7e57",
+      "git_blob_sha1": "ca1e7b08d5800006ab8ff92f5da0b66a4d3ef855",
+      "bytes": 1569
+    },
     "frontend/api/obs-frontend-api.h": {
       "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/frontend/api/obs-frontend-api.h",
       "sha256": "e6f332c0cfbb8ea3c5faf7861a170412626dd5633c3bc0de4c54e2e3921f758a",

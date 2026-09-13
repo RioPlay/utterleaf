@@ -109,7 +109,7 @@ restrictive DACL/client authentication, atomic arming/start coordination,
 controller/UI, live recognition and streaming-load acceptance remain open.
 The original C-only [development module](../native/obs-plugin/README.md) first
 established the inert build/load prerequisite through PR #32 at `e61c7dd`.
-The current linked module builds against 41 pinned OBS/frontend/vendor public
+The current linked module builds against 42 pinned OBS/frontend/vendor public
 resources and deliberately refuses headless initialization before opening its
 pairing store. The isolated fixture starts no OBS application or audio sources.
 The separate [native session components](plans/active/obs-native-session.md) now
@@ -192,7 +192,16 @@ is clear. Startup/started/stopping states remain busy even when public activity
 flags are false; a failed start without STOPPED requires a later actual STOPPED
 or OBS restart before fresh Arm. Visible failure/recovery controls and real OBS
 acceptance remain pending with the controller/PCM work. This is source work,
-not live OBS support or a new release.
+not live OBS support or a new release. All five desktop jobs for Arm source
+`073bb99` passed in [CI 34763204298](https://github.com/RioPlay/utterleaf/actions/runs/34763204298).
+
+The active [native PCM plan](plans/active/obs-pcm-stream.md) now has an original
+wire encoder, bounded planar copy queue and worker-only libobs stereo conversion
+in the development DLL. All 42 canonical native commands and headless smoke pass;
+synthetic conversion covers all six supported rates and seven OBS speaker layouts.
+The thread fixture forces queue loss and slot reuse. These components are not yet
+called by session capture. Actual callback attachment, stream delivery/teardown,
+visible control, local recognition and live OBS acceptance remain open.
 
 Current integrated desktop regression: **1,432 passed, 13 skipped in 39.47 seconds**,
 including the reviewed OBS control, native identity, pipe and audio handshake.

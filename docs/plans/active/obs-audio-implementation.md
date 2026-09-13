@@ -292,6 +292,18 @@ monotonic media clock with cumulative-frame integer conversion, not wall-clock
 timestamps or independently rounded block durations. These are source-derived
 design constraints, not measurements of an installed integration.
 
+### Native PCM components
+
+The [native PCM plan](obs-pcm-stream.md) records the original packet encoder,
+bounded planar queue and worker-only stereo conversion now linked into the
+development DLL. Independent wire vectors, Python decoding, explicit concurrent
+queue reuse/loss and synthetic libobs conversion across the supported rates and
+layouts pass in 42 canonical native commands. Callback attachment and session
+delivery are not yet connected; a passing component build does not make live
+OBS transcription available. Surround is downmixed using OBS's stereo behavior,
+including LFE omission. A Gap still terminates the current Python session as
+incomplete, with only the earlier prefix recoverable.
+
 ## Constraints, non-goals and stop
 
 Preserve existing uncommitted work, original code and desktop/Android separation.

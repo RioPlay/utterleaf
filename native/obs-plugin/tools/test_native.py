@@ -1,4 +1,4 @@
-"""Exercise Windows pairing/runtime and optional libobs dispatch without audio."""
+"""Verify native runtime, PCM components and optional libobs with synthetic data."""
 # SPDX-License-Identifier: GPL-2.0-or-later
 from __future__ import annotations
 
@@ -45,6 +45,10 @@ def main() -> None:
     sources = [ROOT / name for name in (
         "src/handshake.c", "src/handshake.h", "src/admission.c", "src/admission.h",
         "src/session_protocol.c", "src/session_protocol.h", "tests/session_protocol_test.c",
+        "src/audio_protocol.c", "src/audio_protocol.h", "tests/audio_protocol_test.c",
+        "tests/test_audio_protocol.py", "src/audio_queue.c", "src/audio_queue.h",
+        "tests/audio_queue_test.c", "src/audio_convert.c", "src/audio_convert.h",
+        "tests/audio_convert_test.c", "tests/audio_convert.def", "tests/test_audio_convert.py",
         "tests/admission_io_test.c", "tests/admission_io_fault_test.c",
         "src/crypto.c", "src/crypto.h",
         "src/authorization.c", "src/authorization.h",
@@ -65,6 +69,7 @@ def main() -> None:
     source_hashes = {str(path.relative_to(ROOT)): digest(path) for path in sources}
     client_sources = [REPO / name for name in (
         "utterleaf/obs_authorization.py", "utterleaf/obs_pairing_store.py", "utterleaf/windows_pipe.py",
+        "utterleaf/obs_protocol.py",
     )]
     client_hashes = {str(path.relative_to(REPO)): digest(path) for path in client_sources}
     dispatch_inputs = {}
@@ -121,9 +126,19 @@ def main() -> None:
     pairing_state = output / "pairing_store_test.exe"
     plugin_state = output / "plugin_state_test.exe"
     session_protocol = output / "session_protocol_test.exe"
+    audio_protocol = output / "audio_protocol_test.exe"
+    audio_queue = output / "audio_queue_test.exe"
     admission_io = output / "admission_io_test.exe"
     admission_io_fault = output / "admission_io_fault_test.exe"
     run("compiler", [compiler, "--version"])
+    run("audio-protocol-build", [*flags, ROOT / "src/audio_protocol.c",
+                                  ROOT / "tests/audio_protocol_test.c", "-o", audio_protocol])
+    # ULAP validation imports NumPy; retain the caller's desktop virtualenv.
+    run("audio-protocol-interop", [sys.executable, ROOT / "tests/test_audio_protocol.py",
+                                    "--executable", audio_protocol])
+    run("audio-queue-build", [*flags, "-D_M_X64=100", ROOT / "tests/audio_queue_test.c",
+                               "-o", audio_queue])
+    run("audio-queue-test", [audio_queue])
     run("session-protocol-build", [*flags, ROOT / "src/session_protocol.c",
                                     ROOT / "tests/session_protocol_test.c", "-o", session_protocol])
     run("session-protocol-test", [session_protocol])
@@ -193,8 +208,22 @@ def main() -> None:
                                   pairing_dll, authorization_dll])
     artifacts = [fixed, fault, identity, dll, crypto, authorization_state, authorization_dll,
                  pairing_state, pairing_dll, plugin_state, session_protocol, admission_io,
-                 admission_io_fault]
+                 admission_io_fault, audio_protocol, audio_queue]
     if args.build is not None:
+        convert_stub = output / "audio_convert_stub_test.exe"
+        convert_dll = output / "utterleaf-audio-convert-test.dll"
+        convert_flags = [*flags, f"-I{headers / 'libobs'}", f"-I{build}"]
+        run("audio-convert-stub-build", [*convert_flags, ROOT / "tests/audio_convert_test.c",
+                                          "-o", convert_stub])
+        run("audio-convert-stub-test", [convert_stub])
+        run("audio-convert-libobs-build", [*convert_flags, "-DUL_AUDIO_CONVERT_REAL", "-shared",
+                                            ROOT / "src/audio_convert.c",
+                                            ROOT / "tests/audio_convert_test.c",
+                                            ROOT / "tests/audio_convert.def", build / "libobs.dll.a",
+                                            "-Wl,--exclude-all-symbols", "-o", convert_dll])
+        run("audio-convert-libobs-test", [sys._base_executable, ROOT / "tests/test_audio_convert.py",
+                                           runtime, convert_dll])
+        artifacts.extend((convert_stub, convert_dll))
         bridge_test = output / "bridge_test.exe"
         run("bridge-wrapper-build", [*flags, "-D_M_X64=100", f"-I{headers / 'libobs'}",
                                      f"-I{headers / 'frontend/api'}", f"-I{headers / 'obs-websocket'}",
@@ -221,8 +250,9 @@ def main() -> None:
     if any(digest(path) != expected for path, expected in dispatch_inputs.items()):
         raise RuntimeError("Reviewed dispatch inputs changed during verification")
     receipt = {
-        "schema": 2, "scope": "pairing/admission/Arm runtime fixtures; optional parsed libobs dispatch; no OBS application or audio",
+        "schema": 2, "scope": "pairing/admission/Arm and PCM component fixtures; optional libobs dispatch and synthetic conversion; no OBS application or audio devices",
         "vendor_dispatch": "passed" if args.build is not None else "not run: supply --build and --headers",
+        "audio_conversion": "passed: synthetic libobs and fault fixtures" if args.build is not None else "not run: supply --build and --headers",
         "native_dialog": "passed" if args.ui else "not run: supply --ui on a Windows desktop",
         "dispatch_inputs": {str(path): expected for path, expected in dispatch_inputs.items()},
         "sources": source_hashes, "client_sources": client_hashes,
