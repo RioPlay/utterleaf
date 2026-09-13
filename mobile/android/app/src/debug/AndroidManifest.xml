@@ -3,5 +3,7 @@
         <!-- Instrumentation-only synthetic fields; absent from the release variant. -->
         <activity android:name=".KeyboardTestActivity" android:exported="false"
             android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />
+        <activity android:name=".KeyboardEditorContractActivity" android:exported="false"
+            android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />
     </application>
 </manifest>

@@ -1,4 +1,29 @@
-# Utterleaf Android 0.1.0-alpha13
+# Utterleaf Android 0.1.0-alpha14
+
+- Alpha14 is an experimental update to the original `org.utterleaf.voice`
+  keyboard. It keeps the alpha03-and-later signing identity and increases the
+  Android version code to 14. Install over a signed alpha13 release; do not
+  uninstall to update.
+- This snapshot includes the reviewed editor/session hardening, continuous
+  two-thumb rollover, QWERTY/QWERTZ/AZERTY layouts, one-hand alignment,
+  local emoji browsing, Latin compose, private drafts, and the visible-hint
+  default for long-press alternate selection.
+- The long-press hint behavior has source and independent review evidence, and
+  its focused API 35 gesture/layout run passes all 16 tests. Full exact-SHA CI,
+  protected signing, signed upgrade/reinstall, physical-phone, TalkBack, Switch
+  Access, landscape, broad editor and real Obtainium update acceptance remain
+  open.
+- This release does not include the separate experimental foundation package
+  (`org.utterleaf.keyboard.experimental`) or any code from `mobile/latinime`.
+
+## Release scope and limits
+
+Alpha14 remains an English, CPU-only experimental keyboard. The source changes
+listed above are bounded additions to the existing keyboard; prediction, swipe,
+ambient capture, clipboard history, contact learning, network access and
+arbitrary model/plugin loading remain outside this release. Emulator results
+are regression evidence and do not establish physical-device or accessibility
+usability.
 
 - Key-height and bottom-space sliders expose their displayed values to
   accessibility services, including after Reset.
@@ -137,8 +162,9 @@ Dictation is explicit and remains disabled in password fields.
 
 ## Install and updates
 
-Use **Utterleaf-Android-0.1.0-alpha07.apk**, version code 7. It uses the persistent
-alpha03–alpha06 signing identity and supports installing over those releases.
+Use **Utterleaf-Android-0.1.0-alpha14.apk**, version code 14. It uses the
+persistent alpha03-and-later signing identity and supports installing over
+those releases.
 Do not uninstall first: Android removes app settings and the model on uninstall.
 Alpha01/alpha02 used disposable debug keys and require a one-time uninstall.
 

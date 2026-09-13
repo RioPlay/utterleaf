@@ -1,11 +1,86 @@
 # Android typing surface
 
-## Released in alpha12
+The [product specification](android-keyboard-product-spec.md) defines the target
+Daily/Edit/Voice flows, visual and accessibility gates, and independent keyboard
+foundation. The [rebuild plan](plans/active/android-keyboard-rebuild.md) tracks
+upcoming implementation; the release sections below retain their historical scope.
 
-**Edit** opens editor actions and navigation in place of the letters; **ABC**
-returns to typing. [Quick-action design, release evidence and editor limits](android-quick-actions.md)
-record revision `aec275b`, its 74-test emulator pass and signed publication.
-The alpha11 and earlier sections below describe those releases unchanged.
+## Unreleased source after alpha13
+
+Terminal controls now respect the separate **Number row** preference. A rejected
+key/action gives brief feedback without adding a row or moving the current keys;
+another action or a session change clears old feedback. The voice glyph follows
+the key's theme/focus color for contrast. The September 12 ergonomics pass was
+independently reviewed and passed 29 API 35 instrumented tests, 8 JVM tests and
+lint (0 errors, 47 warnings). Normal, number, terminal, protected-field failure
+and large light/dark live-view renders were inspected. System screenshot
+protection stays enabled; view renders omit the target editor and system Toasts.
+Actual accessibility events and unchanged selected protected-field text were
+checked separately. Physical accessibility remains open.
+
+**One-hand layout:** Keyboard preferences now offers **Full width**, **Left hand**
+and **Right hand**. The same choices appear as selected **Full / Left / Right**
+buttons in Tools, so returning to Full does not require leaving the editor.
+Choices save on this device; resetting preferences restores Full and preserves
+models and user data. Side layouts use a bounded narrower column on wider screens
+and the available full width on narrow screens. All typing, editing and terminal
+layers follow the choice. Parent resizes and alignment changes cancel pending
+touches, held deletion and modifiers. See the
+[one-hand acceptance record](plans/active/android-one-hand.md) for current checks
+and the remaining physical-phone and assistive-technology gates.
+
+**Letter layout:** choose **QWERTY**, **QWERTZ** or **AZERTY** in Keyboard
+preferences or directly in Tools. The active choice is highlighted and saved
+locally. QWERTY is the default and returns after Reset; the choice is independent
+of Full/Left/Right alignment. Digit/symbol hints follow key positions, while
+accents stay with their letters in both hold/slide and Tools → Accents.
+Changing layout cancels pending touches, held deletion and modifiers.
+The [letter-layout record](plans/active/android-letter-layouts.md) separates
+source, emulator and physical acceptance. These choices change letter positions;
+they do not select a speech model or add spelling, correction or full national
+keyboard conventions.
+
+**Local emoji:** the daily toolbar now presents **Tools**, **Edit**, **Emoji**
+and **Voice**; number-row and Terminal toggles are at the top of Tools. Emoji
+opens a local browser with nine categories, bounded pages, English name/keyword
+search and explicit variants. Search has its own staggered letter keys and never
+types the query into the host editor. One explicit result tap inserts the exact
+fully-qualified Unicode sequence once without a space or editor action. Raw
+fields disable entry. Query state clears on field/subtype change, hide, return
+and disposal, with no clipboard query, history or network access. See the
+[user guide](android-emoji.md), [resource record](android-emoji-resource.md) and
+[acceptance evidence](plans/active/android-local-emoji.md). This is reviewed API
+35 emulator/source behavior in unreleased source; physical phones, landscape,
+assistive technology and broad host editors remain open.
+
+Ordinary letters, numbers and punctuation now support continuous two-thumb
+rollover through the keyboard surface. Input follows press order even when fingers
+lift in the opposite order. Slide-off is permanent cancellation for that press;
+changed geometry, reset/detach and an already-open hold picker cannot release a
+stale base character. The router permits two active pointers and at most 32 deferred
+presses; overflow cancels pending output. Space gestures, modifiers and utility
+buttons keep their separately tested behavior rather than joining ordinary rollover.
+
+Local September 12 validation: 8 JVM and 33 API 35 emulator tests pass with zero
+failures/errors/skips; Android tooling has 7 passing tests. The focused instrumented
+bundle covers rollover, 1,000 continuous synthetic characters, existing holds,
+space/Shift-space gestures, modifiers, delete repeat, alternates and tuning.
+Lint passes with 0 errors and 48 existing warnings. These checks do not establish
+phone comfort, arbitrary multitouch, glide typing or complete layout acceptance.
+
+Hold timing is now an explicit preference: system default, or 250–800 ms in 50 ms
+steps. It only changes when the accent/punctuation preview strip opens. A tap still
+types the key, and Tools → Accents remains. Reset restores the system default and
+does not delete models.
+
+Native speech decode now uses a work generation: `reset()` starts a new generation,
+`cancel()` marks the current one stale, and an older in-flight decode cannot return
+text after a newer `reset()`. `KeyboardIme` also invalidates on subtype changes and
+gates every commit/key/editor callback on the current UI generation.
+
+These are source changes, not a published APK. Emulator coverage is still
+regression evidence, not physical-device or accessibility acceptance. LatinIME is
+not in the product tree.
 
 ## Released in alpha13
 
@@ -33,6 +108,16 @@ reopened before asynchronous dismissal completed, and a live-IME action used a
 stale accessibility node after editor restart. Tests now await window/panel
 transitions and exercise current native IME buttons. All output, persistence and
 stale-action assertions remain. Production gesture behavior was not changed.
+## Released in alpha12
+
+The toolbar now includes an **Edit** action panel that replaces the letter area while
+open. It dispatches host-editor commands for Undo, Redo, Select all, Cut, Copy,
+Paste, cursor movement, selection mode, Home and End; it does not implement
+clipboard history or private undo state.
+
+See [quick editing actions](android-quick-actions.md) and
+[release notes](../mobile/android/RELEASE_NOTES.md). Revision `aec275b` added this
+coverage and is linked from the signed release notes.
 
 ## Released in alpha11
 
@@ -211,6 +296,7 @@ remains protected against screenshots. CI captures only a synthetic debug test
 window, temporarily restoring visibility within instrumentation and restoring its
 secure flag immediately afterward.
 
-Suggestions, autocorrect, multilingual layouts, emoji and swipe typing remain
-separate [roadmap work](mobile-roadmap.md). A better-looking keyboard does not
-make these features implemented.
+Suggestions, autocorrect, broader multilingual support, compose/dead keys and
+swipe typing remain separate [roadmap work](mobile-roadmap.md). Local emoji and
+QWERTY/QWERTZ/AZERTY positions are implemented only in unreleased source as
+described above; they do not establish those broader capabilities.

@@ -14,7 +14,9 @@ class VoiceIme : InputMethodService() {
     override fun onCreateInputView(): View {
         window.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         panel = VoicePanel(this, { text ->
-            allowed && currentInputConnection?.commitText(text, 1) == true
+            val current = currentInputEditorInfo
+            allowed && current != null && safeField(current.inputType) &&
+                currentInputConnection?.commitText(text, 1) == true
         }, { returnKeyboard() })
         return panel!!.view.also { Ui.applySystemInsets(it, navigationOnly = true) }
     }

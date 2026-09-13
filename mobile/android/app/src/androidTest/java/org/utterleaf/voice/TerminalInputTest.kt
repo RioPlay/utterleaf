@@ -1,5 +1,6 @@
 package org.utterleaf.voice
 
+import android.text.InputType
 import android.view.InputDevice
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
@@ -170,13 +171,28 @@ class TerminalInputTest {
         assertTrue(connection.commits.isEmpty())
     }
 
+    @Test fun rawModeTypesShellTokensAsKeyEventsNeverCommitText() = withConnection { connection ->
+        val expected = listOf(
+            "l" to KeyEvent.KEYCODE_L, "s" to KeyEvent.KEYCODE_S, " " to KeyEvent.KEYCODE_SPACE,
+            "-" to KeyEvent.KEYCODE_MINUS, "." to KeyEvent.KEYCODE_PERIOD, "/" to KeyEvent.KEYCODE_SLASH)
+        for ((character, code) in expected) {
+            connection.events.clear()
+            assertTrue("Raw mode rejected '$character'", TerminalInput.printable(connection, character, forceKeyEvents=true))
+            assertBalanced(connection.events)
+            assertTrue(connection.events.all { it.keyCode == code && !it.isCtrlPressed && !it.isAltPressed && !it.isShiftPressed })
+        }
+        assertTrue(connection.commits.isEmpty())
+        assertFalse(TerminalInput.printable(connection, "ls", forceKeyEvents=true))
+        assertTrue(connection.commits.isEmpty())
+    }
+
     @Test fun panelModifiersAreOneShotAndResetAcrossFields() {
         instrumentation.runOnMainSync {
             val plain = mutableListOf<String>()
             val modified = mutableListOf<Triple<String, Boolean, Boolean>>()
             val special = mutableListOf<List<Any>>()
             var accepted = true
-            val panel = TypingPanel(instrumentation.targetContext, KeyboardOptions(terminal=true),
+            val panel = TypingPanel(instrumentation.targetContext, KeyboardOptions(terminal=true, numberRow=true),
                 { plain.add(it); accepted }, {}, {}, {}, {}, {}, {},
                 { code, ctrl, alt, shift -> special.add(listOf(code, ctrl, alt, shift)); accepted },
                 { text, ctrl, alt -> modified.add(Triple(text, ctrl, alt)); accepted })
@@ -244,7 +260,7 @@ class TerminalInputTest {
             assertFalse(buttons(numbers.view).any { it.contentDescription == "Control off" })
             val terminal = panel(KeyboardOptions(terminal=true))
             fun key(label: String) = buttons(terminal.view).single { it.contentDescription == label }
-            assertTrue(buttons(terminal.view).any { it.contentDescription == "1" })
+            assertFalse(buttons(terminal.view).any { it.contentDescription == "1" })
             key("Function keys").performClick()
             assertFalse(buttons(terminal.view).any { it.contentDescription == "1" })
             key("F1").performClick(); key("F12").performClick()
@@ -254,7 +270,7 @@ class TerminalInputTest {
                 KeyEvent.KEYCODE_INSERT, KeyEvent.KEYCODE_PAGE_UP, KeyEvent.KEYCODE_DPAD_LEFT), codes)
             assertTrue(buttons(terminal.view).all { !it.contentDescription.isNullOrBlank() && it.isFocusable })
             key("Function keys").performClick()
-            assertTrue(buttons(terminal.view).any { it.contentDescription == "1" })
+            assertFalse(buttons(terminal.view).any { it.contentDescription == "1" })
             assertFalse(buttons(terminal.view).any { it.contentDescription == "F1" })
         }
     }
@@ -298,6 +314,36 @@ class TerminalInputTest {
                 assertTrue(buttons(panel.view).any { it.contentDescription == "q" })
                 assertFalse(buttons(panel.view).any { it.contentDescription == "F1" })
             }
+        }
+    }
+
+    @Test fun refusedTerminalKeysLeaveThePanelGeometryUntouched() {
+        instrumentation.runOnMainSync {
+            var accepted = false
+            val special = mutableListOf<Int>()
+            val panel = TypingPanel(instrumentation.targetContext, KeyboardOptions(terminal=true, numberRow=true),
+                { true }, {}, {}, {}, {}, {}, {},
+                { code, _, _, _ -> special.add(code); accepted })
+            fun buttons(view: View): List<android.widget.Button> = when (view) {
+                is android.widget.Button -> listOf(view)
+                is android.view.ViewGroup -> (0 until view.childCount).flatMap { buttons(view.getChildAt(it)) }
+                else -> emptyList()
+            }
+            fun key(label: String) = buttons(panel.view).single { it.contentDescription == label }
+            fun height(): Int {
+                panel.view.measure(View.MeasureSpec.makeMeasureSpec(Ui.dp(instrumentation.targetContext, 320), View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+                return panel.view.measuredHeight
+            }
+            panel.reset(true, false, "Enter")
+            val before = height()
+            key("Escape").performClick()
+            assertEquals(listOf(KeyEvent.KEYCODE_ESCAPE), special)
+            assertEquals(before, height())
+            accepted = true
+            key("Tab").performClick()
+            assertEquals(listOf(KeyEvent.KEYCODE_ESCAPE, KeyEvent.KEYCODE_TAB), special)
+            assertEquals(before, height())
         }
     }
 }

@@ -2,7 +2,7 @@
 
 [Roadmap hub](roadmap.md) · [Execution plan](execution-plan.md) · [Current mobile preview](mobile.md) · [Ideas](ideas.md)
 
-Updated September 11, 2026. Product direction: a complete, customizable Utterleaf
+Updated September 12, 2026. Product direction: a complete, customizable Utterleaf
 keyboard with integrated offline speech, its own identity, and security first.
 The design uses historical public documentation as research context, not as a
 specification, dependency or source of product identity.
@@ -18,7 +18,142 @@ touch research and ten concrete user reports into a Daily/Edit/Terminal proposal
 default-versus-optional decisions and security acceptance contracts. It refines this
 roadmap without claiming those capabilities are already released.
 
+The [Android product specification](android-keyboard-product-spec.md) now defines
+the independent foundation, current FUTO capability benchmark, direct community
+evidence and complete interaction flows. Design, accessibility, correctness,
+privacy and responsiveness are acceptance requirements for each increment.
+The [rebuild plan](plans/active/android-keyboard-rebuild.md) sequences touch/editor
+correctness, daily ergonomics, language/repair and evaluated prediction/swipe.
+One-hand reach and visual polish can proceed alongside foundation work.
+
 ## Current status
+
+- **Long-press hint default implemented in unreleased source:** holding a letter
+  preselects the same positional symbol or digit shown as its secondary hint.
+  Releasing without intentional travel inserts that hint once; sliding beyond
+  touch slop selects another displayed alternate. Ordinary taps, Shift/Caps,
+  period punctuation and Tools → Accents retain their separate behavior. Outside,
+  cancellation, multi-touch, geometry and lifecycle guards remain fail closed.
+  Eight focused JVM catalog/layout tests and 16 focused API 35 gesture/layout
+  tests pass. The debug and Android test APKs build, and independent test review
+  is complete; exact local evidence is recorded in the
+  [alpha14 snapshot record](plans/active/android-alpha14-snapshot.md); physical-phone
+  and assistive-technology acceptance remain open.
+
+- **Accent composition implemented in unreleased source:** **Tools → Compose**
+  chooses one of ten named Latin marks and then a supported letter, committing one
+  complete character with Shift/Caps support. Pending choices clear on cancellation
+  and session changes; private drafts use the local editor, while terminal/raw mode
+  stays literal. Independent review resolved detach/reattach callback invalidation
+  and unsupported Unicode case mappings. Eight focused API 35 checks and all
+  31 project JVM tests pass; lint has 0 errors and 54 warnings. The
+  [Compose acceptance record](plans/active/android-latin-compose.md) records the
+  18 owned theme/alignment/stage views and existing-panel regression evidence,
+  including repeated-session emulator uncertainty. See the
+  [accent composition guide](android-latin-compose.md). Dictionaries, reversible
+  correction, full language/complex-script support and physical/release gates remain.
+
+- **Local emoji implemented in unreleased source:** the reviewed
+  [picker and acceptance record](plans/active/android-local-emoji.md) provides
+  3,944 fully-qualified Emoji 17 sequences, nine categories, bounded paging,
+  local CLDR 48 English search and explicit tone variants. Exact selection
+  replacement passed the native IME fixture; raw fields disable the picker and
+  transient queries clear across session boundaries. Final evidence includes
+  75 distinct API 35 instrumentation tests, 19 JVM tests, 14 tooling tests, lint
+  with 0 errors and visual review of all 18 owned states. No runtime network,
+  clipboard query, history or saved search exists. See the [Android emoji guide](android-emoji.md).
+  Release, physical-phone, landscape, TalkBack/Switch Access and broad-editor
+  gates remain open.
+
+- **Private draft implemented in unreleased source:** the local editor opens
+  empty from Tools, keeps intermediate edits out of the host and clipboard, and
+  inserts the exact completed draft once through the current guarded connection.
+  Field/subtype/hide/finish boundaries clear it; password/raw fields do not expose
+  it. Failed and uncertain insertion have distinct guarded retry behavior.
+  Seventeen editor/panel/IME checks pass on API 35, along with 28 JVM and 14 tooling
+  tests and lint (0 errors, 54 warnings). Both themes across all three large
+  alignments have been visually inspected. Independent integration review passes.
+  The seven-test typing/emoji/voice regression bundle passes after a controlled
+  cold boot of the dedicated emulator. Earlier repeated-session runs lost the IME
+  amid invalid window-token/system-session errors; long-session reliability remains
+  an explicit investigation gap. The
+  [acceptance record](plans/active/android-private-draft.md) holds exact evidence.
+  See the [private draft guide](android-private-draft.md). Physical, assistive-tech,
+  landscape and release gates remain open.
+
+- **Direction decided; implementation in progress:** build Utterleaf's own Android
+  foundation. The earlier LatinIME extraction experiment is superseded; no FUTO or
+  LatinIME keyboard code is to be copied. R0 product contract and current evidence
+  are documented. The first R1 source slice now supports continuous two-thumb
+  overlap for ordinary letters, numbers and punctuation, preserving press order
+  and cancelling stale/invalid touches. Eight JVM and 33 focused API 35 emulator
+  tests pass; lint passes with existing warnings. Space gestures, modifiers and
+  utility controls retain separate routing. Physical typing comfort, full feature
+  parity and comparative superiority are not established.
+
+- **R1 editor evidence added:** a debug-only fresh-session activity exercises the
+  actual typing IME against native EditText fields. It verifies reversed Unicode
+  selection replacement, backspace on a combining mark, supplementary emoji and
+  a family ZWJ sequence, forward emoji deletion, all six named Enter actions,
+  newline/no-enter-action behavior and raw `TYPE_NULL` Enter events. The final
+  focused contract passes (1 instrumented scenario); the preceding regression
+  bundle passed 31 emulator tests, 8 JVM tests and lint (0 errors, 48 warnings).
+  Test diagnostics were removed from production source. This is API 35 emulator
+  evidence, not physical-phone, browser/editor parity or a universal grapheme rule.
+
+- **R2 first ergonomics slice implemented and independently reviewed:** terminal
+  controls respect the separate number-row preference. Failed actions use brief
+  native feedback without adding a layout row; later actions and session changes
+  clear that feedback. The voice icon follows the current key text color for
+  light/dark and focus contrast. Final local verification: 29 API 35 instrumentation
+  tests, 8 JVM tests, lint with 0 errors and 47 warnings. Six live keyboard-view
+  renders and actual screen bounds were inspected; system screenshot protection
+  remains enabled. A protected-field Cut test preserves selected synthetic text
+  and observes the accessibility announcement. Physical-phone comfort and
+  TalkBack/Switch Access acceptance remain open.
+
+- **One-hand alignment implemented in source:** Full width (default), Left hand
+  and Right hand are local preferences, available in Settings and Tools with a
+  visible return to Full. Sizing applies on the first measure; narrow displays
+  retain the available width. Geometry changes cancel pending gestures, repeated
+  deletion and modifiers. Settings reopen, Reset cancellation and model-preserving
+  reset are exercised alongside live key bounds and both themes. Named checks
+  passed: 52 API 35 instrumentation tests across the regression/geometry runs,
+  8 JVM tests, 7 tooling tests and lint (0 errors, 47 warnings). The
+  [one-hand acceptance record](plans/active/android-one-hand.md) records exact
+  runs and owned-view captures. One-hand states and Settings passed visual review
+  with no clipping or theme mismatch. This has not been published in a signed release;
+  physical reach, landscape and assistive-technology acceptance remain open.
+
+- **Original letter layouts implemented in source:** QWERTY (default), QWERTZ
+  and AZERTY are available in Settings and Tools. Letter positions and hints
+  follow the choice; accents remain attached to letters. Switching cancels stale
+  touch/modifier/delete state, and reset restores QWERTY without deleting models.
+  Independent source review is clean. A 50-test API 35 regression run and the
+  final expanded three-test live geometry run pass, alongside 12 JVM tests,
+  7 tooling tests and lint (0 errors, 47 warnings). All 18 layout/Tools views and
+  empty Settings passed visual review;
+  see the [letter-layout acceptance record](plans/active/android-letter-layouts.md).
+  This is letter-position support, not complete German/French language support,
+  dictionaries or speech-language switching. Physical and release gates remain open.
+
+- **Unreleased after alpha13:** native decode generations, IME subtype/session
+  gates, and optional hold timing. Task list:
+  [android-keyboard-hardening](plans/active/android-keyboard-hardening.md).
+  LatinIME is not imported or scheduled for adoption. Physical-device, TalkBack and
+  preference/model upgrade-preservation checks remain open.
+
+- **Alpha14 snapshot preparation:** the current release checkout stages the
+  integrated hardening, rollover, QWERTY/QWERTZ/AZERTY layouts, one-hand
+  alignment, local emoji, Latin compose, private drafts and visible-hint
+  long-press default as an experimental update to the original keyboard.
+  Version code 14 must preserve the alpha03+ signing identity and
+  `org.utterleaf.voice` package. Local snapshot checks pass 14 tooling tests, 31
+  JVM tests, lint with 0 errors and 51 warnings, debug/test APK builds, and the
+  16-test focused API 35 long-press/layout run. Full exact-SHA CI, release build,
+  protected signing, signed update/reinstall, physical, assistive-technology,
+  landscape, broad-editor and real Obtainium update checks remain open; this
+  preparation does not make those claims.
 
 - **New core, first native N1 slice:** the user requested a smaller,
   Kotlin-owned keyboard/voice system after reviewing LatinIME's integration cost.
@@ -140,11 +275,11 @@ Visible toolbar space does not establish implemented suggestions or correction.
 
 | ID / status | Deliverable | Completion gate |
 | --- | --- | --- |
-| M1 — In progress | Select and document keyboard foundation; threat model and licensing review | Record provenance, required notices, license compatibility, permissions, input-data lifetime, import boundaries, and update trust. Do not import restricted code merely because its source is visible. |
+| M1 — Independent foundation selected; security/resource review continues | Independently implemented keyboard; preserve existing session/speech safeguards | Follow the [foundation decision](android-keyboard-foundation-decision.md). Record provenance, required notices, license compatibility, permissions, input-data lifetime, import boundaries and update trust for every resource. Do not import keyboard code/assets merely because their source is visible. |
 | M2 — Partial implementation released; broader everyday/terminal acceptance open | Polished everyday typing, integrated voice and optional power layout | Complete [P1/P2 editing and modifier gates](android-keyboard-capabilities.md#prioritized-capability-and-acceptance-matrix): selection/Unicode/Enter plus Ctrl/Alt, Esc/Tab, navigation and Fn/function keys. Meta and further power features remain planned. Verify text/composition versus raw-key dispatch in named editors/terminals. Type → dictate → correct → type without switching IMEs. Password typing stays available; speech/learning stay disabled there. No stale edit or modifier reaches a new field. |
-| M3 — Partial implementation; alpha06 released | Accessibility and useful customization | Verify enabled/selected keyboard status independently from model/microphone readiness; optional companion steps must not block typing. Validate number row, adjustable key/label sizing, contrast, reachable layouts and independent feedback/repeat preferences. Alpha06 provides optional secondary hints and common Latin accent/symbol selection by long press or Tools → Accents → letter; physical, TalkBack and Switch Access validation remains open. Adjustable hold timing and broader languages remain planned. Complete setup, typing, correction, dictation, cancellation and reset using TalkBack and Switch Access. Test system-bar/cutout bounds, large fonts, landscape and stable geometry across symbol pages. |
+| M3 — Partial implementation; alpha06 released, hold refinements in unreleased source | Accessibility and useful customization | Verify enabled/selected keyboard status independently from model/microphone readiness; optional companion steps must not block typing. Validate number row, adjustable key/label sizing, contrast, reachable layouts and independent feedback/repeat preferences. Alpha06 provides optional secondary hints and common Latin accent/symbol selection by long press or Tools → Accents → letter; current source adds adjustable hold timing and makes the visible hint the no-travel hold default while preserving deliberate slide selection. Physical, TalkBack and Switch Access validation remains open. Complete setup, typing, correction, dictation, cancellation and reset using TalkBack and Switch Access. Test system-bar/cutout bounds, large fonts, landscape and stable geometry across symbol pages. |
 | M4 — Partial implementation; three English model choices in alpha05 | Comfortable offline speech | Keep one active model; exact catalog size/hash and atomic replacement preserve the previous model on failure. Tiny.en/base.en fixture inference passed CI; small.en inference remains unverified. Measure memory, quality and latency on real hardware. Clear mic/loading/error state, tap start/stop, pause tolerance and accessible preview warning/extension; optional hold mode, longer takes and fuller correction remain work. No promise of recognition for every speech pattern. |
-| M5 — Planned | Languages, correction, composition and optional swipe | Follow [P3/P4 language gates](android-keyboard-capabilities.md#prioritized-capability-and-acceptance-matrix): reviewed layouts/dictionaries, accents/compose/emoji/snippets, reversible correction, then bounded prediction and licensed swipe. Complex scripts need separate composition evidence. Learning is explicit, local and erasable; no password learning or automatic clipboard history. Power mode preserves literal typing. |
+| M5 — First layout and emoji slices implemented in unreleased source; broader work planned | Languages, correction, composition and optional swipe | Follow [P3/P4 language gates](android-keyboard-capabilities.md#prioritized-capability-and-acceptance-matrix): build from the reviewed QWERTY/QWERTZ/AZERTY positions and local emoji into reviewed dictionaries, accents/compose, snippets and reversible correction, then bounded prediction and licensed swipe. Complex scripts need separate composition evidence. Learning is explicit, local and erasable; no password learning or automatic clipboard history. Power mode preserves literal typing. |
 | M6 — In progress; persistent signed channel began with alpha03 | Broad compatibility and sustainable distribution | Defined Android/API and ABI support, diverse physical-device matrix, stable protected signing, install/update/rollback-policy testing, reproducible build inputs and release checksums. No forced downgrade or unsigned consumer APK. |
 
 Security and accessibility gates apply to every milestone; they are not deferred

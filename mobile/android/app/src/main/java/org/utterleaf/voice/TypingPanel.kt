@@ -1,5 +1,6 @@
 ﻿package org.utterleaf.voice
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -16,10 +17,12 @@ import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 
 /** Secondary hints are visual; the button keeps its primary spoken key label. */
 internal class HintedKey(context: Context) : Button(context) {
@@ -33,6 +36,7 @@ internal class HintedKey(context: Context) : Button(context) {
             val size = minOf(Ui.dp(context, 28), width, height)
             val left = (width - size) / 2; val top = (height - size) / 2
             icon.setBounds(left, top, left + size, top + size)
+            icon.setTint(currentTextColor)
             icon.alpha = if (isEnabled) 255 else 90
             icon.draw(canvas)
             return
@@ -68,7 +72,10 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private val terminalKey: (Int, Boolean, Boolean, Boolean) -> Boolean = { _, _, _, _ -> false },
     private val modifiedCommit: (String, Boolean, Boolean) -> Boolean = { _, _, _ -> false },
     private val quickOptionsChanged: () -> Unit = {},
-    private val editorAction: (EditorAction) -> Boolean = { false }) {
+    private val editorAction: (EditorAction) -> Boolean = { false },
+    private val privateEditing: Boolean = false,
+    private val openDraft: (() -> Unit)? = null,
+    private val actionAvailable: (EditorAction) -> Boolean = { true }) {
     private val surface = Color.parseColor(if (options.light) "#E8EEEB" else "#171E20")
     private val keyColor = Color.parseColor(if (options.light) "#FFFFFF" else "#303A3D")
     private val utilityColor = Color.parseColor(if (options.light) "#D1DFD6" else "#24322D")
@@ -78,21 +85,63 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private val keyHeight = if (options.keyHeightDp == 0) { if (options.large) 66 else 54 }
         else options.keyHeightDp.coerceIn(48, 80)
     val view = KeyboardSurface(context)
-    private val content = LinearLayout(context).apply {
+    private val content = object : LinearLayout(context) {
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            val available = View.MeasureSpec.getSize(widthMeasureSpec)
+            val mode = View.MeasureSpec.getMode(widthMeasureSpec)
+            val measuredWidth = if (mode == View.MeasureSpec.UNSPECIFIED || available <= 0) available
+                else alignedContentWidth(available)
+            val resolved = if (mode == View.MeasureSpec.UNSPECIFIED) widthMeasureSpec
+                else View.MeasureSpec.makeMeasureSpec(measuredWidth, View.MeasureSpec.EXACTLY)
+            super.onMeasure(resolved, heightMeasureSpec)
+        }
+    }.apply {
         orientation = LinearLayout.VERTICAL
         isMotionEventSplittingEnabled = false
         setPadding(Ui.dp(context, 3), 0, Ui.dp(context, 3), Ui.dp(context, 4 + options.bottomPaddingDp.coerceIn(0, 80)))
         setBackgroundColor(surface)
         layoutDirection = View.LAYOUT_DIRECTION_LTR
     }
-    private val gestures = KeyboardGestures(view)
+    private val gestures = KeyboardGestures(view) {
+        if (options.holdDelayMs == 0) ViewConfiguration.getLongPressTimeout().toLong()
+        else options.holdDelayMs.toLong()
+    }
     private val deleteRepeater = DeleteRepeater()
+    private var availableWidth = 0
+    private var disposed = false
+    private var needsRenderOnAttach = false
     init {
+        if (privateEditing) options = options.copy(terminal = false)
+        view.setBackgroundColor(surface)
         view.modifiers.repeatEnabled = options.deleteRepeat && !options.repeatGuard
-        view.addView(content, FrameLayout.LayoutParams(-1, -2))
+        view.bindRolloverEligibility { key -> !alternateMode && !composeActive() && gestures.permitsRollover(key) }
+        view.addView(content, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+            alignmentGravity()))
+        view.addOnLayoutChangeListener { _, left, _, right, _, _, _, _, _ ->
+            val width = right - left
+            if (width <= 0) return@addOnLayoutChangeListener
+            val geometryChanged = availableWidth > 0 && availableWidth != width
+            availableWidth = width
+            if (geometryChanged) {
+                cancelForGeometryChange()
+                render()
+            } else {
+                applyContentAlignment()
+            }
+        }
         view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
-            override fun onViewAttachedToWindow(v: View) = Unit
-            override fun onViewDetachedFromWindow(v: View) { gestures.cancel(); deleteRepeater.cancel() }
+            override fun onViewAttachedToWindow(v: View) {
+                if (needsRenderOnAttach && !disposed) {
+                    needsRenderOnAttach = false
+                    render()
+                }
+            }
+            override fun onViewDetachedFromWindow(v: View) {
+                layoutGeneration++
+                needsRenderOnAttach = true
+                clearEmoji(); clearUnavailable(); cancelCompose(); gestures.cancel(); view.cancelRollover(); deleteRepeater.cancel()
+            }
         })
     }
     private var shift = false
@@ -117,6 +166,9 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private var ctrlKey: Button? = null
     private var altKey: Button? = null
     private var voiceAllowed = false
+    private var emojiAllowed = true
+    private var emoji: EmojiPanel? = null
+    private val actionKeys = mutableMapOf<EditorAction, Button>()
     private var actionLabel = "Enter"
     private var lastKey = ""
     private var lastTime = 0L
@@ -124,27 +176,126 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private var shiftKey: Button? = null
     private var capsKey: Button? = null
     private var toolbarStatus: TextView? = null
+    private var unavailableToast: Toast? = null
     private var alternateMode = false
     private var alternateKey: Char? = null
+    private var composeChoosingMark = false
+    private var composeMark: LatinComposeMark? = null
+    private var composeError: String? = null
     private var layoutGeneration = 0
 
-    private fun saveQuickOption(numberRow: Boolean? = null, terminal: Boolean? = null) {
+    private fun saveQuickOption(numberRow: Boolean? = null, terminal: Boolean? = null,
+        alignment: KeyboardAlignment? = null, letterLayout: LetterLayout? = null) {
+        if (privateEditing || disposed) return
         val current = KeyboardOptions.load(context)
         options = current.copy(
             numberRow = numberRow ?: current.numberRow,
             terminal = terminal ?: current.terminal,
+            alignment = alignment ?: current.alignment,
+            letterLayout = letterLayout ?: current.letterLayout,
         )
         options.save(context)
     }
 
-    fun reset(allowVoice: Boolean, numeric: Boolean, action: String) {
+    private fun cancelForGeometryChange() {
+        clearUnavailable()
+        cancelCompose()
         gestures.cancel()
+        view.cancelRollover()
+        view.cancelSelection()
+        deleteRepeater.cancel()
+        shift = false; selecting = false
+        heldCtrl = false; heldAlt = false; armedCtrl = false; armedAlt = false
+        lastKey = ""; lastTime = 0
+    }
+
+    private fun chooseAlignment(alignment: KeyboardAlignment) {
+        if (options.alignment == alignment) return
+        cancelForGeometryChange()
+        saveQuickOption(alignment = alignment)
+        render()
+        quickOptionsChanged()
+    }
+
+    private fun chooseLetterLayout(letterLayout: LetterLayout) {
+        if (options.letterLayout == letterLayout) return
+        cancelForGeometryChange()
+        caps = false; alternateMode = false; alternateKey = null
+        saveQuickOption(letterLayout = letterLayout)
+        render()
+        quickOptionsChanged()
+    }
+
+    @SuppressLint("RtlHardcoded") // Left/right are explicit physical one-hand choices.
+    private fun alignmentGravity() = Gravity.TOP or when (options.alignment) {
+        KeyboardAlignment.RIGHT -> Gravity.RIGHT
+        else -> Gravity.LEFT
+    }
+
+    private fun alignedContentWidth(available: Int): Int {
+        val minimum = Ui.dp(context, 320)
+        val maximum = Ui.dp(context, 360)
+        return if (options.alignment == KeyboardAlignment.FULL || available <= minimum) {
+            available
+        } else {
+            ((available.toLong() * 82L) / 100L).toInt()
+                .coerceIn(minimum, minOf(maximum, available))
+        }
+    }
+
+    @SuppressLint("RtlHardcoded") // Left/right are explicit physical one-hand choices.
+    private fun applyContentAlignment() {
+        val gravity = alignmentGravity()
+        val current = content.layoutParams as? FrameLayout.LayoutParams
+        if (current?.width == FrameLayout.LayoutParams.WRAP_CONTENT && current.gravity == gravity) return
+        content.layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, gravity)
+    }
+
+    fun reset(allowVoice: Boolean, numeric: Boolean, action: String, allowEmoji: Boolean = true) {
+        if (disposed) return
+        clearEmoji()
+        clearUnavailable()
+        gestures.cancel()
+        view.cancelRollover()
         shift = false; selecting = false; caps = false; symbols = numeric; moreSymbols = false; toolsOpen = false; editActionsOpen = false
         ctrl = false; alt = false; functionKeys = false
-        alternateMode = false; alternateKey = null
-        voiceAllowed = allowVoice; actionLabel = action
+        alternateMode = false; alternateKey = null; cancelCompose()
+        voiceAllowed = allowVoice && !privateEditing; emojiAllowed = allowEmoji; actionLabel = action
         lastKey = ""; lastTime = 0
         render()
+    }
+    /** Permanently invalidates even an owned panel that was never attached. */
+    fun dispose() {
+        if (disposed) return
+        disposed = true; layoutGeneration++
+        clearEmoji(); cancelForGeometryChange(); view.clearOrdinaryKeys()
+        view.modifiers.reset(); content.removeAllViews(); letters.clear(); actionKeys.clear()
+        toolbarStatus = null; shiftKey = null; capsKey = null
+        ctrlKey = null; altKey = null; selectKey = null
+    }
+    fun refreshEditorActions() {
+        if (!disposed) actionKeys.forEach { (action, button) -> button.isEnabled = actionAvailable(action) }
+    }
+    private fun clearEmoji() {
+        emoji?.clear()
+        emoji = null
+    }
+    private fun showEmoji() {
+        if (disposed || !emojiAllowed) return
+        cancelForGeometryChange()
+        clearEmoji()
+        layoutGeneration++
+        val generation = layoutGeneration
+        toolsOpen = false; editActionsOpen = false; symbols = false; functionKeys = false
+        alternateMode = false; alternateKey = null; cancelCompose()
+        view.clearOrdinaryKeys()
+        content.removeAllViews()
+        val picker = EmojiPanel(context, options,
+            { value -> generation == layoutGeneration && commit(value) },
+            { if (generation == layoutGeneration) render() })
+        emoji = picker
+        content.addView(picker.view, LinearLayout.LayoutParams(-1, -2))
     }
     private fun shape(color: Int) = GradientDrawable().apply {
         setColor(color); cornerRadius = Ui.dp(context, 9).toFloat()
@@ -181,11 +332,12 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             isSoundEffectsEnabled = false
             isHapticFeedbackEnabled = options.haptics
             setOnClickListener {
-                if (generation != layoutGeneration) return@setOnClickListener
+                if (disposed || generation != layoutGeneration) return@setOnClickListener
                 val now = SystemClock.elapsedRealtime()
                 if (!options.repeatGuard || description != lastKey || now - lastTime >= 250) {
                     lastKey = description; lastTime = now
                     if (options.haptics) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                    clearUnavailable()
                     action()
                 }
             }
@@ -226,10 +378,12 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
                     if (type(value.toString()) && shift) { shift = false; updateCase() }
                 }
             }
+            view.registerOrdinaryKey(button)
             if (!symbols) {
                 button.tag = character; letters.add(button)
                 if (character in 'a'..'z') {
-                    if (options.secondaryHints) (button as HintedKey).secondaryHint = AlternateCharacters.hint(character)
+                    if (options.secondaryHints) (button as HintedKey).secondaryHint =
+                        AlternateCharacters.hint(character, options.letterLayout)
                     val generation = layoutGeneration
                     button.setOnLongClickListener {
                         if (generation != layoutGeneration) false else {
@@ -237,7 +391,10 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
                         }
                     }
                     gestures.attachLetter(button,
-                        { if (generation == layoutGeneration) AlternateCharacters.choices(character, shift xor caps) else emptyList() },
+                        { if (generation == layoutGeneration) AlternateCharacters.choices(
+                            character, shift xor caps, options.letterLayout) else emptyList() },
+                        { if (generation == layoutGeneration) AlternateCharacters.hint(
+                            character, options.letterLayout) else null },
                         { value ->
                             if (generation == layoutGeneration && type(value)) {
                                 shift = false; alternateKey = null; alternateMode = false; updateCase()
@@ -254,7 +411,8 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     }
 
     private fun alternateRows(character: Char) {
-        val choices = if (character == '.') AlternateCharacters.punctuation else AlternateCharacters.choices(character, shift xor caps)
+        val choices = if (character == '.') AlternateCharacters.punctuation else AlternateCharacters.choices(
+            character, shift xor caps, options.letterLayout)
         val heading = TextView(context).apply {
             text = if (character == '.') "Punctuation" else "Alternates for ${displayed(character)}"; textSize = 16f
             setTextColor(ink); gravity = Gravity.CENTER; minHeight = Ui.dp(context, 40)
@@ -277,6 +435,89 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             alternateKey = null; alternateMode = false; render()
         }
     }
+
+    private fun composeActive() = composeChoosingMark || composeMark != null
+
+    private fun cancelCompose() {
+        composeChoosingMark = false
+        composeMark = null
+        composeError = null
+    }
+
+    private fun beginCompose() {
+        if (options.terminal || disposed) return
+        toolsOpen = false; editActionsOpen = false; alternateMode = false; alternateKey = null
+        symbols = false; functionKeys = false; selecting = false
+        composeChoosingMark = true; composeMark = null; composeError = null
+        render()
+        view.announceForAccessibility("Compose: choose a mark, or Cancel")
+    }
+
+    private fun updateComposeStatus() {
+        toolbarStatus?.apply {
+            text = when {
+                composeChoosingMark -> "Compose: choose a mark"
+                composeError != null -> composeError
+                composeMark != null -> "Compose ${composeMark!!.label}: choose a letter"
+                else -> ""
+            }
+            visibility = if (composeActive()) View.VISIBLE else View.GONE
+        }
+    }
+
+    private fun composeMarkRows() {
+        LatinComposeMark.entries.chunked(4).forEach { group ->
+            val line = row()
+            group.forEach { mark ->
+                key(line, "${mark.label} ${mark.symbol}", "${mark.label} compose mark", utility = true,
+                    chordable = false) {
+                    composeChoosingMark = false; composeMark = mark; composeError = null; render()
+                    view.announceForAccessibility("Compose ${mark.label}: choose a letter, or Cancel")
+                }
+            }
+            repeat(4 - group.size) { spacer(line, 1f) }
+        }
+        key(row(), "Cancel", "Cancel compose", utility = true, chordable = false) {
+            cancelCompose(); render()
+        }
+    }
+
+    private fun composeCharacters(row: LinearLayout, sequence: String) {
+        sequence.forEach { character ->
+            val button = key(row, displayed(character).toString(), chordable = false) {
+                val mark = composeMark ?: return@key
+                val value = LatinCompose.compose(mark, character, shift xor caps)
+                if (value == null) {
+                    composeError = "${mark.label}: combination unavailable"
+                    updateComposeStatus()
+                    view.announceForAccessibility("Combination unavailable; ${mark.label} is still selected")
+                } else if (type(value)) {
+                    shift = false; cancelCompose(); render()
+                }
+            }
+            button.tag = character
+            letters.add(button)
+        }
+    }
+
+    private fun composeLetterRows() {
+        val layout = options.letterLayout
+        composeCharacters(row(), layout.top)
+        val home = row()
+        val homeEdge = (10 - layout.home.length) / 2f
+        spacer(home, homeEdge); composeCharacters(home, layout.home); spacer(home, homeEdge)
+        val third = row()
+        val bottomEdge = (10 - layout.bottom.length) / 2f
+        shiftKey = key(third, "⇧", "Shift off", bottomEdge, utility = true, chordable = false) {
+            shift = !shift; updateCase()
+        }
+        composeCharacters(third, layout.bottom)
+        spacer(third, bottomEdge)
+        key(row(), "Cancel", "Cancel compose", utility = true, chordable = false) {
+            cancelCompose(); shift = false; render()
+        }
+        updateCase()
+    }
     private fun displayed(character: Char): Char {
         if (symbols) return character
         if (character in 'a'..'z') return if (shift xor caps) character.uppercaseChar() else character
@@ -288,29 +529,35 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         updateCase()
     }
     private fun type(value: String): Boolean {
+        clearUnavailable()
         val accepted = if (ctrl || alt) modifiedCommit(value, ctrl, alt) else commit(value)
         releaseModifiers()
         selecting = false
         selectKey?.isSelected = false
-        if (!accepted) unavailable() else toolbarStatus?.apply { text = ""; visibility = View.GONE }
+        if (!accepted) unavailable()
         return accepted
     }
+    private fun clearUnavailable() {
+        unavailableToast?.cancel()
+        unavailableToast = null
+    }
     private fun unavailable() {
-        toolbarStatus?.apply {
-            text = "Key unavailable"
-            visibility = View.VISIBLE
-            announceForAccessibility("This key is not supported in the current field")
-        }
+        unavailableToast?.cancel()
+        unavailableToast = Toast.makeText(context, "Key unavailable", Toast.LENGTH_SHORT).also { it.show() }
+        view.announceForAccessibility("This key is not supported in the current field")
     }
     private fun special(code: Int) {
+        clearUnavailable()
         val accepted = terminalKey(code, ctrl, alt, shift)
         shift = false; releaseModifiers()
-        if (!accepted) unavailable() else toolbarStatus?.apply { text = ""; visibility = View.GONE }
+        if (!accepted) unavailable()
     }
     private fun delete() {
+        clearUnavailable()
         if (ctrl || alt || (options.terminal && shift)) special(KeyEvent.KEYCODE_DEL) else erase()
     }
     private fun navigate(left: Boolean) {
+        clearUnavailable()
         if (selecting || shift || ctrl || alt) {
             val accepted = terminalKey(if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT,
                 ctrl, alt, selecting || shift)
@@ -346,12 +593,12 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
                     val accepted = editorAction(action)
                     selecting = false; shift = false; releaseModifiers()
                     selectKey?.isSelected = false
-                    if (!accepted) unavailable() else toolbarStatus?.apply { text = ""; visibility = View.GONE }
-                }
+                    if (!accepted) unavailable()
+                }.also { button -> actionKeys[action] = button; button.isEnabled = actionAvailable(action) }
             }
         }
         actionRow(listOf(EditorAction.UNDO, EditorAction.REDO, EditorAction.SELECT_ALL))
-        actionRow(listOf(EditorAction.CUT, EditorAction.COPY, EditorAction.PASTE))
+        if (!privateEditing) actionRow(listOf(EditorAction.CUT, EditorAction.COPY, EditorAction.PASTE))
         val arrows = row()
         listOf(Triple("←", "Move cursor left", KeyEvent.KEYCODE_DPAD_LEFT),
             Triple("↓", "Move cursor down", KeyEvent.KEYCODE_DPAD_DOWN),
@@ -375,50 +622,76 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         }
     }
     private fun render() {
+        if (disposed) return
+        clearEmoji()
+        clearUnavailable()
         layoutGeneration++
         gestures.cancel()
+        view.cancelRollover()
+        view.clearOrdinaryKeys()
         view.cancelSelection()
         deleteRepeater.cancel()
-        content.removeAllViews(); letters.clear(); shiftKey = null; capsKey = null; ctrlKey = null; altKey = null; selectKey = null
+        content.removeAllViews(); letters.clear(); actionKeys.clear(); shiftKey = null; capsKey = null; ctrlKey = null; altKey = null; selectKey = null
+        applyContentAlignment()
         val toolbar = row()
         key(toolbar, if (toolsOpen) "Close" else "Tools", "Keyboard tools", 2f, utility = true, height = 48) {
-            toolsOpen = !toolsOpen; editActionsOpen = false; alternateMode = false; alternateKey = null; render()
+            val opening = !toolsOpen
+            cancelCompose(); toolsOpen = opening; editActionsOpen = false; alternateMode = false; alternateKey = null; render()
         }.apply { isSelected = toolsOpen }
         key(toolbar, if (editActionsOpen) "ABC" else "Edit", if (editActionsOpen) "Close edit actions" else "Edit actions",
             2f, utility = true, height = 48, chordable = false) {
-            toolsOpen = false; editActionsOpen = !editActionsOpen; selecting = false
+            val opening = !editActionsOpen
+            cancelCompose(); toolsOpen = false; editActionsOpen = opening; selecting = false
             shift = false; heldCtrl = false; heldAlt = false; releaseModifiers()
             alternateMode = false; alternateKey = null; render()
         }.apply { isSelected = editActionsOpen }
-        key(toolbar, "123", if (options.numberRow) "Number row on" else "Number row off",
-            1.7f, utility = true, height = 48) {
-            saveQuickOption(numberRow = !options.numberRow); render(); quickOptionsChanged()
-        }.apply { isSelected = options.numberRow }
-        key(toolbar, ">_", if (options.terminal) "Terminal controls on" else "Terminal controls off",
-            1.7f, utility = true, height = 48) {
-            val enabled = !options.terminal
-            saveQuickOption(terminal = enabled)
-            if (!enabled) {
-                heldCtrl = false; heldAlt = false; armedCtrl = false; armedAlt = false
-                functionKeys = false
-            }
-            render()
-            quickOptionsChanged()
-        }.apply { isSelected = options.terminal }
+        key(toolbar, "Emoji", if (emojiAllowed) "Emoji" else "Emoji unavailable in raw input",
+            2f, utility = true, height = 48, chordable = false) { showEmoji() }
+            .apply { isEnabled = emojiAllowed }
         toolbarStatus = TextView(context).apply {
-            text = if (alternateKey != null) "Choose a character" else if (alternateMode) "Choose a letter" else ""
+            text = when {
+                composeChoosingMark -> "Compose: choose a mark"
+                composeError != null -> composeError
+                composeMark != null -> "Compose ${composeMark!!.label}: choose a letter"
+                alternateKey != null -> "Choose a character"
+                alternateMode -> "Choose a letter"
+                else -> ""
+            }
             textSize = 13f; setTextColor(ink); gravity = Gravity.CENTER
-            visibility = if (alternateKey != null || alternateMode) View.VISIBLE else View.GONE
+            visibility = if (composeActive() || alternateKey != null || alternateMode) View.VISIBLE else View.GONE
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
         }
         content.addView(toolbarStatus, LinearLayout.LayoutParams(-1, -2))
-        key(toolbar, "", "Dictate", 2.5f, utility = true, height = 48) {
+        if (!privateEditing) key(toolbar, "", "Dictate", 2.5f, utility = true, height = 48) {
             dictate()
         }.apply {
             (this as HintedKey).primaryIcon = context.getDrawable(R.drawable.voice_idle)?.mutate()
         }
             .apply { isEnabled = voiceAllowed }
         if (toolsOpen) {
+            val quick = row()
+          if (!privateEditing) {
+            key(quick, "Number row", if (options.numberRow) "Number row on" else "Number row off",
+                utility = true, height = 48, chordable = false) {
+                saveQuickOption(numberRow = !options.numberRow); render(); quickOptionsChanged()
+            }.apply { isSelected = options.numberRow }
+            key(quick, "Terminal", if (options.terminal) "Terminal controls on" else "Terminal controls off",
+                utility = true, height = 48, chordable = false) {
+                val enabled = !options.terminal
+                saveQuickOption(terminal = enabled)
+                if (!enabled) {
+                    heldCtrl = false; heldAlt = false; armedCtrl = false; armedAlt = false
+                    functionKeys = false
+                }
+                render(); quickOptionsChanged()
+            }.apply { isSelected = options.terminal }
+            openDraft?.let { open ->
+                key(quick, "Draft", "Private draft", utility = true, height = 48, chordable = false) { open() }
+            }
+          }
+            key(quick, "Compose", if (options.terminal) "Latin compose unavailable in terminal mode" else "Latin compose",
+                utility = true, height = 48, chordable = false) { beginCompose() }
+                .apply { isEnabled = !options.terminal }
             val tools = row()
             capsKey = key(tools, "Caps", "Caps lock off", utility = true, height = 48) {
                 caps = !caps
@@ -427,12 +700,31 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             key(tools, "←", "Move cursor left", utility = true, height = 48) { navigate(true) }
             key(tools, "→", "Move cursor right", utility = true, height = 48) { navigate(false) }
             key(tools, "Accents", "Accents and alternate characters", utility = true, height = 48) {
+                cancelCompose()
                 alternateMode = !alternateMode; alternateKey = null
                 symbols = false; functionKeys = false; render()
                 if (alternateMode) view.announceForAccessibility("Tap a letter for accents, or period for punctuation")
             }.apply { isSelected = alternateMode }
+          if (!privateEditing) {
             key(tools, "Settings", "Keyboard settings", utility = true, height = 48) { settings() }
             key(tools, "Switch", "Switch keyboard", utility = true, height = 48) { switchKeyboard() }
+            val alignment = row()
+            key(alignment, "Full", "Full width layout", utility = true, height = 48, chordable = false) {
+                chooseAlignment(KeyboardAlignment.FULL)
+            }.apply { isSelected = options.alignment == KeyboardAlignment.FULL }
+            key(alignment, "Left", "Left hand layout", utility = true, height = 48, chordable = false) {
+                chooseAlignment(KeyboardAlignment.LEFT)
+            }.apply { isSelected = options.alignment == KeyboardAlignment.LEFT }
+            key(alignment, "Right", "Right hand layout", utility = true, height = 48, chordable = false) {
+                chooseAlignment(KeyboardAlignment.RIGHT)
+            }.apply { isSelected = options.alignment == KeyboardAlignment.RIGHT }
+            val letterLayouts = row()
+            LetterLayout.entries.forEach { layout ->
+                key(letterLayouts, layout.label, "${layout.label} letter layout", utility = true,
+                    height = 48, chordable = false) { chooseLetterLayout(layout) }
+                    .apply { isSelected = options.letterLayout == layout }
+            }
+          }
             val editing = row()
             selectKey = key(editing, "Select", "Select text", utility = true, height = 48) {
                 selecting = !selecting; render()
@@ -442,9 +734,11 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             key(editing, "End", "Go to end", utility = true, height = 48) { special(KeyEvent.KEYCODE_MOVE_END) }
         }
         if (editActionsOpen) { editingRows(); return }
+        if (composeChoosingMark) { composeMarkRows(); return }
+        if (composeMark != null) { composeLetterRows(); return }
         alternateKey?.let { alternateRows(it); updateCase(); return }
         if (options.terminal) terminalRows()
-        if ((options.numberRow || options.terminal) && !symbols && !functionKeys) characters(row(), "1234567890")
+        if (options.numberRow && !symbols && !functionKeys) characters(row(), "1234567890")
         if (options.terminal && functionKeys) {
             for (start in listOf(1, 7)) {
                 val functions = row()
@@ -472,19 +766,23 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             characters(third, if (moreSymbols) "_<>[]¶©" else "*\"':;!?")
             key(third, "⌫", "Delete", 1.5f, utility = true) { delete() }
         } else {
-            characters(row(), "qwertyuiop")
-            val home = row(); spacer(home, .5f); characters(home, "asdfghjkl"); spacer(home, .5f)
+            val layout = options.letterLayout
+            characters(row(), layout.top)
+            val home = row()
+            val homeEdge = (10 - layout.home.length) / 2f
+            spacer(home, homeEdge); characters(home, layout.home); spacer(home, homeEdge)
             val third = row()
-            shiftKey = key(third, "⇧", "Shift off", 1.5f, utility = true) { shift = !shift; updateCase() }
-            characters(third, "zxcvbnm")
-            key(third, "⌫", "Delete", 1.5f, utility = true) { delete() }
+            val bottomEdge = (10 - layout.bottom.length) / 2f
+            shiftKey = key(third, "⇧", "Shift off", bottomEdge, utility = true) { shift = !shift; updateCase() }
+            characters(third, layout.bottom)
+            key(third, "⌫", "Delete", bottomEdge, utility = true) { delete() }
         }
         val bottom = row()
         key(bottom, if (symbols) "ABC" else "?123", "Switch letters and symbols", 1.5f, utility = true) {
             symbols = !symbols; moreSymbols = false; functionKeys = false
-            alternateMode = false; alternateKey = null; render()
+            cancelCompose(); alternateMode = false; alternateKey = null; render()
         }
-        key(bottom, ",") { type(",") }
+        key(bottom, ",") { type(",") }.also { view.registerOrdinaryKey(it) }
         key(bottom, "space", "Space", 5f) { type(" ") }.also { space ->
             val generation = layoutGeneration
             gestures.attachSpace(space) { left -> if (generation == layoutGeneration) navigate(left) }
@@ -497,6 +795,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             }
         }
         key(bottom, ".") { if (alternateMode) openAlternates('.') else type(".") }.also { period ->
+            view.registerOrdinaryKey(period)
             val generation = layoutGeneration
             period.setOnLongClickListener {
                 if (generation != layoutGeneration) false else { openAlternates('.'); true }
