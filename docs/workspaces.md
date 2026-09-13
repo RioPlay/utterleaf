@@ -12,7 +12,8 @@ source checkout stays intact. Use the following workspaces for new work.
 | `feat/obs-native-bridge` | Original isolated C module build/load prerequisite merged through PR #32 at `e61c7dd` | Preserve source/build/CI evidence; no plugin binary release |
 | `feat/obs-native-session` | Native Hello/ACK and retained-process pipe admission merged through PR #33 at `006d482` | Preserve native/local/CI evidence; module still inert |
 | `feat/obs-native-enrollment` | Capability proof and native admission ownership merged through PR #34 at `9260e6b` | Preserve reviewed source/native/CI evidence; stores and UI remain separate |
-| `feat/obs-pairing-store` | CurrentUser DPAPI pairing package and separate native/desktop private stores | Implement and verify explicit persistence/import/forget behavior, then pairing UI and vendor/Arm/PCM integration |
+| `feat/obs-pairing-store` | CurrentUser DPAPI pairing package and separate native/desktop private stores, merged through PR #35 at `3bd072d` | Preserve reviewed store evidence |
+| `feat/obs-enrollment-flow` | Active desktop preparation adapter and native pairing workflow integration | Verify typed vendor requests; implement visible native pairing Tools/per-user owner and vendor/controller flow, then Arm/PCM integration |
 | `release/desktop-0.4.6rc1` | Unpublished RC1 candidate retained for audit | Reference only; its immutable tag and downloaded artifact are unchanged |
 | `release/android-alpha14` | Published signed original keyboard snapshot; PR #25 merged | Preserve alpha14 evidence; physical-phone testing remains deferred follow-up |
 | `release/android-alpha15` | Published signed alpha15 compact keyboard and Utterleaf naming snapshot; PR #29 merged | Preserve alpha15 release evidence; physical-phone testing remains deferred follow-up |

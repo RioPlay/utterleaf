@@ -1,4 +1,4 @@
-"""Explicit, read-only OBS WebSocket control connection.
+"""Explicit OBS status and narrowly scoped Utterleaf preparation requests.
 
 This channel answers OBS's password challenge and reads stream lifecycle state.
 It does not authenticate the audio pipe, arm a receiver, capture audio, or change
@@ -11,14 +11,17 @@ from __future__ import annotations
 import base64
 from collections import deque
 from dataclasses import dataclass
+from functools import wraps
 import hashlib
 import json
 import math
+import os
 import secrets
+import threading
 import time
 from typing import Callable
 
-from utterleaf import obs_websocket
+from utterleaf import obs_authorization, obs_websocket
 
 MAX_MESSAGE = 65_536
 MAX_PENDING_EVENTS = 32
@@ -27,6 +30,7 @@ OUTPUTS_SUBSCRIPTION = 1 << 6
 GENERAL_SUBSCRIPTION = 1
 EVENT_SUBSCRIPTIONS = GENERAL_SUBSCRIPTION | OUTPUTS_SUBSCRIPTION
 _READ_REQUESTS = frozenset({"GetVersion", "GetStreamStatus"})
+_VENDOR_NAME = "Utterleaf"
 _OUTPUT_STATES = frozenset({
     "OBS_WEBSOCKET_OUTPUT_STARTING", "OBS_WEBSOCKET_OUTPUT_STARTED",
     "OBS_WEBSOCKET_OUTPUT_STOPPING", "OBS_WEBSOCKET_OUTPUT_STOPPED",
@@ -124,6 +128,48 @@ def _authentication(password: str, salt, challenge) -> str:
     return base64.b64encode(hashlib.sha256(secret + challenge.encode("ascii")).digest()).decode("ascii")
 
 
+def _serialized(method):
+    """Fail closed on overlapping workers; close itself must still interrupt I/O."""
+    @wraps(method)
+    def operation(self, *args, **kwargs):
+        if not self._operation_lock.acquire(blocking=False):
+            self.close()
+            raise ObsControlError("OBS control operations must be serialized")
+        try:
+            return method(self, *args, **kwargs)
+        finally:
+            self._operation_lock.release()
+    return operation
+
+
+def _hex_bytes(value, length: int) -> bytes:
+    if (type(value) is not str or len(value) != length * 2
+            or any(char not in "0123456789abcdef" for char in value)):
+        raise ObsControlError("Invalid Utterleaf OBS message")
+    return bytes.fromhex(value)
+
+
+def _vendor_payload(data) -> None:
+    """Validate the only two permitted request shapes before any JSON send."""
+    if (type(data) is not dict or set(data) != {"vendorName", "requestType", "requestData"}
+            or data["vendorName"] != _VENDOR_NAME or type(data["requestData"]) is not dict):
+        raise ObsControlError("Unsupported OBS control request")
+    payload = data["requestData"]
+    if data["requestType"] == "IssueAuthorization":
+        if (set(payload) != {"clientPid", "sessionId", "additionalMixMask"}
+                or type(payload["clientPid"]) is not int or not 5 <= payload["clientPid"] <= 0xFFFFFFFF
+                or type(payload["additionalMixMask"]) is not int or not 0 <= payload["additionalMixMask"] <= 63
+                or not any(_hex_bytes(payload["sessionId"], 16))):
+            raise ObsControlError("Unsupported OBS control request")
+    elif data["requestType"] == "PrepareSession":
+        if set(payload) != {"challenge", "proof"}:
+            raise ObsControlError("Unsupported OBS control request")
+        _hex_bytes(payload["challenge"], obs_authorization.CHALLENGE_BYTES)
+        _hex_bytes(payload["proof"], obs_authorization.PROOF_BYTES)
+    else:
+        raise ObsControlError("Unsupported OBS control request")
+
+
 class ObsControl:
     """A single authenticated control connection, without audio privileges.
 
@@ -140,6 +186,9 @@ class ObsControl:
         self._request_id = 0
         self._request_prefix = secrets.token_hex(16)
         self._identified = False
+        self._vendor_available = False
+        self._preparation_attempted = False
+        self._operation_lock = threading.RLock()
         self.closed = False
         self.version: ObsVersion | None = None
 
@@ -185,6 +234,7 @@ class ObsControl:
         if self.closed:
             raise ObsControlError("OBS control connection is closed")
 
+    @_serialized
     def retain_peer_process(self):
         """Retain an independently owned authenticated audio-process lease.
 
@@ -278,13 +328,26 @@ class ObsControl:
         self._events.append(StreamEvent(event["outputActive"], event["outputState"], self._revision))
 
     def _request(self, name: str) -> dict:
+        if name not in _READ_REQUESTS:
+            self._failed(ObsControlError("Unsupported OBS control request"))
+        return self._exchange(name)
+
+    @_serialized
+    def _exchange(self, name: str, request_data: dict | None = None) -> dict:
         try:
             self._check()
-            if not self._identified or name not in _READ_REQUESTS:
+            if not self._identified:
+                raise ObsControlError("Unsupported OBS control request")
+            if name == "CallVendorRequest" and self._vendor_available:
+                _vendor_payload(request_data)
+            elif name not in _READ_REQUESTS or request_data is not None:
                 raise ObsControlError("Unsupported OBS control request")
             self._request_id += 1
             request_id = f"{self._request_prefix}-{self._request_id}"
-            self._send(6, {"requestType": name, "requestId": request_id})
+            request = {"requestType": name, "requestId": request_id}
+            if request_data is not None:
+                request["requestData"] = request_data
+            self._send(6, request)
             deadline = time.monotonic() + REQUEST_TIMEOUT
             while True:
                 opcode, data = self._receive(deadline)
@@ -297,7 +360,7 @@ class ObsControl:
                 if (type(status) is not dict or status.get("result") is not True
                         or type(status.get("code")) is not int or status["code"] != 100
                         or type(data.get("responseData")) is not dict):
-                    raise ObsControlError("OBS could not provide the requested status")
+                    raise ObsControlError("OBS could not complete the requested operation")
                 return data["responseData"]
         except BaseException as exc:
             self._failed(exc)
@@ -314,7 +377,73 @@ class ObsControl:
         if not websocket_version.startswith("5."):
             raise ObsControlError("Unsupported OBS WebSocket version")
         self.version = ObsVersion(_version(data.get("obsVersion")), websocket_version)
+        self._vendor_available = "CallVendorRequest" in requests
 
+    def _vendor_request(self, operation: str, payload: dict) -> dict:
+        data = self._exchange("CallVendorRequest", {
+            "vendorName": _VENDOR_NAME, "requestType": operation, "requestData": payload,
+        })
+        if (set(data) != {"vendorName", "requestType", "responseData"}
+                or data["vendorName"] != _VENDOR_NAME or data["requestType"] != operation
+                or type(data["responseData"]) is not dict):
+            raise ObsControlError("Invalid Utterleaf OBS response")
+        response = data["responseData"]
+        expected = {"ok", "protocolVersion", "challenge"} if operation == "IssueAuthorization" else {"ok", "protocolVersion"}
+        if response == {"ok": False} and type(response["ok"]) is bool:
+            raise ObsControlError("OBS pairing request was refused")
+        if (set(response) != expected or response["ok"] is not True
+                or type(response["protocolVersion"]) is not int or response["protocolVersion"] != 1):
+            raise ObsControlError("Invalid Utterleaf OBS response")
+        return response
+
+    @_serialized
+    def prepare_session(self, key: bytes | bytearray, *, additional_mix_mask: int = 0) -> bytes:
+        """Prepare one fresh session; this does not open the pipe or arm capture.
+
+        The caller owns the capability. Our mutable copy is cleared on every
+        exit, but Python/OpenSSL cannot guarantee erasure of all secret copies.
+        A lost response may leave server admission pending until its expiry;
+        never retry this connection or treat failure as a confirmed rollback.
+        """
+        owned_key = bytearray()
+        try:
+            self._check()
+            if (type(key) not in (bytes, bytearray) or len(key) != 32 or not any(key)
+                    or type(additional_mix_mask) is not int or not 0 <= additional_mix_mask <= 63):
+                raise ObsControlError("Invalid local OBS pairing request")
+            if not self._identified or self.version is None or not self._vendor_available:
+                raise ObsControlError("OBS does not support Utterleaf pairing requests")
+            if self._preparation_attempted:
+                raise ObsControlError("This OBS connection has already attempted preparation")
+            client_pid = os.getpid()
+            session_id = secrets.token_bytes(16)
+            if (type(client_pid) is not int or not 5 <= client_pid <= 0xFFFFFFFF
+                    or type(session_id) is not bytes or len(session_id) != 16 or not any(session_id)):
+                raise ObsControlError("Could not create a fresh OBS session")
+            owned_key = bytearray(key)
+            key = b""
+            self._preparation_attempted = True
+            response = self._vendor_request("IssueAuthorization", {
+                "clientPid": client_pid, "sessionId": session_id.hex(),
+                "additionalMixMask": additional_mix_mask,
+            })
+            challenge = _hex_bytes(response["challenge"], obs_authorization.CHALLENGE_BYTES)
+            self._check()
+            self._transport.verify_peer()
+            self._check()
+            proof = obs_authorization.create_prepare_proof(
+                owned_key, challenge, client_pid=client_pid, session_id=session_id,
+                additional_mix_mask=additional_mix_mask,
+            )
+            self._vendor_request("PrepareSession", {"challenge": challenge.hex(), "proof": proof.hex()})
+            self._check()
+            return session_id
+        except BaseException as exc:
+            self._failed(exc)
+        finally:
+            owned_key[:] = b"\0" * len(owned_key)
+
+    @_serialized
     def stream_status(self) -> StreamSnapshot:
         """Read status without arming. Pending events make idle snapshots stale.
 
@@ -329,6 +458,7 @@ class ObsControl:
         except BaseException as exc:
             self._failed(exc)
 
+    @_serialized
     def poll_event(self, timeout: float = 0.1) -> StreamEvent | None:
         """Return one stream event, preserving arrival order; never auto-capture."""
         if type(timeout) not in (float, int) or not 0 < timeout <= REQUEST_TIMEOUT:
@@ -354,7 +484,7 @@ class ObsControl:
         if isinstance(exc, ObsControlError):
             raise exc from None
         if isinstance(exc, TimeoutError):
-            raise ObsControlError("OBS status request timed out") from None
+            raise ObsControlError("OBS control request timed out") from None
         if isinstance(exc, Exception):
             raise ObsControlError("OBS control connection ended unexpectedly") from None
         raise exc
@@ -364,6 +494,7 @@ class ObsControl:
             return
         self.closed = True
         self._identified = False
+        self._vendor_available = False
         self._events.clear()
         self._transport.close()
 

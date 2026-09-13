@@ -129,12 +129,17 @@ independent source/evidence review is clear. Pairing-file UI and the vendor
 adapter remain to be implemented before any app entry point is exposed.
 PR #34 merged at `9260e6b` after all five
 [exact-source desktop CI jobs](https://github.com/RioPlay/utterleaf/actions/runs/34754090586)
-passed at `d44126a`. The `feat/obs-pairing-store` increment now implements the
+passed at `d44126a`. The `feat/obs-pairing-store` increment, merged through
+PR #35 at `3bd072d` from exact source head `c7f86f6`, now implements the
 selected CurrentUser DPAPI package, separate native/desktop stores, native export,
 explicit desktop import/replacement and separate forget behavior. The first
-local regression passes 292 tests, including 48 pairing cases, plus the native
-store state/fault and five cross-language checks, including an actual junction.
-Independent source/test and final receipt review is clear.
+local regression passes 292 tests, including 48 pairing cases, plus 22 native
+verification commands, 57 source/artifact hashes, five interop cases and five
+store state/fault groups, including an actual junction. Exact-head CI
+[34755748029](https://github.com/RioPlay/utterleaf/actions/runs/34755748029)
+passes all five desktop jobs; release publication was skipped. Independent
+source/test and final receipt review is clear. Three known warnings remain
+isolated to the test heap shim.
 The enrollment plan distinguishes these
 storage results from pending UI, live revocation, vendor and audio integration.
 Cross-user/logon, remote clients, forced PID reuse and kernel
@@ -144,6 +149,20 @@ binary is included in desktop or Android releases. The
 [build plan](plans/active/obs-plugin-build.md) retains the complete native gates. The
 [control dependency record](desktop-obs-control-resource.md) records the pinned
 library, reviewed full license and development-wheel provenance.
+
+Continue on `feat/obs-enrollment-flow` with the typed desktop preparation adapter,
+visible native pairing Tools flow and exclusive per-user owner, followed by
+vendor dispatch and the desktop controller. Arm/PCM and live
+recognition remain later gates. No app entry point, audio endpoint, plugin binary
+publication or OBS capture integration exists yet.
+
+The typed desktop adapter now sends only the defined Utterleaf Issue/Prepare
+requests after explicit invocation, verifies challenge binding and the OBS peer
+before proof, and rejects concurrent operations. The focused bundle passes
+**341 tests with no skips**, including **66** enrollment tests and an ephemeral
+loopback exchange. Independent source review is clear; native identity is stubbed
+in that new exchange fixture. This prepares a session ID and does not connect
+the audio pipe or arm capture. Native owner/UI/vendor integration remains open.
 
 Current integrated desktop regression: **1,432 passed, 13 skipped in 39.47 seconds**,
 including the reviewed OBS control, native identity, pipe and audio handshake.

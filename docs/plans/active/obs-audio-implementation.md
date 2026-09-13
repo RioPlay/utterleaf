@@ -11,6 +11,12 @@ in source; its physical microphone and release gates remain separate.
 
 ## Current increment
 
+The [enrollment plan](obs-native-enrollment.md) now records the integrated private
+pairing stores and the typed desktop Issue/Prepare adapter on
+`feat/obs-enrollment-flow`. Its focused regression passes 341 tests with no skips,
+including 66 enrollment cases. Native owner, Tools and vendor dispatch are still
+pending; no app entry point or capture activation is exposed.
+
 The bounded audio protocol, consent/session receiver and read-only loopback
 WebSocket control client are reviewed. The Windows TCP peer identity gate is now
 implemented and integrated, as recorded below. The separate original C module now
@@ -176,8 +182,11 @@ not a hard real-time scheduling guarantee.
 `obs_control.py` requires a password-protected Hello, computes OBS's documented
 challenge response and waits for RPC 1 identification before requesting version
 information. The response must advertise the required read-only requests and a
-5.x WebSocket version. Only `GetVersion` and `GetStreamStatus` are allowed; there
-is no arbitrary request passthrough. The General/Outputs subscription mask is 65.
+5.x WebSocket version. That initial component allowed only `GetVersion` and
+`GetStreamStatus`. The later enrollment adapter also permits the exact Utterleaf
+Issue/Prepare schemas on explicit invocation, gated by advertised
+`CallVendorRequest` support. There is no arbitrary request passthrough. The
+General/Outputs subscription mask is 65.
 Only stream lifecycle events are retained, with a 32-event limit; shutdown closes
 the control connection. Unrelated event payloads, including recording paths, are
 discarded. Events arriving after Identify but before Identified stay quarantined
