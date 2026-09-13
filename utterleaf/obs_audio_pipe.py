@@ -109,7 +109,8 @@ class ObsAudioPipe:
         """Read one bounded chunk; fragmentation may yield no complete frame.
 
         Consent, stream-start ordering and storage remain ObsCaptureSession's
-        responsibility. An End frame closes this connection; it must be last.
+        responsibility. A decoded End is acknowledged before closing; it must
+        be last, so the server cannot discard an unread terminal packet.
         Timeout, malformed data or identity loss are terminal, never complete.
         """
         try:
@@ -135,6 +136,17 @@ class ObsAudioPipe:
                             raise ObsAudioPipeError("OBS audio followed its end")
                         self._decoder.finish()  # Reject any trailing partial frame.
                         ended = True
+                if ended:
+                    _verify(self._pipe, self._peer, self._cancelled, deadline)
+                    receipt = _ARM_RECORD.pack(_ARM_MAGIC, 1, 3, 0,
+                                               self._session_id, 0, 0, 0)
+                    self._pipe.write_all(receipt, deadline=deadline)
+                    # The server may disconnect as soon as it reads this
+                    # receipt. Its identity was checked before sending; do
+                    # not require a still-connected pipe after terminal ACK.
+                    # Retain our endpoint until then so its final receipt read
+                    # can finish peer validation before the client closes.
+                    self._pipe.wait_for_disconnect(deadline=deadline)
             if ended:
                 self.close()
             return frames

@@ -50,6 +50,18 @@ static int shim_ul_admission_write_all(ul_admission *admission,
 static int shim_ul_admission_probe(ul_admission *admission, DWORD *available);
 static void shim_ul_admission_cancel(ul_admission *admission);
 static HANDLE shim_ul_admission_pipe(const ul_admission *admission);
+static HANDLE WINAPI shim_CreateEventW(LPSECURITY_ATTRIBUTES attributes,
+                                       BOOL manual, BOOL initial,
+                                       LPCWSTR name);
+static ul_audio_capture *shim_ul_audio_capture_create_worker(
+    const ul_audio_capture_spec *spec);
+static void shim_ul_audio_capture_retain(ul_audio_capture *capture);
+static void shim_ul_audio_capture_release(ul_audio_capture *capture);
+static bool shim_ul_audio_capture_activate(ul_audio_capture *capture);
+static void shim_ul_audio_capture_deactivate(ul_audio_capture *capture);
+static int shim_ul_audio_stream_run(ul_audio_capture *capture,
+    const ul_audio_capture_spec *spec, ul_admission *admission,
+    const uint8_t session[16], HANDLE stop_event);
 
 #define GetModuleHandleExW shim_GetModuleHandleExW
 #define ul_pairing_store_open shim_ul_pairing_store_open
@@ -74,9 +86,17 @@ static HANDLE shim_ul_admission_pipe(const ul_admission *admission);
 #define ul_admission_probe shim_ul_admission_probe
 #define ul_admission_cancel shim_ul_admission_cancel
 #define ul_admission_pipe shim_ul_admission_pipe
+#define CreateEventW shim_CreateEventW
+#define ul_audio_capture_create_worker shim_ul_audio_capture_create_worker
+#define ul_audio_capture_retain shim_ul_audio_capture_retain
+#define ul_audio_capture_release shim_ul_audio_capture_release
+#define ul_audio_capture_activate shim_ul_audio_capture_activate
+#define ul_audio_capture_deactivate shim_ul_audio_capture_deactivate
+#define ul_audio_stream_run shim_ul_audio_stream_run
 #define UL_PLUGIN_AUTH_TIMEOUT_MS 40u
 #define UL_PLUGIN_READY_TIMEOUT_MS 40u
 #define UL_PLUGIN_START_TIMEOUT_MS 80u
+#define UL_PLUGIN_CAPTURE_TIMEOUT_MS 80u
 #include "../src/plugin_state.c"
 #undef GetModuleHandleExW
 #undef ul_pairing_store_open
@@ -101,6 +121,13 @@ static HANDLE shim_ul_admission_pipe(const ul_admission *admission);
 #undef ul_admission_probe
 #undef ul_admission_cancel
 #undef ul_admission_pipe
+#undef CreateEventW
+#undef ul_audio_capture_create_worker
+#undef ul_audio_capture_retain
+#undef ul_audio_capture_release
+#undef ul_audio_capture_activate
+#undef ul_audio_capture_deactivate
+#undef ul_audio_stream_run
 
 struct ul_pairing_store {
     int unused;
@@ -119,6 +146,12 @@ struct ul_authorizer {
     ul_admission *admission;
     uint8_t session[16];
     uint8_t mask;
+};
+
+struct ul_audio_capture {
+    volatile LONG refs;
+    volatile LONG deactivate_count;
+    bool active;
 };
 
 static bool fake_pin = true;
@@ -146,6 +179,27 @@ static HANDLE fake_schedule_entered;
 static HANDLE fake_reply_written;
 static uintptr_t fake_scheduled_generation;
 static uint8_t fake_reply[UL_SESSION_COMMAND_BYTES];
+static unsigned fake_create_event_count;
+static unsigned fake_create_event_fail_at;
+static volatile LONG fake_capture_create_count;
+static volatile LONG fake_capture_free_count;
+static volatile LONG fake_capture_activate_count;
+static volatile LONG fake_capture_deactivate_count;
+static volatile LONG fake_stream_count;
+static volatile LONG fake_cleanup_count;
+static bool fake_capture_create_result = true;
+static bool fake_capture_activate_result = true;
+static bool fake_capture_schedule_result = true;
+static bool fake_hold_after_stop;
+static int fake_stream_result = UL_AUDIO_STREAM_OK;
+static HANDLE fake_capture_schedule_entered;
+static HANDLE fake_cleanup_entered;
+static HANDLE fake_stream_entered;
+static HANDLE fake_stream_release;
+static HANDLE fake_reply_release;
+static bool fake_block_reply;
+static uintptr_t fake_capture_generation;
+static bool fake_create_after_reply;
 
 static int check(bool condition, const char *message)
 {
@@ -154,6 +208,19 @@ static int check(bool condition, const char *message)
         return 1;
     }
     return 0;
+}
+
+static HANDLE WINAPI shim_CreateEventW(LPSECURITY_ATTRIBUTES attributes,
+                                       BOOL manual, BOOL initial,
+                                       LPCWSTR name)
+{
+    fake_create_event_count++;
+    if (fake_create_event_fail_at != 0u &&
+        fake_create_event_count == fake_create_event_fail_at) {
+        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+        return NULL;
+    }
+    return CreateEventW(attributes, manual, initial, name);
 }
 
 static BOOL WINAPI shim_GetModuleHandleExW(DWORD flags, LPCWSTR address,
@@ -408,6 +475,9 @@ static int shim_ul_admission_write_all(ul_admission *admission,
     memcpy(fake_reply, buffer, size);
     if (fake_reply_written != NULL)
         SetEvent(fake_reply_written);
+    if (fake_block_reply && fake_reply_release != NULL &&
+        WaitForSingleObject(fake_reply_release, 2000) != WAIT_OBJECT_0)
+        return UL_ADMISSION_TIMEOUT;
     return UL_ADMISSION_AUTH_OK;
 }
 
@@ -432,12 +502,101 @@ static HANDLE shim_ul_admission_pipe(const ul_admission *admission)
     return NULL;
 }
 
+static ul_audio_capture *shim_ul_audio_capture_create_worker(
+    const ul_audio_capture_spec *spec)
+{
+    ul_audio_capture *capture;
+    (void)spec;
+    InterlockedIncrement(&fake_capture_create_count);
+    fake_create_after_reply = fake_reply_written != NULL &&
+        WaitForSingleObject(fake_reply_written, 0) == WAIT_OBJECT_0 &&
+        (!fake_block_reply || (fake_reply_release != NULL &&
+         WaitForSingleObject(fake_reply_release, 0) == WAIT_OBJECT_0));
+    if (!fake_capture_create_result)
+        return NULL;
+    capture = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*capture));
+    if (capture != NULL)
+        capture->refs = 1;
+    return capture;
+}
+
+static void shim_ul_audio_capture_retain(ul_audio_capture *capture)
+{
+    if (capture != NULL)
+        InterlockedIncrement(&capture->refs);
+}
+
+static void shim_ul_audio_capture_release(ul_audio_capture *capture)
+{
+    if (capture != NULL && InterlockedDecrement(&capture->refs) == 0) {
+        HeapFree(GetProcessHeap(), 0, capture);
+        InterlockedIncrement(&fake_capture_free_count);
+    }
+}
+
+static bool shim_ul_audio_capture_activate(ul_audio_capture *capture)
+{
+    if (capture == NULL || !fake_capture_activate_result)
+        return false;
+    capture->active = true;
+    InterlockedIncrement(&fake_capture_activate_count);
+    return true;
+}
+
+static void shim_ul_audio_capture_deactivate(ul_audio_capture *capture)
+{
+    if (capture == NULL)
+        return;
+    capture->active = false;
+    InterlockedIncrement(&capture->deactivate_count);
+    InterlockedIncrement(&fake_capture_deactivate_count);
+}
+
+static int shim_ul_audio_stream_run(ul_audio_capture *capture,
+    const ul_audio_capture_spec *spec, ul_admission *admission,
+    const uint8_t exact_session[16], HANDLE stop_event)
+{
+    HANDLE waits[3] = {stop_event, admission->cancelled, fake_stream_release};
+    DWORD waited;
+    (void)spec;
+    (void)exact_session;
+    InterlockedIncrement(&fake_stream_count);
+    if (fake_stream_entered != NULL)
+        SetEvent(fake_stream_entered);
+    waited = WaitForMultipleObjects(fake_stream_release == NULL ? 2u : 3u,
+                                    waits, FALSE, 2000u);
+    if (waited == WAIT_OBJECT_0 && fake_hold_after_stop &&
+        fake_stream_release != NULL)
+        (void)WaitForSingleObject(fake_stream_release, 2000u);
+    shim_ul_audio_capture_deactivate(capture);
+    if (waited == WAIT_OBJECT_0)
+        return fake_stream_result;
+    return UL_AUDIO_STREAM_TRANSPORT_ERROR;
+}
+
 static bool queued_arm_scheduler(uintptr_t generation)
 {
     fake_scheduled_generation = generation;
     if (fake_schedule_entered != NULL)
         SetEvent(fake_schedule_entered);
     return fake_schedule_result;
+}
+
+static bool queued_capture_scheduler(uintptr_t generation)
+{
+    fake_capture_generation = generation;
+    if (fake_capture_schedule_entered != NULL)
+        SetEvent(fake_capture_schedule_entered);
+    return fake_capture_schedule_result;
+}
+
+static bool queued_cleanup_scheduler(uintptr_t generation)
+{
+    fake_capture_generation = generation;
+    InterlockedIncrement(&fake_cleanup_count);
+    if (fake_cleanup_entered != NULL)
+        SetEvent(fake_cleanup_entered);
+    return true;
 }
 
 static DWORD WINAPI export_thread(void *unused)
@@ -570,6 +729,65 @@ static void close_arm_events(void)
         CloseHandle(fake_reply_written);
     fake_schedule_entered = NULL;
     fake_reply_written = NULL;
+}
+
+static ul_audio_capture_spec capture_spec(uint8_t primary, uint8_t mask)
+{
+    ul_audio_capture_spec spec = {48000u, 2u, 2u, primary, mask,
+                                  (uintptr_t)0x1111u, (uintptr_t)0x2222u};
+    return spec;
+}
+
+static int start_capture_runtime(void)
+{
+    int failures = start_arm_runtime();
+    fake_capture_schedule_entered = CreateEventW(NULL, TRUE, FALSE, NULL);
+    fake_cleanup_entered = CreateEventW(NULL, TRUE, FALSE, NULL);
+    fake_stream_entered = CreateEventW(NULL, TRUE, FALSE, NULL);
+    fake_stream_release = CreateEventW(NULL, TRUE, FALSE, NULL);
+    fake_reply_release = CreateEventW(NULL, TRUE, FALSE, NULL);
+    failures += check(fake_capture_schedule_entered != NULL &&
+                          fake_cleanup_entered != NULL &&
+                          fake_stream_entered != NULL &&
+                          fake_stream_release != NULL &&
+                          fake_reply_release != NULL,
+                      "create capture coordination events");
+    failures += check(ul_plugin_set_capture_schedulers(
+                          queued_capture_scheduler, queued_cleanup_scheduler),
+                      "install capture schedulers before worker");
+    return failures;
+}
+
+static void close_capture_events(void)
+{
+    CloseHandle(fake_capture_schedule_entered);
+    CloseHandle(fake_cleanup_entered);
+    CloseHandle(fake_stream_entered);
+    CloseHandle(fake_stream_release);
+    CloseHandle(fake_reply_release);
+    fake_capture_schedule_entered = fake_cleanup_entered = NULL;
+    fake_stream_entered = fake_stream_release = fake_reply_release = NULL;
+    close_arm_events();
+}
+
+static int reach_capture_started(uint8_t session[16], uint8_t mask,
+                                 uintptr_t *generation)
+{
+    uint8_t observed_mask = 0xffu;
+    int failures = prepare_arm(session, mask);
+    ul_plugin_arm_checked(fake_scheduled_generation, true);
+    failures += check(WaitForSingleObject(fake_reply_written, 2000) ==
+                          WAIT_OBJECT_0,
+                      "accepted Arm reply completes before capture");
+    ul_plugin_stream_event(UL_STREAM_STARTING);
+    ul_plugin_stream_event(UL_STREAM_STARTED);
+    failures += check(wait_phase(UL_SESSION_STARTED, 2000),
+                      "capture generation reaches STARTED");
+    failures += check(ul_plugin_capture_inspect_request(generation,
+                                                        &observed_mask) &&
+                          observed_mask == mask,
+                      "current STARTED generation requests exact mask");
+    return failures;
 }
 
 static int scenario_arm_valid(void)
@@ -804,6 +1022,209 @@ static int scenario_arm_close_pending(void)
                           ul_plugin_session_status() == UL_SESSION_NONE,
                       "close joins pending Arm and closes public gate");
     close_arm_events();
+    return failures;
+}
+
+static int scenario_capture_clean(void)
+{
+    uint8_t session[16] = {0x81, 2, 3};
+    ul_audio_capture_spec spec = capture_spec(0u, 5u);
+    ul_audio_capture *borrowed;
+    uintptr_t generation = 0u;
+    uint8_t observed_mask = 0xffu;
+    DWORD before = 0u, after = 0u;
+    int failures;
+
+    GetProcessHandleCount(GetCurrentProcess(), &before);
+    failures = start_capture_runtime();
+    fake_block_reply = true;
+    failures += prepare_arm(session, 4u);
+    ul_plugin_arm_checked(fake_scheduled_generation, true);
+    failures += check(WaitForSingleObject(fake_reply_written, 2000) ==
+                          WAIT_OBJECT_0,
+                      "capture sees Arm reply write in flight");
+    ul_plugin_stream_event(UL_STREAM_STARTING);
+    ul_plugin_stream_event(UL_STREAM_STARTED);
+    failures += check(ul_plugin_capture_inspect_request(&generation,
+                                                        &observed_mask) &&
+                          generation == fake_scheduled_generation &&
+                          observed_mask == 4u,
+                      "inspection may copy metadata while reply is in flight");
+    ul_plugin_capture_inspected(generation, &spec);
+    Sleep(20u);
+    failures += check(InterlockedCompareExchange(&fake_capture_create_count, 0, 0) == 0,
+                      "capture is not created before full accepted Arm reply");
+    SetEvent(fake_reply_release);
+    failures += check(WaitForSingleObject(fake_capture_schedule_entered, 2000) ==
+                          WAIT_OBJECT_0 && fake_create_after_reply,
+                      "capture create and attach schedule follow reply completion");
+    borrowed = ul_plugin_capture_retain(generation);
+    failures += check(borrowed != NULL && borrowed->refs == 2,
+                      "frontend takes an independent capture reference");
+    ul_plugin_capture_attached(generation, borrowed, true);
+    shim_ul_audio_capture_release(borrowed);
+    failures += check(WaitForSingleObject(fake_stream_entered, 2000) ==
+                          WAIT_OBJECT_0 &&
+                          InterlockedCompareExchange(&fake_capture_activate_count, 0, 0) == 1,
+                      "matching attach activates and enters stream worker");
+    fake_hold_after_stop = true;
+    ul_plugin_stream_event(UL_STREAM_STOPPING);
+    failures += check(wait_phase(UL_SESSION_DRAINING, 2000),
+                      "STOPPING preserves worker for clean drain and End ACK");
+    ul_plugin_stream_event(UL_STREAM_STOPPED);
+    failures += check(ul_plugin_session_status() == UL_SESSION_DRAINING,
+                      "duplicate STOPPED does not abort clean End");
+    SetEvent(fake_stream_release);
+    failures += check(wait_worker_inactive(2000) &&
+                          WaitForSingleObject(fake_cleanup_entered, 2000) ==
+                              WAIT_OBJECT_0,
+                      "clean stream retires worker and queues cleanup without UI wait");
+    ul_plugin_close();
+    close_capture_events();
+    GetProcessHandleCount(GetCurrentProcess(), &after);
+    failures += check(before == after,
+                      "capture result and stream stop handles close with runtime");
+    return failures;
+}
+
+static int scenario_capture_failures(void)
+{
+    uint8_t session[16] = {0x91};
+    ul_audio_capture_spec spec = capture_spec(0u, 1u);
+    ul_audio_capture *stale, *current;
+    uintptr_t generation = 0u, stale_generation;
+    int failures = start_capture_runtime();
+
+    failures += reach_capture_started(session, 0u, &generation);
+    ul_plugin_capture_inspected(generation, NULL);
+    failures += check(wait_worker_inactive(2000) &&
+                          InterlockedCompareExchange(&fake_capture_create_count, 0, 0) == 0,
+                      "failed inspection retires without capture creation");
+
+    session[0]++;
+    ResetEvent(fake_capture_schedule_entered);
+    failures += reach_capture_started(session, 0u, &generation);
+    ul_plugin_capture_inspected(generation, &spec);
+    failures += check(WaitForSingleObject(fake_capture_schedule_entered, 2000) ==
+                          WAIT_OBJECT_0,
+                      "valid inspection schedules attachment");
+    stale_generation = generation;
+    stale = ul_plugin_capture_retain(stale_generation);
+    failures += check(stale != NULL, "pending frontend retain succeeds");
+    failures += check(wait_worker_inactive(2000) && stale->refs == 1,
+                      "missing attach times out while retained frontend reference survives");
+
+    session[0]++;
+    ResetEvent(fake_capture_schedule_entered);
+    ResetEvent(fake_stream_entered);
+    failures += reach_capture_started(session, 0u, &generation);
+    failures += check(generation != stale_generation,
+                      "new preparation advances capture generation and resets flags");
+    ul_plugin_capture_inspected(generation, &spec);
+    failures += check(WaitForSingleObject(fake_capture_schedule_entered, 2000) ==
+                          WAIT_OBJECT_0,
+                      "new generation schedules independent attach");
+    ul_plugin_capture_attached(stale_generation, stale, true);
+    current = ul_plugin_capture_retain(generation);
+    failures += check(current != NULL && current != stale,
+                      "stale attach reply cannot bind new generation");
+    ul_plugin_capture_attached(generation, current, false);
+    shim_ul_audio_capture_release(current);
+    failures += check(wait_worker_inactive(2000) &&
+                          InterlockedCompareExchange(&fake_stream_count, 0, 0) == 0,
+                      "explicit attach refusal never enters stream");
+    shim_ul_audio_capture_release(stale);
+    failures += check(InterlockedCompareExchange(&fake_capture_free_count, 0, 0) >= 2,
+                      "worker and independent frontend capture references release");
+
+    session[0]++;
+    ResetEvent(fake_capture_schedule_entered);
+    failures += reach_capture_started(session, 0u, &generation);
+    ul_plugin_capture_inspected(generation, &spec);
+    failures += check(WaitForSingleObject(fake_capture_schedule_entered, 2000) ==
+                          WAIT_OBJECT_0,
+                      "stop-before-attach case reaches queued frontend work");
+    current = ul_plugin_capture_retain(generation);
+    ul_plugin_stream_event(UL_STREAM_STOPPING);
+    failures += check(wait_worker_inactive(2000),
+                      "stop before attach is incomplete and cancels worker");
+    ul_plugin_capture_attached(generation, current, true);
+    shim_ul_audio_capture_release(current);
+    failures += check(InterlockedCompareExchange(&fake_stream_count, 0, 0) == 0 &&
+                          InterlockedCompareExchange(&fake_capture_activate_count, 0, 0) == 0,
+                      "late stop-before-attach reply cannot activate capture");
+
+    session[0]++;
+    ResetEvent(fake_capture_schedule_entered);
+    ResetEvent(fake_stream_entered);
+    ResetEvent(fake_cleanup_entered);
+    failures += reach_capture_started(session, 0u, &generation);
+    ul_plugin_capture_inspected(generation, &spec);
+    failures += check(WaitForSingleObject(fake_capture_schedule_entered, 2000) ==
+                          WAIT_OBJECT_0,
+                      "short stream schedules attach");
+    current = ul_plugin_capture_retain(generation);
+    fake_stream_result = UL_AUDIO_STREAM_INCOMPLETE;
+    ul_plugin_capture_attached(generation, current, true);
+    shim_ul_audio_capture_release(current);
+    failures += check(WaitForSingleObject(fake_stream_entered, 2000) ==
+                          WAIT_OBJECT_0,
+                      "short stream enters transport after attach");
+    ul_plugin_stream_event(UL_STREAM_STOPPED);
+    failures += check(wait_worker_inactive(2000) &&
+                          InterlockedCompareExchange(&fake_stream_count, 0, 0) == 1 &&
+                          WaitForSingleObject(fake_cleanup_entered, 0) == WAIT_OBJECT_0,
+                      "short stream returns incomplete and still queues cleanup");
+    ul_plugin_close();
+    close_capture_events();
+    return failures;
+}
+
+static int scenario_capture_cancel(void)
+{
+    uint8_t session[16] = {0xa1};
+    ul_audio_capture_spec spec = capture_spec(0u, 1u);
+    ul_audio_capture *borrowed;
+    uintptr_t generation = 0u;
+    LONG free_before;
+    int failures = start_capture_runtime();
+
+    failures += reach_capture_started(session, 0u, &generation);
+    ul_plugin_capture_inspected(generation, &spec);
+    failures += check(WaitForSingleObject(fake_capture_schedule_entered, 2000) ==
+                          WAIT_OBJECT_0,
+                      "cancel case schedules capture attach");
+    borrowed = ul_plugin_capture_retain(generation);
+    ul_plugin_capture_attached(generation, borrowed, true);
+    failures += check(WaitForSingleObject(fake_stream_entered, 2000) ==
+                          WAIT_OBJECT_0,
+                      "cancel case enters audio stream");
+    free_before = InterlockedCompareExchange(&fake_capture_free_count, 0, 0);
+    ul_plugin_close();
+    failures += check(borrowed != NULL && borrowed->refs == 1 &&
+                          InterlockedCompareExchange(&fake_capture_free_count, 0, 0) ==
+                              free_before &&
+                          WaitForSingleObject(fake_cleanup_entered, 0) ==
+                              WAIT_OBJECT_0,
+                      "hard close cancels I/O and worker while frontend retain survives");
+    shim_ul_audio_capture_release(borrowed);
+    failures += check(InterlockedCompareExchange(&fake_capture_free_count, 0, 0) ==
+                          free_before + 1,
+                      "frontend releases retained capture after runtime close");
+    close_capture_events();
+    return failures;
+}
+
+static int scenario_capture_event_failure(void)
+{
+    DWORD before = 0u, after = 0u;
+    int failures = 0;
+    GetProcessHandleCount(GetCurrentProcess(), &before);
+    fake_create_event_fail_at = 4u;
+    failures += check(!ul_plugin_start(), "capture-result event failure rejects start");
+    GetProcessHandleCount(GetCurrentProcess(), &after);
+    failures += check(before == after,
+                      "partial capture/stream event creation closes every handle");
     return failures;
 }
 
@@ -1209,6 +1630,14 @@ static int run_child(const char *scenario)
         return scenario_arm_teardown();
     if (strcmp(scenario, "arm-close") == 0)
         return scenario_arm_close_pending();
+    if (strcmp(scenario, "capture-clean") == 0)
+        return scenario_capture_clean();
+    if (strcmp(scenario, "capture-failures") == 0)
+        return scenario_capture_failures();
+    if (strcmp(scenario, "capture-cancel") == 0)
+        return scenario_capture_cancel();
+    if (strcmp(scenario, "capture-event-fail") == 0)
+        return scenario_capture_event_failure();
     return 1;
 }
 
@@ -1243,7 +1672,8 @@ int main(int argc, char **argv)
         L"pin", L"reload", L"fallback", L"states", L"pair", L"prepare",
         L"expiry", L"cancel", L"dispatch", L"arm-valid", L"arm-order",
         L"arm-start-timeout", L"arm-stale", L"arm-bound", L"arm-teardown",
-        L"arm-close"};
+        L"arm-close", L"capture-clean", L"capture-failures",
+        L"capture-cancel", L"capture-event-fail"};
     wchar_t executable[32768];
     size_t index;
     int failures = 0;

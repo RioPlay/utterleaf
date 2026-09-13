@@ -4,6 +4,7 @@
 #endif
 
 #include "../src/admission.h"
+#include "../src/session_protocol.h"
 
 #include <windows.h>
 
@@ -172,6 +173,31 @@ static int child_main(int argc, WCHAR **argv)
         !sync_read_exact(pipe, ack, sizeof(ack)))
         goto cleanup;
 
+    if (wcscmp(argv[2], L"end_receipt") == 0) {
+        uint8_t terminal[39], receipt[28] = {'U', 'L', 'A', 'C', 1, 3, 0, 0};
+        DWORD count = 0;
+        uint8_t extra;
+        SetEvent(ready);
+        if (!sync_read_exact(pipe, terminal, sizeof(terminal)) ||
+            memcmp(terminal, "ULAP\1\4\0\0\33\0\0\0", 12) != 0 ||
+            memcmp(terminal + 12, session, 16) != 0 ||
+            terminal[28] != 1 || terminal[29] != 1 || terminal[30] != 0)
+            goto cleanup;
+        memcpy(receipt + 8, session, 16);
+        if (!sync_write_all(pipe, receipt, 13) ||
+            !sync_write_all(pipe, receipt + 13, 15))
+            goto cleanup;
+        /* Retain the client endpoint until server receipt/peer validation
+         * completes. The server disconnect is the only allowed next input. */
+        if (ReadFile(pipe, &extra, 1, &count, NULL) ||
+            (GetLastError() != ERROR_BROKEN_PIPE &&
+             GetLastError() != ERROR_PIPE_NOT_CONNECTED &&
+             GetLastError() != ERROR_NO_DATA))
+            goto cleanup;
+        SetEvent(done);
+        result = 0;
+        goto cleanup;
+    }
     if (wcscmp(argv[2], L"eof") == 0 ||
         wcscmp(argv[2], L"partial_eof") == 0) {
         if (wcscmp(argv[2], L"partial_eof") == 0 &&
@@ -653,6 +679,33 @@ static int test_eof_and_dead_peer(void)
     return failures;
 }
 
+static int test_terminal_receipt_and_server_disconnect(void)
+{
+    test_peer peer;
+    uint8_t session[16], receipt[28];
+    uint8_t terminal[39] = {'U', 'L', 'A', 'P', 1, 4, 0, 0, 27, 0, 0, 0};
+    int failures = 0;
+    failures += check(authenticated_peer(&peer, L"end_receipt", session, 40),
+                      "authenticate terminal receipt client");
+    if (failures) { stop_peer(&peer); return failures; }
+    memcpy(terminal + 12, session, 16);
+    terminal[28] = terminal[29] = 1; /* Stream stopped; bus zero sequence zero. */
+    failures += check(WaitForSingleObject(peer.ready, TEST_TIMEOUT_MS) == WAIT_OBJECT_0,
+                      "terminal receipt client ready");
+    failures += check(ul_admission_write_all(peer.admission, terminal, sizeof(terminal), 1000) ==
+                          UL_ADMISSION_AUTH_OK, "write terminal packet");
+    failures += check(ul_admission_read_exact(peer.admission, receipt, sizeof(receipt), 1000) ==
+                          UL_ADMISSION_AUTH_OK && ul_session_end_ack(receipt, sizeof(receipt), session),
+                      "read fragmented terminal receipt with final peer validation");
+    ul_admission_cancel(peer.admission);
+    ul_admission_destroy(peer.admission);
+    peer.admission = NULL;
+    failures += check(WaitForSingleObject(peer.done, TEST_TIMEOUT_MS) == WAIT_OBJECT_0,
+                      "client observes server disconnect without flush");
+    stop_peer(&peer);
+    return failures;
+}
+
 int wmain(int argc, WCHAR **argv)
 {
     int failures;
@@ -666,6 +719,7 @@ int wmain(int argc, WCHAR **argv)
     failures += test_partial_failure_wipes();
     failures += test_cancel_before_call_and_blocked_write();
     failures += test_eof_and_dead_peer();
+    failures += test_terminal_receipt_and_server_disconnect();
     puts(failures == 0 ? "admission I/O tests passed"
                        : "admission I/O tests failed");
     return failures == 0 ? 0 : 1;

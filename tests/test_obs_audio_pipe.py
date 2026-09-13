@@ -66,6 +66,9 @@ class Pipe:
             ack = b"ULAH\x01\x02\x00\x00" + data[8:24] + mac
             self.pending.extend(self.mutate_ack(ack))
         elif len(data) == 28:
+            if data == b"ULAC\x01\x03\x00\x00" + SESSION + b"\x00" * 4:
+                self.after_write()
+                return
             magic, version, kind, reserved, session, mask, status, trailing = struct.unpack(
                 "<4sBBH16sBBH", data
             )
@@ -85,6 +88,12 @@ class Pipe:
         result = bytes(self.pending[:min(maximum, self.max_chunk)])
         del self.pending[:len(result)]
         return result
+
+    def wait_for_disconnect(self, *, deadline):
+        assert self.writes[-1] == b"ULAC\x01\x03\x00\x00" + SESSION + b"\x00" * 4
+        if self.pending:
+            raise audio_pipe.windows_pipe.WindowsPipeError("trailing bytes")
+        self.closed = True
 
     def close(self):
         self.closed = True
@@ -245,6 +254,7 @@ def test_fragmented_audio_retains_receiver_consent_and_actual_primary_bus(monkey
         connection.close()
         receiver.close()
     assert peer.closed
+    assert pipe.writes[-1] == b"ULAC\x01\x03\x00\x00" + SESSION + b"\x00" * 4
 
 
 def test_authenticated_pipe_does_not_grant_permission_to_capture(monkeypatch):
@@ -270,6 +280,45 @@ def test_end_with_trailing_partial_or_complete_frame_fails(monkeypatch, suffix):
     with pytest.raises(audio_pipe.ObsAudioPipeError):
         connection.read_frames(deadline=time.monotonic() + 1)
     assert pipe.closed and peer.closed
+    assert len(pipe.writes) == 2  # Never acknowledge malformed/trailing End.
+
+
+def test_terminal_receipt_allows_server_to_disconnect_immediately(monkeypatch):
+    connection, pipe, peer = connect(monkeypatch)
+    arm(connection)
+    end = audio_frames()[-1]
+    pipe.pending.extend(protocol.encode_frame(end))
+    # Receipt is sent only after decoding and the last identity check. A server
+    # may disconnect as soon as it consumes it; no post-receipt PID query.
+    def disconnect_after_receipt():
+        assert pipe.writes[-1] == b"ULAC\x01\x03\x00\x00" + SESSION + b"\x00" * 4
+        pipe.pid = 0
+    pipe.after_write = disconnect_after_receipt
+    assert connection.read_frames(deadline=time.monotonic() + 1) == [end]
+    assert pipe.closed and peer.closed
+
+
+@pytest.mark.parametrize("failure", ["identity", "write", "disconnect", "cancel"])
+def test_terminal_receipt_failure_never_returns_complete_end(monkeypatch, failure):
+    connection, pipe, peer = connect(monkeypatch)
+    arm(connection)
+    pipe.pending.extend(protocol.encode_frame(audio_frames()[-1]))
+    if failure == "identity":
+        peer.fail_at = len(peer.checks) + 3  # Immediately before receipt.
+    elif failure == "write":
+        def failed_write(*args, **kwargs):
+            raise audio_pipe.windows_pipe.WindowsPipeError("fixture")
+        pipe.write_all = failed_write
+    else:
+        def failed_disconnect(*args, **kwargs):
+            if failure == "cancel":
+                raise audio_pipe.windows_pipe.WindowsPipeCancelled("fixture")
+            raise audio_pipe.windows_pipe.WindowsPipeTimeout("fixture")
+        pipe.wait_for_disconnect = failed_disconnect
+    with pytest.raises(audio_pipe.ObsAudioPipeError):
+        connection.read_frames(deadline=time.monotonic() + 1)
+    assert pipe.closed and peer.closed
+    assert len(pipe.writes) == (2 if failure in ("identity", "write") else 3)
 
 
 def test_identity_loss_after_read_prevents_returning_audio(monkeypatch):

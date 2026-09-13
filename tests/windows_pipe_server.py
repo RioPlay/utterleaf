@@ -42,6 +42,8 @@ k.ReadFile.argtypes = [HANDLE, ctypes.c_void_p, DWORD, ctypes.POINTER(DWORD), ct
 k.ReadFile.restype = ctypes.c_int32
 k.CloseHandle.argtypes = [HANDLE]
 k.CloseHandle.restype = ctypes.c_int32
+k.DisconnectNamedPipe.argtypes = [HANDLE]
+k.DisconnectNamedPipe.restype = ctypes.c_int32
 
 h = k.CreateNamedPipeW(name, 3, 0, 1, 65536, 65536, 0, None)
 if int(h) == INVALID:
@@ -124,9 +126,12 @@ elif mode == "audio":
         raise SystemExit(17)
     write_all(struct.pack("<4sBBH16sBBH", b"ULAC", 1, 2, 0, session_id, arm_mask, 1, 0))
     write_all(payload)
-    buffer = ctypes.create_string_buffer(1)
-    count = DWORD()
-    k.ReadFile(h, buffer, 1, ctypes.byref(count), None)
+    receipt = read_exact(28)
+    if receipt != b"ULAC\x01\x03\x00\x00" + session_id + b"\x00" * 4:
+        raise SystemExit(18)
+    # Disconnect immediately after the decoded-End receipt, without flushing or
+    # waiting for the client to close. The parent must still return complete End.
+    k.DisconnectNamedPipe(h)
 elif mode == "observe":
     buffer = ctypes.create_string_buffer(56)
     count = DWORD()
