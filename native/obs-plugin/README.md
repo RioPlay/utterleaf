@@ -59,7 +59,7 @@ view. Native Start/End identify the accepted one-use session, so delayed untagge
 WebSocket stream lifecycle events cannot start or finalize another session.
 OBS Exit and identity/protocol failures remain terminal. This is development source without
 an application entry point; actual OBS acceptance and native redistribution
-remain open. All 647 focused desktop tests, 38 Tk tests, 51 native verification
+remain open. All 647 focused desktop tests, 41 Tk tests, 51 native verification
 commands, the linked build and headless smoke pass. Independent source and
 render review is clear; its plan records exact evidence and remaining gates.
 

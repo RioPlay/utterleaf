@@ -118,6 +118,17 @@ def state(widget) -> str:
     return str(widget.cget("state"))
 
 
+def layout_diagnostics(window, requested: str) -> str:
+    summary = window.connection_summary
+    return (
+        f"requested={requested} actual={window.root.winfo_width()}x{window.root.winfo_height()} "
+        f"root_mapped={window.root.winfo_ismapped()} compact={window._compact} "
+        f"summary_manager={summary.winfo_manager()!r} "
+        f"summary={summary.winfo_width()}x{summary.winfo_height()} "
+        f"preview_height={window.preview.winfo_height()}"
+    )
+
+
 def test_construction_and_refresh_only_read_snapshots(opened):
     window, controller, coordinator, actions = opened()
     assert actions.calls == []
@@ -166,8 +177,8 @@ def test_connect_forwards_exact_intent_then_clears_and_collapses_inputs(opened):
     window.root.update_idletasks()
     assert not window.connection_card.winfo_ismapped()
     assert bool(window.connection_summary.winfo_ismapped()) is (
-        window.root.winfo_height() >= 620
-    )
+        window.root.winfo_height() >= ui.NORMAL_LAYOUT_HEIGHT
+    ), layout_diagnostics(window, "840x720")
     assert "do-not-retain" not in repr(window)
 
 
@@ -203,12 +214,17 @@ def test_connection_latch_does_not_keep_summary_during_capture_or_result(opened,
         window.refresh()
         tk_root.update()
         expected_summary = (
-            window.root.winfo_height() >= 620 and value.state in {"ready", "armed"}
+            window.root.winfo_height() >= ui.NORMAL_LAYOUT_HEIGHT
+            and value.state in {"ready", "armed"}
         )
-        assert bool(window.connection_summary.winfo_ismapped()) is expected_summary
+        assert bool(window.connection_summary.winfo_ismapped()) is expected_summary, (
+            layout_diagnostics(window, "840x720")
+        )
         if value.state in {"active", "incomplete"}:
-            minimum = 140 if window.root.winfo_height() >= 720 else 100
-            assert window.preview.winfo_height() >= minimum
+            minimum = 140 if window.root.winfo_height() >= ui.NORMAL_LAYOUT_HEIGHT else 100
+            assert window.preview.winfo_height() >= minimum, layout_diagnostics(
+                window, "840x720"
+            )
 
 
 @pytest.mark.parametrize("controller_state,recognition_state,tracks,connect,arm,stop,cancel,pair,export", [
@@ -386,9 +402,39 @@ def test_normal_capture_states_keep_transcript_readable(opened, tk_root,
     window.root.geometry("840x720+40+40")
     tk_root.update()
     minimum = 140 if (
-        window.root.winfo_width() >= 840 and window.root.winfo_height() >= 720
+        window.root.winfo_width() >= 840
+        and window.root.winfo_height() >= ui.NORMAL_LAYOUT_HEIGHT
     ) else 100
-    assert window.preview.winfo_height() >= minimum
+    assert window.preview.winfo_height() >= minimum, layout_diagnostics(window, "840x720")
+
+
+@pytest.mark.parametrize("controller_value,recognition_value", [
+    (
+        session("active", primary=0, buses=(0, 1), seconds=25),
+        recognition(RecognitionState.RUNNING, preview="Active transcript", tracks=2),
+    ),
+    (
+        session("active", degraded=True, primary=0, buses=(0, 1), seconds=25),
+        recognition(RecognitionState.RUNNING, preview="Degraded transcript", tracks=2),
+    ),
+    (
+        session("incomplete", primary=0, buses=(0, 1), seconds=25),
+        recognition(RecognitionState.INCOMPLETE, preview="Recovered transcript", tracks=2,
+                    completed=1, incomplete=True),
+    ),
+])
+def test_clamped_645px_layout_preserves_compact_transcript(opened, tk_root,
+                                                           controller_value,
+                                                           recognition_value):
+    window, _controller, _coordinator, _actions = opened(
+        controller_value, recognition_value,
+    )
+    window.root.geometry("840x645+40+40")
+    tk_root.update()
+    diagnostics = layout_diagnostics(window, "840x645")
+    assert window.root.winfo_height() < ui.NORMAL_LAYOUT_HEIGHT, diagnostics
+    assert window._compact, diagnostics
+    assert window.preview.winfo_height() >= 100, diagnostics
 
 
 def test_degraded_status_keeps_compact_transcript_readable(opened, tk_root):

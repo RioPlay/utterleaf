@@ -16,6 +16,7 @@ from utterleaf.host import ui_font
 
 
 POLL_MS = 100
+NORMAL_LAYOUT_HEIGHT = 720
 _LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1"})
 _EXPORT_STATES = frozenset({"complete", "incomplete", "failed"})
 _RUNNING_STATES = frozenset({"connecting", "preparing", "armed", "active", "stopping", "finalizing"})
@@ -335,13 +336,16 @@ class ObsSessionWindow:
     def _resize(self, event) -> None:
         if event.widget is not self.root:
             return
-        width = max(220, event.width - 120)
+        self._sync_layout(event.width, event.height)
+
+    def _sync_layout(self, width: int, height: int) -> None:
+        width = max(220, width - 120)
         self.intro.configure(wraplength=width)
         self.message_label.configure(wraplength=width)
         self.action_error_label.configure(wraplength=width)
         self.connection_error_label.configure(wraplength=width)
         self.connection_hint.configure(wraplength=width)
-        compact = event.height < 620
+        compact = height < NORMAL_LAYOUT_HEIGHT
         if compact == self._compact:
             return
         self._compact = compact
@@ -353,19 +357,21 @@ class ObsSessionWindow:
             self.eyebrow.grid_remove()
             self.hero.grid_remove()
             self.intro.grid_remove()
-            self.capture_hint.grid_remove()
             if self._last_state != "disabled" or self._connect_sent:
                 self.connection_summary.grid_remove()
         else:
             self.eyebrow.grid()
             self.hero.grid()
             self.intro.grid()
-            self.capture_hint.grid()
             if self._show_connection_summary():
                 self.connection_summary.grid()
         self._update_export_row()
         self._update_compact_copy()
         self._update_compact_sections()
+        self._update_capture_sections(
+            self._last_state,
+            self._last_state in {"disabled", "connecting", "busy", "ready"},
+        )
         if self.degraded_text.get():
             self.degraded_text.set(
                 "Controls disconnected" if compact else
@@ -483,6 +489,7 @@ class ObsSessionWindow:
     def refresh(self) -> None:
         if self.closed:
             return
+        self._sync_layout(self.root.winfo_width(), self.root.winfo_height())
         try:
             session = self.controller.snapshot()
             recognition = self.coordinator.snapshot()

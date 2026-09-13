@@ -99,7 +99,7 @@ or incorrectly sized captures rather than treating them as visual evidence.
 
 ## Verified checkpoint
 
-Final local verification passes **647** focused backend tests, **38** real Tk
+Final local verification passes **647** focused backend tests, **41** real Tk
 tests, all **51** canonical native verification commands, the **24**-command
 linked build and headless refusal smoke. Independent implementation review is
 clear, including the final cleanup-failure path. The receipt audit matches all
@@ -107,9 +107,10 @@ clear, including the final cleanup-failure path. The receipt audit matches all
 hash comparisons. It is development provenance, not a fully pinned build claim.
 
 The UI was rendered and inspected in nine synthetic states: disabled, ready,
-armed, active, control-disconnected and incomplete at 840×720, plus disabled and
-active/control-disconnected at 560×520. Normal active/degraded/incomplete previews retain at least
-140 pixels of height; compact active retains at least 100 pixels. Tests cover
+armed, active, control-disconnected and incomplete at 840×720, plus disabled,
+active and control-disconnected at 560×520. Normal active/degraded/incomplete
+previews retain at least 140 pixels of height; compact previews retain at least
+100 pixels. Tests also cover the macOS-clamped 840×645 capture states and
 the actual Connect-to-terminal transition as well as direct state fixtures.
 These are native Tk view checks with injected actions, not actual OBS use.
 
@@ -138,8 +139,13 @@ Initial CI at `ce25987` passed Windows and both Linux/macOS package builds.
 Linux tests exposed a reader fixture's unscheduled retry loop; the corrected
 fixture uses events to hold one read, prove the other returns unavailable, then
 verify both absolute offsets after release. macOS tests exposed assumptions
-about requested window size despite display clamping. Assertions now use actual
-geometry and compact layout preserves transcript room with larger font metrics.
+about requested window size despite display clamping. The second CI run passed
+Linux tests but exposed a 645-pixel-high macOS window between the previous compact
+threshold and the space required by the full layout. Configure events and refresh
+now share idempotent layout synchronization against actual dimensions. The full
+layout starts at 720 pixels; shorter windows use the compact layout, and changing
+density preserves state-dependent control visibility. Assertions use actual
+geometry and preserve the normal and compact transcript readability requirements.
 No platform skips or lowered readability requirements were added.
 
 ## Remaining product gates and stop

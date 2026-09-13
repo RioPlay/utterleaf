@@ -242,7 +242,7 @@ compact Tk view receives snapshots and forwards explicit actions. It has no
 application entry point, pairing-key ownership, export implementation or live
 OBS acceptance yet. Accurate mix/routing metadata, recorded-file timelines and
 separate native distribution review remain product gates. All 647 focused backend
-tests, 38 Tk tests, 51 native verification commands, the 24-command linked build
+tests, 41 Tk tests, 51 native verification commands, the 24-command linked build
 and headless smoke pass. Nine synthetic UI renders were inspected; independent
 source review is clear. Its active plan records exact commands and remaining
 acceptance limits.
