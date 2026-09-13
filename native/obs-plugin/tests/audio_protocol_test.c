@@ -147,6 +147,11 @@ static void test_end_validation(void)
     reset(out, sizeof(out));
     assert(ul_audio_encode_end(out, sizeof(out), session, UL_AUDIO_END_OBS_EXIT,
                                entries, 2) == 48u);
+    assert(ul_audio_encode_end(out, sizeof(out), session, UL_AUDIO_END_DISARMED,
+                               NULL, 0) == 30u);
+    assert(memcmp(out, "ULAP\1\4\0\0\22\0\0\0", 12u) == 0);
+    assert(memcmp(out + 12u, session, 16u) == 0);
+    assert(out[28] == UL_AUDIO_END_DISARMED && out[29] == 0u);
     reset(out, sizeof(out));
     assert(ul_audio_encode_end(out, 47, session, UL_AUDIO_END_OBS_EXIT, entries, 2) == 0u);
     assert(ul_audio_encode_end(out, sizeof(out), NULL, UL_AUDIO_END_OBS_EXIT, entries, 2) == 0u);
@@ -154,6 +159,7 @@ static void test_end_validation(void)
     assert(ul_audio_encode_end(out, sizeof(out), session, 6, entries, 2) == 0u);
     assert(ul_audio_encode_end(out, sizeof(out), session, UL_AUDIO_END_OBS_EXIT, NULL, 2) == 0u);
     assert(ul_audio_encode_end(out, sizeof(out), session, UL_AUDIO_END_OBS_EXIT, entries, 0) == 0u);
+    assert(ul_audio_encode_end(out, 29u, session, UL_AUDIO_END_DISARMED, NULL, 0) == 0u);
     assert(ul_audio_encode_end(out, sizeof(out), session, UL_AUDIO_END_OBS_EXIT, entries, 7) == 0u);
     entries[1].bus = 0;
     assert(ul_audio_encode_end(out, sizeof(out), session, UL_AUDIO_END_OBS_EXIT, entries, 2) == 0u);

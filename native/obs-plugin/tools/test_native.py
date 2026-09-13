@@ -76,7 +76,9 @@ def main() -> None:
         "utterleaf/obs_protocol.py", "utterleaf/obs_audio_pipe.py",
         "utterleaf/windows_peer_identity.py", "utterleaf/obs_session.py",
         "utterleaf/capture_store.py", "utterleaf/local_filesystem.py", "utterleaf/transcript.py",
+        "utterleaf/audio_batching.py", "utterleaf/audio.py",
         "tests/test_obs_audio_pipe.py", "tests/test_obs_audio_arm.py",
+        "tests/test_obs_audio_disarm.py", "tests/test_obs_protocol.py", "tests/test_obs_session.py",
         "tests/test_windows_pipe.py", "tests/windows_pipe_server.py",
     )]
     client_hashes = {str(path.relative_to(REPO)): digest(path) for path in client_sources}
@@ -145,6 +147,9 @@ def main() -> None:
     run("desktop-audio-pipe-tests", [sys.executable, "-m", "pytest",
                                      REPO / "tests/test_obs_audio_pipe.py",
                                      REPO / "tests/test_obs_audio_arm.py",
+                                     REPO / "tests/test_obs_audio_disarm.py",
+                                     REPO / "tests/test_obs_protocol.py",
+                                     REPO / "tests/test_obs_session.py",
                                      REPO / "tests/test_windows_pipe.py"])
     run("audio-protocol-build", [*flags, ROOT / "src/audio_protocol.c",
                                   ROOT / "tests/audio_protocol_test.c", "-o", audio_protocol])
@@ -295,8 +300,8 @@ def main() -> None:
     if any(digest(path) != expected for path, expected in dispatch_inputs.items()):
         raise RuntimeError("Reviewed dispatch inputs changed during verification")
     receipt = {
-        "schema": 2, "scope": "pairing/admission/Arm, desktop pipe and integrated PCM fixtures; optional libobs dispatch and synthetic capture/conversion; no OBS application or audio devices",
-        "desktop_audio_pipe": "passed: focused Windows pipe, Arm and End acknowledgement fixtures",
+        "schema": 2, "scope": "pairing/admission/Arm/Disarm, desktop pipe and integrated PCM fixtures; optional libobs dispatch and synthetic capture/conversion; no OBS application or audio devices",
+        "desktop_audio_pipe": "passed: focused Windows pipe, Arm/Disarm, receiver and End acknowledgement fixtures",
         "audio_stream": "passed: synthetic bounded transport fixture",
         "frontend_dispatch": "passed: real Windows message-only window fixture",
         "audio_capture": "passed: pinned public OBS SDK synthetic fixture" if args.build is not None else "not run: supply --build and --headers",

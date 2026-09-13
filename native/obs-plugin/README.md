@@ -38,6 +38,16 @@ independent review is clear. Source includes generation-checked frontend schedul
 per-bus capture and normal-stop draining with a decoded-End receipt before
 disconnect. Hard cancellation and EXIT leave incomplete transport. No visible
 live capture workflow or actual OBS compatibility is established.
+The follow-up [Disarm source](../../docs/plans/active/obs-session-disarm.md)
+adds a session-bound manual stop, frontend detach acknowledgment and bounded
+accepted-audio draining. An empty Disarmed End is reserved for stopping before
+accepted PCM; aligned queued data is retained, and a partial first set remains
+incomplete. Once Disarm commits, a racing normal stop does not change its terminal
+outcome, and the receipt exchange keeps one deadline. Its 24-command linked build,
+51-command verification (including 249 focused desktop tests) and headless refusal pass;
+independent final review is clear. The local evidence and remaining limits are
+recorded in the Disarm plan. This does not install the plugin or add a
+live-capture app entry point.
 The native test driver needs the desktop virtualenv for NumPy-backed
 protocol validation, and `--build` plus `--headers` for conversion fixtures.
 

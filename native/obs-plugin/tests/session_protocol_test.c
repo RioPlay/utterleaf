@@ -61,6 +61,25 @@ int main(void)
     memcpy(modified, receipt, sizeof(receipt));
     modified[28] = 0;
     assert(!ul_session_end_ack(modified, sizeof(modified), session));
-    puts("fixed Arm and terminal receipt contracts passed");
+    {
+        const uint8_t disarm[28] = {'U', 'L', 'A', 'C', 1, 4, 0, 0,
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+            0, 0, 0, 0};
+        assert(ul_session_disarm_request(disarm, sizeof(disarm), session));
+        assert(!ul_session_disarm_request(NULL, sizeof(disarm), session));
+        assert(!ul_session_disarm_request(disarm, sizeof(disarm), NULL));
+        assert(!ul_session_disarm_request(disarm, sizeof(disarm), zero));
+        assert(!ul_session_disarm_request(receipt, sizeof(receipt), session));
+        for (index = 0; index < sizeof(disarm); ++index) {
+            assert(!ul_session_disarm_request(disarm, index, session));
+            memcpy(modified, disarm, sizeof(disarm));
+            modified[index] ^= 1u;
+            assert(!ul_session_disarm_request(modified, sizeof(disarm), session));
+        }
+        memcpy(modified, disarm, sizeof(disarm));
+        modified[28] = 0;
+        assert(!ul_session_disarm_request(modified, sizeof(modified), session));
+    }
+    puts("fixed Arm, Disarm, and terminal receipt contracts passed");
     return 0;
 }

@@ -16,6 +16,17 @@ typedef enum ul_audio_stream_result {
     UL_AUDIO_STREAM_TRANSPORT_ERROR = 3,
 } ul_audio_stream_result;
 
+typedef enum ul_audio_disarm_action {
+    UL_AUDIO_DISARM_REJECTED = 0,
+    UL_AUDIO_DISARM_ACCEPTED = 1,
+    UL_AUDIO_DISARM_ALREADY_STOPPING = 2,
+} ul_audio_disarm_action;
+
+/* Called by the single transport worker after it has parsed an exact Disarm
+ * and deactivated the capture. It may only commit state and queue nonblocking
+ * frontend cleanup; it must not wait for the frontend or call OBS. */
+typedef ul_audio_disarm_action (*ul_audio_disarm_callback)(void *context);
+
 /* Synchronous single-worker transport, entered only after the Arm reply and
  * frontend capture activation have committed. The function always deactivates
  * a non-NULL capture before returning. Clean success requires a decoded End
@@ -26,6 +37,24 @@ typedef enum ul_audio_stream_result {
 int ul_audio_stream_run(ul_audio_capture *capture,
                         const ul_audio_capture_spec *spec,
                         ul_admission *admission,
-                        const uint8_t session[16], HANDLE stop_event);
+                        const uint8_t session[16], HANDLE stop_event,
+                        HANDLE cleanup_complete,
+                        ul_audio_disarm_callback disarm,
+                        void *disarm_context);
+
+/* Continues after plugin_state already consumed Disarm and atomically observed
+ * an attached capture. The capture must already be deactivated. */
+int ul_audio_stream_run_disarmed(ul_audio_capture *capture,
+                                 const ul_audio_capture_spec *spec,
+                                 ul_admission *admission,
+                                 const uint8_t session[16], HANDLE stop_event,
+                                 HANDLE cleanup_complete);
+
+/* Completes a valid Disarm before capture emitted Start. The only wire packet
+ * is End(DISARMED) with zero sequence entries, followed by its exact receipt.
+ * NULL cleanup_complete asserts that no frontend hook can still attach. */
+int ul_audio_stream_finish_empty_disarm(ul_admission *admission,
+                                        const uint8_t session[16],
+                                        HANDLE cleanup_complete);
 
 #endif

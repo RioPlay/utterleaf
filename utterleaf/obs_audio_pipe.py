@@ -28,6 +28,9 @@ _ACK_DOMAIN = b"Utterleaf OBS audio server ack v1\0"
 _ARM_MAGIC = b"ULAC"
 _ARM_RECORD = struct.Struct("<4sBBH16sBBH")
 HANDSHAKE_BYTES = _RECORD.size
+_AUDIO_TIMEOUT = 5.0
+_DISARM_TIMEOUT = 7.0  # Allow the native five-second tail/receipt budget.
+_POLL_SECONDS = 0.05
 
 
 class ObsAudioPipeError(RuntimeError):
@@ -95,6 +98,12 @@ class ObsAudioPipe:
         self._io_lock = threading.Lock()
         self._closed = threading.Event()
         self._armed = False
+        self._request_lock = threading.Lock()
+        self._disarm_requested_at: float | None = None
+        self._disarm_sent = False
+        self._ending = False
+        self._seen_frame = False
+        self._partial_deadline: float | None = None
 
     def __repr__(self) -> str:
         return "ObsAudioPipe()"
@@ -105,13 +114,71 @@ class ObsAudioPipe:
     def __exit__(self, *_args) -> None:
         self.close()
 
-    def read_frames(self, *, deadline: float) -> list[obs_protocol.Frame]:
+    def request_disarm(self) -> bool:
+        """Signal a manual stop without I/O or waiting for the reader.
+
+        True means the intent was accepted, not that native capture has ended.
+        Keep the one reader running until it receives End or an error. Repeated
+        clicks coalesce; the worker sends at most one command. close is the
+        separate hard-cancel path. A completed/closed connection returns False.
+        """
+        with self._request_lock:
+            if self._closed.is_set() or self._ending:
+                return False
+            if not self._armed:
+                raise ObsAudioPipeError("OBS audio session is not armed")
+            if self._disarm_requested_at is None:
+                self._disarm_requested_at = time.monotonic()
+            return True
+
+    def _read_ready(self, deadline: float | None) -> tuple[int, float]:
+        # No pending ReadFile while idle: the sole I/O owner can service Disarm
+        # between probes without a second writer or cancellation of a live read.
+        if deadline is not None:
+            _check(self._cancelled, deadline)
+        limit = deadline
+        if self._seen_frame:
+            idle = time.monotonic() + _AUDIO_TIMEOUT
+            limit = idle if limit is None else min(limit, idle)
+        if self._partial_deadline is not None:
+            limit = self._partial_deadline if limit is None else min(limit, self._partial_deadline)
+        while True:
+            with self._request_lock:
+                requested = self._disarm_requested_at
+            if requested is not None:
+                stop_limit = requested + _DISARM_TIMEOUT
+                limit = stop_limit if limit is None else min(limit, stop_limit)
+            operation_limit = time.monotonic() + _AUDIO_TIMEOUT
+            if limit is not None:
+                operation_limit = min(operation_limit, limit)
+            if self._closed.is_set():
+                raise ObsAudioPipeCancelled("OBS audio connection closed")
+            _verify(self._pipe, self._peer, self._cancelled, operation_limit)
+            if requested is not None and not self._disarm_sent:
+                # Latch before dispatch: a lost write result must never retry.
+                self._disarm_sent = True
+                record = _ARM_RECORD.pack(_ARM_MAGIC, 1, 4, 0,
+                                          self._session_id, 0, 0, 0)
+                self._pipe.write_all(record, deadline=operation_limit)
+                _verify(self._pipe, self._peer, self._cancelled, operation_limit)
+            available = self._pipe.available_bytes(deadline=operation_limit)
+            if type(available) is not int or not 0 <= available <= 0xFFFFFFFF:
+                raise ObsAudioPipeError("Invalid OBS audio availability")
+            if available:
+                return min(available, obs_protocol.MAX_FEED_BYTES), operation_limit
+            # Event.wait also wakes immediately for a concurrent hard close.
+            self._closed.wait(_POLL_SECONDS)
+
+    def read_frames(self, *, deadline: float | None = None) -> list[obs_protocol.Frame]:
         """Read one bounded chunk; fragmentation may yield no complete frame.
 
         Consent, stream-start ordering and storage remain ObsCaptureSession's
         responsibility. A decoded End is acknowledged before closing; it must
         be last, so the server cannot discard an unread terminal packet.
         Timeout, malformed data or identity loss are terminal, never complete.
+        With no caller deadline, only waiting before the first packet is
+        indefinite. Partial packets, active-audio inactivity and a requested
+        Disarm have finite deadlines; no limit applies to total capture length.
         """
         try:
             with self._io_lock:
@@ -119,12 +186,12 @@ class ObsAudioPipe:
                     raise ObsAudioPipeCancelled("OBS audio connection closed")
                 if not self._armed:
                     raise ObsAudioPipeError("OBS audio session is not armed")
-                _verify(self._pipe, self._peer, self._cancelled, deadline)
-                data = self._pipe.read(obs_protocol.MAX_FEED_BYTES, deadline=deadline)
-                _verify(self._pipe, self._peer, self._cancelled, deadline)
+                maximum, operation_limit = self._read_ready(deadline)
+                data = self._pipe.read(maximum, deadline=operation_limit)
+                _verify(self._pipe, self._peer, self._cancelled, operation_limit)
                 if self._closed.is_set():
                     raise ObsAudioPipeCancelled("OBS audio connection closed")
-                if type(data) is not bytes or not 0 < len(data) <= obs_protocol.MAX_FEED_BYTES:
+                if type(data) is not bytes or not 0 < len(data) <= maximum:
                     raise ObsAudioPipeError("Invalid OBS audio stream")
                 frames = self._decoder.feed(data)
                 ended = False
@@ -135,18 +202,28 @@ class ObsAudioPipe:
                         if index != len(frames) - 1:
                             raise ObsAudioPipeError("OBS audio followed its end")
                         self._decoder.finish()  # Reject any trailing partial frame.
+                        if not frame.last_sequences and (self._seen_frame or not self._disarm_sent):
+                            raise ObsAudioPipeError("Unexpected OBS no-audio termination")
                         ended = True
+                    self._seen_frame = True
+                if self._decoder.has_partial_frame:
+                    if frames or self._partial_deadline is None:
+                        self._partial_deadline = time.monotonic() + _AUDIO_TIMEOUT
+                else:
+                    self._partial_deadline = None
                 if ended:
-                    _verify(self._pipe, self._peer, self._cancelled, deadline)
+                    with self._request_lock:
+                        self._ending = True
+                    _verify(self._pipe, self._peer, self._cancelled, operation_limit)
                     receipt = _ARM_RECORD.pack(_ARM_MAGIC, 1, 3, 0,
                                                self._session_id, 0, 0, 0)
-                    self._pipe.write_all(receipt, deadline=deadline)
+                    self._pipe.write_all(receipt, deadline=operation_limit)
                     # The server may disconnect as soon as it reads this
                     # receipt. Its identity was checked before sending; do
                     # not require a still-connected pipe after terminal ACK.
                     # Retain our endpoint until then so its final receipt read
                     # can finish peer validation before the client closes.
-                    self._pipe.wait_for_disconnect(deadline=deadline)
+                    self._pipe.wait_for_disconnect(deadline=operation_limit)
             if ended:
                 self.close()
             return frames
@@ -181,7 +258,8 @@ class ObsAudioPipe:
                 _check(self._cancelled, deadline)
                 if self._closed.is_set():
                     raise ObsAudioPipeCancelled("OBS audio connection closed")
-                self._armed = True
+                with self._request_lock:
+                    self._armed = True
         except BaseException as exc:
             self.close()
             _failure(exc)

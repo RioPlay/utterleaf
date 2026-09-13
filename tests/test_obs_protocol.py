@@ -133,7 +133,7 @@ def test_finish_does_not_require_end_frame():
         packet(2, b"", length=AUDIO.size),
         packet(2, b"", length=AUDIO.size + 9),
         packet(3, b"", length=40),
-        packet(4, b"", length=END_PREFIX.size),
+        packet(4, b"", length=END_PREFIX.size - 1),
     ],
 )
 def test_bad_header_or_kind_length_fails_before_payload_arrives(raw):
@@ -227,7 +227,7 @@ def test_gap_rejects_sentinel_overflow_and_inexact_integers(first, count, timest
     "reason,last_sequences",
     [
         (1, ((0, None),)),
-        (protocol.EndReason.DISARMED, ()),
+        (protocol.EndReason.STREAM_STOPPED, ()),
         (protocol.EndReason.DISARMED, tuple((bus, None) for bus in range(6)) + ((0, None),)),
         (protocol.EndReason.DISARMED, ((1, None), (0, None))),
         (protocol.EndReason.DISARMED, ((0, None), (0, 1))),

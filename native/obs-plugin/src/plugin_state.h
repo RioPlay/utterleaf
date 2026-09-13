@@ -35,7 +35,7 @@ typedef struct ul_plugin_snapshot {
 typedef enum ul_session_phase {
     UL_SESSION_NONE = 0, UL_SESSION_READY, UL_SESSION_ARM_PENDING,
     UL_SESSION_ARMED, UL_SESSION_STARTING, UL_SESSION_STARTED,
-    UL_SESSION_DRAINING, UL_SESSION_TERMINAL
+    UL_SESSION_DISARMING, UL_SESSION_DRAINING, UL_SESSION_TERMINAL
 } ul_session_phase;
 
 typedef enum ul_stream_event {
@@ -63,6 +63,8 @@ void ul_plugin_capture_inspected(uintptr_t generation,
 ul_audio_capture *ul_plugin_capture_retain(uintptr_t generation);
 void ul_plugin_capture_attached(uintptr_t generation,
                                 ul_audio_capture *capture, bool success);
+/* Frontend calls this after generation-bound hook detachment has returned. */
+void ul_plugin_capture_cleanup_complete(uintptr_t generation);
 /* Deactivates and drains callback readers without calling OBS. */
 void ul_plugin_capture_stop_frontend(void);
 

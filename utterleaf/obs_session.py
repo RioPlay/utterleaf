@@ -146,6 +146,14 @@ class ObsCaptureSession:
         if isinstance(frame, StartFrame):
             self._start(frame)
             return
+        if (self.state == "armed" and isinstance(frame, EndFrame)
+                and frame.reason is EndReason.DISARMED and not frame.last_sequences):
+            # Stop can beat the first audio block even after the control channel
+            # announced STARTED. No audio timeline, primary mix or stores exist.
+            self.state = "finished"
+            self.reason = "OBS transcription disarmed before audio began."
+            self._clean_end = True
+            return
         if self.state != "active":
             self._fail("OBS audio arrived before the armed stream started")
         if isinstance(frame, AudioFrame):

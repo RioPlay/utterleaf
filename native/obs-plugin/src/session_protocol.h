@@ -25,4 +25,9 @@ bool ul_session_arm_reply(const uint8_t session[16], uint8_t mix_mask,
 bool ul_session_end_ack(const uint8_t *data, size_t size,
                          const uint8_t session[16]);
 
+/* A Disarm request (type 4) terminates the bound one-shot session. It carries
+ * no mask/status and cannot stop or otherwise alter OBS streaming. */
+bool ul_session_disarm_request(const uint8_t *data, size_t size,
+                               const uint8_t session[16]);
+
 #endif
