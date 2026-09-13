@@ -138,7 +138,7 @@ class DeviceTest {
             for (label in listOf("Caps lock off", "Move cursor left", "Move cursor right", "Keyboard settings", "Switch keyboard")) {
                 assertTrue("Tool must be keyboard accessible: $label", key(label).isFocusable)
             }
-            key("Keyboard tools").performClick()
+            key("Return to typing").performClick()
             assertFalse(keys().any { it.contentDescription == "Move cursor left" })
             key("Switch letters and symbols").performClick()
             key("$").performClick()
@@ -162,7 +162,11 @@ class DeviceTest {
                     is android.view.ViewGroup -> (0 until view.childCount).flatMap { buttons(view.getChildAt(it)) }
                     else -> emptyList()
                 }
-                fun keys() = buttons(panel.view).filter { it.visibility == android.view.View.VISIBLE }
+                fun keys() = buttons(panel.view).filter { key ->
+                    key.visibility == android.view.View.VISIBLE &&
+                        generateSequence(key.parent) { (it as? android.view.View)?.parent }
+                            .none { it is android.widget.HorizontalScrollView }
+                }
                 fun key(label: String) = keys().single { it.contentDescription == label }
                 fun bounds(button: android.widget.Button) = android.graphics.Rect(0, 0, button.width, button.height).also {
                     panel.view.offsetDescendantRectToMyCoords(button, it)
@@ -314,7 +318,7 @@ class DeviceTest {
             press("d")
             press("Done")
             awaitCondition("Editor action did not reach editor") { onMain { screen.lastEditorAction == android.view.inputmethod.EditorInfo.IME_ACTION_DONE } }
-            press("Keyboard tools")
+            press("Return to typing")
 
             // Only this debug instrumentation run may expose this synthetic IME
             // window for a screenshot. Production FLAG_SECURE remains unchanged.
@@ -463,7 +467,6 @@ class DeviceTest {
                         onMain { screen.editor.text.toString() == "acdé" }
                     }
                     press("Delete")
-                    press("Keyboard tools")
 
                     press("Keyboard tools")
                     press("Accents and alternate characters")
@@ -507,7 +510,7 @@ class DeviceTest {
                     livePress("Paste")
                     awaitCondition("Live Copy/Paste did not duplicate the selected text") { onMain { screen.editor.text.toString() == "catcat" } }
                     val leftPanelPaste = onMain { findNativeKey(currentImeRoot(), "Paste") ?: error("Missing live Paste") }
-                    livePress("Return to typing")
+                    livePress("Close edit actions")
                     onMain { leftPanelPaste.performClick() }
                     UiAwait.remains("Old action changed text after leaving Edit") { screen.editor.text.toString() == "catcat" }
                     livePress("Edit actions")
@@ -530,7 +533,7 @@ class DeviceTest {
             press("Dictate")
             awaitCondition("Voice panel did not appear") {
                 automation.windows.filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD }
-                    .any { it.root?.findAccessibilityNodeInfosByText("Utterleaf Voice")?.isNotEmpty() == true }
+                    .any { it.root?.findAccessibilityNodeInfosByText("Utterleaf dictation")?.isNotEmpty() == true }
             }
             show(screen.password)
             awaitCondition("Password Dictate control did not appear") { findKey("Dictate") != null }

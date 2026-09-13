@@ -108,7 +108,7 @@ class KeyboardEditorContractTest {
             main { text.editor.setText("😀x"); text.editor.setSelection(0) }
             press("Keyboard tools"); press("Delete to right")
             await("Forward delete did not remove supplementary Unicode") { main { text.editor.text.toString() == "x" } }
-            press("Keyboard tools")
+            press("Return to typing")
         } finally { close(text) }
         for ((options, label, expectedAction) in listOf(
             Triple(EditorInfo.IME_ACTION_GO, "Go", EditorInfo.IME_ACTION_GO), Triple(EditorInfo.IME_ACTION_SEARCH, "Search", EditorInfo.IME_ACTION_SEARCH),

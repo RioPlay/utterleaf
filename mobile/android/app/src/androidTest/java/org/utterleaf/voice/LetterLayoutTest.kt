@@ -215,11 +215,12 @@ class LetterLayoutTest {
                     (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), listOf(q, w))
                 sendRoot(panel, down, MotionEvent.ACTION_POINTER_UP or
                     (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), listOf(q, w))
+                key(panel, "Keyboard layout").performClick()
                 key(panel, "QWERTZ letter layout").performClick()
                 sendRoot(panel, down, MotionEvent.ACTION_UP, listOf(q))
-                assertTrue(key(panel, "Keyboard tools").isSelected)
                 assertTrue(key(panel, "QWERTZ letter layout").isSelected)
                 assertTrue(typed.isEmpty())
+                key(panel, "Close keyboard settings").performClick()
             }
             instrumentation.waitForIdleSync()
 
@@ -236,19 +237,28 @@ class LetterLayoutTest {
             }
             instrumentation.runOnMainSync {
                 assertTrue((0 until panel.view.childCount).any { panel.view.getChildAt(it) is AlternateStrip })
+                key(panel, ",").performLongClick()
                 key(panel, "AZERTY letter layout").performClick()
                 val event = MotionEvent.obtain(heldDown, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP,
                     held.width / 2f, held.height / 2f, 0)
                 try { held.dispatchTouchEvent(event) } finally { event.recycle() }
                 assertFalse((0 until panel.view.childCount).any { panel.view.getChildAt(it) is AlternateStrip })
 
+                key(panel, "Close keyboard settings").performClick()
+                key(panel, "Keyboard tools").performClick()
                 key(panel, "Select text").performClick()
+                key(panel, ",").performLongClick()
                 key(panel, "QWERTZ letter layout").performClick()
+                key(panel, "Close keyboard settings").performClick()
+                key(panel, "Keyboard tools").performClick()
                 key(panel, "Move cursor left").performClick()
                 assertEquals(listOf(true), moved)
 
+                key(panel, "Return to typing").performClick()
                 key(panel, "Control off").performClick()
+                key(panel, ",").performLongClick()
                 key(panel, "AZERTY letter layout").performClick()
+                key(panel, "Close keyboard settings").performClick()
                 key(panel, "q").performClick()
                 assertEquals(listOf("q"), typed)
                 assertTrue(modified.isEmpty())
@@ -264,12 +274,18 @@ class LetterLayoutTest {
             Thread.sleep(android.view.ViewConfiguration.getLongPressTimeout().toLong() + 140)
             instrumentation.waitForIdleSync()
             assertTrue(erased.isNotEmpty())
-            instrumentation.runOnMainSync { key(panel, "QWERTY letter layout").performClick() }
+            instrumentation.runOnMainSync {
+                key(panel, ",").performLongClick()
+                key(panel, "QWERTY letter layout").performClick()
+            }
             val stopped = erased.size
             Thread.sleep(240); instrumentation.waitForIdleSync()
             assertEquals(stopped, erased.size)
             assertFalse((0 until panel.view.childCount).any { panel.view.getChildAt(it) is AlternateStrip })
-            instrumentation.runOnMainSync { key(panel, "z").performClick() }
+            instrumentation.runOnMainSync {
+                key(panel, "Close keyboard settings").performClick()
+                key(panel, "z").performClick()
+            }
             assertEquals("z", typed.last())
         } finally {
             instrumentation.runOnMainSync { activity?.finish() }

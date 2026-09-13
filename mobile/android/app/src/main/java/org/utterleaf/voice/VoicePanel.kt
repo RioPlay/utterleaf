@@ -101,7 +101,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         heading.addView(stateIcon, LinearLayout.LayoutParams(Ui.dp(context, 32), Ui.dp(context, 32)).apply {
             marginEnd = Ui.dp(context, 8)
         })
-        heading.addView(Ui.text(context, "Utterleaf Voice", 20f))
+        heading.addView(Ui.text(context, context.getString(R.string.dictation_name), 20f))
         view.addView(heading); view.addView(status); view.addView(modelChoice); view.addView(modelOptions)
         view.addView(preview, LinearLayout.LayoutParams(-1, Ui.dp(context, 96)))
         val reviewActions = LinearLayout(context)

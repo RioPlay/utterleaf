@@ -1,4 +1,4 @@
-Utterleaf Voice — Android preview
+Utterleaf — Android preview
 
 Utterleaf code: Apache License 2.0. Full text: UTTERLEAF-LICENSE.txt in this APK.
 whisper.cpp / ggml: MIT License. Full text: WHISPER-LICENSE.txt in this APK.

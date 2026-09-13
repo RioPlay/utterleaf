@@ -18,12 +18,12 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
-        <service android:name=".KeyboardIme" android:label="Utterleaf Keyboard"
+        <service android:name=".KeyboardIme" android:label="@string/app_name"
             android:permission="android.permission.BIND_INPUT_METHOD" android:exported="true">
             <intent-filter><action android:name="android.view.InputMethod" /></intent-filter>
             <meta-data android:name="android.view.im" android:resource="@xml/typing_method" />
         </service>
-        <service android:name=".VoiceIme" android:label="Utterleaf Voice"
+        <service android:name=".VoiceIme" android:label="@string/dictation_name"
             android:permission="android.permission.BIND_INPUT_METHOD" android:exported="true">
             <intent-filter><action android:name="android.view.InputMethod" /></intent-filter>
             <meta-data android:name="android.view.im" android:resource="@xml/input_method" />

@@ -38,16 +38,16 @@ class SetupActivity : Activity() {
         val column = Ui.column(this)
         column.addView(Ui.mascot(this))
         column.addView(Ui.title(this, "Make yourself at home."))
-        column.addView(Ui.text(this, "Utterleaf Keyboard · Android preview", 18f))
+        column.addView(Ui.text(this, "Utterleaf · Android preview", 18f))
         column.addView(Ui.text(this, "Start typing in two steps. Add offline English dictation whenever you want. No Internet permission, accounts, or saved recordings."))
         column.addView(Ui.title(this, "Your keyboard"))
         keyboardStatus = Ui.text(this, "")
         column.addView(keyboardStatus)
-        enableKeyboard = Ui.button(this, "1 · Enable Utterleaf Keyboard") {
+        enableKeyboard = Ui.button(this, "1 · Enable Utterleaf") {
             startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
         }
         column.addView(enableKeyboard)
-        chooseKeyboard = Ui.button(this, "2 · Choose Utterleaf Keyboard") {
+        chooseKeyboard = Ui.button(this, "2 · Choose Utterleaf") {
             (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
         }
         column.addView(chooseKeyboard)
@@ -123,7 +123,7 @@ class SetupActivity : Activity() {
             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
         })
         column.addView(Ui.text(this, "3 · Try it in a text field", 19f))
-        column.addView(Ui.text(this, "Tap Dictate on Utterleaf Keyboard to start recording, then Stop to review. In the separate voice provider, tap Speak first. Edit transcript lets you make changes before Insert. Optional hold mode inserts after release and recognition. Each take has a 120-second limit. Preview clears after two minutes unless you choose Keep reviewing, and immediately when you leave or change fields. Password typing works; dictation is disabled in password fields."))
+        column.addView(Ui.text(this, "Tap Dictate on Utterleaf to start recording, then Stop to review. In the separate voice provider, tap Speak first. Edit transcript lets you make changes before Insert. Optional hold mode inserts after release and recognition. Each take has a 120-second limit. Preview clears after two minutes unless you choose Keep reviewing, and immediately when you leave or change fields. Password typing works; dictation is disabled in password fields."))
         removeModel = Ui.button(this, "Delete selected model") {
             val deleting = selectedModel
             AlertDialog.Builder(this).setTitle("Delete ${deleting.id}?").setMessage("Only this imported model is removed. Typing will still work. You can select another installed model or import it again later.")
@@ -144,7 +144,7 @@ class SetupActivity : Activity() {
         })
         companionStatus = Ui.text(this, "")
         companion.addView(companionStatus)
-        companion.addView(Ui.text(this, "Optional: Utterleaf Voice is a separate voice-only input method for compatible keyboards. It is not needed for Utterleaf Keyboard's Voice button. Gboard and Samsung Keyboard do not offer this integration."))
+        companion.addView(Ui.text(this, "Optional: Utterleaf dictation is a separate voice-only input method for compatible keyboards. It is not needed for Utterleaf's dictation button. Gboard and Samsung Keyboard do not offer this integration."))
         companion.addView(Ui.button(this, "Manage voice input methods") { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) })
         column.addView(companion)
         column.addView(Ui.button(this, "Set up updates in Obtainium") {
@@ -155,7 +155,7 @@ class SetupActivity : Activity() {
             }
         })
         column.addView(Ui.button(this, "Licenses and privacy") {
-            AlertDialog.Builder(this).setTitle("Utterleaf Voice")
+            AlertDialog.Builder(this).setTitle(R.string.app_name)
                 .setMessage(assets.open("NOTICE.txt").bufferedReader().use { it.readText() })
                 .setNeutralButton("Full licenses") { _, _ ->
                     val licenses = listOf("UTTERLEAF-LICENSE.txt", "WHISPER-LICENSE.txt", "MODEL-LICENSE.txt", "LIBCXX-LICENSE.txt")
@@ -195,12 +195,12 @@ class SetupActivity : Activity() {
         val selected = ComponentName.unflattenFromString(Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD).orEmpty())
         val keyboardSelected = selected == ComponentName(this, KeyboardIme::class.java)
         keyboardStatus.text = when {
-            keyboardEnabled && keyboardSelected -> "Typing ready · Utterleaf Keyboard is enabled and selected."
-            keyboardEnabled -> "Step 1 complete · Keyboard enabled. Choose Utterleaf Keyboard to start typing."
-            else -> "Step 1 · Enable Utterleaf Keyboard in Android settings."
+            keyboardEnabled && keyboardSelected -> "Typing ready · Utterleaf is enabled and selected."
+            keyboardEnabled -> "Step 1 complete · Keyboard enabled. Choose Utterleaf to start typing."
+            else -> "Step 1 · Enable Utterleaf in Android settings."
         }
-        enableKeyboard.text = if (keyboardEnabled) "1 · Enabled · manage keyboards" else "1 · Enable Utterleaf Keyboard"
-        chooseKeyboard.text = if (keyboardSelected) "2 · Selected · change keyboard" else "2 · Choose Utterleaf Keyboard"
+        enableKeyboard.text = if (keyboardEnabled) "1 · Enabled · manage keyboards" else "1 · Enable Utterleaf"
+        chooseKeyboard.text = if (keyboardSelected) "2 · Selected · change keyboard" else "2 · Choose Utterleaf"
         chooseKeyboard.isEnabled = keyboardEnabled
         val model = ModelStore.installed(noBackupFilesDir)
         val mic = microphoneAllowed()
@@ -211,7 +211,7 @@ class SetupActivity : Activity() {
             else -> "Voice not set up · import a model and allow your microphone if you want dictation."
         }
         val voiceEnabled = enabled.any { it.packageName == packageName && it.serviceName == VoiceIme::class.java.name }
-        companionStatus.text = if (voiceEnabled) "Optional Utterleaf Voice input method is enabled." else "Optional Utterleaf Voice input method is not enabled."
+        companionStatus.text = if (voiceEnabled) "Optional Utterleaf dictation input method is enabled." else "Optional Utterleaf dictation input method is not enabled."
     }
     override fun onResume() { super.onResume(); refreshReadiness() }
     override fun onWindowFocusChanged(hasFocus: Boolean) {
