@@ -189,6 +189,17 @@ Build compatibility, frame-journal limits, per-run resampling, cleanup and
 decoder determinism remain implementation/review gates. Exact sample counts
 are not a cryptographic binding between the two decoder passes.
 
+Real FFprobe 9 fixtures establish the next frame transport:
+`-fflags +nofillin -select_streams a:N -show_frames -show_entries frame=stream_index,pts,nb_samples,sample_fmt,channels,channel_layout:frame_side_data= -of compact=p=0:nk=0:escape=c`.
+Keep the existing local-input/protocol restrictions around this output selection.
+Rows preserve a nonzero MKV start and a 100 ms gap; M4A encoded priming starts at
+packet PTS -1024 while the first decoded frame has PTS 0. Raw AAC explicitly
+prints `pts=N/A`. Output field order differs from request order, so the future
+bounded parser must use keys, reject duplicates/missing/unknown fields and never
+substitute best-effort timestamps. No paths, tags or side-data appeared in these
+synthetic rows. The fixture receipt is retained locally as
+`.grok/recorded-file-timelines/external-design/compact-frame-receipt.json`.
+
 The alternative tee approach avoids double decoding but needs two safely drained
 private channels on Windows; mixing timing with arbitrary stderr diagnostics is
 not acceptable. NUT requires a bounded audited parser absent from this package.
@@ -235,14 +246,24 @@ before asserting the backing file is closed. The complete OBS transcription
 test file passes locally. A new source CI run is required after this repair;
 the failed run is not described as green.
 
-The UI/CLI regression passes **41 tests**. Independent review covers 19 file
-window cases and six decoder-dialog cases, including queued cancellation,
+The UI/CLI regression now passes **45 tests**. Independent review covers 19 file
+window cases and the decoder dialog, including queued cancellation,
 duplicate jobs, ordinary source changes, stale queues after close, explicit
 selection/forget and failed worker startup. Seven synthetic captures from
 `tests/capture_file_ui.py` cover default and compact windows. Long executable
 paths remain selectable without expanding the dialog beyond its compact bounds.
 These are source-level Windows Tk checks; no new package, actual OBS instance,
 personal media, microphone or consumer-profile selection was used.
+
+CI `34784668390` at `8e9e9a9` passed Windows and both platform builds. The two
+compact-dialog assertions failed on macOS and Linux because native text metrics
+clipped controls. Setup text is now shorter and each tool's Choose/Forget actions
+share a row. The compact test checks all three platform instruction variants;
+its real window bounds assertions are retained. Native CI must be rerun for this
+layout correction; local Windows checks do not replace that evidence.
+A retained controlled Windows experiment with 12-point body/button text also
+fits at 560×500 after reducing excess spacing. This is a narrow layout check,
+not arbitrary font-size or native macOS/Linux accessibility acceptance.
 
 ## Non-goals and stop
 

@@ -1,5 +1,6 @@
 import gc
 import tkinter as tk
+from types import SimpleNamespace
 
 import pytest
 
@@ -25,9 +26,11 @@ def root():
 
 
 @pytest.fixture
-def dialog(root, tmp_path, monkeypatch):
+def dialog(root, tmp_path, monkeypatch, request):
     monkeypatch.setattr("utterleaf.file_decoder._settings_path", lambda: tmp_path / "decoder.json")
     monkeypatch.setattr("utterleaf.file_probe._settings_path", lambda: tmp_path / "probe.json")
+    if hasattr(request, "param"):
+        monkeypatch.setattr("utterleaf.file_decoder_ui.sys", SimpleNamespace(platform=request.param))
     value = DecoderDialog(root)
     yield value
     if value.root.winfo_exists():
@@ -57,6 +60,7 @@ def test_declining_executable_selection_does_not_remember_it(dialog, monkeypatch
 
 
 @pytest.mark.parametrize("selected", (False, True))
+@pytest.mark.parametrize("dialog", ("win32", "darwin", "linux"), indirect=True)
 def test_setup_instructions_and_actions_fit_compact_dialog(dialog, monkeypatch, selected):
     if selected:
         prefix = "/" + "long selected installation folder/" * 24

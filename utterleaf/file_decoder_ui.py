@@ -19,7 +19,7 @@ class DecoderDialog:
         self.root.minsize(560, 500)
         self.root.transient(parent)
         theme.apply(self.root)
-        page = ttk.Frame(self.root, padding=16)
+        page = ttk.Frame(self.root, padding=12)
         page.pack(fill="both", expand=True)
         page.columnconfigure(0, weight=1)
         page.rowconfigure(5, weight=1)
@@ -27,24 +27,24 @@ class DecoderDialog:
         self.labels = []
         def label(text, row):
             widget = ttk.Label(page, text=text, wraplength=625, justify="left")
-            widget.grid(row=row, column=0, sticky="ew", pady=(8, 0))
+            widget.grid(row=row, column=0, sticky="ew", pady=(6, 0))
             self.labels.append(widget)
-        label("FFmpeg decodes common audio and video. FFprobe inspects tracks and timing. Both run only after you explicitly choose them; PCM WAV already works without FFmpeg.", 1)
+        label("Choose FFmpeg to decode audio and video, and FFprobe to inspect tracks. PCM WAV works without either tool.", 1)
         if sys.platform == "win32":
             instructions = ("1. Open the download page below. Under Windows, choose gyan.dev.\n"
                             "2. Download the release essentials ZIP, then use Extract All.\n"
                             "3. Keep that folder. Choose bin → ffmpeg.exe and bin → ffprobe.exe below.")
         elif sys.platform == "darwin":
-            instructions = ("1. Install FFmpeg using your trusted package manager (Homebrew: brew install ffmpeg).\n"
-                            "2. Find the paths with: command -v ffmpeg ffprobe\n"
-                            "3. Choose each executable below. Command+Shift+G opens a path in the picker.")
+            instructions = ("1. Install with Homebrew: brew install ffmpeg\n"
+                            "2. Find both paths: command -v ffmpeg ffprobe\n"
+                            "3. Choose each below. Command+Shift+G opens a path.")
         else:
-            instructions = ("1. Install FFmpeg from your distribution's package manager. On Ubuntu/Debian: sudo apt install ffmpeg\n"
-                            "2. Find the paths with: command -v ffmpeg ffprobe\n"
+            instructions = ("1. Install FFmpeg from your distribution's package manager.\n"
+                            "2. Find both paths: command -v ffmpeg ffprobe\n"
                             "3. Choose each executable below (usually in /usr/bin).")
         label(instructions, 2)
         tools = ttk.Frame(page)
-        tools.grid(row=3, column=0, sticky="ew", pady=(14, 0))
+        tools.grid(row=3, column=0, sticky="ew", pady=(8, 0))
         tools.columnconfigure(0, weight=1)
         self.ffmpeg_status = tk.StringVar()
         self.ffprobe_status = tk.StringVar()
@@ -52,14 +52,14 @@ class DecoderDialog:
                        self.choose, self.forget)
         self._tool_row(tools, 1, "FFprobe", "Inspects selected tracks and their timing.", self.ffprobe_status,
                        self.choose_probe, self.forget_probe)
-        label("Choose trusted executables. Their file identities are checked before use. Choose again after updating them.", 4)
+        label("Use trusted programs. Selections are checked before use; choose again after an update.", 4)
         self.status = tk.StringVar()
         self.status_label = ttk.Label(page, textvariable=self.status, wraplength=625)
         self.status_label.grid(row=5, column=0, sticky="ew", pady=(8, 0))
         self.labels.append(self.status_label)
         self.refresh()
         actions = ttk.Frame(page)
-        actions.grid(row=6, column=0, sticky="ew", pady=(8, 0))
+        actions.grid(row=6, column=0, sticky="ew", pady=(6, 0))
         ttk.Button(actions, text="Download page…", command=self.download_page).pack(side="left")
         ttk.Button(actions, text="Done", command=self.root.destroy).pack(side="right")
         self.root.bind("<Configure>", self.resize)
@@ -70,13 +70,13 @@ class DecoderDialog:
         group = ttk.LabelFrame(parent, text=name, padding=(8, 3))
         group.grid(row=row, column=0, sticky="ew", pady=(0 if row == 0 else 4, 0))
         group.columnconfigure(0, weight=1)
-        ttk.Label(group, text=description, wraplength=360, justify="left").grid(row=0, column=0, sticky="ew")
+        ttk.Label(group, text=description, wraplength=480, justify="left").grid(row=0, column=0, columnspan=2, sticky="ew")
         # Keep long paths selectable without growing the dialog off-screen.
         ttk.Entry(group, textvariable=status, state="readonly", width=24).grid(row=1, column=0, sticky="ew", pady=(3, 0))
         actions = ttk.Frame(group)
-        actions.grid(row=0, column=1, rowspan=2, padx=(10, 0))
-        ttk.Button(actions, text="Choose…", command=choose, style="Primary.TButton").pack(fill="x")
-        ttk.Button(actions, text="Forget", command=forget).pack(fill="x", pady=(5, 0))
+        actions.grid(row=1, column=1, padx=(10, 0), pady=(3, 0))
+        ttk.Button(actions, text="Choose…", command=choose, style="Primary.TButton").pack(side="left")
+        ttk.Button(actions, text="Forget", command=forget).pack(side="left", padx=(5, 0))
 
     def resize(self, event):
         if event.widget is self.root:
