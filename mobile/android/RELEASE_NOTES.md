@@ -8,12 +8,13 @@
   two-thumb rollover, QWERTY/QWERTZ/AZERTY layouts, one-hand alignment,
   local emoji browsing, Latin compose, private drafts, and the visible-hint
   default for long-press alternate selection.
-- The long-press hint behavior has source and independent review evidence, and
-  its focused API 35 gesture/layout run passes all 16 tests. Full exact-SHA CI,
-  protected signing and signed upgrade/reinstall remain required. TalkBack,
-  Switch Access, landscape, broad editor and real Obtainium update acceptance
-  remain open. Physical-phone testing is deferred to follow-up user feedback for
-  this alpha and has not been performed.
+- Tagged source `46893f2` passed all 135 API 35 tests, the release build, JVM,
+  lint and tooling checks in Android CI. Protected publication verified the
+  stable signer, increasing version code, package identity and signed
+  install/upgrade/reinstall before publishing the prerelease APK and checksums.
+  TalkBack, Switch Access, landscape, broad editor and real Obtainium update
+  acceptance remain open. Physical-phone testing is deferred to follow-up user
+  feedback for this alpha and has not been performed.
 - This release does not include the separate experimental foundation package
   (`org.utterleaf.keyboard.experimental`) or any code from `mobile/latinime`.
 

@@ -5,7 +5,12 @@ Daily/Edit/Voice flows, visual and accessibility gates, and independent keyboard
 foundation. The [rebuild plan](plans/active/android-keyboard-rebuild.md) tracks
 upcoming implementation; the release sections below retain their historical scope.
 
-## Unreleased source after alpha13
+## Released in alpha14
+
+These original-keyboard changes ship in the signed
+[alpha14 prerelease](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha14).
+Tagged source passed Android CI and protected signed install/upgrade/reinstall;
+the device and accessibility limits below remain open.
 
 Terminal controls now respect the separate **Number row** preference. A rejected
 key/action gives brief feedback without adding a row or moving the current keys;
@@ -50,7 +55,7 @@ fields disable entry. Query state clears on field/subtype change, hide, return
 and disposal, with no clipboard query, history or network access. See the
 [user guide](android-emoji.md), [resource record](android-emoji-resource.md) and
 [acceptance evidence](plans/active/android-local-emoji.md). This is reviewed API
-35 emulator/source behavior in unreleased source; physical phones, landscape,
+35 emulator/source behavior released in alpha14; physical phones, landscape,
 assistive technology and broad host editors remain open.
 
 Ordinary letters, numbers and punctuation now support continuous two-thumb
@@ -78,9 +83,9 @@ Native speech decode now uses a work generation: `reset()` starts a new generati
 text after a newer `reset()`. `KeyboardIme` also invalidates on subtype changes and
 gates every commit/key/editor callback on the current UI generation.
 
-These are source changes, not a published APK. Emulator coverage is still
-regression evidence, not physical-device or accessibility acceptance. LatinIME is
-not in the product tree.
+These source changes are published in the signed alpha14 APK. Emulator coverage
+is still regression evidence, not physical-device or accessibility acceptance.
+LatinIME is not in the product tree.
 
 ## Released in alpha13
 
@@ -298,5 +303,5 @@ secure flag immediately afterward.
 
 Suggestions, autocorrect, broader multilingual support, compose/dead keys and
 swipe typing remain separate [roadmap work](mobile-roadmap.md). Local emoji and
-QWERTY/QWERTZ/AZERTY positions are implemented only in unreleased source as
+QWERTY/QWERTZ/AZERTY positions are released in alpha14 as
 described above; they do not establish those broader capabilities.

@@ -7,8 +7,8 @@ from Backspace to preview a backward text selection, reverse toward the start
 to shrink it, and release with a nonempty valid selection to delete it exactly
 once. Keep the existing Backspace tap and held-repeat behaviors unchanged.
 
-This is the next original-keyboard interaction increment after the alpha14
-candidate. It is not implemented by the alpha14 release.
+This is the next original-keyboard interaction increment after the published
+alpha14 release. It is not implemented by that release.
 
 ## Area
 

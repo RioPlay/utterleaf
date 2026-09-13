@@ -128,7 +128,7 @@ physical phones, keyboard accessibility and broader Unicode cases remain open.
   source slices. The [private draft editor](android-private-draft.md) is implemented
   and independently reviewed, with 17 API 35 draft checks and a seven-test ordinary
   IME regression receipt after a controlled emulator cold boot. Its earlier
-  repeated-session failures and physical/release gaps remain documented. The
+  repeated-session harness failure and physical gaps remain documented. The
   [Latin Compose slice](android-latin-compose.md) now supplies an original explicit
   mark/letter flow with focused source/emulator checks and independent review.
   Explicit vocabulary/snippets and
@@ -168,15 +168,15 @@ preferences. Its source review, 50-test regression and final three-test live
 matrix pass; 12 JVM tests, 7 tooling tests and lint are recorded separately.
 Eighteen layout/Tools captures plus empty Settings passed visual review.
 This starts R3 without claiming complete languages, dictionaries or speech
-switching. Physical, external-editor and release gates remain open.
+switching. The slice shipped in alpha14; physical and external-editor gates remain open.
 
 The subsequent [local emoji slice](android-local-emoji.md) adds a reviewed
 3,944-entry fully-qualified Emoji 17 catalog, nine categories, local CLDR 48
 English search and explicit variants. Exact insertion passed the native IME
 fixture, and transient query state has lifecycle checks. Seventy-five distinct
 API 35 instrumentation tests, 19 JVM tests, 14 tooling tests, lint and all 18
-owned picker captures passed their recorded checks. This is unreleased
-source/emulator evidence; physical, landscape, assistive-technology and broad
+owned picker captures passed their recorded checks. This source shipped in alpha14;
+physical, landscape, assistive-technology and broad
 host-editor acceptance remain open.
 
 Final evidence on `UtterleafFoundation35`, API 35, 1080 × 2400 at density 420:

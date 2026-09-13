@@ -38,10 +38,10 @@ with **0 errors, 54 warnings**. The final corrected geometry/capture method pass
 the large one-hand Tools row including Draft and Compose, alongside both Compose
 stages; the implementation owner inspected the full matrix.
 
-The named source slice has passed review and its focused checks. Earlier
-accumulated-session IME/window-node failures are not considered fixed by an
-isolated pass or cold reboot. Those reliability, physical-device, language-engine
-and release gates remain open in the mobile roadmap. The
+The named source slice has passed review and its focused checks. Tagged alpha14
+source also passed the complete 135-test CI run. Continued long-session reliability,
+physical-device and language-engine gates remain open in the mobile roadmap. The
+source shipped in alpha14. The
 [user guide](../../android-latin-compose.md) documents the exact supported pairs.
 
 ## Behavior and constraints

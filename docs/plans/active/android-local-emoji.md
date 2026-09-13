@@ -15,7 +15,7 @@ and mobile documentation. Desktop dependencies, source and releases stay separat
 ## Status and ownership
 
 September 12: the local picker, catalog, search, categories, paging and explicit
-variants are implemented in unreleased source and passed independent production,
+variants were implemented and passed independent production,
 resource and test review. The API 35 emulator exposes 3,944 of 3,944 catalog
 entries with its current font. Search uses CLDR 48 English names and keywords,
 keeps a 48-character transient query, and clears it on field/subtype change,
@@ -27,11 +27,10 @@ The reviewed toolbar is Tools / Edit / Emoji / Voice. Number-row and Terminal
 toggles remain at the top of Tools. Full/Left/Right, both themes and the selected
 QWERTY/QWERTZ/AZERTY positions apply to the picker and search keys. All 18 owned
 captures passed visual review; the three light/Full examples are published in
-the [Android emoji guide](../../android-emoji.md). This source is not released,
-and physical-phone, landscape, TalkBack/Switch Access and broad host-editor
-acceptance remain open. **Next:** the separate
-[private draft editor](android-private-draft.md) is an active plan; it is not yet
-implemented or verified.
+the [Android emoji guide](../../android-emoji.md). This source shipped in alpha14;
+physical-phone, landscape, TalkBack/Switch Access and broad host-editor acceptance
+remain open. The separate [private draft editor](android-private-draft.md) also
+ships in alpha14 and retains its own acceptance record.
 
 Catalog owner: `EmojiCatalog.kt`, its JVM tests, `tools/emoji_catalog.py`, its Python
 tests, pinned Unicode source data, generated Android resource, Android Unicode
