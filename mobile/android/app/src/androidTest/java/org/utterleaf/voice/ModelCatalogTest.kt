@@ -1,5 +1,6 @@
 package org.utterleaf.voice
 
+import android.content.ComponentName
 import android.content.Intent
 import android.graphics.Rect
 import android.os.Build
@@ -285,7 +286,23 @@ class ModelCatalogTest {
                 val texts = labels(activity.window.decorView)
                 assertTrue(texts.any { it.text.toString() == "Your keyboard" })
                 assertTrue(texts.any { it.text.toString() == "Optional · offline voice" })
-                assertTrue(texts.any { it.text.contains("Utterleaf Keyboard") && (it.text.contains("Step 1") || it.text.contains("Typing ready")) })
+                assertTrue(texts.any { text ->
+                    text.text.toString() in setOf(
+                        "Step 1 · Enable Utterleaf in Android settings.",
+                        "Step 1 complete · Keyboard enabled. Choose Utterleaf to start typing.",
+                        "Typing ready · Utterleaf is enabled and selected.",
+                    )
+                })
+                val packageManager = app.packageManager
+                val keyboardLabel = packageManager.getServiceInfo(
+                    ComponentName(app, KeyboardIme::class.java), 0,
+                ).loadLabel(packageManager).toString()
+                val dictationLabel = packageManager.getServiceInfo(
+                    ComponentName(app, VoiceIme::class.java), 0,
+                ).loadLabel(packageManager).toString()
+                assertEquals("Utterleaf", keyboardLabel)
+                assertEquals("Utterleaf dictation", dictationLabel)
+                assertNotEquals(keyboardLabel, dictationLabel)
                 val choices = texts.filterIsInstance<RadioButton>()
                 assertEquals(3, choices.size)
                 for (spec in ModelStore.catalog) {

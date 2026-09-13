@@ -130,6 +130,7 @@ class KeyboardTuningTest {
                 assertEquals(LetterLayout.QWERTZ, KeyboardOptions.load(context).letterLayout)
                 assertEquals(KeyboardAlignment.LEFT, KeyboardOptions.load(context).alignment)
                 views().filterIsInstance<android.widget.Button>().single { it.contentDescription == "Keyboard tools" }.performClick()
+                views().filterIsInstance<android.widget.Button>().single { it.contentDescription == "Keyboard layout" }.performClick()
                 assertTrue(views().filterIsInstance<android.widget.Button>().single { it.contentDescription == "Left hand layout" }.isSelected)
                 assertTrue(views().filterIsInstance<android.widget.Button>().single { it.contentDescription == "QWERTZ letter layout" }.isSelected)
             }
@@ -143,6 +144,7 @@ class KeyboardTuningTest {
                 assertTrue(views().filterIsInstance<android.widget.RadioButton>().single { it.text == "Left hand" }.isChecked)
                 assertTrue(views().filterIsInstance<android.widget.RadioButton>().single { it.text == "QWERTZ" }.isChecked)
                 views().filterIsInstance<android.widget.Button>().single { it.contentDescription == "Keyboard tools" }.performClick()
+                views().filterIsInstance<android.widget.Button>().single { it.contentDescription == "Keyboard layout" }.performClick()
                 assertTrue(views().filterIsInstance<android.widget.Button>().single { it.contentDescription == "Left hand layout" }.isSelected)
                 views().filterIsInstance<android.widget.Button>().single { it.text == "Reset keyboard preferences" }.performClick()
             }
@@ -189,6 +191,7 @@ class KeyboardTuningTest {
                 key("Terminal controls on").performClick()
                 key("Number row on").performClick()
                 assertEquals(initial, KeyboardOptions.load(context))
+                key("Keyboard layout").performClick()
                 key("Left hand layout").performClick()
                 assertEquals(initial.copy(alignment = KeyboardAlignment.LEFT), KeyboardOptions.load(context))
                 assertTrue(key("Left hand layout").isSelected)
@@ -202,6 +205,7 @@ class KeyboardTuningTest {
                 assertEquals(initial.copy(letterLayout = LetterLayout.AZERTY), KeyboardOptions.load(context))
                 key("QWERTY letter layout").performClick()
                 assertEquals(initial, KeyboardOptions.load(context))
+                key("Close keyboard settings").performClick()
                 assertEquals("", key("Dictate").text.toString())
                 assertTrue(key("Dictate").isEnabled)
                 panel.reset(false, true, "Enter")

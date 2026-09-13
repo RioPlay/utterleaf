@@ -212,7 +212,7 @@ class TerminalInputTest {
             key("Keyboard tools").performClick(); key("Caps lock off").performClick()
             key("1").performClick()
             assertEquals("Caps lock must not alter digits", "1", plain.last())
-            key("Caps lock on").performClick(); key("Keyboard tools").performClick()
+            key("Caps lock on").performClick(); key("Return to typing").performClick()
             key("Control off").performClick(); key("Alt off").performClick()
             key("Shift off").performClick(); key("X").performClick()
             assertEquals(Triple("X", true, true), modified.last())
@@ -265,11 +265,12 @@ class TerminalInputTest {
             assertFalse(buttons(terminal.view).any { it.contentDescription == "1" })
             key("F1").performClick(); key("F12").performClick()
             key("Forward delete").performClick(); key("Insert").performClick()
+            key("Return to terminal letters").performClick(); key("Navigation keys").performClick()
             key("Page up").performClick(); key("Left arrow").performClick()
             assertEquals(listOf(KeyEvent.KEYCODE_F1, KeyEvent.KEYCODE_F12, KeyEvent.KEYCODE_FORWARD_DEL,
                 KeyEvent.KEYCODE_INSERT, KeyEvent.KEYCODE_PAGE_UP, KeyEvent.KEYCODE_DPAD_LEFT), codes)
             assertTrue(buttons(terminal.view).all { !it.contentDescription.isNullOrBlank() && it.isFocusable })
-            key("Function keys").performClick()
+            key("Return to terminal letters").performClick()
             assertFalse(buttons(terminal.view).any { it.contentDescription == "1" })
             assertFalse(buttons(terminal.view).any { it.contentDescription == "F1" })
         }
@@ -306,10 +307,10 @@ class TerminalInputTest {
                 key("Function keys").performClick()
                 assertTrue("Fn must replace rows, not append height", layout() <= typingHeight)
                 assertFalse(buttons(panel.view).any { it.contentDescription == "q" })
-                for (label in listOf("F1", "F12", "Shift off", "Insert", "Forward delete", "Return to letters", "Delete")) {
+                for (label in listOf("F1", "F12", "Shift off", "Insert", "Forward delete", "Return to terminal letters", "Delete")) {
                     assertTrue("Function control must remain focusable: $label", key(label).isFocusable)
                 }
-                key("Return to letters").performClick()
+                key("Return to terminal letters").performClick()
                 assertEquals(typingHeight, layout())
                 assertTrue(buttons(panel.view).any { it.contentDescription == "q" })
                 assertFalse(buttons(panel.view).any { it.contentDescription == "F1" })

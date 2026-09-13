@@ -3,7 +3,15 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha13 is released as a signed development preview.**
+**0.1.0-alpha14 is released as a signed development preview.** It adds the
+original engine's two-thumb rollover, letter layouts, one-hand alignment, local
+emoji, Latin composition, private drafts and the visible long-press hint default.
+See the [alpha14 release and verification record](../../docs/plans/active/android-alpha14-snapshot.md).
+
+The next snapshot is being prepared with a sliding Tools strip, replacement
+settings/navigation layers, comma-hold Settings access and the shorter installed
+name **Utterleaf**. Those changes and the Backspace selection gesture are
+**unreleased**; see the [compact-layer acceptance plan](../../docs/plans/active/android-compact-layers.md).
 
 Alpha12 introduced **Edit** opens Undo, Redo, Select all, Cut, Copy, Paste and
 navigation in a panel that replaces the letters. **ABC** returns to typing.
@@ -16,7 +24,7 @@ contracts in [Android CI](https://github.com/RioPlay/utterleaf/actions/runs/3451
 Physical-device and TalkBack acceptance remain open. See the [design notes](../../docs/android-keyboard-design.md#released-in-alpha13).
 
 Alpha11 added the single-row toolbar with **123** (number row),
-**>_** (terminal controls) and the Utterleaf dictation icon. Quick toggles save
+**>_** (terminal controls) and the Dictate icon. Quick toggles save
 locally and stay synchronized with the Settings preview. Voice review supports
 **Expand transcript**, scrolling, selection and **Edit transcript**; recording
 preferences hide while reviewing. These changes passed 71 emulator tests;
@@ -70,7 +78,7 @@ prediction, accessibility and device coverage remain on the
 - No Internet permission, microphone foreground service, accessibility service,
   automatic clipboard writes, contacts access, analytics, backup, or saved audio history.
 - Capture cancellation and preview clearing on field changes or panel dismissal;
-  explicit speech insertion only. Password typing works in Utterleaf Keyboard;
+  explicit speech insertion only. Password typing works in Utterleaf;
   dictation is disabled there. The separate voice-only IME rejects password fields.
 - 120-second capture bound and elapsed/remaining time; two-minute preview expiry
   with a 30-second warning and **Keep reviewing** to extend it.
@@ -79,17 +87,20 @@ prediction, accessibility and device coverage remain on the
 
 ## Try it
 
-1. [Download and install Utterleaf Android alpha13](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha13/Utterleaf-Android-0.1.0-alpha13.apk)
+1. [Download and install Utterleaf Android alpha14](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha14/Utterleaf-Android-0.1.0-alpha14.apk)
    on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Use `Utterleaf-Android-0.1.0-alpha13.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha13).
+   Use `Utterleaf-Android-0.1.0-alpha14.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha14).
    If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
-   then install alpha13. Uninstalling removes the imported model and other app data.
+   then install alpha14. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
    the same release identity and should be updated in place rather than uninstalled.
-2. Open **Utterleaf Voice**. Under **Your keyboard**, enable **Utterleaf Keyboard**
+2. In alpha14, open **Utterleaf Voice**. Under **Your keyboard**, enable **Utterleaf Keyboard**
    in Android settings, then choose it. Setup reports which step is still needed.
    You do not need to enable the separate **Utterleaf Voice** input method to use
    the typing keyboard's dictation button.
+   The next snapshot shortens the installed app and typing input method names to
+   **Utterleaf** and labels the optional voice provider **Utterleaf dictation**,
+   without changing the installed package or update identity.
 3. Open a text field and type. Use **Keyboard preferences and preview** in setup to
    change sizing, theme, number row, terminal controls, vibration or repeat filtering. Reopen the keyboard to apply
    saved preferences. The private practice field lets you try the layout without
@@ -98,7 +109,7 @@ prediction, accessibility and device coverage remain on the
    below, open its download in your browser, then return and **Import** that file.
    Allow microphone permission. The voice status shows what is still missing;
    granting permission does not start recording.
-5. In a non-password field, tap the **Utterleaf dictation icon** to start, talk, **Stop**, review, and
+5. In a non-password field, tap **Dictate** (the voice icon) to start, talk, **Stop**, review, and
    **Insert**. Use **Edit transcript** to correct locally before insertion.
    Speak/Stop/Insert share one primary control. From the idle panel, optionally
    enable **Hold to speak and insert on release**; hold until recording starts,

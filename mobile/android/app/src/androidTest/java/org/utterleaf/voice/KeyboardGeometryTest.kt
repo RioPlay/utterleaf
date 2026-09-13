@@ -117,7 +117,9 @@ class KeyboardGeometryTest {
         }
         verify { key(panel, "q").performClick() }
         verify { key(panel, "Tab").performClick() }
+        key(panel, "Navigation keys").performClick()
         verify { key(panel, "Left arrow").performClick() }
+        key(panel, "Return to terminal letters").performClick()
         key(panel, "Edit actions").performClick()
         verify { key(panel, "Copy").performClick() }
         verify { panel.reset(false, false, "Enter") }
@@ -134,7 +136,7 @@ class KeyboardGeometryTest {
 
     private fun node(label: String): AccessibilityNodeInfo? {
         fun find(current: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-            if (current.contentDescription?.toString() == label && current.isClickable) return current
+            if (current.contentDescription?.toString() == label && current.isClickable && current.isVisibleToUser) return current
             for (index in 0 until current.childCount) current.getChild(index)?.let(::find)?.let { return it }
             return null
         }
@@ -147,6 +149,22 @@ class KeyboardGeometryTest {
             node(label)?.let { it.isEnabled && it.performAction(AccessibilityNodeInfo.ACTION_CLICK) } == true
         }
         instrumentation.waitForIdleSync()
+    }
+
+    private fun longPress(label: String) {
+        await("Could not long press $label") {
+            node(label)?.let { it.isEnabled && it.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK) } == true
+        }
+        instrumentation.waitForIdleSync()
+    }
+
+    private fun revealTool(label: String) {
+        repeat(12) {
+            val target = node(label)
+            if (target?.isVisibleToUser == true) return
+            press("More keyboard tools")
+        }
+        error("$label was not reachable through More keyboard tools")
     }
 
     private fun screenBounds(label: String): Rect = Rect().also { node(label)?.getBoundsInScreen(it) ?: error("Missing $label") }
@@ -267,8 +285,9 @@ class KeyboardGeometryTest {
             instrumentation.waitForIdleSync()
             settled(listOf("Keyboard tools", "Edit actions", "Dictate", "Space"))
             press("Edit actions")
-            settled(listOf("Keyboard tools", "Dictate", "Cut"))
-            val beforeFailure = mapOf("Keyboard tools" to screenBounds("Keyboard tools"), "Dictate" to screenBounds("Dictate"), "Cut" to screenBounds("Cut"))
+            settled(listOf("Close edit actions", "Cut", "Copy"))
+            val beforeFailure = mapOf("Close edit actions" to screenBounds("Close edit actions"),
+                "Cut" to screenBounds("Cut"), "Copy" to screenBounds("Copy"))
             // The controlled password field rejects Cut. Verify actual failure
             // feedback separately from the keyboard-only geometry render.
             val rejection = automation.executeAndWaitForEvent({ press("Cut") }, { event ->
@@ -281,17 +300,17 @@ class KeyboardGeometryTest {
                 assertEquals(0, activity!!.editor.selectionStart)
                 assertEquals(activity!!.editor.length(), activity!!.editor.selectionEnd)
             }
-            capture("failure-status", listOf("Keyboard tools", "Close edit actions", "Dictate", "Cut", "Copy", "Return to typing"))
-            assertEquals(beforeFailure["Keyboard tools"], screenBounds("Keyboard tools"))
-            assertEquals(beforeFailure["Dictate"], screenBounds("Dictate"))
+            capture("failure-status", listOf("Close edit actions", "Cut", "Copy", "Paste"))
+            assertEquals(beforeFailure["Close edit actions"], screenBounds("Close edit actions"))
             assertEquals(beforeFailure["Cut"], screenBounds("Cut"))
+            assertEquals(beforeFailure["Copy"], screenBounds("Copy"))
             press("Close edit actions")
-            press("Keyboard tools"); press("Number row off"); press("Keyboard tools")
+            longPress(","); press("Number row off"); press("Close keyboard settings")
             await("Number row did not appear") { node("1") != null }
             capture("number", listOf("Keyboard tools", "Dictate", "Space", "Done", "1"))
-            press("Keyboard tools"); press("Number row on"); press("Keyboard tools")
+            longPress(","); press("Number row on"); press("Close keyboard settings")
             await("Number row did not close") { node("1") == null }
-            press("Keyboard tools"); press("Terminal controls off"); press("Keyboard tools")
+            longPress(","); press("Terminal controls off"); press("Close keyboard settings")
             await("Terminal controls did not appear") { node("Escape") != null }
             assertTrue("Terminal-only layer showed a number row", node("1") == null)
             capture("terminal", listOf("Keyboard tools", "Dictate", "Space", "Done", "Escape", "Function keys"))
@@ -323,37 +342,41 @@ class KeyboardGeometryTest {
                 }
                 fun sideCapture(state: String, labels: List<String>) {
                     capture("$side-$state", labels)
-                    assertEquals("$state moved the left edge", sideLeft, screenBounds("Keyboard tools").left)
-                    assertEquals("$state moved the right edge", sideRight, screenBounds("Dictate").right)
                     assertKeysInColumn("$side-$state", sideLeft, sideRight)
                 }
                 press("Keyboard tools")
-                sideCapture("tools", listOf("Keyboard tools", "Dictate", "Full width layout", "Left hand layout", "Right hand layout", "Keyboard settings", "Space", "Done"))
+                sideCapture("tools", listOf("Return to typing", "More keyboard tools", "Select all", "Space", "Done"))
+                revealTool("Keyboard layout"); press("Keyboard layout")
+                sideCapture("settings", listOf("Close keyboard settings", "Full width layout", "Left hand layout", "Right hand layout", "Keyboard settings"))
                 assertTrue(node(if (alignment == KeyboardAlignment.LEFT) "Left hand layout" else "Right hand layout")!!.isSelected)
                 assertFalse(node("Full width layout")!!.isSelected)
-                press("Keyboard tools")
-                press("Keyboard tools"); press("Number row off"); press("Keyboard tools")
+                press("Close keyboard settings")
+                longPress(","); press("Number row off"); press("Close keyboard settings")
                 sideCapture("number", daily + listOf("1", "0"))
-                press("Keyboard tools"); press("Number row on"); press("Keyboard tools")
+                longPress(","); press("Number row on"); press("Close keyboard settings")
                 press("Switch letters and symbols")
                 sideCapture("symbols", listOf("Keyboard tools", "Dictate", "Switch letters and symbols", "Space", "Done", "1", "0", "@", "/"))
                 press("More symbols")
                 sideCapture("more-symbols", listOf("Keyboard tools", "Dictate", "More numbers and symbols", "Space", "Done", "~", "∆"))
                 press("Switch letters and symbols")
-                press("Keyboard tools"); press("Terminal controls off"); press("Keyboard tools")
+                longPress(","); press("Terminal controls off"); press("Close keyboard settings")
                 sideCapture("terminal", daily + listOf("Escape", "Function keys"))
                 press("Function keys")
-                sideCapture("functions", listOf("Keyboard tools", "Dictate", "F1", "F12", "Insert", "Forward delete", "Space", "Done"))
-                press("Return to letters")
-                press("Keyboard tools"); press("Terminal controls on"); press("Keyboard tools")
+                sideCapture("functions", listOf("Return to terminal letters", "F1", "F12", "Insert", "Forward delete", "Space", "Done"))
+                press("Return to terminal letters")
+                longPress(","); press("Terminal controls on"); press("Close keyboard settings")
                 press("Edit actions")
-                sideCapture("edit", listOf("Keyboard tools", "Dictate", "Cut", "Copy", "Paste", "Return to typing"))
+                sideCapture("edit", listOf("Close edit actions", "Cut", "Copy", "Paste", "Select text"))
                 press("Close edit actions")
-                press("Keyboard tools")
+                longPress(",")
                 press("Full width layout")
-                capture("$side-full-return", listOf("Keyboard tools", "Dictate", "Full width layout"))
+                capture("$side-full-return", listOf("Close keyboard settings", "Full width layout"))
                 assertTrue(node("Full width layout")!!.isSelected)
                 assertEquals(KeyboardAlignment.FULL, KeyboardOptions.load(app).alignment)
+                press("Close keyboard settings")
+                await("Full-width keyboard did not finish relayout") {
+                    node("Keyboard tools") != null && node("Dictate") != null
+                }
                 assertEquals(fullLeft, screenBounds("Keyboard tools").left)
                 assertEquals(fullRight, screenBounds("Dictate").right)
             }
@@ -368,16 +391,16 @@ class KeyboardGeometryTest {
                 for (layout in LetterLayout.entries) {
                     val state = "${layout.stored}-${alignment.stored}"
                     val choices = LetterLayout.entries.map { "${it.label} letter layout" }
-                    press("Keyboard tools")
+                    longPress(",")
                     press("${layout.label} letter layout")
-                    capture("$state-tools", choices + listOf("Keyboard settings", "Space", "Done"))
+                    capture("$state-tools", choices + listOf("Close keyboard settings", "Keyboard settings"))
                     LetterLayout.entries.forEach { choice ->
                         assertEquals(choice == layout, node("${choice.label} letter layout")!!.isSelected)
                     }
                     assertEquals(layout, KeyboardOptions.load(app).letterLayout)
                     assertEquals(alignment, KeyboardOptions.load(app).alignment)
                     assertKeysInColumn("$state-tools", left, right)
-                    press("Keyboard tools")
+                    press("Close keyboard settings")
                     val letters = layout.rows.joinToString("").map { it.toString() }
                     capture(state, letters + listOf("Keyboard tools", "Dictate", "Shift off", "Delete", "Space", "Done"))
                     assertKeysInColumn(state, left, right)
