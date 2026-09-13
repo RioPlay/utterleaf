@@ -1,4 +1,4 @@
-"""Build and exercise Windows admission primitives without OBS or audio."""
+"""Build and exercise Windows authorization/admission without OBS or audio."""
 # SPDX-License-Identifier: GPL-2.0-or-later
 from __future__ import annotations
 
@@ -39,11 +39,17 @@ def main() -> None:
     logs = []
     sources = [ROOT / name for name in (
         "src/handshake.c", "src/handshake.h", "src/admission.c", "src/admission.h",
+        "src/crypto.c", "src/crypto.h",
+        "src/authorization.c", "src/authorization.h",
         "tests/handshake_test.c", "tests/handshake_failure_test.c",
         "tests/admission_identity_test.c",
+        "tests/crypto_test.c", "tests/authorization_test.c",
+        "tests/authorization.def", "tests/test_authorization.py",
         "tests/admission.def", "tests/test_admission.py", "tools/test_native.py",
     )]
     source_hashes = {str(path.relative_to(ROOT)): digest(path) for path in sources}
+    client_sources = [REPO / "utterleaf/obs_authorization.py", REPO / "utterleaf/windows_pipe.py"]
+    client_hashes = {str(path.relative_to(REPO)): digest(path) for path in client_sources}
 
     def run(name: str, arguments: list[str | Path], timeout: int = 60) -> None:
         command = [str(arg) for arg in arguments]
@@ -63,39 +69,60 @@ def main() -> None:
     fault = output / "handshake_failure_test.exe"
     dll = output / "utterleaf-admission-test.dll"
     identity = output / "admission_identity_test.exe"
+    crypto = output / "crypto_test.exe"
+    authorization_dll = output / "utterleaf-authorization-test.dll"
+    authorization_state = output / "authorization_test.exe"
     run("compiler", [compiler, "--version"])
-    run("handshake-build", [*flags, ROOT / "src/handshake.c",
+    run("handshake-build", [*flags, ROOT / "src/crypto.c", ROOT / "src/handshake.c",
                            ROOT / "tests/handshake_test.c", "-lbcrypt", "-o", fixed])
     run("handshake-test", [fixed])
+    run("crypto-build", [*flags, ROOT / "src/crypto.c", ROOT / "tests/crypto_test.c",
+                          "-lbcrypt", "-o", crypto])
+    run("crypto-test", [crypto])
+    run("authorization-state-build", [*flags, ROOT / "tests/authorization_test.c",
+                                       "-o", authorization_state])
+    run("authorization-state-test", [authorization_state])
     functions = (
         "BCryptOpenAlgorithmProvider", "BCryptGetProperty", "BCryptCreateHash",
         "BCryptHashData", "BCryptFinishHash", "BCryptDestroyHash",
         "BCryptCloseAlgorithmProvider", "GetProcessHeap", "HeapAlloc", "HeapFree",
     )
     fault_obj = output / "handshake_failure.obj"
+    crypto_fault_obj = output / "crypto_failure.obj"
     shim_obj = output / "handshake_shims.obj"
-    run("handshake-fault-object", [*flags, *[f"-D{name}=shim_{name}" for name in functions],
-                                  "-c", ROOT / "src/handshake.c", "-o", fault_obj])
+    run("crypto-fault-object", [*flags, *[f"-D{name}=shim_{name}" for name in functions],
+                               "-c", ROOT / "src/crypto.c", "-o", crypto_fault_obj])
+    run("handshake-fault-object", [*flags, "-c", ROOT / "src/handshake.c", "-o", fault_obj])
     run("handshake-fault-shims", [*flags, "-c", ROOT / "tests/handshake_failure_test.c",
                                  "-o", shim_obj])
-    run("handshake-fault-link", [compiler, fault_obj, shim_obj, "-o", fault])
+    run("handshake-fault-link", [compiler, crypto_fault_obj, fault_obj, shim_obj, "-o", fault])
     run("handshake-fault-test", [fault])
-    run("admission-identity-build", [*flags, ROOT / "tests/admission_identity_test.c",
+    run("admission-identity-build", [*flags, ROOT / "src/crypto.c", ROOT / "tests/admission_identity_test.c",
                                      ROOT / "src/handshake.c", "-ladvapi32", "-lbcrypt",
                                      "-o", identity])
     run("admission-identity-test", [identity])
-    run("admission-build", [*flags, "-shared", ROOT / "src/admission.c",
+    run("admission-build", [*flags, "-shared", ROOT / "src/crypto.c", ROOT / "src/admission.c",
                             ROOT / "src/handshake.c", ROOT / "tests/admission.def",
                             "-ladvapi32", "-lbcrypt", "-o", dll])
     # The outer process timeout bounds fixture failures, including a stalled
     # native operation that must retain its OVERLAPPED buffers until completion.
     run("admission-test", [sys._base_executable, ROOT / "tests/test_admission.py", dll])
+    run("authorization-build", [*flags, "-shared", ROOT / "src/crypto.c",
+                                 ROOT / "src/authorization.c", ROOT / "src/admission.c",
+                                 ROOT / "src/handshake.c", ROOT / "tests/authorization.def",
+                                 "-ladvapi32", "-lbcrypt", "-o", authorization_dll])
+    run("authorization-test", [sys._base_executable, ROOT / "tests/test_authorization.py",
+                                authorization_dll])
     if source_hashes != {str(path.relative_to(ROOT)): digest(path) for path in sources}:
         raise RuntimeError("Source changed during native verification")
+    if client_hashes != {str(path.relative_to(REPO)): digest(path) for path in client_sources}:
+        raise RuntimeError("Client source changed during native verification")
     receipt = {
         "schema": 1, "scope": "native primitives only; no OBS dispatch, arming or audio",
-        "sources": source_hashes, "compiler_sha256": digest(compiler),
-        "artifacts": {path.name: digest(path) for path in (fixed, fault, identity, dll)},
+        "sources": source_hashes, "client_sources": client_hashes,
+        "compiler_sha256": digest(compiler),
+        "artifacts": {path.name: digest(path) for path in
+                      (fixed, fault, identity, dll, crypto, authorization_state, authorization_dll)},
         "logs": {path.name: digest(path) for path in logs},
         "commands": commands,
     }

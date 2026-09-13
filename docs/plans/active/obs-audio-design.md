@@ -3,12 +3,16 @@
 Status: live OBS integration is not implemented or device-verified. Internal
 protocol, receiver, control, identity and audio-pipe client components are recorded
 in the [implementation plan](obs-audio-implementation.md).
-Updated September 12, 2026.
+Updated September 13, 2026.
 
 ## Decision
 
 Use a small, original native OBS plugin as the audio boundary and the built-in
-OBS WebSocket 5.x service as the authenticated control and lifecycle boundary.
+OBS WebSocket 5.x service for control and lifecycle. The official client requires
+password authentication, but public vendor callbacks cannot attest caller
+authentication or identity. The plugin must establish independent
+[client enrollment and request authority](obs-native-enrollment.md) before
+privileged session creation or arming.
 On Windows, the plugin sends raw PCM over a per-session named pipe restricted to
 the interactive user's security token. Utterleaf must first connect to the
 password-protected WebSocket service on an explicit loopback address and call a

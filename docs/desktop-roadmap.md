@@ -116,9 +116,18 @@ The separate [native session components](plans/active/obs-native-session.md) now
 pass fixed Hello/ACK and CNG-failure checks, 11 actual child-process transport
 tests, current-logon DACL/noninheritance checks and 64 create/destroy handle
 balance cycles. A focused desktop boundary/pipe regression passes 54 tests.
-Independent admission source/test/evidence review is clear. These components are not linked into the
-module; vendor authorization/enrollment, atomic arming and PCM capture remain
-unimplemented. Cross-user/logon, remote clients, forced PID reuse and kernel
+Independent admission source/test/evidence review is clear; PR #33 merged at
+`006d482` after all five exact-source desktop CI jobs passed. The next
+[enrollment step](plans/active/obs-native-enrollment.md) accounts for the public
+vendor API's lack of caller authentication context. These components are not
+linked into the module; vendor authorization/enrollment, atomic arming and PCM capture remain
+unimplemented. The enrollment branch now implements independent capability
+proof and native admission ownership: 30 client tests, 10 native child-process
+cases and six state/fault groups pass, including expiry, replay, revocation and
+concurrent preparation. The focused desktop regression passes 177 tests; final
+independent source/evidence review is clear. Pairing-file UI, private stores and the
+vendor adapter remain to be implemented before any app entry point is exposed.
+Cross-user/logon, remote clients, forced PID reuse and kernel
 completion failure are not established by these fixtures. The installed toolchain
 is not fully pinned and native redistribution review remains open; no plugin
 binary is included in desktop or Android releases. The

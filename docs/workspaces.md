@@ -10,7 +10,8 @@ source checkout stays intact. Use the following workspaces for new work.
 | `release/desktop-0.4.6rc2` | Published Windows x64 CPU prerelease with runtime notice corrections; PR #26 merged | Preserve the immutable RC2 tag and release evidence; continue desktop work from main |
 | `feat/desktop-dictation-layout` | Compact Dictation settings and CI corrections merged through PR #31 at `03a1c9b` | Preserve source/CI evidence; not part of published RC2 |
 | `feat/obs-native-bridge` | Original isolated C module build/load prerequisite merged through PR #32 at `e61c7dd` | Preserve source/build/CI evidence; no plugin binary release |
-| `feat/obs-native-session` | Native Hello/ACK and retained-process pipe admission, based on merged PR #32 | Verify admission, then continue vendor authorization, atomic arming and actual PCM under the active OBS plans |
+| `feat/obs-native-session` | Native Hello/ACK and retained-process pipe admission merged through PR #33 at `006d482` | Preserve native/local/CI evidence; module still inert |
+| `feat/obs-native-enrollment` | Independent client enrollment and vendor request authority | Resolve explicit enrollment/proof design before privileged vendor handling, then continue atomic arming and PCM |
 | `release/desktop-0.4.6rc1` | Unpublished RC1 candidate retained for audit | Reference only; its immutable tag and downloaded artifact are unchanged |
 | `release/android-alpha14` | Published signed original keyboard snapshot; PR #25 merged | Preserve alpha14 evidence; physical-phone testing remains deferred follow-up |
 | `release/android-alpha15` | Published signed alpha15 compact keyboard and Utterleaf naming snapshot; PR #29 merged | Preserve alpha15 release evidence; physical-phone testing remains deferred follow-up |
