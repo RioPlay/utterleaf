@@ -194,8 +194,8 @@ the [Unprotect remarks](https://learn.microsoft.com/en-us/windows/win32/api/dpap
 It does not establish the exporting executable's identity or defeat same-user
 replacement. Keep the previously specified process verification before use.
 
-Use CurrentUser DPAPI with `CRYPTPROTECT_UI_FORBIDDEN` and NULL description,
-optional entropy, prompt and reserved arguments. Never use LOCAL_MACHINE. Clear
+Use CurrentUser DPAPI with `CRYPTPROTECT_UI_FORBIDDEN`. The description, optional
+entropy, prompt and reserved arguments must each be NULL. Never use LOCAL_MACHINE. Clear
 owned sensitive buffers and native DPAPI outputs before `LocalFree`; preserve
 the documented Python/OS memory-erasure limits.
 
@@ -208,10 +208,11 @@ subdirectories. Import must decrypt and validate role 2, then protect a new
 role-3 record. Never persist transfer bytes as the desktop store or place keys
 in existing roaming configuration, backups, logs, models or transcripts.
 
-Create app-owned directories and files with a protected current-user-only DACL
-and noninheritable handles. Use stable TokenUser SID, not the admission helper's
-logon SID. Check owner, protected non-NULL DACL and the single expected allow ACE
-on those objects through held handles. Existing app-owned objects that do not
+Create native and desktop store files, transfer packages and new app-owned
+directories with a protected current-user-only DACL and noninheritable handles.
+Use stable TokenUser SID, not the admission helper's logon SID. Check owner and a
+protected non-NULL DACL containing exactly one noninherited allow ACE for that SID
+with `FILE_ALL_ACCESS` through held handles. Existing app-owned objects that do not
 meet this boundary fail without silently changing their permissions. The existing
 LocalAppData root and a user-selected export/import parent are not app-owned:
 validate their locality/path separately and do not replace their ACLs.
@@ -249,18 +250,21 @@ report that pairing saved but the transfer file remains. Cancellation before
 commit changes no store and removes no transfer file. A copied transfer file is
 still usable by its Windows user until authoritative OBS revocation.
 
-OBS Forget must stop privileged dispatch, revoke/join live state and remove the
-authoritative persisted capability. Persistence failure must be reported as
-failure to make revocation durable; do not claim an old key cannot return after
-restart if its store was not removed. Desktop Forget removes only its own copy
+OBS Forget suspends privileged dispatch, then removes the authoritative store.
+Whether removal succeeds or fails, revoke/join the current live authorizer before
+ending the operation. If removal fails, keep current dispatch disabled and report
+that revocation is not durable: restart may restore the old key until its store
+is removed. Do not claim durable success on that path. Desktop Forget removes only its own copy
 and must explain that it does not revoke copied packages. Reset defaults touches
 none of these files. A later UI integrates these operations explicitly; no import,
 replacement, restart or connection may arm capture.
 
-Acceptance for this increment is real Windows native role-2 export to Python
-import/role-3 persistence, reload and native authorization using the same key.
+Acceptance for this increment is real Windows native role-1 create/reload,
+role-2 export to Python import/role-3 persistence, reload and native authorization
+using the same key.
 Cover role/length/tag corruption, DPAPI failures, current-user ACLs, noninheritance,
-reparse/remote/unsupported-volume refusal, existing destination, failed writes
+reparse/remote/unsupported-volume refusal, pre-existing app-owned objects with
+the wrong DACL, existing destination, failed writes
 and commits, cancellation, package-removal failure, forget and restart behavior.
 Use disposable directories/keys and injected failure points; do not change the
 consumer's actual pairing, settings, OBS profile, audio or permissions. Add no
