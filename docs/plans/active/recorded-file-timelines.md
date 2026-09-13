@@ -200,6 +200,14 @@ substitute best-effort timestamps. No paths, tags or side-data appeared in these
 synthetic rows. The fixture receipt is retained locally as
 `.grok/recorded-file-timelines/external-design/compact-frame-receipt.json`.
 
+The pure `file_frame_metadata.parse_compact_audio_frame` parser is now implemented
+and independently reviewed (**36 tests passed**). It requires the selected
+global stream index and validated stream sample rate, bounds each row to 512
+bytes, validates the exact six fields, and rejects missing original PTS with an
+actionable static error. It accepts literal `unknown` channel layout without
+inferring speakers. No process, journal, resampler or recognition call uses it
+yet; this component does not establish packaged timestamp alignment.
+
 The alternative tee approach avoids double decoding but needs two safely drained
 private channels on Windows; mixing timing with arbitrary stderr diagnostics is
 not acceptable. NUT requires a bounded audited parser absent from this package.
