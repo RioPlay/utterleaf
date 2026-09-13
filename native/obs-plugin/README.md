@@ -63,6 +63,15 @@ remain open. All 647 focused desktop tests, 41 Tk tests, 51 native verification
 commands, the linked build and headless smoke pass. Independent source and
 render review is clear; its plan records exact evidence and remaining gates.
 
+The [mix provenance increment](../../docs/plans/active/obs-mix-provenance.md)
+adds an original bounded version-2 Routing encoder and matching Python metadata
+model/codec. Independent byte vectors and native/Python interoperability pass;
+the final canonical run passes 796 affected desktop tests and all 51 native
+commands, plus the linked build and headless refusal. The current plugin runtime
+still emits version 1 and does not call the new encoder. Source observation,
+serialized metadata publication, private history and view integration remain
+required before this can describe a live OBS mix.
+
 The native test driver needs the desktop virtualenv for NumPy-backed
 protocol validation, and `--build` plus `--headers` for conversion fixtures.
 

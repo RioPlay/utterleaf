@@ -247,6 +247,16 @@ and headless smoke pass. Nine synthetic UI renders were inspected; independent
 source review is clear. Its active plan records exact commands and remaining
 acceptance limits.
 
+The controller source is preserved in draft PR #40 at `a0ad377`; all five desktop
+jobs passed in [CI 34774733389](https://github.com/RioPlay/utterleaf/actions/runs/34774733389).
+The next [mix provenance and routing-boundary increment](plans/active/obs-mix-provenance.md)
+is active on `feat/obs-mix-provenance`. Its bounded assignment model and explicit
+version-2 routing codec pass 224 focused tests, native/Python interoperability,
+796 affected desktop tests, all 51 native verification commands, the linked build
+and headless refusal. Independent component review is clear and 446 recorded
+hash comparisons match. The active runtime remains version 1; native observation,
+receiver/history integration and visible attribution remain incomplete.
+
 Current integrated desktop regression: **1,432 passed, 13 skipped in 39.47 seconds**,
 including the reviewed OBS control, native identity, pipe and audio handshake.
 The combined focused OBS/pipe/privacy/configuration/boundary/packaging bundle

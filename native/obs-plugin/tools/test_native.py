@@ -74,6 +74,7 @@ def main() -> None:
     desktop_tests = (
         "tests/test_obs_audio_pipe.py", "tests/test_obs_audio_arm.py",
         "tests/test_obs_audio_disarm.py", "tests/test_obs_protocol.py", "tests/test_obs_session.py",
+        "tests/test_obs_mix.py", "tests/test_obs_routing_protocol.py",
         "tests/test_windows_pipe.py", "tests/test_obs_control_status.py",
         "tests/test_obs_control.py", "tests/test_obs_control_enrollment.py",
         "tests/test_obs_websocket.py", "tests/test_obs_websocket_disconnect.py",

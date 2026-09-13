@@ -10,6 +10,12 @@
 #define UL_AUDIO_MAX_FRAMES 8192u
 #define UL_AUDIO_MAX_PACKET_BYTES 65585u
 #define UL_AUDIO_MAX_SEQUENCE (UINT64_MAX - UINT64_C(1))
+#define UL_AUDIO_MAX_ROUTING_SOURCES 128u
+#define UL_AUDIO_MAX_BUS_LABEL_BYTES 64u
+#define UL_AUDIO_MAX_SOURCE_NAME_BYTES 128u
+#define UL_AUDIO_MAX_ROUTING_BODY_BYTES 19302u
+#define UL_AUDIO_MAX_ROUTING_PACKET_BYTES \
+    (UL_AUDIO_HEADER_BYTES + UL_AUDIO_MAX_ROUTING_BODY_BYTES)
 
 enum ul_audio_end_reason {
     UL_AUDIO_END_STREAM_STOPPED = 1,
@@ -24,6 +30,20 @@ typedef struct ul_audio_end_sequence {
     bool has_sequence;
     uint64_t sequence;
 } ul_audio_end_sequence;
+
+typedef struct ul_audio_routing_bus {
+    uint8_t bus;
+    uint64_t next_sequence;
+    const uint8_t *label;
+    size_t label_length;
+} ul_audio_routing_bus;
+
+typedef struct ul_audio_routing_source {
+    uint8_t source_id[16];
+    uint8_t selected_mask;
+    const uint8_t *name;
+    size_t name_length;
+} ul_audio_routing_source;
 
 /* These encoders allocate nothing and return the exact encoded byte count.
  * Zero means invalid metadata, invalid PCM, or insufficient output capacity.
@@ -49,5 +69,14 @@ size_t ul_audio_encode_end(uint8_t *out, size_t capacity,
                            const uint8_t session_id[16], uint8_t reason,
                            const ul_audio_end_sequence *last_sequences,
                            size_t sequence_count);
+
+/* Routing is an observation-only version-2 record. Existing media records
+ * remain version 1 until the complete runtime migrates as one unit. Labels and
+ * source names are already-private UTF-8 bytes and are never logged here. */
+size_t ul_audio_encode_routing(
+    uint8_t *out, size_t capacity, const uint8_t session_id[16],
+    uint64_t revision, uint64_t observed_at_ns, uint8_t primary_bus,
+    uint8_t bus_mask, const ul_audio_routing_bus *buses, size_t bus_count,
+    const ul_audio_routing_source *sources, size_t source_count);
 
 #endif

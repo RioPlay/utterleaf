@@ -171,6 +171,199 @@ static void test_end_validation(void)
     assert_untouched(out, sizeof(out));
 }
 
+static size_t encode_routing_fixture(uint8_t *out, size_t capacity)
+{
+    static const uint8_t main_label[] = "Main";
+    static const uint8_t aux_label[] = "Aux";
+    static const uint8_t alpha_name[] = "A";
+    static const uint8_t beta_name[] = "B";
+    static const ul_audio_routing_bus buses[] = {
+        {1u, 7u, main_label, sizeof(main_label) - 1u},
+        {2u, UINT64_MAX, aux_label, sizeof(aux_label) - 1u},
+    };
+    static const ul_audio_routing_source sources[] = {
+        {{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1}, 2u,
+         alpha_name, sizeof(alpha_name) - 1u},
+        {{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2}, 4u,
+         beta_name, sizeof(beta_name) - 1u},
+    };
+    return ul_audio_encode_routing(
+        out, capacity, session, 1u, UINT64_C(0x0102030405060708),
+        1u, 6u, buses, 2u, sources, 2u);
+}
+
+static void test_routing_fixed_vector(void)
+{
+    static const uint8_t expected[] = {
+        'U','L','A','P',2,5,0,0,105,0,0,0,
+        '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f',
+        1,0,0,0,0,0,0,0, 8,7,6,5,4,3,2,1, 1,6,2,0,
+        1, 7,0,0,0,0,0,0,0, 4,0, 'M','a','i','n',
+        2, 0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff, 3,0, 'A','u','x',
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1, 2, 1,0, 'A',
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2, 4, 1,0, 'B',
+    };
+    uint8_t out[sizeof(expected)];
+    size_t size = encode_routing_fixture(out, sizeof(out));
+    assert(size == sizeof(expected));
+    assert(memcmp(out, expected, sizeof(expected)) == 0);
+}
+
+static void test_routing_validation(void)
+{
+    static const uint8_t label[] = "Main";
+    static const uint8_t name[] = "Input";
+    static const uint8_t emoji[] = {
+        0xf0,0x9f,0x91,0xa9, 0xe2,0x80,0x8d, 0xf0,0x9f,0x92,0xbb
+    };
+    static const uint8_t persian_zwnj[] = {
+        0xd9,0x85, 0xdb,0x8c, 0xe2,0x80,0x8c,
+        0xd8,0xb1, 0xd9,0x88, 0xd9,0x85
+    };
+    static const uint8_t blank_whitespace[] = {' ', 0xc2,0xa0};
+    static const uint8_t blank_joiners[] = {
+        0xe2,0x80,0x8c, 0xe2,0x80,0x8d
+    };
+    static const uint8_t blank_ideographic[] = {0xe3,0x80,0x80};
+    static const uint8_t invalid_text[][3] = {
+        {'x','\n','y'}, {0xc0,0xaf,'x'}, {0xed,0xa0,0x80},
+        {0xf4,0x90,0x80}, {0xc2,0x85,'x'}, {0xe2,0x80,0xa8},
+        {0xe2,0x81,0xa6}, {0xe2,'x','y'}, {0xd8,0x9c,'x'},
+        {0xe2,0x80,0x8b}, {0xe2,0x80,0x8e}, {0xe2,0x80,0x8f},
+        {0xef,0xbb,0xbf},
+    };
+    ul_audio_routing_bus buses[2] = {
+        {0u, 0u, label, sizeof(label) - 1u},
+        {1u, UINT64_MAX, emoji, sizeof(emoji)},
+    };
+    ul_audio_routing_source sources[2] = {
+        {{0}, 1u, name, sizeof(name) - 1u},
+        {{0}, 2u, name, sizeof(name) - 1u},
+    };
+    uint8_t out[256];
+    size_t index;
+    sources[1].source_id[15] = 1u;
+    assert(ul_audio_encode_routing(out, sizeof(out), session, 1u, 0u,
+                                   0u, 3u, buses, 2u, sources, 2u) != 0u);
+    reset(out, sizeof(out));
+#define BAD_ROUTE(...) do { \
+    assert(ul_audio_encode_routing(__VA_ARGS__) == 0u); \
+    assert_untouched(out, sizeof(out)); \
+} while (0)
+    BAD_ROUTE(NULL, sizeof(out), session, 1u, 0u, 0u, 3u,
+              buses, 2u, sources, 2u);
+    BAD_ROUTE(out, sizeof(out), NULL, 1u, 0u, 0u, 3u,
+              buses, 2u, sources, 2u);
+    BAD_ROUTE(out, sizeof(out), session, 0u, 0u, 0u, 3u,
+              buses, 2u, sources, 2u);
+    BAD_ROUTE(out, sizeof(out), session, UINT64_MAX, 0u, 0u, 3u,
+              buses, 2u, sources, 2u);
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 2u, 1u,
+              buses, 1u, sources, 1u);
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 0u,
+              buses, 0u, sources, 0u);
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 64u,
+              buses, 1u, sources, 1u);
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 3u,
+              NULL, 2u, sources, 2u);
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 3u,
+              buses, 2u, NULL, 1u);
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 3u,
+              buses, 2u, sources, UL_AUDIO_MAX_ROUTING_SOURCES + 1u);
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 3u,
+              buses, 1u, sources, 2u);
+    buses[0].bus = 1u;
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 3u,
+              buses, 2u, sources, 2u);
+    buses[0].bus = 0u;
+    buses[0].label_length = 0u;
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 3u,
+              buses, 2u, sources, 2u);
+    buses[0].label_length = UL_AUDIO_MAX_BUS_LABEL_BYTES + 1u;
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 3u,
+              buses, 2u, sources, 2u);
+    buses[0].label_length = sizeof(label) - 1u;
+    for (index = 0u; index < sizeof(invalid_text) / sizeof(invalid_text[0]); ++index) {
+        buses[0].label = invalid_text[index];
+        buses[0].label_length = sizeof(invalid_text[index]);
+        BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 3u,
+                  buses, 2u, sources, 2u);
+    }
+    buses[0].label = blank_whitespace;
+    buses[0].label_length = sizeof(blank_whitespace);
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 3u,
+              buses, 2u, sources, 2u);
+    buses[0].label = blank_joiners;
+    buses[0].label_length = sizeof(blank_joiners);
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 3u,
+              buses, 2u, sources, 2u);
+    buses[0].label = blank_ideographic;
+    buses[0].label_length = sizeof(blank_ideographic);
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 3u,
+              buses, 2u, sources, 2u);
+    buses[0].label = persian_zwnj;
+    buses[0].label_length = sizeof(persian_zwnj);
+    assert(ul_audio_encode_routing(out, sizeof(out), session, 1u, 0u,
+                                   0u, 3u, buses, 2u, sources, 2u) != 0u);
+    reset(out, sizeof(out));
+    buses[0].label = label;
+    buses[0].label_length = sizeof(label) - 1u;
+    sources[0].selected_mask = 0u;
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 3u,
+              buses, 2u, sources, 2u);
+    sources[0].selected_mask = 4u;
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 3u,
+              buses, 2u, sources, 2u);
+    sources[0].selected_mask = 1u;
+    sources[0].name_length = UL_AUDIO_MAX_SOURCE_NAME_BYTES + 1u;
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 3u,
+              buses, 2u, sources, 2u);
+    sources[0].name_length = sizeof(name) - 1u;
+    memcpy(sources[1].source_id, sources[0].source_id, 16u);
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 3u,
+              buses, 2u, sources, 2u);
+    sources[1].source_id[15] = 1u;
+    sources[0].source_id[15] = 2u;
+    BAD_ROUTE(out, sizeof(out), session, 1u, 0u, 0u, 3u,
+              buses, 2u, sources, 2u);
+#undef BAD_ROUTE
+}
+
+static void test_routing_maximum_and_capacity(void)
+{
+    uint8_t *out = malloc(UL_AUDIO_MAX_ROUTING_PACKET_BYTES);
+    uint8_t label[UL_AUDIO_MAX_BUS_LABEL_BYTES];
+    uint8_t name[UL_AUDIO_MAX_SOURCE_NAME_BYTES];
+    ul_audio_routing_bus buses[6];
+    ul_audio_routing_source sources[UL_AUDIO_MAX_ROUTING_SOURCES];
+    size_t index;
+    assert(out != NULL);
+    memset(label, 'L', sizeof(label));
+    memset(name, 'N', sizeof(name));
+    memset(sources, 0, sizeof(sources));
+    for (index = 0u; index < 6u; ++index)
+        buses[index] = (ul_audio_routing_bus){
+            (uint8_t)index, (uint64_t)index, label, sizeof(label)};
+    for (index = 0u; index < UL_AUDIO_MAX_ROUTING_SOURCES; ++index) {
+        sources[index].source_id[15] = (uint8_t)index;
+        sources[index].selected_mask = 1u;
+        sources[index].name = name;
+        sources[index].name_length = sizeof(name);
+    }
+    assert(ul_audio_encode_routing(
+        out, UL_AUDIO_MAX_ROUTING_PACKET_BYTES, session,
+        UL_AUDIO_MAX_SEQUENCE, UINT64_MAX, 0u, 0x3fu,
+        buses, 6u, sources, UL_AUDIO_MAX_ROUTING_SOURCES) ==
+        UL_AUDIO_MAX_ROUTING_PACKET_BYTES);
+    reset(out, UL_AUDIO_MAX_ROUTING_PACKET_BYTES);
+    assert(ul_audio_encode_routing(
+        out, UL_AUDIO_MAX_ROUTING_PACKET_BYTES - 1u, session,
+        1u, 0u, 0u, 0x3fu, buses, 6u,
+        sources, UL_AUDIO_MAX_ROUTING_SOURCES) == 0u);
+    assert_untouched(out, UL_AUDIO_MAX_ROUTING_PACKET_BYTES);
+    free(out);
+}
+
 static int emit_frames(void)
 {
     const float pcm[2] = {0.25f, -0.25f};
@@ -193,16 +386,31 @@ static int emit_frames(void)
     return 0;
 }
 
+static int emit_routing(void)
+{
+    uint8_t out[128];
+    size_t size;
+    if (_setmode(_fileno(stdout), _O_BINARY) == -1)
+        return 1;
+    size = encode_routing_fixture(out, sizeof(out));
+    return size == 0u || fwrite(out, 1u, size, stdout) != size;
+}
+
 int main(int argc, char **argv)
 {
     if (argc == 2 && strcmp(argv[1], "--emit") == 0)
         return emit_frames();
+    if (argc == 2 && strcmp(argv[1], "--emit-routing") == 0)
+        return emit_routing();
     assert(argc == 1);
     test_fixed_vectors();
     test_start_validation();
     test_audio_validation_and_maximum();
     test_gap_validation();
     test_end_validation();
-    puts("native ULAP encoder vectors and bounds passed");
+    test_routing_fixed_vector();
+    test_routing_validation();
+    test_routing_maximum_and_capacity();
+    puts("native ULAP encoder and routing vectors and bounds passed");
     return 0;
 }
