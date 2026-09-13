@@ -127,6 +127,11 @@ cases and six state/fault groups pass, including expiry, replay, revocation and
 concurrent preparation. The focused desktop regression passes 177 tests; final
 independent source/evidence review is clear. Pairing-file UI, private stores and the
 vendor adapter remain to be implemented before any app entry point is exposed.
+PR #34 merged at `9260e6b` after all five
+[exact-source desktop CI jobs](https://github.com/RioPlay/utterleaf/actions/runs/34754090586)
+passed at `d44126a`. The next `feat/obs-pairing-store` increment implements the
+selected CurrentUser DPAPI package, separate native/desktop stores and explicit
+import/forget persistence behavior described in the enrollment plan.
 Cross-user/logon, remote clients, forced PID reuse and kernel
 completion failure are not established by these fixtures. The installed toolchain
 is not fully pinned and native redistribution review remains open; no plugin
