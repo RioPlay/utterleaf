@@ -153,8 +153,8 @@ jobs:
       - name: Archive and verify preview artifact
         run: |
           $archive = 'dist\Utterleaf-windows-x64-cpu.zip'
-          Compress-Archive -Path 'dist\Utterleaf' -DestinationPath $archive
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Cmdlets do not set LASTEXITCODE; a fresh shell leaves it null.
+          Compress-Archive -Path 'dist\Utterleaf' -DestinationPath $archive -ErrorAction Stop
           .\.venv\Scripts\python.exe -c "import zipfile; z=zipfile.ZipFile(r'dist\Utterleaf-windows-x64-cpu.zip'); names=[n.replace(chr(92),'/') for n in z.namelist()]; required={'Utterleaf/utterleaf.exe','Utterleaf/utterleafw.exe','Utterleaf/utterleaf-cli.exe','Utterleaf/THIRD-PARTY-NOTICES.md','Utterleaf/SHA256SUMS.txt','Utterleaf/BUILD-MANIFEST.json','Utterleaf/DEPENDENCIES.txt','Utterleaf/packaging/preview-notes.md','Utterleaf/packaging/requirements-windows-preview.txt'}; assert required <= set(names), sorted(required-set(names)); assert z.testzip() is None; import hashlib; rows=[line.split() for line in z.read('Utterleaf/SHA256SUMS.txt').decode('ascii').splitlines() if line.strip()]; assert len(rows)==3; assert {name for digest,name in rows}=={'utterleaf.exe','utterleafw.exe','utterleaf-cli.exe'}; assert all(hashlib.sha256(z.read('Utterleaf/'+name)).hexdigest()==digest for digest,name in rows)"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
