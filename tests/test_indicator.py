@@ -1,3 +1,5 @@
+import gc
+
 from utterleaf.indicator import appearance, decode_pill, encode_pill
 
 
@@ -58,10 +60,14 @@ def test_tk_long_caption_stays_inside_window(monkeypatch):
     import pytest
     from utterleaf import indicator
 
+    failure = None
     try:
         root = tk.Tk()
     except tk.TclError as exc:
-        pytest.skip(f"Tk needs a working display: {exc}")
+        failure = str(exc)
+    if failure is not None:
+        gc.collect()
+        pytest.skip(f"Tk needs a working display: {failure}")
     monkeypatch.setattr(tk, "Tk", lambda: root)
     events = queue.Queue()
     events.put(("listening", "W" * 160))
@@ -90,15 +96,25 @@ def test_tk_long_caption_stays_inside_window(monkeypatch):
             if not retrying:
                 events.put("quit")
 
-    root.after(150, inspect)
-    root.after(6000, lambda: events.put("quit"))
-    indicator._run_tk(events)
-    assert len(bounds) == 1, "caption never rendered within the deadline"
-    box, width, height = bounds[0]
-    assert box is not None, "caption text item is missing"
-    left, top, right, bottom = box
-    assert 0 <= left < right <= width
-    assert 0 <= top < bottom <= height - 8
+    try:
+        root.after(150, inspect)
+        root.after(6000, lambda: events.put("quit"))
+        indicator._run_tk(events)
+        assert len(bounds) == 1, "caption never rendered within the deadline"
+        box, width, height = bounds[0]
+        assert box is not None, "caption text item is missing"
+        left, top, right, bottom = box
+        assert 0 <= left < right <= width
+        assert 0 <= top < bottom <= height - 8
+    finally:
+        monkeypatch.undo()
+        try:
+            if root.winfo_exists():
+                root.destroy()
+        except tk.TclError:
+            pass
+        del root
+        gc.collect()
 
 
 def test_close_waits_for_worker_and_restart_uses_fresh_queue(monkeypatch):

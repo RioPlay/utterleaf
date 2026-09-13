@@ -1,3 +1,4 @@
+import gc
 import tkinter as tk
 
 import pytest
@@ -10,13 +11,21 @@ from utterleaf.backup_ui import BackupDialog
 @pytest.fixture(scope="module")
 def tk_root():
     # Real Tk widgets with synthetic files; no microphone or running-app IPC.
+    failure = None
     try:
         root = tk.Tk()
     except tk.TclError as error:
-        pytest.skip(f"Tk display unavailable: {error}")
+        failure = str(error)
+    if failure is not None:
+        # The except block has released the traceback that can retain Tk's
+        # partially initialized interpreter. Collect it on the creating thread.
+        gc.collect()
+        pytest.skip(f"Tk display unavailable: {failure}")
     root.withdraw()
     yield root
     root.destroy()
+    del root
+    gc.collect()
 
 
 @pytest.fixture

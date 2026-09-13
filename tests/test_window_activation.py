@@ -1,3 +1,4 @@
+import gc
 import os
 from types import SimpleNamespace
 
@@ -40,11 +41,16 @@ def test_malformed_activation_metadata_does_not_raise(tmp_path, monkeypatch, pay
 @pytest.mark.parametrize("foreground_allowed", [True, False])
 def test_raise_reuses_window_and_preserves_modal_and_topmost(monkeypatch, foreground_allowed):
     import tkinter as tk
+    failure = None
     try:
         root = tk.Tk()
     except tk.TclError as exc:
-        pytest.skip(str(exc))
+        failure = str(exc)
+    if failure is not None:
+        gc.collect()
+        pytest.skip(failure)
     modal = None
+    entry = None
     calls = []
     try:
         entry = tk.Entry(root)
@@ -70,3 +76,5 @@ def test_raise_reuses_window_and_preserves_modal_and_topmost(monkeypatch, foregr
         if modal is not None:
             modal.destroy()
         root.destroy()
+        del entry, modal, root
+        gc.collect()

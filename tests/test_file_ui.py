@@ -1,5 +1,6 @@
 """Real Tk workflow checks, with deterministic local recognition substitutes."""
 
+import gc
 import threading
 import time
 import tkinter as tk
@@ -14,13 +15,19 @@ from utterleaf.transcript import Segment, Transcript
 
 @pytest.fixture(scope="module")
 def tk_root():
+    failure = None
     try:
         root = tk.Tk()
     except tk.TclError as exc:
-        pytest.skip(f"Tk needs a working display: {exc}")
+        failure = str(exc)
+    if failure is not None:
+        gc.collect()
+        pytest.skip(f"Tk needs a working display: {failure}")
     root.withdraw()
     yield root
     root.destroy()
+    del root
+    gc.collect()
 
 
 @pytest.fixture

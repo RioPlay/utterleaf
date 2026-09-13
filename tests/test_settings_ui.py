@@ -1,4 +1,5 @@
 """Exercise real Tk widgets without hardware, network, or personal config writes."""
+import gc
 import time
 import tkinter as tk
 from tkinter import ttk
@@ -10,13 +11,19 @@ from utterleaf.settings_ui import SettingsWindow
 
 @pytest.fixture(scope="module")
 def tk_root():
+    failure = None
     try:
         root = tk.Tk()
     except tk.TclError as exc:
-        pytest.skip(f"Tk needs a working display: {exc}")
+        failure = str(exc)
+    if failure is not None:
+        gc.collect()
+        pytest.skip(f"Tk needs a working display: {failure}")
     root.withdraw()
     yield root
     root.destroy()
+    del root
+    gc.collect()
 
 
 @pytest.fixture
