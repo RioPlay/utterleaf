@@ -36,7 +36,7 @@ menu if you want visible recording guidance. **Preview dictation while recording
 draft words to that indicator; it uses extra processing and is not a video or
 meeting-caption feature. Start/stop sounds are also optional.
 
-The 0.4.6 RC1 Windows preview has no take countdown. Stable macOS and
+The 0.4.6 RC2 Windows preview has no take countdown. Stable macOS and
 Linux releases continue to use the behavior documented for their version. On
 Wayland, use a desktop toggle shortcut; global hold-to-talk and Escape cancellation
 are unavailable in the current backend.

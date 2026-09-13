@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import email
 import hashlib
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -37,12 +38,12 @@ SITE = site_packages()
 # context the license files themselves don't have (LGPL source offers, bundles).
 PACKAGES: list[tuple[str, str]] = [
     ("faster_whisper", "Includes the Silero VAD model; see the separate Silero entry."),
-    ("ctranslate2", ""),
-    ("tokenizers", ""),
+    ("ctranslate2", "Native dependencies retain their own terms; see the component notices and provenance."),
+    ("tokenizers", "Includes retained license texts for the reviewed native Rust dependency closure."),
     ("onnxruntime", ""),
     ("numpy", ""),
     ("pillow", ""),
-    ("sounddevice", "Bundles PortAudio; the PortAudio license ships under _sounddevice_data."),
+    ("sounddevice", "The Windows build includes non-ASIO PortAudio; see licenses/portaudio/LICENSE.txt."),
     ("cffi", ""),
     ("pycparser", ""),
     ("pynput", "LGPLv3. Corresponding source: https://github.com/moses-palmer/pynput"),
@@ -86,9 +87,9 @@ Utterleaf is licensed under the Apache License, Version 2.0 (see LICENSE and
 NOTICE). It bundles the packages below; each entry's license text ships next
 to this file under licenses/<package>/.
 
-Python itself is PSF-licensed (https://www.python.org/psf/license/) and the
-bundled Tcl/Tk runtime uses the Tcl license
-(https://www.tcl.tk/software/tcltk/license.html).
+Windows runtime license texts and reviewed component provenance ship under
+licenses/ alongside the package notices. The bundled Tcl/Tk runtime includes
+its full license.terms under _internal/_tk_data/.
 
 PyAV/FFmpeg: not bundled. PyAV's official wheel carries a GPL build of FFmpeg
 (libx264/libx265). Distributing it would put the combined work under GPL
@@ -148,12 +149,63 @@ def copy_license_files(dist_info: Path, meta: email.message.Message, out_dir: Pa
             raise SystemExit(f"collect_notices: {dist_info.name} lists missing license file {entry}")
     if copied:
         return
-    # Old-style wheels carry no License-File; keep the declared expression on record.
-    declared = meta.get("License-Expression") or meta.get("License") or "(see package metadata)"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "LICENSE-DECLARED.txt").write_text(
-        f"{meta.get('Name')} {meta.get('Version')}: {declared}\n", encoding="utf-8"
+    # A license expression is not a substitute for the actual terms. Older
+    # wheels need a version-specific, locally reviewed upstream text.
+    name = (meta.get("Name") or "").lower().replace("-", "_")
+    entry = runtime_notice_manifest()["packages"].get(name)
+    if entry is None or entry["version"] != meta.get("Version"):
+        raise SystemExit(f"collect_notices: full license text unavailable for {name} {meta.get('Version')}")
+    copy_reviewed_notice_files(entry, out_dir)
+
+
+def runtime_notice_manifest() -> dict:
+    """Local reviewed inputs only; packaging never fetches license material."""
+    path = ROOT / "packaging" / "notices" / "runtime-manifest.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def copy_reviewed_notice_files(entry: dict, out_dir: Path) -> None:
+    """Keep complete texts and their upstream provenance together."""
+    if entry.get("review_status") != "complete":
+        raise SystemExit("collect_notices: component notice review is incomplete")
+    if not entry["files"]:
+        raise SystemExit("collect_notices: reviewed component has no notice files")
+    for item in entry["files"]:
+        source_root = item.get("source_root", "notices")
+        if source_root not in {"notices", "site"}:
+            raise SystemExit("collect_notices: unknown reviewed notice source")
+        base = SITE if source_root == "site" else ROOT / "packaging" / "notices"
+        source = base / item["path"]
+        if not source.is_file() or hashlib.sha256(source.read_bytes()).hexdigest() != item["sha256"]:
+            raise SystemExit(f"collect_notices: missing or changed reviewed notice: {item['path']}")
+        destination = out_dir / item["destination"]
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+    (out_dir / "PROVENANCE.json").write_text(
+        json.dumps(entry, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
+
+
+def copy_windows_runtime_notices(licenses_dir: Path) -> list[tuple[str, str, str, str]]:
+    """Bind supplemental notices to the inspected Windows native payloads."""
+    if sys.platform != "win32":
+        return []
+    manifest = runtime_notice_manifest()
+    if manifest.get("windows_review_status") != "complete":
+        raise SystemExit("collect_notices: Windows native notice review is incomplete")
+    actual_python = ".".join(str(part) for part in sys.version_info[:3])
+    if actual_python != manifest["python_version"]:
+        raise SystemExit("collect_notices: Windows Python runtime version requires a new notice review")
+    rows = []
+    for key, entry in manifest["windows_runtime"].items():
+        for relative, expected in entry["payloads"].items():
+            payload = DIST / "_internal" / relative
+            if not payload.is_file() or hashlib.sha256(payload.read_bytes()).hexdigest() != expected:
+                raise SystemExit(f"collect_notices: unreviewed Windows runtime payload: {relative}")
+        copy_reviewed_notice_files(entry, licenses_dir / key)
+        rows.append((entry["name"], entry["version"], entry["license"],
+                     f"Reviewed native component; full texts and provenance: licenses/{key}/."))
+    return rows
 
 
 def license_expression(meta: email.message.Message) -> str:
@@ -172,6 +224,8 @@ def verify_media_policy(directory: Path) -> None:
         if not path.is_file():
             continue
         name = path.name.lower().removeprefix("lib")
+        if name.startswith("portaudio") and name.endswith("-asio.dll"):
+            raise SystemExit(f"Excluded ASIO library found in packaged output: {path}")
         if name.startswith(prefixes) and any(part in name for part in (".dll", ".so", ".dylib", ".exe")):
             raise SystemExit(f"Excluded media library found in packaged output: {path}")
 
@@ -239,6 +293,7 @@ def main() -> int:
         copy_license_files(dist_info, meta, licenses_dir / name)
         rows.append((meta.get("Name") or name, meta.get("Version") or "?", expression, notes[name]))
     rows.append(copy_vad_notices(licenses_dir))
+    rows.extend(copy_windows_runtime_notices(licenses_dir))
     lines = [HEADER]
     for pkg, version, expression, note in sorted(rows, key=lambda r: r[0].lower()):
         lines.append(f"* {pkg} {version} — {expression}")

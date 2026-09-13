@@ -10,7 +10,7 @@ these modes are not promises of Android or iOS availability.
 Updated September 12, 2026. This is a development plan, not a list of available
 features or promised release dates. Microphone open recovery is included in v0.3.4;
 continuous recording and expanded file transcription are included in the
-0.4.6 RC1 Windows preview. Live captions, meetings and the other larger modes remain planned.
+0.4.6 RC2 Windows preview. Live captions, meetings and the other larger modes remain planned.
 File transcription and export first became available in desktop v0.4.0 and are
 not in older v0.3.8 downloads.
 
@@ -23,8 +23,8 @@ not in older v0.3.8 downloads.
 | Missing selected microphone | v0.3.8 | Exact saved name required; no partial-name or default fallback. Refresh preserves selection and explains recovery. Identical hardware names remain a limitation. |
 | Device loss during recording | v0.4.0 | Detect stopped streams or 3 seconds without callbacks; preserve captured speech for explicit recovery without automatic insertion. Silence remains valid. Native hotplug/timeout evidence pending. |
 | Reconnect and permission recovery | Planned | Refresh devices, show selected/actual input, retry without restart; never change system permissions automatically. |
-| Continuous hold/toggle recording | 0.4.6 RC1 preview | No scheduled duration cutoff; authorized local temporary storage, a bounded write queue and recognition windows preserve samples and order. Stop, Esc, quit and incomplete-result recovery remain explicit. |
-| Optional stop after speech | 0.4.6 RC1 preview | A locally reviewed detector can stop an explicitly started take after a selected 0.5–3 second pause. Review is the default; automatic insertion is separate and target-guarded. |
+| Continuous hold/toggle recording | 0.4.6 RC2 preview | No scheduled duration cutoff; authorized local temporary storage, a bounded write queue and recognition windows preserve samples and order. Stop, Esc, quit and incomplete-result recovery remain explicit. |
+| Optional stop after speech | 0.4.6 RC2 preview | A locally reviewed detector can stop an explicitly started take after a selected 0.5–3 second pause. Review is the default; automatic insertion is separate and target-guarded. |
 
 The current retry adds 150 ms only after PortAudio reports device unavailable.
 It does not wait indefinitely or force another application to release its input.

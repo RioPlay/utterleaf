@@ -3,7 +3,7 @@
 Available from desktop v0.4.0. This first version processes one explicitly selected
 local file. It does not record system audio or create transcript history.
 
-**0.4.6 RC1 Windows preview:** imported recordings have no total-duration or file-size
+**0.4.6 RC2 Windows preview:** imported recordings have no total-duration or file-size
 cutoff. Audio is decoded and recognized in bounded batches. The file window and
 `--audio-track` CLI option can select an individual audio track for each job.
 Live OBS capture remains separate, unimplemented work.
@@ -16,7 +16,7 @@ clears the preview and **Close** cancels any work and discards the preview.
 Opening the tool again brings its existing window forward. Settings keeps its
 own separate window. No microphone opens merely because this tool is open.
 
-![0.4.6 RC1 preview local file window with audio-track selection and explicit export controls](assets/screenshots/desktop-file-tracks.png)
+![0.4.6 RC2 preview local file window with audio-track selection and explicit export controls](assets/screenshots/desktop-file-tracks.png)
 
 Actual RC1 preview application window with a synthetic filename; no personal recording is shown.
 
@@ -87,7 +87,7 @@ to temporary storage. File mode never downloads models, even if ordinary dictati
 allows downloads: install the selected model explicitly first.
 
 The stable v0.4.5 workflow's **256 MiB input and 10-minute** limits are removed from
-the 0.4.6 RC1 preview. Recognition consumes at most 30 seconds of
+the 0.4.6 RC2 preview. Recognition consumes at most 30 seconds of
 mono 16 kHz audio per batch, preferring a quiet pause in the final five seconds.
 If no qualifying pause is found, the batch ends at 30 seconds. Every sample is
 retained once, in order; batching does not remove repeated transcript words.

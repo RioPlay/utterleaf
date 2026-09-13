@@ -9,7 +9,7 @@ not completion of either platform roadmap.
 
 ## Area and constraints
 
-Candidate version: `0.4.6rc1`; preview tag: `desktop-v0.4.6-rc.1`. Prepare an
+Candidate version: `0.4.6rc2`; preview tag: `desktop-v0.4.6-rc.2`. Prepare an
 isolated release branch from `origin/main` and copy only desktop source, tests,
 packaging and applicable documentation from the working tree. Preserve Android
 work and existing installed/dist/build files. Reuse the existing Python environment
@@ -57,7 +57,22 @@ clear. No stable or enterprise-readiness claim follows from this prerelease.
 
 ## Progress
 
-The isolated candidate is based on main `566839d`, with the desktop working-tree
+The current candidate is RC2. RC1 was not published: independent inspection of
+its downloaded CI artifact found missing runtime license texts and an unused
+ASIO DLL. The [runtime notice correction](desktop-runtime-notices.md) adds full
+versioned texts, native payload identity checks and fail-closed notice handling.
+The separate RC1 tag and artifact remain unchanged for audit. The receipts below
+describe RC1 unless a later entry explicitly names RC2.
+
+RC2's canonical local CPU build passes with 43 notice entries, full reviewed
+native terms, no ASIO DLL and no metadata-only license placeholders. The final
+local suite passes **1,445 tests, 14 skipped in 43.23 seconds** after independently
+reviewed test-only Tk cleanup. Frozen help, offline diagnostics, formatting and
+an empty worker request behave as expected. The existing 88-second PCM fixture
+exports SRT offline in 18.455 seconds with the verified local base.en model.
+Exact RC2 tag CI, downloaded-artifact checks and publication remain pending.
+
+The historical RC1 candidate is based on main `566839d`, with the desktop working-tree
 changes copied separately from Android. Both Python versions are `0.4.6rc1`.
 Reviewed OBS groundwork and its pinned dependency/notices remain an atomic source
 slice with no app entry point. Windows preview CI builds the exact `desktop-v*`

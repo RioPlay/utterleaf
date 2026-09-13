@@ -21,7 +21,7 @@ See [Know your leaf](status-guide.md) for each icon's meaning and what to do nex
 
 The microphone opens for a take and is released after its short ending buffer;
 it is not kept listening while idle. Microphone checks in Settings open it only
-for the check. **0.4.6 RC1 preview:** takes have no duration
+for the check. **0.4.6 RC2 preview:** takes have no duration
 countdown. Release the hold shortcut or press the toggle shortcut again to finish;
 Esc cancels where supported. The optional speech-end setting can also stop a take.
 Audio uses a temporary local file and a short preview tail in memory, then is
@@ -136,7 +136,7 @@ Completed prose takes include a separating space so a later take cannot become
 `sentence.Next` merely because you paused or a window title changed. Existing
 newlines are preserved. Literal/code mode does not add this separator.
 
-### 0.4.6 RC1 preview: caret spacing and Markdown
+### 0.4.6 RC2 preview: caret spacing and Markdown
 
 The September 12 source changes improve spacing next to existing text in supported
 native Windows Edit fields. Completed prose retains its separator at the end of
@@ -170,7 +170,7 @@ Turning **Clean up dictated text** off or using literal/code input bypasses Mark
 formatting. Markdown does not summarize your speech, answer questions or send it to
 another model. These controls are part of the Windows RC1 preview.
 
-### 0.4.6 RC1 preview: bounded delivery cancellation
+### 0.4.6 RC2 preview: bounded delivery cancellation
 
 Esc and quit now signal the current final-delivery job even while another delivery
 step holds the capture lock. On macOS and Linux, owned paste-helper processes have
@@ -196,7 +196,7 @@ clipboard/editor acceptance remains open. Frozen diagnostics and offline file
 transcription passed for the Windows RC1 preview; live delivery still needs native
 editor validation.
 
-### 0.4.6 RC1 preview: stop after speech
+### 0.4.6 RC2 preview: stop after speech
 
 In **Settings → Dictation → Stop after speech**, enable **Stop after speech and a
 pause** and choose a pause from 0.5 to 3 seconds (default 1.2). Start every take

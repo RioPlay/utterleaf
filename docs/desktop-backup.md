@@ -24,7 +24,7 @@ clipboard restoration, live preview, hotkeys, microphone, model/device settings,
 paths, control tokens, logs, audio, and transcripts are excluded. Imported unknown
 keys are rejected, rather than silently retained for future use.
 
-The 0.4.6 RC1 Windows preview also offers **Output style** (`output_format`)
+The 0.4.6 RC2 Windows preview also offers **Output style** (`output_format`)
 as an explicitly selectable portable preference, validated as `prose` or `markdown`.
 Backups without it preserve the destination's existing choice. Older applications
 reject this new key under their strict schema; omit Output style when preparing a

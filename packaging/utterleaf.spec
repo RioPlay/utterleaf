@@ -76,6 +76,13 @@ a = Analysis(
     noarchive=False,
 )
 
+# sounddevice's hook collects both Windows PortAudio variants. The advertised
+# Windows input path uses MME/DirectSound/WDM-KS/WASAPI; omit the unused ASIO SDK
+# binary from both possible collection groups before creating the distribution.
+if sys.platform == "win32":
+    a.binaries = [item for item in a.binaries if not item[0].lower().endswith("-asio.dll")]
+    a.datas = [item for item in a.datas if not item[0].lower().endswith("-asio.dll")]
+
 pyz = PYZ(a.pure)
 
 # Windows exe icon; other platforms ignore it here (macOS wraps an .app later).

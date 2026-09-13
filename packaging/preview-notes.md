@@ -1,4 +1,4 @@
-**Utterleaf 0.4.6 RC1 is a Windows desktop preview** for trying the new dictation
+**Utterleaf 0.4.6 RC2 is a Windows desktop preview** for trying the new dictation
 and long-recording workflows. The stable release remains v0.4.5.
 
 - **Keep speaking:** manually started recording has no scheduled duration cutoff.
@@ -51,6 +51,6 @@ editor coverage, accessibility and performance on additional hardware remain
 under validation. Source and packaged fixture checks are not certification of
 every microphone or application.
 
-[User guide](https://github.com/RioPlay/utterleaf/blob/desktop-v0.4.6-rc.1/docs/user-guide.md) ·
-[Long-file transcription](https://github.com/RioPlay/utterleaf/blob/desktop-v0.4.6-rc.1/docs/desktop-file-transcription.md) ·
+[User guide](https://github.com/RioPlay/utterleaf/blob/desktop-v0.4.6-rc.2/docs/user-guide.md) ·
+[Long-file transcription](https://github.com/RioPlay/utterleaf/blob/desktop-v0.4.6-rc.2/docs/desktop-file-transcription.md) ·
 [Earlier releases](https://github.com/RioPlay/utterleaf/releases)

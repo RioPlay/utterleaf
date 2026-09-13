@@ -53,7 +53,7 @@ To bundle the installed CUDA libraries for NVIDIA acceleration, set `$env:UTTERL
 
 `utterleafw.exe` is what start-at-login uses; `startup.py`, the settings relaunch,
 and the --pill subprocess are all frozen-aware. Stable releases should sign the
-executables before shipping. The explicitly labeled 0.4.6 RC1 Windows preview is
+executables before shipping. The explicitly labeled 0.4.6 RC2 Windows preview is
 an unsigned exception and must disclose the resulting SmartScreen warning.
 
 `packaging\build.ps1` is the canonical Windows build entry point. It runs PyInstaller, writes executable checksums, ships `README.md` at the top of the dist folder, and collects third-party notices; invoking PyInstaller directly skips those release steps. Install the development dependencies above before running it. The script installs PyInstaller if needed.

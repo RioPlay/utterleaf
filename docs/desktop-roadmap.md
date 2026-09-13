@@ -16,13 +16,20 @@ intended field, with understandable local processing and minimal interruption.
 
 ## Planned follow-up
 
-### Release priority: Windows 0.4.6 RC1
+### Release priority: Windows 0.4.6 RC2
 
 The [Windows prerelease plan](plans/active/desktop-prerelease.md) prepares the
 completed dictation, long-file, speech-end, Markdown and delivery improvements
-for an unsigned Windows x64 CPU preview. The candidate version is `0.4.6rc1`;
+for an unsigned Windows x64 CPU preview. The candidate version is `0.4.6rc2`;
 publication and artifact verification are separate gates. Stable v0.4.5 remains
 the default download. Android and live OBS work continue after this bounded release.
+
+RC2 runtime notice enforcement passes 23 focused tests and a fresh local CPU
+build. Following test-only Tk lifetime cleanup, the final local desktop suite
+passes 1,445 tests with 14 explicit skips; frozen diagnostics and an offline
+88-second file transcription also pass. Exact-tag CI and downloaded artifact
+verification remain pending. See the
+[runtime notice record](plans/active/desktop-runtime-notices.md).
 
 Historical source receipts below describe their original verification stage;
 they are not claims that this candidate has already shipped. The preview plan
