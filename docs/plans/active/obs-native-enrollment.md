@@ -1,10 +1,10 @@
 # OBS client enrollment and request authorization
 
-September 13, 2026. Active on `feat/obs-native-enrollment`, based on PR #33 merge
-`006d482`. The [native session primitives](obs-native-session.md) passed their
-bounded local checks and independent review; exact-source desktop CI
-[34752363075](https://github.com/RioPlay/utterleaf/actions/runs/34752363075)
-passed all five required jobs at `5306df0`. No live OBS entry point exists.
+September 13, 2026. The proof/admission increment merged through PR #34 at
+`9260e6b`; [exact-source desktop CI](https://github.com/RioPlay/utterleaf/actions/runs/34754090586)
+passed all five required jobs at `d44126a`. Native and desktop source/evidence
+review is clear for that increment. Continue the selected stores below on
+`feat/obs-pairing-store`. No live OBS entry point exists.
 
 ## Goal and area
 
@@ -65,8 +65,8 @@ strictly bounded package with DPAPI CurrentUser and a protected user file DACL.
 Desktop Settings imports this user-selected package into its own private store.
 Neither UI displays or copies the key. Removal of the transfer file is best-effort
 and visible; a copied package remains usable by its Windows user until plugin
-revocation. Forget pairing is separate from Reset defaults. This flow and its
-stores are planned, not implemented by the proof component.
+revocation. Forget pairing is separate from Reset defaults. The storage component
+below implements persistence; the app pairing flow is not exposed yet.
 
 The capability proves possession, not executable identity. It does not protect
 against a compromised process under the same Windows user. DPAPI normally binds
@@ -159,12 +159,175 @@ $output = "C:\Users\unknown\Projects\Mindict\.grok\obs-native-enrollment\integra
 The driver records native and Python client source hashes, compiler, artifacts
 and logs. The test-only heap shim retains the three previously documented local
 import warnings; normal translation units compile with warnings as errors.
-Final independent source/evidence review is clear for this component. The pairing-file flow,
-DPAPI stores, persistence/cancel/forget/reset behavior, vendor JSON adapter,
-atomic Arm, actual OBS invocation and audio integration are not implemented or
-verified. Existing desktop/Android binaries remain unchanged.
+Final independent source/evidence review is clear for this component. Its proof
+tests do not verify the later stores, app pairing flow, vendor JSON adapter,
+atomic Arm or actual OBS/audio integration. Storage evidence is recorded below.
+Existing desktop/Android binaries remain unchanged.
 
-### Checks
+### Private pairing stores: contract
+
+The selected export/import and persistence boundary lives in original native
+`src/pairing_store.c/.h` and desktop `utterleaf/obs_pairing_store.py`, with their
+own tests. The authorization component accepts a key but neither provisions nor
+persists it. The following contract covers storage; implementation evidence and
+remaining UI/integration gates are separate below.
+
+Use one bounded binary envelope in both languages:
+
+| Bytes | Outer file |
+| --- | --- |
+| 0–3 | ASCII `ULPK` |
+| 4 | Version 1 |
+| 5 | Role: native store 1, transfer package 2, desktop store 3 |
+| 6–7 | Zero |
+| 8–11 | Unsigned little-endian protected-blob length, 1–4096 |
+| 12 onward | Exactly that many DPAPI bytes; no trailing data |
+
+DPAPI plaintext is exactly 72 bytes: `ULKI`, version 1, the same role, two zero
+bytes, the nonzero 32-byte capability key, then a 32-byte HMAC. Compute the HMAC
+with that key over ASCII `Utterleaf OBS pairing package integrity v1`, its NUL,
+and the first 40 plaintext bytes. Validate exact size, role, fixed fields and tag
+before accepting the key. Use the existing CNG helper and Python stdlib HMAC,
+with a constant-time tag comparison. This checks for corrupted plaintext even
+when DPAPI returns success; Microsoft recommends additional integrity checks in
+the [Unprotect remarks](https://learn.microsoft.com/en-us/windows/win32/api/dpapi/nf-dpapi-cryptunprotectdata).
+It does not establish the exporting executable's identity or defeat same-user
+replacement. Keep the previously specified process verification before use.
+
+Use CurrentUser DPAPI with `CRYPTPROTECT_UI_FORBIDDEN`. The description, optional
+entropy, prompt and reserved arguments must each be NULL. Never use LOCAL_MACHINE. Clear
+owned sensitive buffers and native DPAPI outputs before `LocalFree`; preserve
+the documented Python/OS memory-erasure limits.
+
+Resolve LocalAppData through
+[SHGetKnownFolderPath](https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shgetknownfolderpath).
+The native authoritative store belongs at
+`Utterleaf/obs-plugin/pairing-v1.dat` beneath that directory; desktop imports
+belong at `Utterleaf/desktop/obs-pairing-v1.dat`. Use separate native/desktop
+subdirectories. Import must decrypt and validate role 2, then protect a new
+role-3 record. Never persist transfer bytes as the desktop store or place keys
+in existing roaming configuration, backups, logs, models or transcripts.
+
+Create native and desktop store files, transfer packages and new app-owned
+directories with a protected current-user-only DACL and noninheritable handles.
+Use stable TokenUser SID, not the admission helper's logon SID. Check owner and a
+protected non-NULL DACL containing exactly one noninherited allow ACE for that SID
+with `FILE_ALL_ACCESS` through held handles. Existing app-owned objects that do not
+meet this boundary fail without silently changing their permissions. The existing
+LocalAppData root and a user-selected export/import parent are not app-owned:
+validate their locality/path separately and do not replace their ACLs.
+
+Initially support local drive-letter volumes reporting persistent ACL support.
+Reject UNC/network storage, unsupported volume security, non-disk handles,
+reparse paths and oversized files. Inspect final paths, volume and attributes
+using held handles, including the owning directory during operations. Document
+redirected/reparse LocalAppData and non-ACL volumes as unsupported. Same-user
+pathname interference is outside the security claim; path checks alone must not
+be described as protection against it.
+
+Use a random `CREATE_NEW` temporary file in the verified destination directory,
+explicit DACL, bounded write, write-through and `FlushFileBuffers`, then a
+same-directory [MoveFileExW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw)
+commit. Initial creation/export never replaces an existing destination. Replacing
+a fixed store requires an explicit replacement action and serialized owner.
+Reopen and revalidate the final object before reporting success. Do not use
+`ReplaceFileW` under the assumption that it retains the new file's ACL: it
+[preserves the old DACL](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-replacefilew).
+Do not claim power-loss guarantees beyond Windows/filesystem behavior. Never
+promote leftover temporary files at startup; their cleanup is best-effort.
+
+An absent store means no pairing. Corrupt or inaccessible state is a visible
+error, not permission to generate or restore a key automatically. Native
+replacement commits the new store before retiring the old authorizer and
+installing the new one while privileged dispatch is suspended. Never join
+workers under the authorizer SRW lock. Export failure does not roll back an
+already committed native key; allow a new explicit export of that key.
+
+Import holds the selected package against modification through validation and
+desktop commit. Remove that same package only after the committed desktop store
+verifies, using its held handle where deletion access is available. Otherwise
+report that pairing saved but the transfer file remains. Cancellation before
+commit changes no store and removes no transfer file. A copied transfer file is
+still usable by its Windows user until authoritative OBS revocation.
+
+OBS Forget suspends privileged dispatch, then removes the authoritative store.
+Whether removal succeeds or fails, revoke/join the current live authorizer before
+ending the operation. If removal fails, keep current dispatch disabled and report
+that revocation is not durable: restart may restore the old key until its store
+is removed. Do not claim durable success on that path. Desktop Forget removes only its own copy
+and must explain that it does not revoke copied packages. Reset defaults touches
+none of these files. A later UI integrates these operations explicitly; no import,
+replacement, restart or connection may arm capture.
+
+Acceptance for this increment is real Windows native role-1 create/reload,
+role-2 export to Python import/role-3 persistence, reload and native authorization
+using the same key.
+Cover role/length/tag corruption, DPAPI failures, current-user ACLs, noninheritance,
+reparse/remote/unsupported-volume refusal, pre-existing app-owned objects with
+the wrong DACL, existing destination, failed writes
+and commits, cancellation, package-removal failure, forget and restart behavior.
+Use disposable directories/keys and injected failure points; do not change the
+consumer's actual pairing, settings, OBS profile, audio or permissions. Add no
+third-party dependency. Keep native store/test ownership separate from the
+desktop module/tests, with the test driver and docs owned by the integrator.
+
+Run from the owning worktree with the `$py`, `PYTHONPATH` and `$toolchain` values
+above:
+
+```powershell
+& $py -m pytest tests/test_obs_pairing_store.py tests/test_obs_authorization.py tests/test_obs_control.py tests/test_obs_audio_pipe.py tests/test_windows_pipe.py tests/test_privacy.py tests/test_config.py tests/test_backup.py tests/test_backup_store.py tests/test_repo_boundaries.py -o addopts='' -q
+& $py native/obs-plugin/tools/test_native.py --toolchain $toolchain --output "C:\Users\unknown\Projects\Mindict\.grok\obs-pairing-store\verification"
+```
+
+Obtain independent source/test/evidence review. Stop editing this component when
+those checks pass, then continue explicit pairing UI and vendor/Arm/audio
+integration.
+
+### Implemented store component and verification
+
+The native store now resolves LocalAppData, creates and validates its private
+directories, generates/persists a role-1 capability, exports role 2, reloads,
+explicitly replaces and forgets. Status codes distinguish missing state,
+existing destinations, corrupt records, unsafe permissions, cancellation,
+cryptographic/I/O failure and a committed write that could not be verified.
+Output keys are cleared on failure. The store does not own a live authorizer;
+the integration owner still must implement the dispatch/revocation ordering
+above. Native destruction requires the caller to quiesce other operations.
+
+Desktop `ObsPairingStore` imports a user-selected role-2 package into its own
+role-3 store, reloads and forgets it. Import requires an explicit replacement
+option for existing state; corrupt/inaccessible state fails visibly. It retains
+the package when deletion is unavailable or final commit verification fails.
+Both implementations hold verified directory handles, reject insecure existing
+objects and keep data out of ordinary config/backup/model/transcript paths.
+Desktop operations serialize within a process; cross-process store ownership
+remains an integration requirement. Construction creates private directories,
+never a capability, capture or connection. Explicit test-root substitutions
+exercise disposable storage; production callers use LocalAppData.
+
+Local verification on September 13 passes **292** targeted desktop tests,
+including **48** pairing tests, with no skips. Real Windows checks cover import,
+reload, explicit replacement, cancellation, corrupt existing state, unsafe ACLs,
+write/commit/delete failures, post-commit uncertainty and unrelated-file
+preservation. The full explicit native driver passes the existing admission,
+authorization and crypto checks, the new five-group store state/fault fixture,
+and five cross-language cases. The latter independently decrypt native role 1,
+import native role 2 into desktop role 3, reload it and use that key for a native
+authorization proof admitting a disposable child process. No pipe worker or PCM
+delivery is started by that interoperability check. A real Windows directory
+junction is rejected by both implementations without creating descendants in
+its target. Native fixture cleanup checks for unexpected temporary artifacts,
+refuses to follow reparse entries and reports cleanup failures.
+
+Normal native translation units compile with warnings as errors; standalone
+native static analysis also passes. The existing test-only heap shim retains
+its three documented local-import warnings. Independent production-source and
+test and final receipt review is clear. These results do not
+verify different-user DPAPI behavior, power-loss durability, consumer pairing
+UI, real OBS dispatch, durable live-authorizer revocation or audio. No components
+are linked into the inert module and no binary is published by this increment.
+
+### Full enrollment checks
 
 1. Independently review the concrete enrollment and proof design, including its
    user flow, storage ownership, replay rules and failure behavior.
@@ -184,6 +347,6 @@ verified. Existing desktop/Android binaries remain unchanged.
 Do not expand into Android, custom speech models, theming, OBS routing changes
 or release packaging. Finish each reviewed component, then continue atomic
 idle-to-arm/start coordination and actual primary-mix/separate-bus PCM under the
-full [OBS design](obs-audio-design.md). Integrate the reviewed proof/admission
-component, then implement the selected enrollment stores and user flow before
-exposing vendor handling.
+full [OBS design](obs-audio-design.md). The proof/admission component is integrated;
+implement the selected enrollment stores and user flow before exposing vendor
+handling.

@@ -1,4 +1,4 @@
-"""Build and exercise Windows authorization/admission without OBS or audio."""
+"""Build and exercise Windows pairing/admission without OBS or audio."""
 # SPDX-License-Identifier: GPL-2.0-or-later
 from __future__ import annotations
 
@@ -41,14 +41,18 @@ def main() -> None:
         "src/handshake.c", "src/handshake.h", "src/admission.c", "src/admission.h",
         "src/crypto.c", "src/crypto.h",
         "src/authorization.c", "src/authorization.h",
+        "src/pairing_store.c", "src/pairing_store.h",
         "tests/handshake_test.c", "tests/handshake_failure_test.c",
         "tests/admission_identity_test.c",
         "tests/crypto_test.c", "tests/authorization_test.c",
         "tests/authorization.def", "tests/test_authorization.py",
+        "tests/pairing_store_test.c", "tests/pairing_store.def", "tests/test_pairing_interop.py",
         "tests/admission.def", "tests/test_admission.py", "tools/test_native.py",
     )]
     source_hashes = {str(path.relative_to(ROOT)): digest(path) for path in sources}
-    client_sources = [REPO / "utterleaf/obs_authorization.py", REPO / "utterleaf/windows_pipe.py"]
+    client_sources = [REPO / name for name in (
+        "utterleaf/obs_authorization.py", "utterleaf/obs_pairing_store.py", "utterleaf/windows_pipe.py",
+    )]
     client_hashes = {str(path.relative_to(REPO)): digest(path) for path in client_sources}
 
     def run(name: str, arguments: list[str | Path], timeout: int = 60) -> None:
@@ -72,6 +76,8 @@ def main() -> None:
     crypto = output / "crypto_test.exe"
     authorization_dll = output / "utterleaf-authorization-test.dll"
     authorization_state = output / "authorization_test.exe"
+    pairing_dll = output / "utterleaf-pairing-store-test.dll"
+    pairing_state = output / "pairing_store_test.exe"
     run("compiler", [compiler, "--version"])
     run("handshake-build", [*flags, ROOT / "src/crypto.c", ROOT / "src/handshake.c",
                            ROOT / "tests/handshake_test.c", "-lbcrypt", "-o", fixed])
@@ -113,16 +119,27 @@ def main() -> None:
                                  "-ladvapi32", "-lbcrypt", "-o", authorization_dll])
     run("authorization-test", [sys._base_executable, ROOT / "tests/test_authorization.py",
                                 authorization_dll])
+    pairing_libraries = ["-lbcrypt", "-lcrypt32", "-ladvapi32", "-lshell32", "-lole32", "-luuid"]
+    # The maintained state/fault fixture includes pairing_store.c directly for
+    # test-only Win32 substitutions. The separate DLL compiles normal sources.
+    run("pairing-state-build", [*flags, ROOT / "src/crypto.c", ROOT / "tests/pairing_store_test.c",
+                                 *pairing_libraries, "-o", pairing_state])
+    run("pairing-state-test", [pairing_state])
+    run("pairing-build", [*flags, "-shared", ROOT / "src/crypto.c", ROOT / "src/pairing_store.c",
+                           ROOT / "tests/pairing_store.def", *pairing_libraries, "-o", pairing_dll])
+    run("pairing-interop-test", [sys._base_executable, ROOT / "tests/test_pairing_interop.py",
+                                  pairing_dll, authorization_dll])
     if source_hashes != {str(path.relative_to(ROOT)): digest(path) for path in sources}:
         raise RuntimeError("Source changed during native verification")
     if client_hashes != {str(path.relative_to(REPO)): digest(path) for path in client_sources}:
         raise RuntimeError("Client source changed during native verification")
     receipt = {
-        "schema": 1, "scope": "native primitives only; no OBS dispatch, arming or audio",
+        "schema": 1, "scope": "private pairing/admission only; no OBS dispatch, arming or audio",
         "sources": source_hashes, "client_sources": client_hashes,
         "compiler_sha256": digest(compiler),
         "artifacts": {path.name: digest(path) for path in
-                      (fixed, fault, identity, dll, crypto, authorization_state, authorization_dll)},
+                      (fixed, fault, identity, dll, crypto, authorization_state, authorization_dll,
+                       pairing_state, pairing_dll)},
         "logs": {path.name: digest(path) for path in logs},
         "commands": commands,
     }

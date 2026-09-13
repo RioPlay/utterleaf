@@ -1,0 +1,12 @@
+; SPDX-License-Identifier: GPL-2.0-or-later
+LIBRARY utterleaf-pairing-store-test
+EXPORTS
+    ul_pairing_cancel_init
+    ul_pairing_cancel_request
+    ul_pairing_store_open_test_root
+    ul_pairing_store_destroy
+    ul_pairing_store_load
+    ul_pairing_store_create
+    ul_pairing_store_replace
+    ul_pairing_store_export
+    ul_pairing_store_forget

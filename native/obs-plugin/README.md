@@ -102,5 +102,16 @@ vendor/arming and live-audio acceptance gates. Do not distribute the test DLL.
 The [enrollment contract](../../docs/plans/active/obs-native-enrollment.md) defines
 the 60-byte challenge, 15-second lifetime, one proof attempt, private capability
 ownership and revocation. These components receive an already-provisioned test
-capability; the actual DPAPI stores, pairing-file import/export and vendor adapter
-are not implemented. They do not establish executable identity or Arm authority.
+capability. The separate `pairing_store.c` now implements CurrentUser DPAPI
+native persistence, explicit replacement/forget and non-replacing transfer-file
+export. The desktop client imports into its own role-specific private store.
+The driver adds the native store state/fault checks and a cross-language fixture
+that exports from native code, imports/reloads in Python and produces a native
+admission proof using the loaded key. All storage fixtures use disposable roots;
+they do not touch a consumer pairing, OBS profile or audio source.
+
+The store component is not a pairing UI or vendor adapter. Its caller must still
+serialize live authorizer ownership and implement visible pairing/revocation,
+vendor handling, atomic Arm and audio integration. Neither successful storage
+nor the proof establishes executable identity or Arm authority. The test DLLs
+remain local verification artifacts and are never installed into OBS.
