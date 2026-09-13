@@ -99,11 +99,11 @@ def test_platform_review_binds_source_hash_and_packaged_native_inventory(runtime
     packaged = module.DIST / "_internal" / "example" / "native.so"
     packaged.parent.mkdir(parents=True, exist_ok=True)
     packaged.write_bytes(b"possibly transformed packaged input")
-    entry["payload_review"] = {
+    entry["payload_reviews"] = {"win32:x86_64": {
         "source_files": {"example/native.so": hashlib.sha256(source.read_bytes()).hexdigest()},
         "packaged_roots": ["example"],
         "packaged_native_files": ["example/native.so"],
-    }
+    }}
     module.verify_reviewed_package_payload(entry)
 
     source.write_bytes(b"changed native input")
@@ -112,6 +112,11 @@ def test_platform_review_binds_source_hash_and_packaged_native_inventory(runtime
     source.write_bytes(b"reviewed native input")
     (packaged.parent / "unexpected.dylib").write_bytes(b"unexpected")
     with pytest.raises(SystemExit, match="does not match its reviewed inventory"):
+        module.verify_reviewed_package_payload(entry)
+    (packaged.parent / "unexpected.dylib").unlink()
+
+    module.sys.platform = "linux"
+    with pytest.raises(SystemExit, match="native payload target has no completed review"):
         module.verify_reviewed_package_payload(entry)
 
 
@@ -224,3 +229,39 @@ def test_general_windows_ci_uses_the_reviewed_runtime_inputs():
     assert "pip install --no-deps --no-build-isolation -e ." in workflow
     assert "ctranslate2==4.8.1" in lock
     assert manifest["packages"]["ctranslate2"]["targets"] == ["win32:x86_64"]
+
+
+def test_posix_ci_uses_the_reviewed_tokenizers_source_and_targets():
+    root = Path(__file__).resolve().parents[1]
+    workflow = (root / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
+    constraints = [line.strip() for line in
+                   (root / "packaging" / "constraints-posix.txt").read_text(encoding="utf-8").splitlines()
+                   if line.strip() and not line.startswith("#")]
+    manifest = json.loads(
+        (root / "packaging" / "notices" / "runtime-manifest.json").read_text(encoding="utf-8")
+    )
+
+    assert workflow.count("--constraint packaging/constraints-posix.txt") == 4
+    assert constraints == [
+        "ctranslate2==4.8.2",
+        "faster-whisper==1.2.1",
+        "onnxruntime==1.28.0",
+        "tokenizers==0.23.1",
+    ]
+    assert manifest["packages"]["tokenizers"]["targets"] == [
+        "darwin:arm64", "linux:x86_64", "win32:x86_64",
+    ]
+    assert set(manifest["packages"]["tokenizers"]["payload_reviews"]) == {
+        "darwin:arm64", "linux:x86_64", "win32:x86_64",
+    }
+
+    tokenizers = manifest["packages"]["tokenizers"]
+    provenance_item = next(item for item in tokenizers["files"]
+                           if item["path"] == "runtime/tokenizers/wheel-provenance.json")
+    provenance_path = root / "packaging" / "notices" / provenance_item["path"]
+    assert hashlib.sha256(provenance_path.read_bytes()).hexdigest() == provenance_item["sha256"]
+    provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+    for target, review in tokenizers["payload_reviews"].items():
+        wheel = provenance["targets"][target]
+        assert review["source_files"] == {wheel["native_file"]: wheel["native_sha256"]}
+        assert review["packaged_native_files"] == list(review["source_files"])

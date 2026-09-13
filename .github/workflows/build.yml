@@ -73,7 +73,7 @@ jobs:
         run: |
           /usr/bin/python3 -m venv .venv
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          ./.venv/bin/python -m pip install -e ".[dev]"
+          ./.venv/bin/python -m pip install --constraint packaging/constraints-posix.txt -e ".[dev]"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Test with a virtual X11 display
         run: xvfb-run -a ./.venv/bin/python -m pytest -q -ra
@@ -86,6 +86,7 @@ jobs:
 
   macos-tests:
     runs-on: macos-latest
+    timeout-minutes: 15
     defaults:
       run:
         shell: pwsh
@@ -99,7 +100,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & "$pythonPrefix/bin/python3.14" -m venv .venv
       - name: Install
-        run: ./.venv/bin/python -m pip install -e ".[dev]"
+        run: ./.venv/bin/python -m pip install --constraint packaging/constraints-posix.txt -e ".[dev]"
       - name: Test
         run: ./.venv/bin/python -m pytest -q -ra -o faulthandler_timeout=120
       - name: CLI smoke test
@@ -120,7 +121,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & "$pythonPrefix/bin/python3.14" -m venv .venv
       - name: Install
-        run: ./.venv/bin/python -m pip install -e . pyinstaller
+        run: ./.venv/bin/python -m pip install --constraint packaging/constraints-posix.txt -e . pyinstaller
       - name: Build
         run: ./.venv/bin/python -m PyInstaller --noconfirm --clean packaging/utterleaf.spec
       - name: CLI smoke test
@@ -151,7 +152,7 @@ jobs:
         run: |
           /usr/bin/python3 -m venv --system-site-packages .venv
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          ./.venv/bin/python -m pip install -e . pyinstaller
+          ./.venv/bin/python -m pip install --constraint packaging/constraints-posix.txt -e . pyinstaller
       - name: Build
         run: ./.venv/bin/python -m PyInstaller --noconfirm --clean packaging/utterleaf.spec
       - name: CLI smoke test

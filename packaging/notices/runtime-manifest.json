@@ -216,6 +216,11 @@
       "version": "0.23.1",
       "license": "Apache-2.0",
       "review_status": "complete",
+      "targets": [
+        "darwin:arm64",
+        "linux:x86_64",
+        "win32:x86_64"
+      ],
       "upstream_commit": "7f1623b90b5adfb9bc327d4c3468d2f70bbce262",
       "files": [
         {
@@ -223,6 +228,12 @@
           "destination": "LICENSE",
           "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
           "source": "https://github.com/huggingface/tokenizers/blob/7f1623b90b5adfb9bc327d4c3468d2f70bbce262/LICENSE"
+        },
+        {
+          "path": "runtime/tokenizers/wheel-provenance.json",
+          "destination": "native/wheel-provenance.json",
+          "sha256": "c984745d301abdd5a439bafcda65e6662b30ee48ec346edc2f4409dd1d4b80ee",
+          "source": "Exact PyPI wheel hashes, native payload identities and load-command inspection for the three admitted targets"
         },
         {
           "path": "runtime/tokenizers/crate-notices/ahash-0.8.12/LICENSE-APACHE",
@@ -2127,8 +2138,43 @@
           "source": "https://github.com/bytecodealliance/wasm-tools/blob/d4e317f22c3bace76cb3205003bcc34b4929037d/LICENSE-MIT"
         }
       ],
-      "scope": "Conservative license superset from the exact bindings/python/Cargo.lock. Workspace tokenizers and tokenizers-python use the repository Apache license. UEFI-only r-efi and WASI/wasm32 branches are not linked for x86_64-pc-windows-msvc. Retained license alternatives do not change OR into AND obligations.",
-      "target_evidence": "Exact getrandom 0.3.4 and 0.4.2 Cargo.toml select r-efi only for target_os=uefi; wasip3 is wasm32+wasi+p3; wasm-bindgen 0.2.118 is wasm32-only. Archive checksums match Cargo.lock. These target-specific records are not missing Windows runtime notices.",
+      "scope": "Conservative license superset from the exact 0.23.1 bindings/python/Cargo.lock for the reviewed Windows x86_64, Linux x86_64 and macOS ARM64 wheels. Workspace tokenizers and tokenizers-python use the repository Apache license. Retained license alternatives do not change OR into AND obligations.",
+      "target_evidence": "The retained set follows the complete exact-version Cargo.lock, including target-conditional packages, so its license texts cover the three admitted native wheel targets without treating an inactive branch as linked code. Exact getrandom 0.3.4 and 0.4.2 Cargo.toml select r-efi only for target_os=uefi; wasip3 is wasm32+wasi+p3; wasm-bindgen 0.2.118 is wasm32-only. Archive checksums match Cargo.lock. Other targets remain unreviewed and fail closed.",
+      "payload_reviews": {
+        "darwin:arm64": {
+          "source_files": {
+            "tokenizers/tokenizers.abi3.so": "01a6e7dc78d57760f4297a1cf8c40fc3e77bcabe855c590a36d0072709284091"
+          },
+          "packaged_roots": [
+            "tokenizers"
+          ],
+          "packaged_native_files": [
+            "tokenizers/tokenizers.abi3.so"
+          ]
+        },
+        "linux:x86_64": {
+          "source_files": {
+            "tokenizers/tokenizers.abi3.so": "40de09860e5df1b00bbf432eb68632465125a3efaa074f85972f3ea000c06dfc"
+          },
+          "packaged_roots": [
+            "tokenizers"
+          ],
+          "packaged_native_files": [
+            "tokenizers/tokenizers.abi3.so"
+          ]
+        },
+        "win32:x86_64": {
+          "source_files": {
+            "tokenizers/tokenizers.pyd": "619b18e51500ef40a7de56d823d3c34499e59745487562acc619367ac5d8ae39"
+          },
+          "packaged_roots": [
+            "tokenizers"
+          ],
+          "packaged_native_files": [
+            "tokenizers/tokenizers.pyd"
+          ]
+        }
+      },
       "shared_license_mappings": [
         {
           "crate": "wasm-metadata",
@@ -4550,7 +4596,7 @@
               "source": "Exact source, build, wheel, and binary inspection references for Linux x86_64"
             }
           ],
-          "scope": "Official CPython 3.14 Linux x86_64 wheel: CTranslate2 and retained static component terms, plus bundled GCC 8.5 libgomp terms.",
+          "scope": "Official CPython 3.12 Linux x86_64 wheel: CTranslate2 and retained static component terms, plus bundled GCC 8.5 libgomp terms.",
           "payload_review": {
             "source_files": {
               "ctranslate2/_ext.cpython-312-x86_64-linux-gnu.so": "89b0d28c37f158ec8f98a001cd3b68ea733e8ed1bab2b7b092834019c02f390e",

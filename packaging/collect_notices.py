@@ -191,8 +191,11 @@ def _notice_target() -> str:
 
 def verify_reviewed_package_payload(entry: dict) -> None:
     """Bind a platform notice review to its installed and packaged native files."""
-    review = entry.get("payload_review")
+    target_reviews = entry.get("payload_reviews")
+    review = target_reviews.get(_notice_target()) if target_reviews is not None else entry.get("payload_review")
     if review is None:
+        if target_reviews is not None:
+            raise SystemExit("collect_notices: native payload target has no completed review")
         return
     if SITE is None:
         raise SystemExit("collect_notices: site-packages unavailable for native payload review")

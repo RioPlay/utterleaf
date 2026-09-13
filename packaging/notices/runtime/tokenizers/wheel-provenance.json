@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "name": "tokenizers",
+  "version": "0.23.1",
+  "source_commit": "7f1623b90b5adfb9bc327d4c3468d2f70bbce262",
+  "inspection": "PyPI JSON and exact wheel bytes verified 2026-09-13; native headers inspected with LLVM readobj 22.1.7",
+  "targets": {
+    "darwin:arm64": {
+      "wheel": "tokenizers-0.23.1-cp310-abi3-macosx_11_0_arm64.whl",
+      "wheel_sha256": "e0948bbb1ac1d7cdfc9fb6d62c596e3b7550036ad60ecd654a66ad273326324e",
+      "source": "https://files.pythonhosted.org/packages/e2/6a/068ed9f6e444c9d7e9d55ce134181325700f3d7f30410721bdc8f848d727/tokenizers-0.23.1-cp310-abi3-macosx_11_0_arm64.whl",
+      "native_file": "tokenizers/tokenizers.abi3.so",
+      "native_sha256": "01a6e7dc78d57760f4297a1cf8c40fc3e77bcabe855c590a36d0072709284091",
+      "native_size": 8516448,
+      "needed_libraries": [
+        "/usr/lib/libSystem.B.dylib",
+        "/usr/lib/libc++.1.dylib",
+        "/usr/lib/libiconv.2.dylib",
+        "@rpath/tokenizers.tokenizers.abi3.so"
+      ]
+    },
+    "linux:x86_64": {
+      "wheel": "tokenizers-0.23.1-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "wheel_sha256": "5075b405006415ea148a992d093699c66eb01952bf59f4d5727089a98bda45a4",
+      "source": "https://files.pythonhosted.org/packages/0d/d5/1353e5f677ec27c2494fb6a6725e82d56c985f53e90ec511369e7e4f02c6/tokenizers-0.23.1-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "native_file": "tokenizers/tokenizers.abi3.so",
+      "native_sha256": "40de09860e5df1b00bbf432eb68632465125a3efaa074f85972f3ea000c06dfc",
+      "native_size": 10283216,
+      "needed_libraries": [
+        "ld-linux-x86-64.so.2",
+        "libc.so.6",
+        "libdl.so.2",
+        "libgcc_s.so.1",
+        "libm.so.6",
+        "libpthread.so.0",
+        "librt.so.1",
+        "libstdc++.so.6"
+      ]
+    },
+    "win32:x86_64": {
+      "wheel": "tokenizers-0.23.1-cp310-abi3-win_amd64.whl",
+      "wheel_sha256": "e7bfaf995c1bdbbd21d13539decb6650967013759318627d85daeb7881af16b7",
+      "source": "https://files.pythonhosted.org/packages/97/c9/2553f72aaf65a2797d4229e37fa7fbe38ffbf3e32912d31bdd78b3323e59/tokenizers-0.23.1-cp310-abi3-win_amd64.whl",
+      "native_file": "tokenizers/tokenizers.pyd",
+      "native_sha256": "619b18e51500ef40a7de56d823d3c34499e59745487562acc619367ac5d8ae39",
+      "native_size": 7565312,
+      "needed_libraries": [
+        "Windows system, Python stable ABI and retained MSVC runtime libraries"
+      ]
+    }
+  },
+  "license_file_observation": "The Linux and macOS wheels contain no license-, copying- or notice-named file; the exact source/Cargo-lock notice set is retained separately."
+}

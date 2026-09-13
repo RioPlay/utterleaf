@@ -4,7 +4,8 @@
 
 Keep the post-RC2 desktop integration build reproducible on Windows, Linux x86_64,
 and macOS ARM64. This follow-up owns the desktop build workflow, PyInstaller
-payload policy, runtime-notice collector and their focused tests. The published
+payload policy, runtime-notice collector and their focused tests, including
+platform-specific expectations in `test_app.py` and `test_settings_ui.py`. The published
 RC2 tag and artifact remain immutable.
 
 ## Constraints
@@ -33,6 +34,8 @@ certification and does not admit Linux ARM64 or macOS x86_64 builds.
 - The macOS spec removes the unused Windows ASIO DLL whether PyInstaller
   classifies it as data or a binary, and the final output scan still rejects it.
 - Focused pipe, packaging media and runtime-notice tests pass before a new CI run.
+- Wayland tests expect the press-to-stop caption and disabled global-hotkey
+  selector, while popup placement remains covered on an enabled control.
 - A clean Windows/Linux/macOS integration run is required before this follow-up
   is considered complete.
 
@@ -62,7 +65,7 @@ exact wheel, build script, source revision and notice hashes.
 Run:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest -q tests/test_windows_pipe.py tests/test_packaging_media.py tests/test_packaging_runtime_notices.py
+.\.venv\Scripts\python.exe -m pytest -q tests/test_windows_pipe.py tests/test_packaging_media.py tests/test_packaging_runtime_notices.py tests/test_repo_boundaries.py
 ```
 
 Then run the normal desktop CI matrix. Inspect the built macOS payload for ASIO,
@@ -79,6 +82,85 @@ than 25 minutes while four sibling jobs had already failed. Its cause was not
 diagnosed and the job was not restarted. The macOS pytest command now enables
 pytest's `faulthandler_timeout=120` diagnostic dump; this does not impose a test
 timeout or turn a hang into a passing result. Replacement CI remains required.
+
+Replacement run [34743932100](https://github.com/RioPlay/utterleaf/actions/runs/34743932100)
+at `7357856` passed Windows tests, packaging and smoke checks. Linux's first suite
+passed, but the forced Wayland suite exposed two test assumptions: the hold-mode
+caption expected non-Wayland wording, and popup placement tried to open the
+disabled global-hotkey selector. Both POSIX builds passed compilation and CLI
+smoke, then stopped because unpinned installation selected tokenizers 0.23.2
+instead of the retained, reviewed 0.23.1 notice version. These failures remain
+open until corrected and independently verified; the exact-version notice gate
+must stay in place. The old run 34742420306 was cancelled after its replacement
+started.
+
+Run 34743932100 was already unable to pass when its macOS test job remained in
+pytest for about 16 minutes. It was cancelled explicitly to release diagnostic
+output, not treated as a spontaneous test failure. The configured 120-second
+faulthandler dump identifies a Tk `event_generate` wait in
+`test_first_combobox_click_does_not_scroll_or_detach_popup`; this is a test-harness
+hang rather than application audio capture. The Windows forced-environment check
+still exercises the non-Wayland branch because the Windows platform decision
+reports `is_wayland=False`. Popup behavior on Wayland and macOS remains pending
+replacement CI evidence. The corrected Aqua test intercepts only the final
+native menu `post` request and verifies the requested anchor plus two pixels
+without replacing production bindings, postcommand or Tk geometry. That is
+native placement-request evidence; it does not verify the rendered Cocoa menu,
+native visual appearance or physical-device behavior. Because two macOS jobs
+have now hung inside pytest, the
+macOS test job has a 15-minute job limit while retaining the 120-second
+faulthandler dump. Exceeding that resource limit fails or cancels the job; it
+does not skip the test or turn the hang into a passing result.
+
+All four POSIX test/build installs now apply `packaging/constraints-posix.txt`,
+which constrains CTranslate2 to the reviewed 4.8.2 platform records, Tokenizers
+to 0.23.1, and the existing VAD gate to faster-whisper 1.2.1 with ONNX Runtime
+1.28.0, without changing the published Windows lock. The failed run had already
+selected ONNX Runtime 1.30.0, which would have stopped at the unchanged exact
+VAD-runtime gate after the Tokenizers failure was corrected. Exact official
+Tokenizers ABI3 wheels were inspected for Linux x86_64 and macOS ARM64. Their
+SHA-256 hashes are `5075b405...bda45a4` and `e0948bbb...326324e`; each contains
+one native `tokenizers/tokenizers.abi3.so`. Linux loads only the system loader,
+glibc, libgcc, libstdc++ and related system libraries; macOS loads libSystem,
+libc++, libiconv and its own install-name entry. The full hashes, byte sizes,
+source URLs and load-command inventories are retained in
+`runtime/tokenizers/wheel-provenance.json`.
+
+The retained 0.23.1 record follows the exact full Cargo lock and is a
+conservative license superset across the admitted Windows x86_64, Linux x86_64
+and macOS ARM64 targets. The collector now binds the installed source native
+file and packaged native membership for each target and rejects other targets.
+This is not a hash lock for the complete POSIX Python environment. Dependencies
+that carry their own full wheel license files remain unconstrained, while an
+unknown missing-text version continues to stop packaging. The Linux CTranslate2
+scope label was also corrected from CPython 3.14 to the actually inspected
+CPython 3.12 wheel.
+
+The focused command passed **49 tests** after this stabilization:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q tests/test_windows_pipe.py tests/test_packaging_media.py tests/test_packaging_runtime_notices.py
+```
+
+Runtime-manifest JSON parsing, the current Windows Tokenizers source/package
+identity check and `git diff --check` also passed. `tests/test_repo_boundaries.py`
+passed **4 tests**. A clean POSIX resolver/build run is still required to prove
+that both runners select 0.23.1 and complete notice collection.
+
+Independent integration review verified both retained POSIX Tokenizers wheels'
+archive hashes, exact native inventory, byte sizes and native hashes. The final
+combined local check passed **149 tests in 27.73 seconds**:
+
+```powershell
+$env:PYTHONPATH=(Get-Location).Path
+.\.venv\Scripts\python.exe -m pytest -q -o addopts= tests/test_windows_pipe.py tests/test_packaging_media.py tests/test_packaging_runtime_notices.py tests/test_repo_boundaries.py tests/test_app.py tests/test_settings_ui.py
+```
+
+The Aqua test boundary follows Tk's
+[combobox implementation](https://github.com/tcltk/tk/blob/main/library/ttk/combobox.tcl)
+and [synchronous native menu handling](https://github.com/tcltk/tk/blob/main/macosx/tkMacOSXMenu.c).
+Local Windows results do not verify Aqua execution or the actual Linux Wayland
+test path; the next canonical run must establish those platform results.
 
 ## Non-goals and stop
 
