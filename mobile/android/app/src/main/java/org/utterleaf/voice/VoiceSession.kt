@@ -34,10 +34,10 @@ class VoiceSession(private val context: Context, private val state: (CaptureStat
         if (started) return
         started = true
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            error("Open Utterleaf Voice and grant microphone permission first."); return
+            error("Open Utterleaf and grant microphone permission first."); return
         }
         if (!ModelStore.ready(context.noBackupFilesDir)) {
-            error("Open Utterleaf Voice and import the English model first."); return
+            error("Open Utterleaf and import the English model first."); return
         }
         if (!WorkLease.acquire()) { error("Another take or model import is finishing. Try again shortly."); return }
         ownsLease = true
@@ -109,7 +109,7 @@ class VoiceSession(private val context: Context, private val state: (CaptureStat
             check(text.isNotBlank()) { "No speech recognized. Try again." }
             main.post { if (!cancelled.get()) result(text) }
         } catch (failure: Exception) {
-            val message = if (failure is SecurityException) "Microphone permission was denied. Enable it in Utterleaf Voice settings."
+            val message = if (failure is SecurityException) "Microphone permission was denied. Enable it in Utterleaf settings."
                           else if (failure is IllegalStateException) failure.message ?: "Capture failed. Try again."
                           else "Capture failed. Check the microphone and try again."
             main.post { if (!cancelled.get()) error(message) }

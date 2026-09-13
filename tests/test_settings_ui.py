@@ -6,6 +6,7 @@ from tkinter import ttk
 import pytest
 
 from utterleaf.config import Config
+from utterleaf.host import is_wayland
 from utterleaf.settings_ui import SettingsWindow
 
 
@@ -463,16 +464,58 @@ def test_first_combobox_click_does_not_scroll_or_detach_popup(window):
     window.root.geometry("770x655")
     window.show_page("Dictation")
     window.root.update()
-    box = window.hotkey_box
-    assert window.canvas.yview()[0] == pytest.approx(0)
-    box.event_generate("<Button-1>", x=box.winfo_width() - 5, y=box.winfo_height() // 2)
-    window.root.update()
+    # Wayland intentionally disables the in-app shortcut combobox; exercise
+    # popup anchoring with the enabled microphone combobox in that environment.
+    box = window.mic_box if is_wayland() else window.hotkey_box
+    if is_wayland():
+        # Establish visibility through the same focus-reveal path used by the
+        # UI, rather than choosing an arbitrary scroll offset for the control.
+        box.focus_set()
+        window.root.update()
+        canvas_top = window.canvas.winfo_rooty()
+        canvas_bottom = canvas_top + window.canvas.winfo_height()
+        assert box.winfo_rooty() >= canvas_top
+        assert box.winfo_rooty() + box.winfo_height() <= canvas_bottom
+        initial_scroll = window.canvas.yview()[0]
+    else:
+        initial_scroll = 0
+        assert window.canvas.yview()[0] == pytest.approx(initial_scroll)
+
+    # Aqua Tk synchronously enters Cocoa menu tracking from TkpPostMenu, so
+    # Unpost cannot cancel it. Intercept only the final menu `post` command;
+    # this preserves Press/Post/AquaPlacePopdown and records requested native
+    # placement without entering the untestable physical menu loop.
     popup = box.tk.call("ttk::combobox::PopdownWindow", str(box))
-    assert window.canvas.yview()[0] == pytest.approx(0)
-    assert int(box.tk.call("winfo", "rootx", popup)) == box.winfo_rootx()
-    assert int(box.tk.call("winfo", "rooty", popup)) == box.winfo_rooty() + box.winfo_height()
-    window.root.event_generate("<Escape>")
-    window.root.update()
+    menu = f"{popup}.menu"
+    windowing_system = box.tk.call("tk", "windowingsystem")
+    native_post = []
+    if windowing_system == "aqua":
+        original = f"{menu}.__original__"
+        box.tk.call("rename", menu, original)
+
+        def menu_command(*args):
+            if args and args[0] == "post":
+                native_post.append(tuple(map(int, args[1:3])))
+                return ""
+            return box.tk.call(original, *args)
+
+        box.tk.createcommand(menu, menu_command)
+    try:
+        box.event_generate("<Button-1>", x=box.winfo_width() - 5, y=box.winfo_height() // 2)
+        window.root.update()
+        assert window.canvas.yview()[0] == pytest.approx(initial_scroll)
+        if windowing_system == "aqua":
+            assert native_post == [(box.winfo_rootx() + 2, box.winfo_rooty() + box.winfo_height() + 2)]
+        else:
+            popup = box.tk.call("ttk::combobox::PopdownWindow", str(box))
+            assert int(box.tk.call("winfo", "rootx", popup)) == box.winfo_rootx()
+            assert int(box.tk.call("winfo", "rooty", popup)) == box.winfo_rooty() + box.winfo_height()
+            window.root.event_generate("<Escape>")
+        window.root.update()
+    finally:
+        if windowing_system == "aqua":
+            box.tk.deletecommand(menu)
+            box.tk.call("rename", original, menu)
 
 
 def test_focus_reveal_handles_above_and_near_bottom_controls(window):

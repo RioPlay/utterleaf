@@ -13,6 +13,7 @@ from __future__ import annotations
 import email
 import hashlib
 import json
+import platform
 import shutil
 import sys
 from pathlib import Path
@@ -40,10 +41,10 @@ PACKAGES: list[tuple[str, str]] = [
     ("faster_whisper", "Includes the Silero VAD model; see the separate Silero entry."),
     ("ctranslate2", "Native dependencies retain their own terms; see the component notices and provenance."),
     ("tokenizers", "Includes retained license texts for the reviewed native Rust dependency closure."),
-    ("onnxruntime", ""),
+    ("onnxruntime", "Includes the exact wheel's retained third-party notices."),
     ("numpy", ""),
     ("pillow", ""),
-    ("sounddevice", "The Windows build includes non-ASIO PortAudio; see licenses/portaudio/LICENSE.txt."),
+    ("sounddevice", "The unused Windows ASIO binary is excluded on every host; the retained sounddevice license tree documents bundled code."),
     ("cffi", ""),
     ("pycparser", ""),
     ("pynput", "LGPLv3. Corresponding source: https://github.com/moses-palmer/pynput"),
@@ -152,9 +153,11 @@ def copy_license_files(dist_info: Path, meta: email.message.Message, out_dir: Pa
     # A license expression is not a substitute for the actual terms. Older
     # wheels need a version-specific, locally reviewed upstream text.
     name = (meta.get("Name") or "").lower().replace("-", "_")
-    entry = runtime_notice_manifest()["packages"].get(name)
-    if entry is None or entry["version"] != meta.get("Version"):
+    version = meta.get("Version")
+    entry = reviewed_package_entry(name, version)
+    if entry is None:
         raise SystemExit(f"collect_notices: full license text unavailable for {name} {meta.get('Version')}")
+    verify_reviewed_package_payload(entry)
     copy_reviewed_notice_files(entry, out_dir)
 
 
@@ -162,6 +165,64 @@ def runtime_notice_manifest() -> dict:
     """Local reviewed inputs only; packaging never fetches license material."""
     path = ROOT / "packaging" / "notices" / "runtime-manifest.json"
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def reviewed_package_entry(name: str, version: str | None) -> dict | None:
+    """Select only a notice review admitted for this version and native target."""
+    manifest = runtime_notice_manifest()
+    entry = manifest["packages"].get(name)
+    if entry is not None and entry["version"] == version:
+        targets = entry.get("targets")
+        if targets is None or _notice_target() in targets:
+            return entry
+    return (manifest.get("package_variants", {})
+            .get(name, {})
+            .get(version, {})
+            .get(_notice_target()))
+
+
+def _notice_target() -> str:
+    """Return the reviewed native-wheel target, rejecting unknown architectures."""
+    machine = platform.machine().lower()
+    if machine in {"amd64", "x86_64"}:
+        machine = "x86_64"
+    elif machine in {"aarch64", "arm64"}:
+        machine = "arm64"
+    return f"{sys.platform}:{machine}"
+
+
+def verify_reviewed_package_payload(entry: dict) -> None:
+    """Bind a platform notice review to its installed and packaged native files."""
+    target_reviews = entry.get("payload_reviews")
+    review = target_reviews.get(_notice_target()) if target_reviews is not None else entry.get("payload_review")
+    if review is None:
+        if target_reviews is not None:
+            raise SystemExit("collect_notices: native payload target has no completed review")
+        return
+    if SITE is None:
+        raise SystemExit("collect_notices: site-packages unavailable for native payload review")
+    for relative, expected in review.get("source_files", {}).items():
+        source = SITE / relative
+        if not source.is_file() or hashlib.sha256(source.read_bytes()).hexdigest() != expected:
+            raise SystemExit(f"collect_notices: unreviewed package native payload: {relative}")
+
+    expected = set(review.get("packaged_native_files", []))
+    actual = set()
+    for relative_root in review.get("packaged_roots", []):
+        root = DIST / "_internal" / relative_root
+        if not root.is_dir():
+            continue
+        for path in root.rglob("*"):
+            if path.is_file() and _is_native_library(path.name):
+                actual.add(path.relative_to(DIST / "_internal").as_posix())
+    if actual != expected:
+        raise SystemExit("collect_notices: packaged native payload does not match its reviewed inventory")
+
+
+def _is_native_library(name: str) -> bool:
+    lower = name.lower()
+    return (lower.endswith((".dll", ".dylib", ".pyd", ".so"))
+            or ".so." in lower)
 
 
 def copy_reviewed_notice_files(entry: dict, out_dir: Path) -> None:
@@ -250,8 +311,6 @@ def copy_vad_notices(licenses_dir: Path) -> tuple[str, str, str, str]:
         raise SystemExit("collect_notices: bundled Silero identity is unreviewed; review the resource before distributing")
     sources = [
         (ROOT / "packaging" / "notices" / "silero-vad-LICENSE.txt", "silero_vad", "LICENSE.txt"),
-        (SITE / "onnxruntime" / "LICENSE", "onnxruntime", "LICENSE"),
-        (SITE / "onnxruntime" / "ThirdPartyNotices.txt", "onnxruntime", "ThirdPartyNotices.txt"),
     ]
     for source, package, filename in sources:
         if not source.is_file():
@@ -259,6 +318,11 @@ def copy_vad_notices(licenses_dir: Path) -> tuple[str, str, str, str]:
         destination = licenses_dir / package / filename
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
+    runtime_entry = reviewed_package_entry("onnxruntime", "1.28.0")
+    if runtime_entry is None:
+        raise SystemExit("collect_notices: ONNX Runtime target has no completed notice review")
+    verify_reviewed_package_payload(runtime_entry)
+    copy_reviewed_notice_files(runtime_entry, licenses_dir / "onnxruntime")
     note = ("Reviewed faster-whisper 1.2.1 sequence export, 1245151 bytes; SHA-256 " + approved
             + ". Origin: https://github.com/SYSTRAN/faster-whisper/tree/65882eee9f5cdbeeb2d877f1131d48cf241b327d"
             + "; upstream model: https://github.com/snakers4/silero-vad/tree/v6.0"

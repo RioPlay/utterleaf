@@ -21,6 +21,9 @@ class KeyboardIme : InputMethodService() {
     /** Monotonically identifies the panel and editor session currently on screen.
      *  Every suggestion, composition, speech or editor callback must capture this token. */
     private var uiGeneration = 0L
+    private var selectionStart = -1
+    private var selectionEnd = -1
+    private var backspaceSelection: HostBackspaceSelection? = null
 
     private fun invalidateUiSession() {
         uiGeneration++
@@ -36,7 +39,10 @@ class KeyboardIme : InputMethodService() {
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         invalidateUiSession()
-        active = false; voice?.clear(); draft?.clear(); draft = null
+        active = false
+        selectionStart = attribute?.initialSelStart ?: -1
+        selectionEnd = attribute?.initialSelEnd ?: -1
+        backspaceSelection = null; voice?.clear(); draft?.clear(); draft = null
         // Clear the old local query/preview at the field boundary, even if the
         // platform never follows this callback with onStartInputView.
         root?.removeAllViews()
@@ -46,6 +52,12 @@ class KeyboardIme : InputMethodService() {
         active = info != null && (info.inputType != InputType.TYPE_NULL || KeyboardOptions.load(this).terminal)
         showTyping()
         if (!active) requestHideSelf(0)
+    }
+    override fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int,
+                                   candidatesStart: Int, candidatesEnd: Int) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        selectionStart = newSelStart; selectionEnd = newSelEnd
+        backspaceSelection?.update(newSelStart, newSelEnd)
     }
     private fun commit(value: String, generation: Long): Boolean {
         if (!currentUiSession(generation)) return false
@@ -79,7 +91,11 @@ class KeyboardIme : InputMethodService() {
             EditorInfo.IME_ACTION_PREVIOUS -> "Previous"; else -> "Done"
         } else "Enter"
         val generation = uiGeneration
-        val panel = TypingPanel(this, KeyboardOptions.load(this),
+        val options = KeyboardOptions.load(this)
+        backspaceSelection = HostBackspaceSelection(
+            current = { currentUiSession(generation) && active && info != null && VoiceIme.safeField(info.inputType) },
+            connection = { currentInputConnection }, selection = { selectionStart to selectionEnd })
+        val panel = TypingPanel(this, options,
             { value -> commit(value, generation) },
             { keyEvent(KeyEvent.KEYCODE_DEL, generation) },
             { if (currentUiSession(generation)) {
@@ -108,7 +124,8 @@ class KeyboardIme : InputMethodService() {
             editorAction = { command -> currentUiSession(generation) &&
                 EditorActions.perform(currentInputConnection, command, currentInputEditorInfo?.inputType) },
             openDraft = if (active && info != null && VoiceIme.safeField(info.inputType))
-                { { if (currentUiSession(generation)) showDraft() } } else null)
+                { { if (currentUiSession(generation)) showDraft() } } else null,
+            backspaceSelection = backspaceSelection)
         val cls = (info?.inputType ?: 0) and InputType.TYPE_MASK_CLASS
         panel.reset(active && info != null && VoiceIme.safeField(info.inputType),
             cls in listOf(InputType.TYPE_CLASS_NUMBER, InputType.TYPE_CLASS_PHONE, InputType.TYPE_CLASS_DATETIME), label,
@@ -120,7 +137,7 @@ class KeyboardIme : InputMethodService() {
         if (!active || !VoiceIme.safeField(info.inputType)) return
         invalidateUiSession()
         val generation = uiGeneration
-        draft?.clear(); draft = null
+        draft?.clear(); draft = null; backspaceSelection = null
         voice?.clear()
         voice = VoicePanel(this, { text ->
             val current = currentInputEditorInfo
@@ -135,7 +152,7 @@ class KeyboardIme : InputMethodService() {
         if (!active || !VoiceIme.safeField(info.inputType)) return
         invalidateUiSession()
         voice?.clear(); voice = null
-        draft?.clear()
+        draft?.clear(); backspaceSelection = null
         val generation = uiGeneration
         draft = PrivateDraftPanel(this, KeyboardOptions.load(this), { text ->
             val current = currentInputEditorInfo
@@ -159,7 +176,7 @@ class KeyboardIme : InputMethodService() {
     }
     private fun clear() {
         invalidateUiSession()
-        active = false; voice?.clear(); voice = null; draft?.clear(); draft = null; root?.removeAllViews()
+        active = false; backspaceSelection = null; voice?.clear(); voice = null; draft?.clear(); draft = null; root?.removeAllViews()
     }
     override fun onFinishInputView(finishingInput: Boolean) { clear(); super.onFinishInputView(finishingInput) }
     override fun onFinishInput() { clear(); super.onFinishInput() }

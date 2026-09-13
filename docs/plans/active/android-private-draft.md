@@ -28,7 +28,8 @@ complete controls and zero panel scrolling. The unchanged seven-test ordinary
 typing/emoji/voice regression bundle passes after a controlled emulator cold boot;
 earlier repeated-session failures and the remaining uncertainty are recorded below.
 These are emulator/source checks.
-Physical, landscape, TalkBack/Switch Access, broad-editor and release gates remain.
+The feature shipped in alpha14. Physical, landscape, TalkBack/Switch Access and
+broad-editor gates remain.
 Desktop continuous transcription is additional active work in its separate plan.
 
 Existing voice transcript
@@ -125,6 +126,19 @@ dispatch. Independent re-review confirmed both choices against the official
 [Android View API](https://developer.android.com/reference/android/view/View).
 The live-IME fixture explicitly restarts its fresh input connection before showing
 the keyboard; the combined 17-test rerun passes after correcting that test setup.
+
+September 13 post-release test synchronization: merged-main
+[Android run 34740742478](https://github.com/RioPlay/utterleaf/actions/runs/34740742478)
+passed the build/JVM/lint/tooling stages and 134 of 135 API 35 tests. Its sole
+failure was one `PrivateDraftImeTest` before any draft text or callback action:
+the UIAutomation tree did not expose **Private draft** after Tools rebuilt the panel.
+The fixture now clears the API 34+ accessibility cache and waits for the prior
+native Tools button to detach and the enabled replacement draft button to appear,
+then performs the same accessibility click and retains every content/lifecycle
+assertion. On the dedicated API 35 emulator, the full five-test class passed three
+consecutive runs (**15/15**) without reboot; a mixed `PrivateDraftImeTest`,
+`ComposeImeTest` and `BackspaceSelectionTest` run passed **18/18 in 69.505 seconds**.
+Logs are local harness artifacts under `.grok/`, not repository content.
 
 Independent review found no remaining panel/IME insertion or lifecycle blocker.
 False/throwing insertion outcomes are covered by direct-panel tests; injecting

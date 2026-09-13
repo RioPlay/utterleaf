@@ -1,0 +1,8 @@
+# These native wheels omit full license texts. Keep CI on the exact platform
+# closures retained in packaging/notices/runtime-manifest.json.
+ctranslate2==4.8.2
+faster-whisper==1.2.1
+flatbuffers==25.12.19
+onnxruntime==1.28.0
+protobuf==7.35.1
+tokenizers==0.23.1

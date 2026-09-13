@@ -105,6 +105,7 @@ class PrivateDraftPanel(
             EditorAction.SELECT_ALL -> editor.current.text.isNotEmpty()
             else -> false
         } },
+        backspaceSelection = editor.backspaceSelection(),
     )
 
     init {

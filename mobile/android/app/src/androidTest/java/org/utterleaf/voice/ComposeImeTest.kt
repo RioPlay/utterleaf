@@ -137,7 +137,12 @@ class ComposeImeTest {
             }
             block(manager)
         } finally {
-            if (!previous.isNullOrBlank()) shell("ime set $previous")
+            if (!previous.isNullOrBlank()) {
+                shell("ime set $previous")
+                await("Previous IME was not restored") {
+                    Settings.Secure.getString(app.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) == previous
+                }
+            }
             if (!enabled) shell("ime disable $id")
             options.save(app)
             automation.serviceInfo = automation.serviceInfo.apply { this.flags = flags }
@@ -186,7 +191,7 @@ class ComposeImeTest {
                 main { activity.editor.setText("host-$name") }
                 openCompose()
                 val staleLetter = currentButton("e")
-                val service = currentService()
+                val service = main { staleLetter.context as KeyboardIme }
                 main { trigger(service, activity) }
                 await("$name did not dismiss pending Compose") { findNode("Cancel compose") == null }
                 main { staleLetter.performClick() }

@@ -21,6 +21,7 @@ internal class KeyboardGestures(private val root: FrameLayout, private val holdD
     fun attachSpace(button: Button, move: (left: Boolean) -> Unit) = bind(button, move = move)
     fun attachLetter(button: Button, choices: () -> List<String>, preferred: (() -> String?)? = null,
                      choose: (String) -> Unit) = bind(button, choices, preferred, choose)
+    fun attachHold(button: Button, hold: () -> Unit) = bind(button, hold = hold)
     /** A hold strip or space drag already owns its pointer and cannot join typing rollover. */
     fun permitsRollover(button: View): Boolean {
         val press = active ?: return true
@@ -29,16 +30,16 @@ internal class KeyboardGestures(private val root: FrameLayout, private val holdD
 
     private fun bind(button: Button, choices: (() -> List<String>)? = null,
                      preferred: (() -> String?)? = null, choose: ((String) -> Unit)? = null,
-                     move: ((Boolean) -> Unit)? = null) {
+                     move: ((Boolean) -> Unit)? = null, hold: (() -> Unit)? = null) {
         val token = generation
         button.setOnTouchListener { _, event ->
             if (token != generation || !button.isEnabled) return@setOnTouchListener true
             if (event.actionMasked == MotionEvent.ACTION_DOWN) {
                 end()
                 if (event.pointerCount == 1 && event.rawX.isFinite() && event.rawY.isFinite()) {
-                    active = Press(button, event.getPointerId(0), event.rawX, event.rawY, choices, preferred, move)
+                    active = Press(button, event.getPointerId(0), event.rawX, event.rawY, choices, preferred, move, hold)
                     button.isPressed = true
-                    active?.let { if (choices != null) button.postDelayed(it.open, maxOf(1L, holdDelay())) }
+                    active?.let { if (choices != null || hold != null) button.postDelayed(it.open, maxOf(1L, holdDelay())) }
                 }
             } else {
                 val press = active
@@ -51,7 +52,7 @@ internal class KeyboardGestures(private val root: FrameLayout, private val holdD
                     MotionEvent.ACTION_MOVE -> press.slide(event.rawX, event.rawY)
                     MotionEvent.ACTION_UP -> {
                         val value = press.release(event.rawX, event.rawY)
-                        val tap = !press.cancelled && !press.dragging && press.overlay == null
+                        val tap = !press.cancelled && !press.dragging && !press.held && press.overlay == null
                         end() // Remove callbacks/overlay before any editor mutation or rerender.
                         if (!press.cancelled && value != null) {
                             button.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
@@ -59,6 +60,7 @@ internal class KeyboardGestures(private val root: FrameLayout, private val holdD
                         }
                         else if (tap) button.performClick()
                     }
+                    else -> end()
                 }
             }
             true
@@ -78,10 +80,11 @@ internal class KeyboardGestures(private val root: FrameLayout, private val holdD
     fun cancel() { end(); generation++ }
 
     private inner class Press(val button: Button, val pointer: Int, val downX: Float, val downY: Float,
-                              val choices: (() -> List<String>)?, val preferred: (() -> String?)?,
-                              val move: ((Boolean) -> Unit)?) {
+                               val choices: (() -> List<String>)?, val preferred: (() -> String?)?,
+                               val move: ((Boolean) -> Unit)?, val hold: (() -> Unit)?) {
         var cancelled = false
         var dragging = false
+        var held = false
         var cursorX = downX
         var overlay: AlternateStrip? = null
         val open = Runnable {
@@ -94,6 +97,11 @@ internal class KeyboardGestures(private val root: FrameLayout, private val holdD
                     // Explicit bounds prevent a wrap-content IME growing on hold.
                     root.addView(overlay, FrameLayout.LayoutParams(root.width, root.height))
                     button.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                } else if (hold != null) {
+                    held = true
+                    button.isPressed = false
+                    button.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                    hold.invoke()
                 }
             }
         }

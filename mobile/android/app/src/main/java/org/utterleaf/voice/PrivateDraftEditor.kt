@@ -1,6 +1,7 @@
 package org.utterleaf.voice
 
 import android.content.Context
+import android.icu.text.BreakIterator
 import android.os.Build
 import android.os.Bundle
 import android.os.Parcelable
@@ -23,6 +24,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.textclassifier.TextClassifier
 import android.widget.EditText
+import java.util.Locale
 
 /**
  * An owned draft editor whose visible text is a projection of [PrivateDraftBuffer].
@@ -99,6 +101,54 @@ class PrivateDraftEditor(
         val previous = Character.offsetByCodePoints(state.text, cursor, -1)
         val next = state.text.removeRange(previous, cursor)
         return mutate { buffer.acceptExternalEdit(next, previous, previous) }
+    }
+
+    /** Local-only selection preview used by Backspace; it never touches a host connection. */
+    fun backspaceSelection(): BackspaceSelection = object : BackspaceSelection {
+        private var origin = -1
+        private var active = false
+
+        override fun begin(): Boolean {
+            val state = current
+            if (active || disposed || state.selectionStart != state.selectionEnd) return false
+            origin = state.selectionEnd; active = true
+            return true
+        }
+
+        override fun move(left: Boolean): Boolean {
+            if (!active || disposed) return false
+            val state = current
+            if (state.selectionEnd != origin || state.selectionStart !in 0..origin) return false
+            val destination = if (left) {
+                if (state.selectionStart == 0) return true
+                graphemeBefore(state.text, state.selectionStart)
+            } else {
+                if (state.selectionStart == origin) return true
+                graphemeAfter(state.text, state.selectionStart).coerceAtMost(origin)
+            }
+            return mutate { buffer.setSelection(destination, origin) }
+        }
+
+        override fun finish(): Boolean {
+            if (!active || disposed) return false
+            val state = current
+            val deleted = state.selectionEnd == origin && state.selectionStart < origin && replace("")
+            if (deleted) { active = false; origin = -1 }
+            return deleted
+        }
+
+        override fun cancel() {
+            if (active && !disposed && origin >= 0) mutate { buffer.setSelection(origin, origin) }
+            active = false; origin = -1
+        }
+    }
+
+    private fun graphemeBefore(text: String, offset: Int): Int = BreakIterator.getCharacterInstance(Locale.ROOT).run {
+        setText(text); preceding(offset).takeIf { it != BreakIterator.DONE } ?: offset
+    }
+
+    private fun graphemeAfter(text: String, offset: Int): Int = BreakIterator.getCharacterInstance(Locale.ROOT).run {
+        setText(text); following(offset).takeIf { it != BreakIterator.DONE } ?: offset
     }
 
     /** Handles the navigation and forward-delete keys exposed by the restricted keyboard. */

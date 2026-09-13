@@ -1,4 +1,5 @@
 """The reviewed bundled model must carry full upstream and runtime notices."""
+import hashlib
 import importlib.util
 from pathlib import Path
 import shutil
@@ -32,6 +33,20 @@ def notices(tmp_path, monkeypatch):
     runtime.mkdir(parents=True)
     (runtime / "LICENSE").write_text("Full runtime license fixture", encoding="utf-8")
     (runtime / "ThirdPartyNotices.txt").write_text("Full dependency notices fixture", encoding="utf-8")
+    entry = {
+        "name": "onnxruntime", "version": "1.28.0", "license": "MIT and third-party terms",
+        "review_status": "complete", "files": [
+            {"source_root": "site", "path": "onnxruntime/LICENSE", "destination": "LICENSE",
+             "sha256": hashlib.sha256((runtime / "LICENSE").read_bytes()).hexdigest(), "source": "fixture"},
+            {"source_root": "site", "path": "onnxruntime/ThirdPartyNotices.txt",
+             "destination": "ThirdPartyNotices.txt",
+             "sha256": hashlib.sha256((runtime / "ThirdPartyNotices.txt").read_bytes()).hexdigest(),
+             "source": "fixture"},
+        ],
+    }
+    monkeypatch.setattr(module, "runtime_notice_manifest", lambda: {
+        "packages": {"onnxruntime": entry}, "package_variants": {},
+    })
     return module, model, tmp_path / "licenses"
 
 
@@ -58,7 +73,7 @@ def test_wrong_model_bytes_prevent_distribution(notices):
 def test_missing_full_runtime_notice_prevents_distribution(notices):
     module, model, output = notices
     (module.SITE / "onnxruntime" / "ThirdPartyNotices.txt").rename(module.SITE / "unexpected-name.txt")
-    with pytest.raises(SystemExit, match="required VAD/runtime notice missing"):
+    with pytest.raises(SystemExit, match="missing or changed reviewed notice"):
         module.copy_vad_notices(output)
 
 

@@ -521,8 +521,16 @@ def test_failed_microphone_start_resets_toggle_for_next_attempt(monkeypatch):
     assert app._limit_timer is None
 
 
-def test_continuous_caption_keeps_preview_without_scheduling_countdown(monkeypatch):
+@pytest.mark.parametrize(
+    ("wayland", "expected"),
+    (
+        (False, "Release shortcut to finish · Esc cancels · My draft"),
+        (True, "Press shortcut to finish · My draft"),
+    ),
+)
+def test_continuous_caption_keeps_preview_without_scheduling_countdown(monkeypatch, wayland, expected):
     app = _app(monkeypatch)
+    monkeypatch.setattr("utterleaf.app.is_wayland", lambda: wayland)
     shown, timers = [], []
     app.indicator = SimpleNamespace(enabled=True, set=lambda *args: shown.append(args))
     app.state = "recording"
@@ -540,7 +548,7 @@ def test_continuous_caption_keeps_preview_without_scheduling_countdown(monkeypat
             self.cancelled = True
     monkeypatch.setattr("utterleaf.app.threading.Timer", Timer)
     app._update_countdown(5)
-    assert shown == [("listening", "Release shortcut to finish · Esc cancels · My draft")]
+    assert shown == [("listening", expected)]
     assert not timers
     app._update_countdown(4)
     assert len(shown) == 1
