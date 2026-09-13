@@ -1,0 +1,15 @@
+LIBRARY utterleaf-authorization-test
+EXPORTS
+    ul_admission_create
+    ul_admission_authenticate
+    ul_admission_cancel
+    ul_admission_destroy
+    ul_admission_read_count
+    ul_admission_pipe
+    ul_authorizer_create
+    ul_authorizer_issue
+    ul_authorizer_prepare
+    ul_authorizer_is_active
+    ul_authorizer_revoke
+    ul_authorizer_release
+    ul_authorizer_destroy

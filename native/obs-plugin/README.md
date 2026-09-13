@@ -88,10 +88,19 @@ $output = "C:\Users\unknown\Projects\Mindict\.grok\obs-native-session\check-b"
 ```
 
 The driver performs fixed-vector and injected CNG-failure checks, actual token/
-pipe-security checks and 11 disposable child-process transport tests. It runs
+pipe-security checks and 11 disposable child-process transport tests. It also
+builds the independent capability authorizer, runs six state/fault groups and
+10 authorization-to-admission child-process tests, and checks the shared CNG
+helper against an independently computed .NET/Python vector. It runs
 without OBS or audio, scopes Python imports to this checkout and records local
 source/tool/compiler/output hashes. Every translation unit uses warnings as
 errors; the test-only macro-renamed heap shim link has three local-import
 warnings. The [native session plan](../../docs/plans/active/obs-native-session.md)
 records commands, results and remaining kernel-failure, cross-user/logon,
 vendor/arming and live-audio acceptance gates. Do not distribute the test DLL.
+
+The [enrollment contract](../../docs/plans/active/obs-native-enrollment.md) defines
+the 60-byte challenge, 15-second lifetime, one proof attempt, private capability
+ownership and revocation. These components receive an already-provisioned test
+capability; the actual DPAPI stores, pairing-file import/export and vendor adapter
+are not implemented. They do not establish executable identity or Arm authority.
