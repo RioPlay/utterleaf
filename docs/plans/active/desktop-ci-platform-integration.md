@@ -114,10 +114,11 @@ does not skip the test or turn the hang into a passing result.
 
 All four POSIX test/build installs now apply `packaging/constraints-posix.txt`,
 which constrains CTranslate2 to the reviewed 4.8.2 platform records, Tokenizers
-to 0.23.1, and the existing VAD gate to faster-whisper 1.2.1 with ONNX Runtime
-1.28.0, without changing the published Windows lock. The failed run had already
-selected ONNX Runtime 1.30.0, which would have stopped at the unchanged exact
-VAD-runtime gate after the Tokenizers failure was corrected. Exact official
+to 0.23.1, Protobuf to the retained 7.35.1 terms, FlatBuffers to the retained
+25.12.19 terms, and the existing VAD gate to faster-whisper 1.2.1 with ONNX
+Runtime 1.28.0, without changing the published Windows lock. The failed run had
+already selected ONNX Runtime 1.30.0, which would have stopped at the unchanged
+exact VAD-runtime gate after the Tokenizers failure was corrected. Exact official
 Tokenizers ABI3 wheels were inspected for Linux x86_64 and macOS ARM64. Their
 SHA-256 hashes are `5075b405...bda45a4` and `e0948bbb...326324e`; each contains
 one native `tokenizers/tokenizers.abi3.so`. Linux loads only the system loader,
@@ -205,6 +206,43 @@ Wayland popup setup now uses actual focus reveal to bring the enabled microphone
 selector into view before establishing its scroll baseline. The click must not
 add any scrolling. Local Windows tests do not exercise that native Linux path;
 the next canonical matrix remains the platform acceptance gate.
+
+Run [34746487487](https://github.com/RioPlay/utterleaf/actions/runs/34746487487)
+at `6e83c542` passed the complete macOS test job, including the Aqua backup and
+popup request checks, and passed both Linux test jobs under X11 and the forced
+Wayland branch. Both POSIX build jobs completed PyInstaller and frozen CLI smoke,
+then stopped at notice collection because the resolver selected Protobuf 7.36.1
+instead of the retained 7.35.1 record. No other version-sensitive notice or VAD
+admission differed from its reviewed version: both runners selected CTranslate2
+4.8.2, faster-whisper 1.2.1, ONNX Runtime 1.28.0, Tokenizers 0.23.1 and
+FlatBuffers 25.12.19.
+
+The exact official Protobuf 7.35.1 POSIX wheels were inspected before adding the
+constraint. Linux uses
+`protobuf-7.35.1-cp310-abi3-manylinux2014_x86_64.whl` (SHA-256
+`74758715c53d7158fb76caf4f0cfdacc5329a4b1bb994f865d6cf302d413a1c4`);
+macOS uses the CPython 3.10 ABI3 universal2 wheel (SHA-256
+`24f857477359a85c0c235261b8ba905fd51b2562f4a64ca1df5473f29850cbf6`).
+The release metadata requires Python 3.10 or newer and declares no Python
+dependencies, so these wheels admit the CI runners' Python 3.12 and 3.14.
+Each wheel contains one native `google/_upb/_message.abi3.so` and the same
+1,732-byte LICENSE already retained by the manifest (SHA-256
+`6e5e117324afd944dcf67f36cf329843bc1a92229a8cd9bb573d7a83130fea7d`).
+The Linux ELF loads only libc, libm and libstdc++; the ARM64 slice of the
+universal macOS binary loads CoreFoundation, libSystem and libc++. The other
+macOS load command is the binary's own Bazel install name, not another wheel
+member or an external bundled library.
+The local wheel identities and native-member hashes are recorded in
+`.grok/release/ci-rc2/protobuf-7.35.1-review/receipt.json`; this ignored receipt
+supports the constraint and is not a shipped notice or a claim that the whole
+POSIX environment is hash locked. Replacement CI must still complete both
+build notice steps and packaged-membership checks.
+
+Independent review matched both downloaded Protobuf archive hashes and sizes,
+their complete native inventories and the exact retained LICENSE bytes. The
+final constraint regression passes 21 tests. FlatBuffers is pinned to its
+already-resolved and retained version as well, so every current POSIX admission
+that requires an exact notice or VAD version has an explicit constraint.
 
 ## Non-goals and stop
 

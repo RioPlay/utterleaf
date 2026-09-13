@@ -246,9 +246,13 @@ def test_posix_ci_uses_the_reviewed_tokenizers_source_and_targets():
     assert constraints == [
         "ctranslate2==4.8.2",
         "faster-whisper==1.2.1",
+        "flatbuffers==25.12.19",
         "onnxruntime==1.28.0",
+        "protobuf==7.35.1",
         "tokenizers==0.23.1",
     ]
+    assert manifest["packages"]["flatbuffers"]["version"] == "25.12.19"
+    assert manifest["packages"]["protobuf"]["version"] == "7.35.1"
     assert manifest["packages"]["tokenizers"]["targets"] == [
         "darwin:arm64", "linux:x86_64", "win32:x86_64",
     ]
