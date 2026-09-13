@@ -98,3 +98,6 @@ CPU inference. [Privacy & usage](docs/user-guide.md) · [GPU setup](docs/install
 
 Utterleaf is [Apache-2.0 licensed](LICENSE), © 2026 RioPlay. See [NOTICE](NOTICE)
 for attribution. Downloads include third-party notices; model weights are separate.
+The separate [native OBS development module](native/obs-plugin/README.md) is
+GPL-2.0-or-later under its own [license](native/obs-plugin/COPYING). Its binary is
+not included in app downloads; native redistribution review remains open.
