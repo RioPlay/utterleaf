@@ -571,10 +571,22 @@ def test_mix_tabs_support_keyboard_navigation_without_actions(opened, tk_root):
     tk_root.update()
     assert window.preview_tabs.index("current") == 0
     # ttk binds tab mnemonics to Option on Aqua and Alt on other backends.
-    modifier = "Option" if tk_root.tk.call("tk", "windowingsystem") == "aqua" else "Alt"
-    window.root.event_generate(f"<{modifier}-m>")
+    aqua = tk_root.tk.call("tk", "windowingsystem") == "aqua"
+    modifier = "Option" if aqua else "Alt"
+    binding = tk_root.tk.splitlist(window.root.bind(f"<{modifier}-Key>"))
+    assert binding == ("ttk::notebook::MnemonicActivation", str(window.root), "%K")
+    # Aqua remaps generated Option-letter keysyms through the keyboard layout.
+    # Exercise the registered mnemonic with its letter explicitly on every host;
+    # Ctrl+Tab above still covers delivered key events on Aqua.
+    callback = (*binding[:-1], "m")
+    assert tk_root.tk.call("catch", callback) == 3  # Tcl's handled-event break.
     tk_root.update()
     assert window.preview_tabs.index("current") == 1
+    if not aqua:
+        window.preview_tabs.select(0)
+        window.root.event_generate(f"<{modifier}-m>")
+        tk_root.update()
+        assert window.preview_tabs.index("current") == 1
     assert actions.calls == []
 
 

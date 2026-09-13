@@ -137,10 +137,14 @@ full six-bus, 128-source display bounds are covered. These checks used no OBS
 application, audio device, consumer profile or model. Source CI results are
 tracked on [draft PR #41](https://github.com/RioPlay/utterleaf/pull/41).
 
-The first integration CI run exposed a platform assumption in the keyboard
-navigation fixture: ttk uses Option for tab mnemonics on Aqua and Alt elsewhere.
-The fixture now sends the native modifier and still requires the tab change and
-zero session actions. Runtime and render inputs are unchanged by this correction.
+Integration CI exposed a platform assumption in the keyboard-navigation fixture.
+The macOS runner uses Tk 9.0.4, whose
+[event generation](https://github.com/tcltk/tk/blob/core-9-0-4/macosx/tkMacOSXKeyboard.c#L650)
+remaps Option-letter keysyms through the active layout. The fixture verifies the
+installed mnemonic binding and invokes its registered action with the explicit
+letter on every host. Ctrl+Tab still uses delivered key events everywhere;
+Alt-letter delivery remains checked on Windows/X11. Physical Aqua mnemonic
+delivery remains unverified. Runtime and render inputs are unchanged.
 
 Native observation uses fixed watcher/snapshot limits and an OBS monotonic clock
 declared by the newly pinned public `util/platform.h`; its ISC notice is retained.
