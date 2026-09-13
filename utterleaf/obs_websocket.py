@@ -16,6 +16,7 @@ import threading
 import time
 from typing import TypeVar
 
+from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 from websockets.sync.client import ClientConnection, connect as _websocket_connect
 
 from utterleaf import windows_peer_identity
@@ -58,6 +59,20 @@ class ObsWebSocketTimeout(ObsWebSocketError):
 
 class ObsWebSocketCancelled(ObsWebSocketError):
     """The caller cancelled the local transport operation."""
+
+
+class ObsWebSocketDisconnected(ObsWebSocketError):
+    """The local control channel disconnected from its still-verified peer."""
+
+
+def _ordinary_disconnect(exc: BaseException) -> bool:
+    if isinstance(exc, ConnectionClosedOK):
+        return True
+    return (
+        isinstance(exc, ConnectionClosedError)
+        and exc.rcvd is None
+        and exc.sent is None
+    )
 
 
 def _cancel_requested(cancelled: Callable[[], bool]) -> bool:
@@ -134,6 +149,8 @@ def _interruptible(
     abort: Callable[[], None],
     cancelled: Callable[[], bool],
     timeout: float,
+    *,
+    preserve_disconnect: bool = False,
 ) -> _T:
     """Run blocking library I/O while an owned watchdog can close its socket."""
     try:
@@ -195,6 +212,8 @@ def _interruptible(
                 raise ObsWebSocketCancelled("OBS control operation cancelled") from None
             if outcome and outcome[0] == "timeout":
                 raise ObsWebSocketTimeout("OBS control operation timed out") from None
+            if preserve_disconnect and _ordinary_disconnect(exc):
+                raise ObsWebSocketDisconnected("OBS control disconnected") from None
             raise ObsWebSocketError("OBS control transport failed") from None
         if outcome:
             if outcome[0] == "cancelled":
@@ -248,6 +267,10 @@ class ObsWebSocketTransport:
             finally:
                 self._close_identity()
 
+    def _retire_after_socket_close(self) -> None:
+        if self._mark_closed():
+            self._close_identity()
+
     def _close_identity(self) -> None:
         # Serialize with native verification so a handle cannot close during a
         # query. Detach once when watchdog and owner both reach cleanup.
@@ -285,6 +308,23 @@ class ObsWebSocketTransport:
                 raise ObsWebSocketError("OBS peer identity could not be verified") from None
             raise
 
+    def _verify_disconnect(self, *, deadline: float | None = None) -> None:
+        """Confirm that transport loss wasn't caused by losing peer identity."""
+        try:
+            limit = time.monotonic() + PEER_CHECK_SECONDS
+            if deadline is not None:
+                limit = min(limit, deadline)
+            with self._identity_lock:
+                if self._is_closed() or self._peer is None or self._expected is None:
+                    raise ObsWebSocketError("OBS peer identity is unavailable")
+                self._peer.revalidate(cancelled=self._cancelled, deadline=limit)
+        except BaseException as exc:
+            if isinstance(exc, windows_peer_identity.PeerIdentityCancelled):
+                raise ObsWebSocketCancelled("OBS peer verification cancelled") from None
+            if isinstance(exc, Exception):
+                raise ObsWebSocketError("OBS peer identity could not be verified") from None
+            raise
+
     def send(self, text: str) -> None:
         if self._is_closed():
             raise ObsWebSocketError("OBS control transport is closed")
@@ -297,15 +337,33 @@ class ObsWebSocketTransport:
         if encoded_size > MAX_MESSAGE_BYTES:
             raise ObsWebSocketError("OBS control message is invalid")
         self.verify_peer()
+        abort_lock = threading.Lock()
+        socket_closed = False
+
+        def close_socket_once() -> None:
+            nonlocal socket_closed
+            with abort_lock:
+                if socket_closed:
+                    return
+                socket_closed = True
+            self._connection.close_socket()
+
         try:
             _interruptible(
                 lambda: self._connection.send(text),
-                self._abort,
+                close_socket_once,
                 self._cancelled,
                 SEND_TIMEOUT_SECONDS,
+                preserve_disconnect=True,
             )
-        except ObsWebSocketError:
-            self._abort()
+        except ObsWebSocketDisconnected:
+            try:
+                self._verify_disconnect()
+            finally:
+                self._retire_after_socket_close()
+            raise ObsWebSocketDisconnected("OBS control disconnected") from None
+        except BaseException:
+            self._retire_after_socket_close()
             raise
 
     def retain_peer_process(self) -> windows_peer_identity.VerifiedProcessLease:
@@ -355,6 +413,14 @@ class ObsWebSocketTransport:
             except TimeoutError:
                 continue
             except BaseException as exc:
+                if isinstance(exc, Exception) and _ordinary_disconnect(exc):
+                    try:
+                        self._verify_disconnect(deadline=deadline)
+                    except BaseException:
+                        self._abort()
+                        raise
+                    self._abort()
+                    raise ObsWebSocketDisconnected("OBS control disconnected") from None
                 self._abort()
                 if isinstance(exc, Exception):
                     raise ObsWebSocketError("OBS control transport failed") from None
@@ -471,6 +537,7 @@ __all__ = [
     "MAX_QUEUE",
     "OBS_SUBPROTOCOL",
     "ObsWebSocketCancelled",
+    "ObsWebSocketDisconnected",
     "ObsWebSocketError",
     "ObsWebSocketTimeout",
     "ObsWebSocketTransport",

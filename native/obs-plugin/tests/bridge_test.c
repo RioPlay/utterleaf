@@ -12,7 +12,7 @@
 #include "../src/frontend_dispatch.h"
 
 static unsigned start_calls, register_calls, unregister_calls, tools_calls, event_calls;
-static bool has_window, allow_start, allow_issue, allow_prepare, allow_unregister, enabled;
+static bool has_window, allow_start, allow_status, allow_issue, allow_prepare, allow_unregister, enabled;
 static bool exiting;
 static unsigned api_version;
 static char order[32];
@@ -55,15 +55,17 @@ static bool test_register(obs_websocket_vendor handle, const char *name,
     assert(handle == (void *)(uintptr_t)2 && data == NULL && !enabled);
     ++register_calls;
     if (strcmp(name, "IssueAuthorization") == 0) { assert(callback == ul_vendor_issue); return allow_issue; }
-    assert(strcmp(name, "PrepareSession") == 0 && callback == ul_vendor_prepare);
-    return allow_prepare;
+    if (strcmp(name, "PrepareSession") == 0) { assert(callback == ul_vendor_prepare); return allow_prepare; }
+    assert(strcmp(name, "GetStatus") == 0 && callback == ul_vendor_status);
+    return allow_status;
 }
 static bool test_unregister(obs_websocket_vendor handle, const char *name)
 {
     assert(handle == (void *)(uintptr_t)2 && !enabled);
     if (exiting) assert(snapshot.status == UL_PLUGIN_CLOSED);
     ++unregister_calls;
-    record(strcmp(name, "PrepareSession") == 0 ? 'P' : 'I');
+    record(strcmp(name, "PrepareSession") == 0 ? 'P' :
+           strcmp(name, "IssueAuthorization") == 0 ? 'I' : 'G');
     return allow_unregister;
 }
 static void test_log(int level, const char *format, ...) { (void)level; (void)format; }
@@ -133,6 +135,8 @@ void ul_vendor_issue(obs_data_t *request, obs_data_t *response, void *data)
 { (void)request; (void)response; (void)data; }
 void ul_vendor_prepare(obs_data_t *request, obs_data_t *response, void *data)
 { (void)request; (void)response; (void)data; }
+void ul_vendor_status(obs_data_t *request, obs_data_t *response, void *data)
+{ (void)request; (void)response; (void)data; }
 
 #undef OBS_DECLARE_MODULE
 #define OBS_DECLARE_MODULE()
@@ -155,13 +159,13 @@ void ul_vendor_prepare(obs_data_t *request, obs_data_t *response, void *data)
 static void reset(void)
 {
     start_calls = register_calls = unregister_calls = tools_calls = event_calls = 0;
-    has_window = allow_start = allow_issue = allow_prepare = allow_unregister = true;
+    has_window = allow_start = allow_status = allow_issue = allow_prepare = allow_unregister = true;
     enabled = exiting = false;
     after_exit = false;
     api_version = OBS_WEBSOCKET_API_VERSION;
     snapshot = (ul_plugin_snapshot){UL_PLUGIN_UNPAIRED, UL_PAIRING_MISSING, true, false};
     vendor = NULL;
-    issue_registered = prepare_registered = false;
+    status_registered = issue_registered = prepare_registered = false;
     order_size = 0;
     order[0] = 0;
     frontend_open = false; queued_arm = 0; stream_busy = false;
@@ -191,15 +195,15 @@ int main(void)
     reset();
     assert(obs_module_load() && start_calls == 1 && tools_calls == 1 && event_calls == 1);
     obs_module_post_load();
-    assert(enabled && register_calls == 3 && issue_registered && prepare_registered);
-    obs_module_post_load(); assert(register_calls == 3);
+    assert(enabled && register_calls == 4 && status_registered && issue_registered && prepare_registered);
+    obs_module_post_load(); assert(register_calls == 4);
     order_size = 0; order[0] = 0; exiting = true;
     frontend_event(OBS_FRONTEND_EVENT_EXIT, NULL);
-    assert(strcmp(order, "DSPIC") == 0 && unregister_calls == 2 && !enabled);
+    assert(strcmp(order, "DSPIGC") == 0 && unregister_calls == 3 && !enabled);
 
     reset(); allow_prepare = allow_unregister = false;
     obs_module_post_load();
-    assert(!enabled && issue_registered && !prepare_registered && unregister_calls == 1);
+    assert(!enabled && issue_registered && !prepare_registered && !status_registered && unregister_calls == 1);
     order_size = 0; order[0] = 0; exiting = true;
     frontend_event(OBS_FRONTEND_EVENT_EXIT, NULL);
     assert(strcmp(order, "DSIC") == 0 && unregister_calls == 2 && !enabled);
@@ -209,6 +213,11 @@ int main(void)
     assert(!enabled && !issue_registered && !prepare_registered && unregister_calls == 1);
     reset(); allow_issue = false;
     obs_module_post_load(); assert(!enabled && register_calls == 2 && unregister_calls == 0);
+    reset(); allow_status = false;
+    obs_module_post_load();
+    assert(!enabled && register_calls == 4 && unregister_calls == 2);
+    assert(strcmp(order, "PID") == 0);
+    assert(!status_registered && !issue_registered && !prepare_registered);
     reset(); api_version = 0;
     obs_module_post_load(); assert(!enabled && register_calls == 0);
     reset(); snapshot.owns_store = false;

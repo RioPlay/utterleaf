@@ -1,8 +1,8 @@
 """Single-use, explicitly armed OBS capture receiver.
 
 The caller must authenticate the transport before creating this receiver and must
-deliver a post-arm streaming-start event before its StartFrame. Session IDs are
-routing identifiers, not credentials. Nothing here connects to OBS, opens a
+confirm a session-bound native start after Arm before accepting its StartFrame.
+Session IDs are routing identifiers, not credentials. Nothing here connects to OBS, opens a
 microphone, installs a plugin, recognizes speech, or exports a result.
 
 Call from one serialized worker, not an OBS audio callback or the UI thread.
@@ -57,6 +57,12 @@ class ObsCaptureResult:
         return (not self.closed and self._ready and self._clean_end and bool(self.tracks)
                 and all(track.received_frames > 0 and track.store.error is None
                         for track in self.tracks))
+
+    @property
+    def empty(self) -> bool:
+        """A verified clean Disarm before audio, distinct from a failed empty capture."""
+        return (not self.closed and self._ready and self._clean_end and not self.tracks
+                and self.primary_bus is None and self.origin_ns is None)
 
     @property
     def reason(self) -> str:
@@ -132,6 +138,12 @@ class ObsCaptureSession:
         self.reason = "Waiting for the next OBS stream to start."
 
     def notify_stream_started(self, session_id: bytes) -> None:
+        """Confirm the authenticated native Start for this one-use Arm.
+
+        The controller calls this only after receiving the matching Start from
+        its verified audio pipe. Untagged WebSocket STARTED events are not proof
+        that the current native session began.
+        """
         self._check_identity(session_id)
         if self.state != "armed" or self._started:
             self._fail("OBS stream start was stale or repeated")
@@ -148,8 +160,8 @@ class ObsCaptureSession:
             return
         if (self.state == "armed" and isinstance(frame, EndFrame)
                 and frame.reason is EndReason.DISARMED and not frame.last_sequences):
-            # Stop can beat the first audio block even after the control channel
-            # announced STARTED. No audio timeline, primary mix or stores exist.
+            # Stop can beat the first audio block after Arm. No authenticated
+            # native Start, audio timeline, primary mix or stores exist.
             self.state = "finished"
             self.reason = "OBS transcription disarmed before audio began."
             self._clean_end = True
@@ -260,6 +272,19 @@ class ObsCaptureSession:
         self._tracks.clear()
         self._taken = True
         return result
+
+    def live_tracks(self) -> tuple[CapturedTrack, ...]:
+        """Borrow live stores with immutable timing metadata, on the receiver owner.
+
+        A recognition worker may use each store's bounded read-window API. This
+        does not transfer ownership or permit it to close a store. Only tracks
+        with accepted first audio are exposed; take_result transfers final
+        ownership separately. No receiver method may run concurrently with this.
+        """
+        return tuple(CapturedTrack(bus, item.first_timestamp_ns, item.frames,
+                                   item.next_sequence - 1, item.store)
+                     for bus, item in self._tracks.items()
+                     if item.first_timestamp_ns is not None)
 
     def cancel(self) -> None:
         """Discard this receiver's audio; a transferred result has its own owner."""

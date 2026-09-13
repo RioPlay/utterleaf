@@ -31,6 +31,10 @@ GENERAL_SUBSCRIPTION = 1
 EVENT_SUBSCRIPTIONS = GENERAL_SUBSCRIPTION | OUTPUTS_SUBSCRIPTION
 _READ_REQUESTS = frozenset({"GetVersion", "GetStreamStatus"})
 _VENDOR_NAME = "Utterleaf"
+_PLUGIN_PROTOCOL_VERSION = 1
+_PLUGIN_COMMAND_VERSION = 1
+_PLUGIN_AUDIO_VERSION = 1
+_PLUGIN_MAX_BUS_MASK = 63
 _OUTPUT_STATES = frozenset({
     "OBS_WEBSOCKET_OUTPUT_STARTING", "OBS_WEBSOCKET_OUTPUT_STARTED",
     "OBS_WEBSOCKET_OUTPUT_STOPPING", "OBS_WEBSOCKET_OUTPUT_STOPPED",
@@ -46,10 +50,22 @@ class ObsControlCancelled(ObsControlError):
     """The caller cancelled this connection."""
 
 
+class ObsControlDisconnected(ObsControlError):
+    """The authenticated OBS WebSocket transport disconnected."""
+
+
 @dataclass(frozen=True)
 class ObsVersion:
     studio: str
     websocket: str
+
+
+@dataclass(frozen=True)
+class ObsPluginStatus:
+    protocol_version: int
+    command_version: int
+    audio_version: int
+    max_bus_mask: int
 
 
 @dataclass(frozen=True)
@@ -150,7 +166,7 @@ def _hex_bytes(value, length: int) -> bytes:
 
 
 def _vendor_payload(data) -> None:
-    """Validate the only two permitted request shapes before any JSON send."""
+    """Validate the permitted request shapes before any JSON send."""
     if (type(data) is not dict or set(data) != {"vendorName", "requestType", "requestData"}
             or data["vendorName"] != _VENDOR_NAME or type(data["requestData"]) is not dict):
         raise ObsControlError("Unsupported OBS control request")
@@ -166,6 +182,9 @@ def _vendor_payload(data) -> None:
             raise ObsControlError("Unsupported OBS control request")
         _hex_bytes(payload["challenge"], obs_authorization.CHALLENGE_BYTES)
         _hex_bytes(payload["proof"], obs_authorization.PROOF_BYTES)
+    elif data["requestType"] == "GetStatus":
+        if payload:
+            raise ObsControlError("Unsupported OBS control request")
     else:
         raise ObsControlError("Unsupported OBS control request")
 
@@ -219,6 +238,8 @@ class ObsControl:
                 transport.close()
             if isinstance(exc, obs_websocket.ObsWebSocketCancelled):
                 raise ObsControlCancelled("OBS connection cancelled") from None
+            if isinstance(exc, obs_websocket.ObsWebSocketDisconnected):
+                raise ObsControlDisconnected("OBS control disconnected") from None
             if isinstance(exc, obs_websocket.ObsWebSocketError):
                 raise ObsControlError("Could not connect to authenticated local OBS") from None
             if isinstance(exc, Exception) and not isinstance(exc, ObsControlError):
@@ -388,13 +409,39 @@ class ObsControl:
                 or type(data["responseData"]) is not dict):
             raise ObsControlError("Invalid Utterleaf OBS response")
         response = data["responseData"]
-        expected = {"ok", "protocolVersion", "challenge"} if operation == "IssueAuthorization" else {"ok", "protocolVersion"}
+        expected = {
+            "IssueAuthorization": {"ok", "protocolVersion", "challenge"},
+            "PrepareSession": {"ok", "protocolVersion"},
+            "GetStatus": {"ok", "protocolVersion", "commandVersion", "audioVersion", "maxBusMask"},
+        }.get(operation)
+        if expected is None:
+            raise ObsControlError("Unsupported Utterleaf OBS request")
         if response == {"ok": False} and type(response["ok"]) is bool:
-            raise ObsControlError("OBS pairing request was refused")
+            raise ObsControlError("Utterleaf OBS request was refused")
         if (set(response) != expected or response["ok"] is not True
                 or type(response["protocolVersion"]) is not int or response["protocolVersion"] != 1):
             raise ObsControlError("Invalid Utterleaf OBS response")
         return response
+
+    @_serialized
+    def plugin_status(self) -> ObsPluginStatus:
+        """Read fixed plugin compatibility metadata without creating a session."""
+        try:
+            self._check()
+            if not self._identified or self.version is None or not self._vendor_available:
+                raise ObsControlError("OBS does not support Utterleaf status requests")
+            response = self._vendor_request("GetStatus", {})
+            values = (
+                response["protocolVersion"], response["commandVersion"],
+                response["audioVersion"], response["maxBusMask"],
+            )
+            if (any(type(value) is not int for value in values)
+                    or values != (_PLUGIN_PROTOCOL_VERSION, _PLUGIN_COMMAND_VERSION,
+                                  _PLUGIN_AUDIO_VERSION, _PLUGIN_MAX_BUS_MASK)):
+                raise ObsControlError("Unsupported Utterleaf OBS plugin version")
+            return ObsPluginStatus(*values)
+        except BaseException as exc:
+            self._failed(exc)
 
     @_serialized
     def prepare_session(self, key: bytes | bytearray, *, additional_mix_mask: int = 0) -> bytes:
@@ -481,6 +528,8 @@ class ObsControl:
         self.close()
         if isinstance(exc, (ObsControlCancelled, obs_websocket.ObsWebSocketCancelled)):
             raise ObsControlCancelled("OBS connection cancelled") from None
+        if isinstance(exc, (ObsControlDisconnected, obs_websocket.ObsWebSocketDisconnected)):
+            raise ObsControlDisconnected("OBS control disconnected") from None
         if isinstance(exc, ObsControlError):
             raise exc from None
         if isinstance(exc, TimeoutError):

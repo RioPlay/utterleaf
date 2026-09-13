@@ -71,16 +71,25 @@ def main() -> None:
         "tests/admission.def", "tests/test_admission.py", "tools/test_native.py",
     )]
     source_hashes = {str(path.relative_to(ROOT)): digest(path) for path in sources}
-    client_sources = [REPO / name for name in (
-        "utterleaf/obs_authorization.py", "utterleaf/obs_pairing_store.py", "utterleaf/windows_pipe.py",
-        "utterleaf/obs_protocol.py", "utterleaf/obs_audio_pipe.py",
-        "utterleaf/windows_peer_identity.py", "utterleaf/obs_session.py",
-        "utterleaf/capture_store.py", "utterleaf/local_filesystem.py", "utterleaf/transcript.py",
-        "utterleaf/audio_batching.py", "utterleaf/audio.py",
+    desktop_tests = (
         "tests/test_obs_audio_pipe.py", "tests/test_obs_audio_arm.py",
         "tests/test_obs_audio_disarm.py", "tests/test_obs_protocol.py", "tests/test_obs_session.py",
-        "tests/test_windows_pipe.py", "tests/windows_pipe_server.py",
-    )]
+        "tests/test_windows_pipe.py", "tests/test_obs_control_status.py",
+        "tests/test_obs_control.py", "tests/test_obs_control_enrollment.py",
+        "tests/test_obs_websocket.py", "tests/test_obs_websocket_disconnect.py",
+        "tests/test_obs_controller.py", "tests/test_obs_transcription.py",
+        "tests/test_capture_store.py", "tests/test_capture_store_live.py",
+        "tests/test_continuous_capture.py", "tests/test_transcribe_limits.py",
+        "tests/test_transcribe.py", "tests/test_transcript.py", "tests/test_file_streaming.py",
+    )
+    # The controller/recognizer now reaches model, configuration and hardware
+    # helpers as well as the transport. Bind the small flat desktop source tree
+    # so its transitive imports cannot silently escape this development receipt.
+    def client_inputs():
+        return sorted((REPO / "utterleaf").glob("*.py")) + [
+            REPO / name for name in (*desktop_tests, "tests/windows_pipe_server.py")]
+
+    client_sources = client_inputs()
     client_hashes = {str(path.relative_to(REPO)): digest(path) for path in client_sources}
     dispatch_inputs = {}
     if args.build is not None:
@@ -145,12 +154,7 @@ def main() -> None:
     admission_io_fault = output / "admission_io_fault_test.exe"
     run("compiler", [compiler, "--version"])
     run("desktop-audio-pipe-tests", [sys.executable, "-m", "pytest",
-                                     REPO / "tests/test_obs_audio_pipe.py",
-                                     REPO / "tests/test_obs_audio_arm.py",
-                                     REPO / "tests/test_obs_audio_disarm.py",
-                                     REPO / "tests/test_obs_protocol.py",
-                                     REPO / "tests/test_obs_session.py",
-                                     REPO / "tests/test_windows_pipe.py"])
+                                     *(REPO / name for name in desktop_tests)])
     run("audio-protocol-build", [*flags, ROOT / "src/audio_protocol.c",
                                   ROOT / "tests/audio_protocol_test.c", "-o", audio_protocol])
     # ULAP validation imports NumPy; retain the caller's desktop virtualenv.
@@ -295,13 +299,13 @@ def main() -> None:
         artifacts.append(output / "pairing-ui/pairing-ui-receipt.json")
     if source_hashes != {str(path.relative_to(ROOT)): digest(path) for path in sources}:
         raise RuntimeError("Source changed during native verification")
-    if client_hashes != {str(path.relative_to(REPO)): digest(path) for path in client_sources}:
+    if client_hashes != {str(path.relative_to(REPO)): digest(path) for path in client_inputs()}:
         raise RuntimeError("Client source changed during native verification")
     if any(digest(path) != expected for path, expected in dispatch_inputs.items()):
         raise RuntimeError("Reviewed dispatch inputs changed during verification")
     receipt = {
-        "schema": 2, "scope": "pairing/admission/Arm/Disarm, desktop pipe and integrated PCM fixtures; optional libobs dispatch and synthetic capture/conversion; no OBS application or audio devices",
-        "desktop_audio_pipe": "passed: focused Windows pipe, Arm/Disarm, receiver and End acknowledgement fixtures",
+        "schema": 2, "scope": "pairing/admission/Arm/Disarm, read-only compatibility, desktop controller and live local recognition fixtures; optional libobs dispatch and synthetic capture/conversion; no OBS application, model loading or audio devices",
+        "desktop_audio_pipe": "passed: Windows pipe, controller, transport, receiver, committed-window recognition, bounded model output and cancellation fixtures",
         "audio_stream": "passed: synthetic bounded transport fixture",
         "frontend_dispatch": "passed: real Windows message-only window fixture",
         "audio_capture": "passed: pinned public OBS SDK synthetic fixture" if args.build is not None else "not run: supply --build and --headers",

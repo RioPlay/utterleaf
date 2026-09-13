@@ -15,6 +15,7 @@ OBS_DECLARE_MODULE()
 /* OBS serializes module hooks and frontend EXIT on the frontend thread.
  * Vendor callbacks can race these hooks; they carry no heap-owned state. */
 static obs_websocket_vendor vendor;
+static bool status_registered;
 static bool issue_registered;
 static bool prepare_registered;
 static SRWLOCK frontend_gate = SRWLOCK_INIT;
@@ -190,7 +191,9 @@ static void frontend_event(enum obs_frontend_event event, void *private_data)
         obs_websocket_vendor_unregister_request(vendor, "PrepareSession");
     if (issue_registered)
         obs_websocket_vendor_unregister_request(vendor, "IssueAuthorization");
-    issue_registered = prepare_registered = false;
+    if (status_registered)
+        obs_websocket_vendor_unregister_request(vendor, "GetStatus");
+    status_registered = issue_registered = prepare_registered = false;
     ul_plugin_close();
     /* The frontend owns its callback/menu destruction. Static data and module
      * code stay pinned, so callbacks copied before close safely decline. */
@@ -236,11 +239,16 @@ void obs_module_post_load(void)
     issue_registered = obs_websocket_vendor_register_request(vendor, "IssueAuthorization", ul_vendor_issue, NULL);
     if (issue_registered)
         prepare_registered = obs_websocket_vendor_register_request(vendor, "PrepareSession", ul_vendor_prepare, NULL);
-    if (!prepare_registered && issue_registered) {
-        issue_registered = !obs_websocket_vendor_unregister_request(vendor, "IssueAuthorization");
+    if (prepare_registered)
+        status_registered = obs_websocket_vendor_register_request(vendor, "GetStatus", ul_vendor_status, NULL);
+    if (!status_registered) {
+        if (prepare_registered)
+            prepare_registered = !obs_websocket_vendor_unregister_request(vendor, "PrepareSession");
+        if (issue_registered)
+            issue_registered = !obs_websocket_vendor_unregister_request(vendor, "IssueAuthorization");
     }
-    ul_vendor_set_enabled(issue_registered && prepare_registered);
-    if (!prepare_registered)
+    ul_vendor_set_enabled(status_registered && issue_registered && prepare_registered);
+    if (!status_registered)
         blog(LOG_WARNING, "[Utterleaf OBS bridge] request registration failed; connections disabled");
 }
 

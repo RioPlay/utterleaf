@@ -1,6 +1,7 @@
 LIBRARY utterleaf-vendor-test
 EXPORTS
     ul_vendor_set_enabled
+    ul_vendor_status
     ul_vendor_issue
     ul_vendor_prepare
     ul_vendor_test_reset
