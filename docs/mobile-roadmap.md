@@ -28,6 +28,15 @@ One-hand reach and visual polish can proceed alongside foundation work.
 
 ## Current status
 
+- **Backspace selection gesture planned after alpha14:** dragging left from
+  Backspace will preview a bounded editor-native selection, allow deterministic
+  reversal, and delete it once only on a valid release. Tap and held-repeat
+  deletion remain separate; cancellation, stale editors, restricted fields and
+  Unicode boundaries fail closed. This is not implemented yet. Current text
+  highlighting requires the tested two-finger Shift+Space chord; tapping Shift
+  and later swiping Space is not claimed. See the
+  [implementation contract](plans/active/android-backspace-selection-gesture.md).
+
 - **Long-press hint default implemented in unreleased source:** holding a letter
   preselects the same positional symbol or digit shown as its secondary hint.
   Releasing without intentional travel inserts that hint once; sliding beyond
