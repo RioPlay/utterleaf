@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "plugin_state.h"
 #include "session_protocol.h"
+#include "audio_stream.h"
 
 #include <windows.h>
 
@@ -21,6 +22,10 @@
 #define UL_PLUGIN_START_TIMEOUT_MS 30000u
 #endif
 
+#ifndef UL_PLUGIN_CAPTURE_TIMEOUT_MS
+#define UL_PLUGIN_CAPTURE_TIMEOUT_MS 5000u
+#endif
+
 typedef struct ul_plugin_runtime {
     SRWLOCK operation_lock;
     SRWLOCK session_lock;
@@ -34,6 +39,8 @@ typedef struct ul_plugin_runtime {
     HANDLE worker;
     HANDLE worker_cancel;
     HANDLE arm_result;
+    HANDLE capture_result;
+    HANDLE stream_stop;
     ul_admission *worker_admission;
     ul_prepare_options session_options;
     uintptr_t session_generation;
@@ -41,8 +48,17 @@ typedef struct ul_plugin_runtime {
     uint64_t pending_epoch;
     ULONGLONG ready_started;
     ULONGLONG stream_starting_at;
+    ULONGLONG stream_started_at;
     ul_session_phase session_phase;
     ul_arm_scheduler schedule_arm;
+    ul_arm_scheduler schedule_capture;
+    ul_arm_scheduler schedule_cleanup;
+    ul_audio_capture_spec capture_spec;
+    ul_audio_capture *capture;
+    bool capture_spec_ready;
+    bool capture_spec_valid;
+    bool capture_attach_done;
+    bool capture_attached;
     volatile LONG worker_active;
     ul_plugin_status status;
     ul_pairing_result storage_result;
@@ -118,6 +134,9 @@ static void session_cancel_locked(ul_plugin_runtime *runtime)
     runtime->session_phase = UL_SESSION_TERMINAL;
     SetEvent(runtime->worker_cancel);
     SetEvent(runtime->arm_result);
+    SetEvent(runtime->capture_result);
+    if (runtime->capture != NULL)
+        ul_audio_capture_deactivate(runtime->capture);
     if (runtime->worker_admission != NULL)
         ul_admission_cancel(runtime->worker_admission);
 }
@@ -134,6 +153,9 @@ static void session_release(ul_plugin_runtime *runtime)
     AcquireSRWLockExclusive(&runtime->session_lock);
     runtime->worker_admission = NULL;
     runtime->session_phase = UL_SESSION_NONE;
+    runtime->capture_spec_ready = runtime->capture_spec_valid = false;
+    runtime->capture_attach_done = runtime->capture_attached = false;
+    SecureZeroMemory(&runtime->capture_spec, sizeof(runtime->capture_spec));
     SecureZeroMemory(&runtime->session_options, sizeof(runtime->session_options));
     ReleaseSRWLockExclusive(&runtime->session_lock);
 }
@@ -143,6 +165,83 @@ static DWORD ready_remaining(ULONGLONG started)
     ULONGLONG elapsed = GetTickCount64() - started;
     return elapsed >= UL_PLUGIN_READY_TIMEOUT_MS ? 0u :
            UL_PLUGIN_READY_TIMEOUT_MS - (DWORD)elapsed;
+}
+
+/* The worker owns the initial capture reference. Frontend attach takes an
+ * independent reference and never borrows this runtime across OBS calls. */
+static int capture_worker(ul_plugin_runtime *runtime, ul_admission *admission)
+{
+    ul_audio_capture_spec spec;
+    ul_audio_capture *capture;
+    ul_arm_scheduler attach, cleanup;
+    uintptr_t generation;
+    HANDLE waits[2] = {runtime->worker_cancel, runtime->capture_result};
+    ULONGLONG started = GetTickCount64();
+    ULONGLONG elapsed;
+    DWORD waited;
+    bool accepted;
+    int result = UL_ADMISSION_REJECTED;
+
+    AcquireSRWLockShared(&runtime->session_lock);
+    spec = runtime->capture_spec;
+    generation = runtime->session_generation;
+    attach = runtime->schedule_capture;
+    cleanup = runtime->schedule_cleanup;
+    accepted = runtime->session_phase == UL_SESSION_STARTED &&
+               runtime->capture_spec_ready && runtime->capture_spec_valid &&
+               InterlockedCompareExchange(&runtime->closing, 0, 0) == 0;
+    ReleaseSRWLockShared(&runtime->session_lock);
+    if (!accepted || attach == NULL || cleanup == NULL)
+        return UL_ADMISSION_REJECTED;
+    capture = ul_audio_capture_create_worker(&spec);
+    if (capture == NULL)
+        return UL_ADMISSION_REJECTED;
+    AcquireSRWLockExclusive(&runtime->session_lock);
+    accepted = runtime->session_phase == UL_SESSION_STARTED &&
+               runtime->session_generation == generation &&
+               InterlockedCompareExchange(&runtime->closing, 0, 0) == 0;
+    if (accepted) {
+        runtime->capture = capture;
+        runtime->capture_attach_done = runtime->capture_attached = false;
+        ResetEvent(runtime->capture_result);
+    }
+    ReleaseSRWLockExclusive(&runtime->session_lock);
+    if (!accepted || !attach(generation))
+        goto done;
+    elapsed = GetTickCount64() - started;
+    if (elapsed >= UL_PLUGIN_CAPTURE_TIMEOUT_MS) {
+        result = UL_ADMISSION_TIMEOUT;
+        goto done;
+    }
+    waited = WaitForMultipleObjects(2, waits, FALSE,
+        UL_PLUGIN_CAPTURE_TIMEOUT_MS - (DWORD)elapsed);
+    if (waited != WAIT_OBJECT_0 + 1u) {
+        result = waited == WAIT_TIMEOUT ? UL_ADMISSION_TIMEOUT : UL_ADMISSION_CANCELLED;
+        goto done;
+    }
+    AcquireSRWLockShared(&runtime->session_lock);
+    accepted = runtime->capture == capture && runtime->capture_attach_done &&
+               runtime->capture_attached &&
+               (runtime->session_phase == UL_SESSION_STARTED ||
+                runtime->session_phase == UL_SESSION_DRAINING) &&
+               InterlockedCompareExchange(&runtime->closing, 0, 0) == 0;
+    ReleaseSRWLockShared(&runtime->session_lock);
+    if (accepted) {
+        int streamed = ul_audio_stream_run(capture, &spec, admission,
+            runtime->session_options.session, runtime->stream_stop);
+        result = streamed == UL_AUDIO_STREAM_OK ? UL_ADMISSION_AUTH_OK : UL_ADMISSION_REJECTED;
+    }
+done:
+    ul_audio_capture_deactivate(capture);
+    AcquireSRWLockExclusive(&runtime->session_lock);
+    if (runtime->capture == capture)
+        runtime->capture = NULL;
+    ReleaseSRWLockExclusive(&runtime->session_lock);
+    ul_audio_capture_release(capture);
+    /* Posting never waits for the frontend, including when that thread is
+     * joining us during revocation. A stale generation cannot detach new hooks. */
+    (void)cleanup(generation);
+    return result;
 }
 
 static int session_worker(ul_plugin_runtime *runtime, ul_admission *admission)
@@ -209,11 +308,12 @@ static int session_worker(ul_plugin_runtime *runtime, ul_admission *admission)
     if (result != UL_ADMISSION_AUTH_OK || !accepted)
         return result == UL_ADMISSION_AUTH_OK ? UL_ADMISSION_REJECTED : result;
 
-    /* Armed waiting has no duration cutoff. Until the PCM worker is integrated,
-     * retain consent only; never manufacture a Start descriptor or audio. */
+    /* Armed waiting has no duration cutoff. Capture scheduling is reachable
+     * only after the entire accepted Arm reply has been written above. */
     for (;;) {
         DWORD available = 0;
         bool start_expired = false;
+        bool capture_ready = false;
         waited = WaitForSingleObject(runtime->worker_cancel, 50u);
         if (waited != WAIT_TIMEOUT)
             return UL_ADMISSION_CANCELLED;
@@ -223,6 +323,14 @@ static int session_worker(ul_plugin_runtime *runtime, ul_admission *admission)
             session_cancel_locked(runtime);
             start_expired = true;
         }
+        if (runtime->session_phase == UL_SESSION_STARTED) {
+            capture_ready = runtime->capture_spec_ready;
+            if (!capture_ready && GetTickCount64() - runtime->stream_started_at >=
+                UL_PLUGIN_CAPTURE_TIMEOUT_MS) {
+                session_cancel_locked(runtime);
+                start_expired = true;
+            }
+        }
         ReleaseSRWLockExclusive(&runtime->session_lock);
         if (start_expired)
             return UL_ADMISSION_TIMEOUT;
@@ -231,6 +339,8 @@ static int session_worker(ul_plugin_runtime *runtime, ul_admission *admission)
             return result;
         if (available != 0u)  /* No second Arm or other command is accepted. */
             return UL_ADMISSION_REJECTED;
+        if (capture_ready)
+            return capture_worker(runtime, admission);
     }
 }
 
@@ -316,8 +426,11 @@ bool ul_plugin_start(void)
     runtime->leases_zero = CreateEventW(NULL, TRUE, TRUE, NULL);
     runtime->worker_cancel = CreateEventW(NULL, TRUE, FALSE, NULL);
     runtime->arm_result = CreateEventW(NULL, TRUE, FALSE, NULL);
+    runtime->capture_result = CreateEventW(NULL, TRUE, FALSE, NULL);
+    runtime->stream_stop = CreateEventW(NULL, TRUE, FALSE, NULL);
     if (runtime->leases_zero == NULL || runtime->worker_cancel == NULL ||
-        runtime->arm_result == NULL)
+        runtime->arm_result == NULL || runtime->capture_result == NULL ||
+        runtime->stream_stop == NULL)
         goto fail;
     result = ul_pairing_store_open(&runtime->store);
     if (result != UL_PAIRING_OK) {
@@ -365,6 +478,8 @@ ready:
         ReleaseSRWLockExclusive(&runtime->operation_lock);
         CloseHandle(runtime->worker_cancel);
         CloseHandle(runtime->arm_result);
+        CloseHandle(runtime->capture_result);
+        CloseHandle(runtime->stream_stop);
         CloseHandle(runtime->leases_zero);
         SecureZeroMemory(runtime, sizeof(*runtime));
         HeapFree(GetProcessHeap(), 0, runtime);
@@ -380,6 +495,10 @@ ready:
 
 fail:
     SecureZeroMemory(key, sizeof(key));
+    if (runtime->capture_result != NULL)
+        CloseHandle(runtime->capture_result);
+    if (runtime->stream_stop != NULL)
+        CloseHandle(runtime->stream_stop);
     if (runtime->arm_result != NULL)
         CloseHandle(runtime->arm_result);
     if (runtime->worker_cancel != NULL)
@@ -436,6 +555,8 @@ void ul_plugin_close(void)
     ReleaseSRWLockExclusive(&runtime->operation_lock);
     CloseHandle(runtime->worker_cancel);
     CloseHandle(runtime->arm_result);
+    CloseHandle(runtime->capture_result);
+    CloseHandle(runtime->stream_stop);
     CloseHandle(runtime->leases_zero);
     SecureZeroMemory(runtime, sizeof(*runtime));
     HeapFree(GetProcessHeap(), 0, runtime);
@@ -669,6 +790,8 @@ bool ul_plugin_prepare(const uint8_t *challenge, size_t challenge_size,
         goto cleanup;
     ResetEvent(runtime->worker_cancel);
     ResetEvent(runtime->arm_result);
+    ResetEvent(runtime->capture_result);
+    ResetEvent(runtime->stream_stop);
     AcquireSRWLockExclusive(&runtime->session_lock);
     runtime->worker_admission = admission;
     runtime->session_options = options;
@@ -715,6 +838,117 @@ bool ul_plugin_set_arm_scheduler(ul_arm_scheduler scheduler)
     return accepted;
 }
 
+bool ul_plugin_set_capture_schedulers(ul_arm_scheduler attach,
+                                      ul_arm_scheduler cleanup)
+{
+    ul_plugin_runtime *runtime = runtime_acquire();
+    bool accepted = false;
+    if (runtime == NULL)
+        return false;
+    AcquireSRWLockExclusive(&runtime->operation_lock);
+    AcquireSRWLockExclusive(&runtime->session_lock);
+    if (attach != NULL && cleanup != NULL && runtime->worker == NULL &&
+        runtime->schedule_capture == NULL && runtime->schedule_cleanup == NULL &&
+        InterlockedCompareExchange(&runtime->closing, 0, 0) == 0) {
+        runtime->schedule_capture = attach;
+        runtime->schedule_cleanup = cleanup;
+        accepted = true;
+    }
+    ReleaseSRWLockExclusive(&runtime->session_lock);
+    ReleaseSRWLockExclusive(&runtime->operation_lock);
+    runtime_release(runtime);
+    return accepted;
+}
+
+bool ul_plugin_capture_inspect_request(uintptr_t *generation, uint8_t *mask)
+{
+    ul_plugin_runtime *runtime = runtime_acquire();
+    bool accepted = false;
+    if (runtime == NULL)
+        return false;
+    AcquireSRWLockShared(&runtime->session_lock);
+    if (generation != NULL && mask != NULL &&
+        runtime->session_phase == UL_SESSION_STARTED && !runtime->capture_spec_ready &&
+        runtime->schedule_capture != NULL && runtime->schedule_cleanup != NULL &&
+        InterlockedCompareExchange(&runtime->closing, 0, 0) == 0) {
+        *generation = runtime->session_generation;
+        *mask = runtime->session_options.additional_mix_mask;
+        accepted = true;
+    }
+    ReleaseSRWLockShared(&runtime->session_lock);
+    runtime_release(runtime);
+    return accepted;
+}
+
+void ul_plugin_capture_inspected(uintptr_t generation,
+                                 const ul_audio_capture_spec *spec)
+{
+    ul_plugin_runtime *runtime = runtime_acquire();
+    if (runtime == NULL)
+        return;
+    AcquireSRWLockExclusive(&runtime->session_lock);
+    if (runtime->session_generation == generation &&
+        runtime->session_phase == UL_SESSION_STARTED && !runtime->capture_spec_ready) {
+        runtime->capture_spec_ready = true;
+        runtime->capture_spec_valid = spec != NULL;
+        if (spec != NULL)
+            runtime->capture_spec = *spec;
+    }
+    ReleaseSRWLockExclusive(&runtime->session_lock);
+    runtime_release(runtime);
+}
+
+ul_audio_capture *ul_plugin_capture_retain(uintptr_t generation)
+{
+    ul_plugin_runtime *runtime = runtime_acquire();
+    ul_audio_capture *capture = NULL;
+    if (runtime == NULL)
+        return NULL;
+    AcquireSRWLockShared(&runtime->session_lock);
+    if (runtime->session_generation == generation &&
+        runtime->session_phase == UL_SESSION_STARTED &&
+        !runtime->capture_attach_done && runtime->capture != NULL &&
+        InterlockedCompareExchange(&runtime->closing, 0, 0) == 0) {
+        capture = runtime->capture;
+        ul_audio_capture_retain(capture);
+    }
+    ReleaseSRWLockShared(&runtime->session_lock);
+    runtime_release(runtime);
+    return capture;
+}
+
+void ul_plugin_capture_attached(uintptr_t generation,
+                                ul_audio_capture *capture, bool success)
+{
+    ul_plugin_runtime *runtime = runtime_acquire();
+    if (runtime == NULL)
+        return;
+    AcquireSRWLockExclusive(&runtime->session_lock);
+    if (runtime->session_generation == generation && capture != NULL &&
+        runtime->capture == capture && !runtime->capture_attach_done) {
+        runtime->capture_attach_done = true;
+        runtime->capture_attached = success &&
+            runtime->session_phase == UL_SESSION_STARTED &&
+            InterlockedCompareExchange(&runtime->closing, 0, 0) == 0 &&
+            ul_audio_capture_activate(capture);
+        SetEvent(runtime->capture_result);
+    }
+    ReleaseSRWLockExclusive(&runtime->session_lock);
+    runtime_release(runtime);
+}
+
+void ul_plugin_capture_stop_frontend(void)
+{
+    ul_plugin_runtime *runtime = runtime_acquire();
+    if (runtime == NULL)
+        return;
+    AcquireSRWLockExclusive(&runtime->session_lock);
+    if (runtime->capture != NULL)
+        ul_audio_capture_deactivate(runtime->capture);
+    ReleaseSRWLockExclusive(&runtime->session_lock);
+    runtime_release(runtime);
+}
+
 void ul_plugin_arm_checked(uintptr_t generation, bool idle)
 {
     ul_plugin_runtime *runtime = runtime_acquire();
@@ -752,9 +986,20 @@ void ul_plugin_stream_event(ul_stream_event event)
                 runtime->session_phase = UL_SESSION_STARTING;
                 runtime->stream_starting_at = GetTickCount64();
             } else if (event == UL_STREAM_STARTED && runtime->session_phase == UL_SESSION_STARTING &&
-                       GetTickCount64() - runtime->stream_starting_at < UL_PLUGIN_START_TIMEOUT_MS)
+                       GetTickCount64() - runtime->stream_starting_at < UL_PLUGIN_START_TIMEOUT_MS) {
                 runtime->session_phase = UL_SESSION_STARTED;
-            else if (runtime->session_phase == UL_SESSION_ARM_PENDING) {
+                runtime->stream_started_at = GetTickCount64();
+            } else if ((event == UL_STREAM_STOPPING || event == UL_STREAM_STOPPED) &&
+                       runtime->session_phase == UL_SESSION_STARTED && runtime->capture_attached) {
+                if (runtime->capture != NULL)
+                    ul_audio_capture_deactivate(runtime->capture);
+                runtime->session_phase = UL_SESSION_DRAINING;
+                SetEvent(runtime->stream_stop);
+            } else if ((event == UL_STREAM_STOPPING || event == UL_STREAM_STOPPED) &&
+                       runtime->session_phase == UL_SESSION_DRAINING) {
+                /* A duplicate STOPPED must not cancel a terminal packet that
+                 * is still being acknowledged by the client. */
+            } else if (runtime->session_phase == UL_SESSION_ARM_PENDING) {
                 /* A valid Arm is refused while its verified pipe is still
                  * usable. Lifecycle teardown retains the cancel-first path. */
                 runtime->session_phase = UL_SESSION_TERMINAL;

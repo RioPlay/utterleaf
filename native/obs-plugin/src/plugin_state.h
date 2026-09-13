@@ -4,6 +4,7 @@
 
 #include "authorization.h"
 #include "pairing_store.h"
+#include "audio_capture.h"
 
 #include <windows.h>
 
@@ -34,7 +35,7 @@ typedef struct ul_plugin_snapshot {
 typedef enum ul_session_phase {
     UL_SESSION_NONE = 0, UL_SESSION_READY, UL_SESSION_ARM_PENDING,
     UL_SESSION_ARMED, UL_SESSION_STARTING, UL_SESSION_STARTED,
-    UL_SESSION_TERMINAL
+    UL_SESSION_DRAINING, UL_SESSION_TERMINAL
 } ul_session_phase;
 
 typedef enum ul_stream_event {
@@ -46,9 +47,24 @@ typedef enum ul_stream_event {
  * only. It must refuse after frontend shutdown, without calling OBS. */
 typedef bool (*ul_arm_scheduler)(uintptr_t generation);
 bool ul_plugin_set_arm_scheduler(ul_arm_scheduler scheduler);
+bool ul_plugin_set_capture_schedulers(ul_arm_scheduler attach,
+                                      ul_arm_scheduler cleanup);
 void ul_plugin_arm_checked(uintptr_t generation, bool idle);
 void ul_plugin_stream_event(ul_stream_event event);
 ul_session_phase ul_plugin_session_status(void);
+
+/* Frontend inspection copies metadata only. It may precede completion of the
+ * Arm reply; attaching and activating PCM cannot. All calls validate the
+ * current generation. No runtime lock may be held across OBS API calls. */
+bool ul_plugin_capture_inspect_request(uintptr_t *generation, uint8_t *mask);
+void ul_plugin_capture_inspected(uintptr_t generation,
+                                 const ul_audio_capture_spec *spec);
+/* Caller owns an independent reference until audio_capture_release. */
+ul_audio_capture *ul_plugin_capture_retain(uintptr_t generation);
+void ul_plugin_capture_attached(uintptr_t generation,
+                                ul_audio_capture *capture, bool success);
+/* Deactivates and drains callback readers without calling OBS. */
+void ul_plugin_capture_stop_frontend(void);
 
 /*
  * Permanently pins this DLL generation before callbacks may be registered.

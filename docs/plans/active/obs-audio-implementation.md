@@ -23,13 +23,21 @@ STOPPED until a later actual STOPPED or OBS restart. Controller guidance and rea
 frontend recovery remain acceptance gates. No live-capture app entry or audio
 activation is exposed.
 
+The subsequent [PCM integration](obs-pcm-stream.md) now connects the armed native
+runtime to generation-checked frontend attachment, fixed callback queues and
+worker conversion/transport. Its linked build, synthetic lifecycle checks and
+native/Python terminal-receipt tests pass; the PCM plan binds exact evidence.
+The next package is the visible desktop session controller and local recognition,
+followed by actual OBS frontend/audio, load and recovery acceptance. No live
+capture app entry is exposed by the native source checkpoint.
+
 The bounded audio protocol, consent/session receiver and read-only loopback
 WebSocket control client are reviewed. The Windows TCP peer identity gate is now
 implemented and integrated, as recorded below. The separate original C module now
 has a verified build and headless-refusal prerequisite, linked native enrollment
 and authenticated pipe admission. These do not establish actual OBS frontend
-load, the PCM callback or the complete application workflow. Continue the
-original mix callback and visible controller. Root owns the integrated source,
+load or the complete application workflow. The PCM plan records callback source
+and component verification; continue the visible controller. Root owns the integrated source,
 tests and this plan after delegated handoff; assign each next component one writer
 and a separate reviewer under the repository's ownership rules.
 No runtime/UI entry is exposed until the authenticated transport can satisfy the

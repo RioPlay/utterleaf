@@ -26,14 +26,19 @@ event: a synchronous OBS failure lacking that event can require a later complete
 stream lifecycle or OBS restart before fresh Arm. PCM, the visible capture
 controller, live recognition and actual frontend acceptance remain open.
 
-The next [PCM increment](../../docs/plans/active/obs-pcm-stream.md) adds a native
+The [PCM component checkpoint](../../docs/plans/active/obs-pcm-stream.md) adds a native
 wire encoder, fixed-size planar callback queue and worker-only libobs stereo
 conversion. All 42 canonical verification commands, the linked build and
 headless smoke pass. Synthetic checks cover ordering/loss, independent wire
 vectors and six rates across all seven known OBS speaker layouts. Surround
-uses OBS's stereo downmix, which omits LFE. These components are not yet connected
-to session capture; actual mix attachment, PCM delivery and live support remain
-open. The native test driver needs the desktop virtualenv for NumPy-backed
+uses OBS's stereo downmix, which omits LFE. The current integration connects
+these components to the armed runtime. Its 24-command linked build, 51-command
+verification (including 84 Python pipe tests) and headless smoke pass;
+independent review is clear. Source includes generation-checked frontend scheduling, bounded
+per-bus capture and normal-stop draining with a decoded-End receipt before
+disconnect. Hard cancellation and EXIT leave incomplete transport. No visible
+live capture workflow or actual OBS compatibility is established.
+The native test driver needs the desktop virtualenv for NumPy-backed
 protocol validation, and `--build` plus `--headers` for conversion fixtures.
 
 ## Inputs and legal boundary

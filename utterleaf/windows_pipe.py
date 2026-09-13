@@ -367,6 +367,37 @@ class WindowsPipe:
                     raise
                 raise WindowsPipeError("OBS audio pipe read failed") from None
 
+    def wait_for_disconnect(self, *, deadline: float) -> None:
+        """After a terminal receipt, retain this handle until the server closes.
+
+        No further data is valid. Keeping the client connected lets the server
+        finish its receipt read and peer checks before it disconnects. Timeout
+        and cancellation retain the usual overlapped-operation drain guarantees.
+        """
+        _validate_controls(self._cancelled, deadline)
+        with self._lock:
+            handle = self._require_handle_locked()
+            try:
+                _check_progress(self._cancel_requested, float(deadline))
+                buffer = (ctypes.c_ubyte * 1)()
+                try:
+                    self._perform(handle, buffer, 1, float(deadline), write=False)
+                except _NativeFailure as exc:
+                    if exc.code not in (109, 232, 233):  # Broken/closing/disconnected pipe.
+                        raise
+                else:
+                    raise WindowsPipeError("OBS audio followed its end")
+                _check_progress(self._cancel_requested, float(deadline))
+            except BaseException as exc:
+                if not isinstance(exc, Exception):
+                    raise
+                if isinstance(exc, WindowsPipeError):
+                    raise
+                raise WindowsPipeError("OBS audio pipe close failed") from None
+            finally:
+                self._closing.set()
+                self._close_locked()
+
     def write_all(self, data: bytes, *, deadline: float) -> None:
         if type(data) is not bytes:
             raise TypeError("data must be bytes")

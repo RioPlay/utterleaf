@@ -154,6 +154,43 @@ def test_create_file_uses_local_overlapped_identification_flags(monkeypatch):
     assert template is None
 
 
+@pytest.mark.parametrize("code", [109, 232, 233])
+@pytest.mark.parametrize("immediate", [True, False])
+def test_terminal_disconnect_closes_only_after_native_completion(code, immediate):
+    native = FakeNative()
+    def begin_read(*args):
+        if immediate:
+            raise pipe_mod._NativeFailure(code)
+        return False
+    def completed(*args, **kwargs):
+        raise pipe_mod._NativeFailure(code)
+    native.begin_read = begin_read
+    native.result = completed
+    pipe = pipe_mod.WindowsPipe(native, 7, lambda: False)
+    pipe.wait_for_disconnect(deadline=time.monotonic() + 1)
+    assert native.closed == [51, 7]
+
+
+@pytest.mark.parametrize("data", [b"x", b""])
+def test_terminal_disconnect_rejects_additional_or_zero_byte_writes(data):
+    native = FakeNative(reads=[data])
+    pipe = pipe_mod.WindowsPipe(native, 7, lambda: False)
+    with pytest.raises(pipe_mod.WindowsPipeError):
+        pipe.wait_for_disconnect(deadline=time.monotonic() + 1)
+    assert native.closed == [51, 7]
+
+
+def test_terminal_disconnect_rejects_unrelated_native_failure():
+    native = FakeNative()
+    def failed_read(*args):
+        raise pipe_mod._NativeFailure(5)
+    native.begin_read = failed_read
+    pipe = pipe_mod.WindowsPipe(native, 7, lambda: False)
+    with pytest.raises(pipe_mod.WindowsPipeError):
+        pipe.wait_for_disconnect(deadline=time.monotonic() + 1)
+    assert native.closed == [51, 7]
+
+
 def test_partial_write_and_read_preserve_bytes():
     native = FakeNative(reads=[b"abc"], writes=[2, 1, 3])
     pipe = pipe_mod.WindowsPipe(native, 7, lambda: False)
@@ -272,11 +309,15 @@ def test_close_from_another_thread_cancels_then_waits_for_drain():
     assert native.actions.index(("result", True)) < native.actions.index(("close", 7))
 
 
-def test_pending_deadline_cancels_and_drains_before_close():
+@pytest.mark.parametrize("terminal", [False, True])
+def test_pending_deadline_cancels_and_drains_before_close(terminal):
     native = PendingNative()
     pipe = pipe_mod.WindowsPipe(native, 7, lambda: False)
     with pytest.raises(pipe_mod.WindowsPipeTimeout):
-        pipe.read(4, deadline=time.monotonic() + 0.02)
+        if terminal:
+            pipe.wait_for_disconnect(deadline=time.monotonic() + 0.02)
+        else:
+            pipe.read(4, deadline=time.monotonic() + 0.02)
     assert ("result", True) in native.actions
     assert native.actions.index(("result", True)) < native.actions.index(("close", 7))
 

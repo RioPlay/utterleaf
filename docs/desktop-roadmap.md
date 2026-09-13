@@ -199,9 +199,14 @@ The active [native PCM plan](plans/active/obs-pcm-stream.md) now has an original
 wire encoder, bounded planar copy queue and worker-only libobs stereo conversion
 in the development DLL. All 42 canonical native commands and headless smoke pass;
 synthetic conversion covers all six supported rates and seven OBS speaker layouts.
-The thread fixture forces queue loss and slot reuse. These components are not yet
-called by session capture. Actual callback attachment, stream delivery/teardown,
-visible control, local recognition and live OBS acceptance remain open.
+The thread fixture forces queue loss and slot reuse. Current source
+integration connects the armed session to frontend capture and worker transport,
+with aligned bus starts, explicit loss, bounded normal-stop draining and an End
+receipt before disconnect. All 24 linked-build commands, 51 native verification
+commands (including 84 Python pipe tests) and headless smoke pass. Independent
+final review is clear. Visible control, local
+recognition and real OBS frontend/audio acceptance remain open. The 42-command
+receipt above belongs to the preceding component checkpoint, not this integration.
 
 Current integrated desktop regression: **1,432 passed, 13 skipped in 39.47 seconds**,
 including the reviewed OBS control, native identity, pipe and audio handshake.

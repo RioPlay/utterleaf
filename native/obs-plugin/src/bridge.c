@@ -8,6 +8,7 @@
 #include "plugin_state.h"
 #include "pairing_ui.h"
 #include "vendor_dispatch.h"
+#include "frontend_dispatch.h"
 
 OBS_DECLARE_MODULE()
 
@@ -19,13 +20,15 @@ static bool prepare_registered;
 static SRWLOCK frontend_gate = SRWLOCK_INIT;
 static bool frontend_open;
 static uintptr_t queued_arm;
+static uintptr_t queued_capture;
+static uintptr_t queued_cleanup;
 /* Public active queries can stay false during startup. Once STARTING arrives,
  * only STOPPED proves idle; a synchronous failure emits no public STOPPED and
  * therefore remains fail closed. */
 static bool stream_busy;
 
-/* OBS 32.2.2 queues worker UI tasks through Qt. The only task parameter is a
- * numeric generation, never a borrowed runtime/event/admission pointer. */
+/* Tasks carry numeric generations, never borrowed runtime/admission pointers.
+ * The message-only HWND dispatches them on this frontend thread. */
 static void check_arm_on_frontend(void *parameter)
 {
     uintptr_t generation = (uintptr_t)parameter;
@@ -53,12 +56,65 @@ static bool queue_arm(uintptr_t generation)
     AcquireSRWLockExclusive(&frontend_gate);
     if (frontend_open && generation != 0u && queued_arm == 0u) {
         queued_arm = generation;
-        obs_queue_task(OBS_TASK_UI, check_arm_on_frontend,
-                        (void *)generation, false);
-        queued = true;
+        queued = ul_frontend_dispatch_post(1u, generation);
+        if (!queued)
+            queued_arm = 0u;
     }
     ReleaseSRWLockExclusive(&frontend_gate);
     return queued;
+}
+
+static bool queue_capture(uintptr_t generation)
+{
+    bool queued = false;
+    AcquireSRWLockExclusive(&frontend_gate);
+    if (frontend_open && generation != 0u && queued_capture == 0u) {
+        queued_capture = generation;
+        queued = ul_frontend_dispatch_post(2u, generation);
+        if (!queued)
+            queued_capture = 0u;
+    }
+    ReleaseSRWLockExclusive(&frontend_gate);
+    return queued;
+}
+
+static bool queue_cleanup(uintptr_t generation)
+{
+    bool queued = false;
+    AcquireSRWLockExclusive(&frontend_gate);
+    if (frontend_open && generation != 0u && queued_cleanup == 0u) {
+        queued_cleanup = generation;
+        queued = ul_frontend_dispatch_post(3u, generation);
+        if (!queued)
+            queued_cleanup = 0u;
+    }
+    ReleaseSRWLockExclusive(&frontend_gate);
+    return queued;
+}
+
+static void dispatch_frontend(unsigned command, uintptr_t generation)
+{
+    ul_audio_capture *capture;
+    if (command == 1u) {
+        check_arm_on_frontend((void *)generation);
+        return;
+    }
+    AcquireSRWLockExclusive(&frontend_gate);
+    if (frontend_open && generation != 0u) {
+        if (command == 2u && queued_capture == generation) {
+            queued_capture = 0u;
+            capture = ul_plugin_capture_retain(generation);
+            if (capture != NULL) {
+                bool connected = ul_audio_capture_connect_frontend(capture, generation);
+                ul_plugin_capture_attached(generation, capture, connected);
+                ul_audio_capture_release(capture);
+            }
+        } else if (command == 3u && queued_cleanup == generation) {
+            queued_cleanup = 0u;
+            ul_audio_capture_disconnect_frontend(generation, false);
+        }
+    }
+    ReleaseSRWLockExclusive(&frontend_gate);
 }
 
 static void close_frontend(void)
@@ -66,8 +122,10 @@ static void close_frontend(void)
     AcquireSRWLockExclusive(&frontend_gate);
     frontend_open = false;
     queued_arm = 0u;
+    queued_capture = queued_cleanup = 0u;
     stream_busy = true;
     ReleaseSRWLockExclusive(&frontend_gate);
+    ul_frontend_dispatch_close();
 }
 
 static void pairing_menu(void *private_data)
@@ -89,12 +147,26 @@ static void frontend_event(enum obs_frontend_event event, void *private_data)
                 ul_plugin_stream_event(UL_STREAM_STARTING); break;
             case OBS_FRONTEND_EVENT_STREAMING_STARTED:
                 stream_busy = true;
-                ul_plugin_stream_event(UL_STREAM_STARTED); break;
+                ul_plugin_stream_event(UL_STREAM_STARTED);
+                {
+                    uintptr_t generation;
+                    uint8_t mask;
+                    ul_audio_capture_spec spec;
+                    if (ul_plugin_capture_inspect_request(&generation, &mask)) {
+                        bool inspected = ul_audio_capture_inspect_frontend(mask, &spec);
+                        ul_plugin_capture_inspected(generation, inspected ? &spec : NULL);
+                    }
+                }
+                break;
             case OBS_FRONTEND_EVENT_STREAMING_STOPPING:
                 stream_busy = true;
+                ul_plugin_capture_stop_frontend();
+                ul_audio_capture_disconnect_frontend(0u, true);
                 ul_plugin_stream_event(UL_STREAM_STOPPING); break;
             case OBS_FRONTEND_EVENT_STREAMING_STOPPED:
                 stream_busy = false;
+                ul_plugin_capture_stop_frontend();
+                ul_audio_capture_disconnect_frontend(0u, true);
                 ul_plugin_stream_event(UL_STREAM_STOPPED); break;
             default: break;
             }
@@ -102,6 +174,14 @@ static void frontend_event(enum obs_frontend_event event, void *private_data)
         ReleaseSRWLockExclusive(&frontend_gate);
         return;
     }
+    /* Normal EXIT still owns live OBS audio. Disconnect before closing the
+     * frontend gate and before any native worker join. */
+    AcquireSRWLockExclusive(&frontend_gate);
+    if (frontend_open) {
+        ul_plugin_capture_stop_frontend();
+        ul_audio_capture_disconnect_frontend(0u, true);
+    }
+    ReleaseSRWLockExclusive(&frontend_gate);
     close_frontend();
     ul_vendor_set_enabled(false);
     ul_plugin_stop_accepting();
@@ -122,7 +202,10 @@ bool obs_module_load(void)
         return false;
     if (!ul_plugin_start())
         return false;
-    if (!ul_plugin_set_arm_scheduler(queue_arm)) {
+    if (!ul_frontend_dispatch_open(dispatch_frontend) ||
+        !ul_plugin_set_arm_scheduler(queue_arm) ||
+        !ul_plugin_set_capture_schedulers(queue_capture, queue_cleanup)) {
+        ul_frontend_dispatch_close();
         ul_plugin_close();
         return false;
     }
@@ -164,6 +247,7 @@ void obs_module_unload(void)
 {
     /* Native-only fallback: frontend/websocket teardown order is not assumed. */
     close_frontend();
+    ul_audio_capture_abandon_after_shutdown();
     ul_vendor_set_enabled(false);
     ul_plugin_close();
 }
@@ -175,7 +259,7 @@ const char *obs_module_name(void)
 
 const char *obs_module_description(void)
 {
-    return "Private Utterleaf pairing and authenticated session preparation. No audio capture yet.";
+    return "Utterleaf pairing and explicitly armed OBS stream audio. Development build.";
 }
 
 const char *obs_module_author(void)

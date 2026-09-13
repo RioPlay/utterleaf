@@ -49,6 +49,10 @@ def main() -> None:
         "tests/test_audio_protocol.py", "src/audio_queue.c", "src/audio_queue.h",
         "tests/audio_queue_test.c", "src/audio_convert.c", "src/audio_convert.h",
         "tests/audio_convert_test.c", "tests/audio_convert.def", "tests/test_audio_convert.py",
+        "src/audio_capture.c", "src/audio_capture.h", "tests/audio_capture_test.c",
+        "src/audio_stream.c", "src/audio_stream.h", "tests/audio_stream_test.c",
+        "src/frontend_dispatch.c", "src/frontend_dispatch.h", "tests/frontend_dispatch_test.c",
+        "tests/frontend_dispatch_fault_test.c",
         "tests/admission_io_test.c", "tests/admission_io_fault_test.c",
         "src/crypto.c", "src/crypto.h",
         "src/authorization.c", "src/authorization.h",
@@ -69,7 +73,11 @@ def main() -> None:
     source_hashes = {str(path.relative_to(ROOT)): digest(path) for path in sources}
     client_sources = [REPO / name for name in (
         "utterleaf/obs_authorization.py", "utterleaf/obs_pairing_store.py", "utterleaf/windows_pipe.py",
-        "utterleaf/obs_protocol.py",
+        "utterleaf/obs_protocol.py", "utterleaf/obs_audio_pipe.py",
+        "utterleaf/windows_peer_identity.py", "utterleaf/obs_session.py",
+        "utterleaf/capture_store.py", "utterleaf/local_filesystem.py", "utterleaf/transcript.py",
+        "tests/test_obs_audio_pipe.py", "tests/test_obs_audio_arm.py",
+        "tests/test_windows_pipe.py", "tests/windows_pipe_server.py",
     )]
     client_hashes = {str(path.relative_to(REPO)): digest(path) for path in client_sources}
     dispatch_inputs = {}
@@ -128,9 +136,16 @@ def main() -> None:
     session_protocol = output / "session_protocol_test.exe"
     audio_protocol = output / "audio_protocol_test.exe"
     audio_queue = output / "audio_queue_test.exe"
+    audio_stream = output / "audio_stream_test.exe"
+    frontend_dispatch = output / "frontend_dispatch_test.exe"
+    frontend_fault = output / "frontend_dispatch_fault_test.exe"
     admission_io = output / "admission_io_test.exe"
     admission_io_fault = output / "admission_io_fault_test.exe"
     run("compiler", [compiler, "--version"])
+    run("desktop-audio-pipe-tests", [sys.executable, "-m", "pytest",
+                                     REPO / "tests/test_obs_audio_pipe.py",
+                                     REPO / "tests/test_obs_audio_arm.py",
+                                     REPO / "tests/test_windows_pipe.py"])
     run("audio-protocol-build", [*flags, ROOT / "src/audio_protocol.c",
                                   ROOT / "tests/audio_protocol_test.c", "-o", audio_protocol])
     # ULAP validation imports NumPy; retain the caller's desktop virtualenv.
@@ -139,11 +154,32 @@ def main() -> None:
     run("audio-queue-build", [*flags, "-D_M_X64=100", ROOT / "tests/audio_queue_test.c",
                                "-o", audio_queue])
     run("audio-queue-test", [audio_queue])
+    run("audio-stream-build", [*flags, "-D_M_X64=100",
+                                 "-DUL_AUDIO_STREAM_FIRST_TIMEOUT_MS=60",
+                                 "-DUL_AUDIO_STREAM_IDLE_TIMEOUT_MS=60",
+                                 "-DUL_AUDIO_STREAM_WRITE_TIMEOUT_MS=40",
+                                 "-DUL_AUDIO_STREAM_ACK_TIMEOUT_MS=40",
+                                 "-DUL_AUDIO_STREAM_POLL_MS=1",
+                                 "-DUL_AUDIO_STREAM_DRAIN_TIMEOUT_MS=100",
+                                 ROOT / "src/audio_stream.c", ROOT / "src/audio_protocol.c",
+                                 ROOT / "src/session_protocol.c", ROOT / "tests/audio_stream_test.c",
+                                 "-o", audio_stream])
+    run("audio-stream-test", [audio_stream])
+    run("frontend-dispatch-build", [*flags, "-D_M_X64=100",
+                                     ROOT / "src/frontend_dispatch.c",
+                                     ROOT / "tests/frontend_dispatch_test.c", "-luser32",
+                                     "-o", frontend_dispatch])
+    run("frontend-dispatch-test", [frontend_dispatch])
+    run("frontend-dispatch-fault-build", [*flags, "-D_M_X64=100",
+                                           ROOT / "tests/frontend_dispatch_fault_test.c",
+                                           "-luser32", "-o", frontend_fault])
+    run("frontend-dispatch-fault-test", [frontend_fault])
     run("session-protocol-build", [*flags, ROOT / "src/session_protocol.c",
                                     ROOT / "tests/session_protocol_test.c", "-o", session_protocol])
     run("session-protocol-test", [session_protocol])
     run("admission-io-build", [*flags, "-D_M_X64=100", "-municode", ROOT / "src/admission.c",
                                 ROOT / "src/crypto.c", ROOT / "src/handshake.c",
+                                ROOT / "src/session_protocol.c",
                                 ROOT / "tests/admission_io_test.c", "-ladvapi32", "-lbcrypt",
                                 "-o", admission_io])
     run("admission-io-test", [admission_io])
@@ -208,7 +244,8 @@ def main() -> None:
                                   pairing_dll, authorization_dll])
     artifacts = [fixed, fault, identity, dll, crypto, authorization_state, authorization_dll,
                  pairing_state, pairing_dll, plugin_state, session_protocol, admission_io,
-                 admission_io_fault, audio_protocol, audio_queue]
+                 admission_io_fault, audio_protocol, audio_queue, audio_stream,
+                 frontend_dispatch, frontend_fault]
     if args.build is not None:
         convert_stub = output / "audio_convert_stub_test.exe"
         convert_dll = output / "utterleaf-audio-convert-test.dll"
@@ -224,6 +261,14 @@ def main() -> None:
         run("audio-convert-libobs-test", [sys._base_executable, ROOT / "tests/test_audio_convert.py",
                                            runtime, convert_dll])
         artifacts.extend((convert_stub, convert_dll))
+        capture_test = output / "audio_capture_test.exe"
+        capture_flags = [*flags, "-D_M_X64=100", f"-I{headers / 'libobs'}",
+                         f"-I{headers / 'frontend/api'}", f"-I{build}"]
+        run("audio-capture-build", [*capture_flags, ROOT / "tests/audio_capture_test.c",
+                                     ROOT / "src/audio_queue.c",
+                                     "-o", capture_test])
+        run("audio-capture-test", [capture_test])
+        artifacts.append(capture_test)
         bridge_test = output / "bridge_test.exe"
         run("bridge-wrapper-build", [*flags, "-D_M_X64=100", f"-I{headers / 'libobs'}",
                                      f"-I{headers / 'frontend/api'}", f"-I{headers / 'obs-websocket'}",
@@ -250,7 +295,11 @@ def main() -> None:
     if any(digest(path) != expected for path, expected in dispatch_inputs.items()):
         raise RuntimeError("Reviewed dispatch inputs changed during verification")
     receipt = {
-        "schema": 2, "scope": "pairing/admission/Arm and PCM component fixtures; optional libobs dispatch and synthetic conversion; no OBS application or audio devices",
+        "schema": 2, "scope": "pairing/admission/Arm, desktop pipe and integrated PCM fixtures; optional libobs dispatch and synthetic capture/conversion; no OBS application or audio devices",
+        "desktop_audio_pipe": "passed: focused Windows pipe, Arm and End acknowledgement fixtures",
+        "audio_stream": "passed: synthetic bounded transport fixture",
+        "frontend_dispatch": "passed: real Windows message-only window fixture",
+        "audio_capture": "passed: pinned public OBS SDK synthetic fixture" if args.build is not None else "not run: supply --build and --headers",
         "vendor_dispatch": "passed" if args.build is not None else "not run: supply --build and --headers",
         "audio_conversion": "passed: synthetic libobs and fault fixtures" if args.build is not None else "not run: supply --build and --headers",
         "native_dialog": "passed" if args.ui else "not run: supply --ui on a Windows desktop",

@@ -44,6 +44,23 @@ int main(void)
     assert(!ul_session_arm_reply(zero, 0, true, reply));
     assert(memcmp(reply, zero, sizeof(reply)) == 0);
     assert(!ul_session_arm_reply(session, 0, true, NULL));
-    puts("fixed Arm request/reply contract passed");
+    /* Independent terminal receipt: same session, no mask/status payload. */
+    const uint8_t receipt[28] = {'U', 'L', 'A', 'C', 1, 3, 0, 0,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0, 0, 0, 0};
+    assert(ul_session_end_ack(receipt, sizeof(receipt), session));
+    assert(!ul_session_end_ack(NULL, sizeof(receipt), session));
+    assert(!ul_session_end_ack(receipt, sizeof(receipt), NULL));
+    assert(!ul_session_end_ack(receipt, sizeof(receipt), zero));
+    assert(!ul_session_end_ack(fixture, sizeof(fixture), session));
+    for (index = 0; index < sizeof(receipt); ++index) {
+        assert(!ul_session_end_ack(receipt, index, session));
+        memcpy(modified, receipt, sizeof(receipt));
+        modified[index] ^= 1u;
+        assert(!ul_session_end_ack(modified, sizeof(receipt), session));
+    }
+    memcpy(modified, receipt, sizeof(receipt));
+    modified[28] = 0;
+    assert(!ul_session_end_ack(modified, sizeof(modified), session));
+    puts("fixed Arm and terminal receipt contracts passed");
     return 0;
 }

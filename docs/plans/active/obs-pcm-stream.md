@@ -118,7 +118,7 @@ No OBS application, audio device, consumer configuration, plugin installation or
 release is involved. No desktop source changed, so the full desktop suite was
 not repeated for this native-only increment.
 
-Receipts bind the current source, 42 public resources and generated artifacts:
+Receipts bind component checkpoint `bc6907a`, 42 public resources and generated artifacts:
 
 - Build: `829e9b90f45655e637ddd4e852042084932bd81e9c563089546725cd574da786`.
 - Native verification: `8546de4b2c95570e8f359902120eb2c8b79afd992169865b88a70a408f05b6a7`
@@ -131,3 +131,66 @@ delivery, teardown integration, the visible controller, local recognition and
 all real OBS acceptance remain open. The existing Python session treats the
 first Gap as an incomplete capture and preserves only its recoverable prefix;
 the codec fixture does not establish continuation through gaps.
+
+### Integration verification
+
+Current source connects capture, conversion and transport to the armed
+session runtime. A message-only Windows window schedules generation-checked
+frontend work without calling OBS from workers. The callback uses fixed per-bus
+queues; worker and frontend references must remain valid independently during
+cancel, disconnect and shutdown. Focused adapter review found and corrected a
+last-release/retirement race. The combined build and checks below now pass.
+
+The transport stages aligned first blocks before Start, drains accepted blocks
+on normal stream stop, and treats gaps, source changes and transport failures as
+incomplete. A fixed session-bound End acknowledgment lets the server confirm
+that the client decoded the terminal packet before disconnecting, without a
+blocking pipe flush. This extends the internal control protocol; both native
+and Python fixtures must cover the receipt and its failure paths.
+
+The desktop holds its client handle after that receipt until the server
+disconnects, under the original cancellation/deadline controls. This allows
+the server's last peer validation to finish. Additional bytes after End are
+rejected. Normal stop has a five-second total budget for queued data and the
+receipt, with shorter per-operation deadlines. That budget does not limit
+recording duration; an exhausted tail is incomplete. Hard cancellation and
+EXIT close transport without promising a reasoned End packet; the reserved
+Disarmed/OBS-exit reasons are not emitted by this increment. Callback quiescence
+and cancellation still wait for native operations to relinquish their buffers.
+
+Stream stack storage is fixed at approximately 320 KiB in the current worker;
+capture queues and converters are separately bounded allocations. Synthetic
+tests now cover 1,024-frame packets, six buses with 48 tail blocks each, exact
+terminal sequences, receipt failures and stopped queues observed before the
+frontend publishes its stop event. Native admission and desktop child fixtures
+exercise the receipt/disconnect exchange. These are synthetic/native component
+checks, not actual OBS streaming acceptance.
+
+Acceptance for this increment additionally requires delayed/stale frontend work,
+stop during attach, duplicate stop during draining, cancel without frontend
+progress, native End/receipt delivery and exact-source build/test receipts.
+The component receipts above do not validate these edits. Root ran the same
+build/test/smoke tools with new output paths so the component evidence stays
+intact:
+
+```powershell
+& $py native/obs-plugin/tools/build.py --toolchain $toolchain --obs-bin $obsBin --headers $headers --output "$pcm/integration-build"
+& $py native/obs-plugin/tools/test_native.py --toolchain $toolchain --build "$pcm/integration-build" --headers $headers --output "$pcm/integration-verification"
+& $py native/obs-plugin/tools/smoke.py --build "$pcm/integration-build"
+```
+
+All 24 build commands and 51 native verification commands pass. The latter
+includes 84 focused Windows pipe/Arm/terminal-receipt Python tests. The driver
+binds 67 native source files, 14 desktop inputs, 23 test artifacts and 51 logs;
+root independently compared 331 source/input/artifact/log hashes. The smoke
+check still refuses headless initialization and preserves fixed pairing-store
+metadata. No OBS application, audio device or consumer configuration was used.
+
+- Build receipt: `4b2b262a1cf66e15df26a3fc2623b263a7e791cb8fbd2b34a05f77cf2534a3fa`.
+- Test receipt: `eee66813c7ae6051a4db5817839dbab25c2543c043cfe2f43e2a51f3f770fe69`.
+- Smoke receipt: `7b3501c377df8130b10fe470b18a9ffdd98aae673f438b09187ee2578cef1fc5`.
+
+Independent capture, transport, runtime/bridge, dispatcher and client-receipt
+review is clear after the fixes above. Final verification includes the corrected
+module description. No app entry
+point, live OBS compatibility or new release is established by this work.
