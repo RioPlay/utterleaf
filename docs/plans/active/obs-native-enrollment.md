@@ -13,8 +13,9 @@ entry point exists.
 On `feat/obs-enrollment-flow`, the typed desktop preparation adapter below now
 passes **341** focused tests, including **66** enrollment cases. Independent
 source and final test review are clear after the documented failure-path additions.
-The native owner, Tools flow and vendor registration remain next implementation
-work. The module is still inert and no installed release changes here.
+The native owner, Tools flow and vendor registration are now linked bounded
+components; frontend/device and real OBS acceptance remain unverified. No
+installed release changes here.
 
 ## Goal and area
 
@@ -60,7 +61,7 @@ from independent enrollment and request verification, never callback arrival.
 - Preserve actual pipe-client process checks before the first Hello read and
   the existing single-use and cancellation behavior. Check native completion
   before destroying owned buffers; no detached workers.
-- Keep the module inert until its integration gates pass. Do not launch OBS,
+- Keep capture disabled until its integration gates pass. Do not launch OBS,
   install the plugin, change profiles/routing/recording or acquire microphone
   audio during primitive verification. No new binary publication follows here.
 
@@ -277,11 +278,12 @@ callbacks return; closed vendor callbacks return only `{ "ok": false }` without
 accessing runtime, frontend, stores or logging. Pinning protects our code/data,
 not OBS APIs after their own teardown.
 
-At `OBS_FRONTEND_EVENT_EXIT`, close the gate and detach runtime under the static
-lock. This drains callbacks currently using runtime and rejects callbacks copied
-earlier but invoked later. Outside all state locks, unregister requests, revoke
-and cancel, join the owned worker, destroy authorizer/store, release the exclusive
-owner and clear/free runtime. Do not remove the frontend callback from inside
+At `OBS_FRONTEND_EVENT_EXIT`, first disable vendor dispatch and close the runtime
+gate under the static lock, signaling only stable cancellation objects. Unregister
+requests before any joins. Then detach runtime, take its operation lock before
+accessing the mutable authorizer, revoke/cancel/join the worker and drain retained
+runtime leases before freeing the store, exclusive owner and runtime. This
+rejects callbacks copied earlier but invoked later. Do not remove the frontend callback from inside
 itself. The [frontend contract](https://github.com/obsproject/obs-studio/blob/ba2f32bdf791005443988a4955e963663e16b1ed/docs/sphinx/reference-frontend-api.rst)
 makes EXIT the final opportunity to call frontend APIs. Module unload is an
 idempotent native-resource fallback; if EXIT was missed, it must not call
@@ -297,13 +299,61 @@ may remain. Creating/replacing/forgetting pairing suspends dispatch and uses the
 same owner. Forget always revokes the live generation, including deletion failure;
 report nondurable deletion failure distinctly.
 
-These are selected implementation constraints, not verified native behavior.
-Acceptance must simulate a copied callback after close, overlapping close and
+These constraints are implemented with the bounded fixture evidence below;
+real OBS interaction remains unverified. Acceptance must simulate a copied callback after close, overlapping close and
 dispatch, failed pin, second load, missing EXIT, in-flight worker cancellation,
 and a second actual Windows process competing for ownership. A joinable worker
 must also expire a prepared admission without depending on another incoming
 request. Finalize that bounded handshake/READY lifetime before exposing Prepare;
 the full Arm/PCM state machine remains required.
+
+### Linked native integration verification
+
+The native increment links `plugin_state`, `pairing_ui`, `vendor_dispatch`, stores,
+authorization and admission into the original module. It adds a single native
+Tools entry and a common-controls manifest. Both vendor endpoints remain disabled
+until both registrations succeed. Failed rollback unregister retains its flag
+for EXIT retry, while the disabled gate refuses copied callbacks. Unload only
+disables native dispatch and closes state; it makes no frontend/websocket calls.
+
+Replacement commits the store before retiring the old generation. A precommit
+failure preserves its exact authorizer, challenge and worker; postcommit store
+uncertainty or failed authorizer activation leaves pairing unavailable. The UI
+distinguishes these from a successful pairing whose export failed. Forget revokes
+before attempting deletion and reports nondurable failure. Informational dialogs
+use Close, while file selection/confirmations can cancel before mutation.
+UI rendering, keyboard/accessibility interaction and real frontend load still
+require acceptance.
+
+One joinable admission worker bounds authentication to 15 seconds and READY
+retention to at most another 15 seconds, then cancels without further requests.
+A completed worker handle and one canceled admission can remain until the next
+state call or close safely reaps them. `admission_pending=false` describes the
+worker, not zero retained handles or a closed pipe handle. No PCM or Arm exists.
+
+The September 13 driver at `.grok/obs-enrollment-flow/native-final/test-receipt.json`
+passes all **28 compilation/test commands**, including real Windows owner-process
+competition, controlled pin/reload/missing-EXIT/worker cases, close overlapping
+an in-flight Issue call, and the bridge wrapper's registration/teardown failure
+paths. Six parsed-request tests use actual libobs data APIs with a substituted
+runtime boundary and no OBS startup. They cannot verify duplicate/null JSON
+fields that libobs parsing discards. The receipt binds native/client sources,
+compiler, logs/artifacts, pinned headers and the associated build inputs.
+Three existing test-only heap-shim link warnings remain; production compiles
+with warnings as errors.
+
+The linked build uses 41 verified public resources. Its DLL SHA-256 is
+`b029401c1f5da71bf3c27c7dce084aa9c183d8ce8366f2ad1907c1447fe871cf`.
+`build-a/smoke-receipt.json` verifies headless refusal before store startup,
+returned libobs shutdown and unchanged metadata for the three fixed consumer
+store nodes; no contents are read, consumer paths created or OBS application/audio
+started. The exact build/test commands are in the native README. These are local
+fixture results, not successful frontend initialization or live OBS acceptance.
+Final independent source/test/documentation and receipt review is clear. The
+reviewer rehashed build inputs/outputs, both OBS runtimes, invoked tools, smoke
+inputs, native/client sources, dispatch inputs and all test artifacts/logs against
+the current files. Exact-source CI for this linked increment remains pending;
+the draft PR does not establish frontend/UI or live OBS acceptance.
 
 ### Private pairing stores: contract
 
@@ -469,8 +519,9 @@ state/fault groups; three known warnings are isolated to the test heap shim.
 Exact receipts are `.grok/obs-pairing-store/verification/test-receipt.json` and
 `.grok/obs-pairing-store/ci-34755748029/receipt.json`. These results do not
 verify different-user DPAPI behavior, power-loss durability, consumer pairing
-UI, real OBS dispatch, durable live-authorizer revocation or audio. No components
-are linked into the inert module and no binary is published by this increment.
+UI, real OBS dispatch, durable live-authorizer revocation or audio. These
+components are linked into the development module, but no binary is published
+by this increment and no live OBS/audio acceptance follows.
 
 ### Full enrollment checks
 

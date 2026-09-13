@@ -1,6 +1,7 @@
 # Original OBS plugin build and native acceptance
 
-Status: native prerequisite build/load verified; full bridge not implemented.
+Status: historical inert build/load verified; linked pairing/runtime build and
+headless-refusal checks pass. Real frontend and full audio bridge remain open.
 September 13, 2026. Follows the
 [Windows audio pipe](windows-obs-audio-pipe.md) and [OBS design](obs-audio-design.md).
 
@@ -56,7 +57,7 @@ toolchain requirement as proof that an independently built C-only DLL is impossi
 
 ## Verified native prerequisite (September 13, 2026)
 
-The original inert module now builds with the existing LLVM-MinGW installation
+The earlier original inert module built with the existing LLVM-MinGW installation
 at `C:/Users/unknown/.local/llvm-mingw-20260616-ucrt-x86_64`, installed OBS
 `C:/Program Files/obs-studio/bin/64bit`, and the locked cache at
 `C:/Users/unknown/Projects/Mindict/.grok/obs-native-build/headers`. Two clean
@@ -88,6 +89,14 @@ remains open; no binary was published or installed.
 The pinned obs-websocket API header is C-compatible and routes vendor calls
 through libobs proc handlers; it does not require linking C++ or Qt. Consuming its
 static-inline public interface still requires exact provenance/license review.
+
+The current [enrollment increment](obs-native-enrollment.md#linked-native-integration-verification)
+supersedes that module: it links native pairing, frontend Tools, strict vendor
+dispatch and bounded runtime/admission with 41 pinned public resources. Its
+headless smoke deliberately expects initialization refusal, before opening
+pairing state. The earlier hash and successful inert initialization above do not
+describe this linked DLL. Current build/smoke/native receipts are recorded in
+the enrollment plan and native README; real frontend/UI and PCM acceptance remain open.
 
 Primary evidence:
 

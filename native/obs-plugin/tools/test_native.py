@@ -1,4 +1,4 @@
-"""Build and exercise Windows pairing/admission without OBS or audio."""
+"""Exercise Windows pairing/runtime and optional libobs dispatch without audio."""
 # SPDX-License-Identifier: GPL-2.0-or-later
 from __future__ import annotations
 
@@ -22,7 +22,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--toolchain", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--build", type=Path, help="Reviewed development build for libobs dispatch checks")
+    parser.add_argument("--headers", type=Path, help="Pinned public-header cache used by --build")
     args = parser.parse_args()
+    if (args.build is None) != (args.headers is None):
+        parser.error("--build and --headers must be supplied together")
     if sys.platform != "win32":
         raise SystemExit("These native admission checks require Windows")
     output = args.output.resolve()
@@ -42,6 +46,10 @@ def main() -> None:
         "src/crypto.c", "src/crypto.h",
         "src/authorization.c", "src/authorization.h",
         "src/pairing_store.c", "src/pairing_store.h",
+        "src/plugin_state.c", "src/plugin_state.h", "tests/plugin_state_test.c",
+        "src/vendor_dispatch.c", "src/vendor_dispatch.h", "tests/vendor_dispatch_shim.c",
+        "src/bridge.c", "tests/bridge_test.c",
+        "tests/vendor_dispatch.def", "tests/test_vendor_dispatch.py", "dependencies.json",
         "tests/handshake_test.c", "tests/handshake_failure_test.c",
         "tests/admission_identity_test.c",
         "tests/crypto_test.c", "tests/authorization_test.c",
@@ -54,6 +62,34 @@ def main() -> None:
         "utterleaf/obs_authorization.py", "utterleaf/obs_pairing_store.py", "utterleaf/windows_pipe.py",
     )]
     client_hashes = {str(path.relative_to(REPO)): digest(path) for path in client_sources}
+    dispatch_inputs = {}
+    if args.build is not None:
+        build, headers = args.build.resolve(), args.headers.resolve()
+        build_receipt_path = build / "build-receipt.json"
+        build_receipt = json.loads(build_receipt_path.read_text(encoding="utf-8"))
+        dispatch_inputs[build_receipt_path] = digest(build_receipt_path)
+        # Bind dispatch to the same current source and verified public headers
+        # as the linked DLL; no independent unreviewed SDK path is accepted.
+        for name, expected in build_receipt["source"].items():
+            path = (ROOT / name).resolve()
+            if not path.is_relative_to(ROOT) or digest(path) != expected:
+                raise ValueError("The reviewed development build source changed")
+            dispatch_inputs[path] = expected
+        lock = json.loads((ROOT / "dependencies.json").read_text(encoding="utf-8"))
+        if build_receipt["inputs"] != lock["resources"]:
+            raise ValueError("Build headers differ from the current dependency lock")
+        for name, resource in lock["resources"].items():
+            path = (headers / name).resolve()
+            if (not path.is_relative_to(headers) or path.stat().st_size != resource["bytes"]
+                    or digest(path) != resource["sha256"]):
+                raise ValueError("A pinned dispatch header changed")
+            dispatch_inputs[path] = resource["sha256"]
+        runtime = Path(build_receipt["obs_runtime"]["path"]).resolve()
+        dispatch_inputs[runtime] = build_receipt["obs_runtime"]["sha256"]
+        for name in ("obsconfig.h", "libobs.dll.a"):
+            dispatch_inputs[build / name] = build_receipt["generated"][name]
+        if any(digest(path) != expected for path, expected in dispatch_inputs.items()):
+            raise ValueError("A reviewed dispatch input changed")
 
     def run(name: str, arguments: list[str | Path], timeout: int = 60) -> None:
         command = [str(arg) for arg in arguments]
@@ -78,6 +114,7 @@ def main() -> None:
     authorization_state = output / "authorization_test.exe"
     pairing_dll = output / "utterleaf-pairing-store-test.dll"
     pairing_state = output / "pairing_store_test.exe"
+    plugin_state = output / "plugin_state_test.exe"
     run("compiler", [compiler, "--version"])
     run("handshake-build", [*flags, ROOT / "src/crypto.c", ROOT / "src/handshake.c",
                            ROOT / "tests/handshake_test.c", "-lbcrypt", "-o", fixed])
@@ -88,6 +125,9 @@ def main() -> None:
     run("authorization-state-build", [*flags, ROOT / "tests/authorization_test.c",
                                        "-o", authorization_state])
     run("authorization-state-test", [authorization_state])
+    run("plugin-state-build", [*flags, "-D_M_X64=100", ROOT / "tests/plugin_state_test.c",
+                                "-o", plugin_state])
+    run("plugin-state-test", [plugin_state])
     functions = (
         "BCryptOpenAlgorithmProvider", "BCryptGetProperty", "BCryptCreateHash",
         "BCryptHashData", "BCryptFinishHash", "BCryptDestroyHash",
@@ -129,17 +169,37 @@ def main() -> None:
                            ROOT / "tests/pairing_store.def", *pairing_libraries, "-o", pairing_dll])
     run("pairing-interop-test", [sys._base_executable, ROOT / "tests/test_pairing_interop.py",
                                   pairing_dll, authorization_dll])
+    artifacts = [fixed, fault, identity, dll, crypto, authorization_state, authorization_dll,
+                 pairing_state, pairing_dll, plugin_state]
+    if args.build is not None:
+        bridge_test = output / "bridge_test.exe"
+        run("bridge-wrapper-build", [*flags, "-D_M_X64=100", f"-I{headers / 'libobs'}",
+                                     f"-I{headers / 'frontend/api'}", f"-I{headers / 'obs-websocket'}",
+                                     f"-I{build}", ROOT / "tests/bridge_test.c", "-o", bridge_test])
+        run("bridge-wrapper-test", [bridge_test])
+        artifacts.append(bridge_test)
+        vendor_dll = output / "utterleaf-vendor-test.dll"
+        run("vendor-dispatch-build", [*flags, "-D_M_X64=100", "-shared",
+                                      f"-I{headers / 'libobs'}", f"-I{build}",
+                                      ROOT / "src/vendor_dispatch.c", ROOT / "tests/vendor_dispatch_shim.c",
+                                      ROOT / "tests/vendor_dispatch.def", build / "libobs.dll.a",
+                                      "-o", vendor_dll])
+        run("vendor-dispatch-test", [sys._base_executable, ROOT / "tests/test_vendor_dispatch.py",
+                                     runtime, vendor_dll])
+        artifacts.append(vendor_dll)
     if source_hashes != {str(path.relative_to(ROOT)): digest(path) for path in sources}:
         raise RuntimeError("Source changed during native verification")
     if client_hashes != {str(path.relative_to(REPO)): digest(path) for path in client_sources}:
         raise RuntimeError("Client source changed during native verification")
+    if any(digest(path) != expected for path, expected in dispatch_inputs.items()):
+        raise RuntimeError("Reviewed dispatch inputs changed during verification")
     receipt = {
-        "schema": 1, "scope": "private pairing/admission only; no OBS dispatch, arming or audio",
+        "schema": 2, "scope": "pairing/admission/runtime; optional parsed libobs dispatch; no OBS application, arming or audio",
+        "vendor_dispatch": "passed" if args.build is not None else "not run: supply --build and --headers",
+        "dispatch_inputs": {str(path): expected for path, expected in dispatch_inputs.items()},
         "sources": source_hashes, "client_sources": client_hashes,
         "compiler_sha256": digest(compiler),
-        "artifacts": {path.name: digest(path) for path in
-                      (fixed, fault, identity, dll, crypto, authorization_state, authorization_dll,
-                       pairing_state, pairing_dll)},
+        "artifacts": {path.name: digest(path) for path in artifacts},
         "logs": {path.name: digest(path) for path in logs},
         "commands": commands,
     }
