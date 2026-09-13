@@ -99,16 +99,16 @@ or incorrectly sized captures rather than treating them as visual evidence.
 
 ## Verified checkpoint
 
-Final local verification passes **647** focused backend tests, **37** real Tk
+Final local verification passes **647** focused backend tests, **38** real Tk
 tests, all **51** canonical native verification commands, the **24**-command
 linked build and headless refusal smoke. Independent implementation review is
 clear, including the final cleanup-failure path. The receipt audit matches all
 **443** recorded source, SDK, tool, runtime, generated-file, artifact and log
 hash comparisons. It is development provenance, not a fully pinned build claim.
 
-The UI was rendered and inspected in eight synthetic states: disabled, ready,
+The UI was rendered and inspected in nine synthetic states: disabled, ready,
 armed, active, control-disconnected and incomplete at 840×720, plus disabled and
-active at 560×520. Normal active/degraded/incomplete previews retain at least
+active/control-disconnected at 560×520. Normal active/degraded/incomplete previews retain at least
 140 pixels of height; compact active retains at least 100 pixels. Tests cover
 the actual Connect-to-terminal transition as well as direct state fixtures.
 These are native Tk view checks with injected actions, not actual OBS use.
@@ -130,9 +130,17 @@ $output = "C:/Users/unknown/Projects/Mindict/.grok/obs-session-controller"
 
 Local evidence is under `.grok/obs-session-controller/`: the build and smoke
 receipts in `build/`, canonical `verification/test-receipt.json`,
-`hash-audit.json`, `ui-verification.json`, and eight `ui/*.png` captures. The
+`hash-audit.json`, `ui-verification.json`, and nine `ui/*.png` captures. The
 draft PR runs the broader desktop CI. No consumer OBS profile, pairing state,
 microphone or model was accessed during this verification.
+
+Initial CI at `ce25987` passed Windows and both Linux/macOS package builds.
+Linux tests exposed a reader fixture's unscheduled retry loop; the corrected
+fixture uses events to hold one read, prove the other returns unavailable, then
+verify both absolute offsets after release. macOS tests exposed assumptions
+about requested window size despite display clamping. Assertions now use actual
+geometry and compact layout preserves transcript room with larger font metrics.
+No platform skips or lowered readability requirements were added.
 
 ## Remaining product gates and stop
 

@@ -117,6 +117,7 @@ CAPTURES = (
     ("incomplete", "incomplete", "840x720+80+60"),
     ("compact-disabled", "disabled", "560x520+80+60"),
     ("compact-active", "active", "560x520+80+60"),
+    ("compact-degraded", "degraded", "560x520+80+60"),
 )
 
 

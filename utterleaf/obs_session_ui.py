@@ -163,6 +163,7 @@ class ObsSessionWindow:
 
     def _build_status(self, page) -> None:
         card = self._card(page, 3)
+        self.status_card = card
         card.columnconfigure(0, weight=0)
         accent = tk.Frame(card, bg=theme.PRIMARY, width=4, highlightthickness=0)
         accent.grid(row=0, column=0, rowspan=4, sticky="nsw", padx=(0, 12))
@@ -345,6 +346,9 @@ class ObsSessionWindow:
             return
         self._compact = compact
         self.page.configure(padding=(14, 9, 14, 6) if compact else (24, 20, 24, 14))
+        content_padding = 12 if compact else 15
+        for card in (self.status_card, self.capture_card, self.transcript_card):
+            card.configure(padding=content_padding)
         if compact:
             self.eyebrow.grid_remove()
             self.hero.grid_remove()
@@ -362,6 +366,19 @@ class ObsSessionWindow:
         self._update_export_row()
         self._update_compact_copy()
         self._update_compact_sections()
+        if self.degraded_text.get():
+            self.degraded_text.set(
+                "Controls disconnected" if compact else
+                "Controls disconnected · audio remains local"
+            )
+            if compact:
+                self.degraded_label.grid(
+                    row=0, column=2, sticky="e", padx=(10, 0), pady=0
+                )
+            else:
+                self.degraded_label.grid(
+                    row=2, column=1, sticky="w", padx=0, pady=(9, 0)
+                )
 
     def _primary_shortcut(self, _event):
         if str(self.arm_button.cget("state")) != "disabled":
@@ -481,9 +498,19 @@ class ObsSessionWindow:
             session, "message", "The session status could not be read safely."
         )
         degraded = bool(getattr(session, "control_degraded", False))
-        self.degraded_text.set("Controls disconnected · audio remains local" if degraded else "")
+        self.degraded_text.set(
+            ("Controls disconnected" if self._compact else
+             "Controls disconnected · audio remains local") if degraded else ""
+        )
         if degraded:
-            self.degraded_label.grid(row=2, column=1, sticky="w", pady=(9, 0))
+            if self._compact:
+                self.degraded_label.grid(
+                    row=0, column=2, sticky="e", padx=(10, 0), pady=0
+                )
+            else:
+                self.degraded_label.grid(
+                    row=2, column=1, sticky="w", padx=0, pady=(9, 0)
+                )
         else:
             self.degraded_label.grid_remove()
         if self.action_error.get():
@@ -605,8 +632,8 @@ class ObsSessionWindow:
         )
 
     def _update_compact_copy(self) -> None:
-        session_limit = 72 if self._compact else 240
-        recognition_limit = 72 if self._compact else 180
+        session_limit = 52 if self._compact else 240
+        recognition_limit = 52 if self._compact else 180
         self.message_text.set(self._bounded_text(
             getattr(self, "_session_message", "The session status could not be read safely."),
             session_limit,

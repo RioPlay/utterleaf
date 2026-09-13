@@ -134,6 +134,23 @@ def test_append_never_waits_behind_live_reader_file_io(monkeypatch):
 
 def test_live_readers_use_independent_absolute_offsets(monkeypatch):
     monkeypatch.setattr(store, "WINDOW_SECONDS", 1)
+    read_started = threading.Event()
+    release_read = threading.Event()
+
+    class BlockingFirstRead(io.BytesIO):
+        def __init__(self):
+            super().__init__()
+            self.first_read = True
+
+        def read(self, size=-1):
+            if self.first_read:
+                self.first_read = False
+                read_started.set()
+                if not release_read.wait(2):
+                    raise RuntimeError("Timed out waiting for deterministic reader handoff")
+            return super().read(size)
+
+    monkeypatch.setattr(store.tempfile, "TemporaryFile", lambda **kw: BlockingFirstRead())
     capture = store.CaptureStore(8000)
     try:
         source = np.concatenate([
@@ -142,35 +159,38 @@ def test_live_readers_use_independent_absolute_offsets(monkeypatch):
         ])
         _append(capture, source)
         results = {}
+        errors = []
 
-        def read(name, offset):
-            for _ in range(100):
-                result = capture.read_window(offset)
-                if result.state is store.CaptureReadState.READY:
-                    results[name] = result
-                    return
-            pytest.fail("Reader never acquired the nonblocking file lock")
+        def read_second():
+            try:
+                results["second"] = capture.read_window(8000)
+            except Exception as exc:
+                errors.append(exc)
 
-        readers = [
-            threading.Thread(target=read, args=("second", 8000)),
-            threading.Thread(target=read, args=("first", 0)),
-        ]
-        for reader in readers:
-            reader.start()
-        for reader in readers:
-            reader.join(2)
-            assert not reader.is_alive()
+        reader = threading.Thread(target=read_second)
+        reader.start()
+        assert read_started.wait(2)
 
+        unavailable = capture.read_window(0)
+        assert unavailable.state is store.CaptureReadState.UNAVAILABLE
+
+        release_read.set()
+        reader.join(2)
+        assert not reader.is_alive()
+        assert errors == []
+        results["first"] = capture.read_window(0)
         assert set(results) == {"first", "second"}
+        assert all(result.state is store.CaptureReadState.READY for result in results.values())
         assert results["first"].source_offset == 0
         assert results["second"].source_offset == 8000
         np.testing.assert_allclose(results["first"].audio[200:-200], 0.1, atol=1e-5)
         np.testing.assert_allclose(results["second"].audio[200:-200], 0.2, atol=1e-5)
 
-        repeated = capture.read_window(0)
+        repeated = capture.read_window(8000)
         assert repeated.state is store.CaptureReadState.READY
-        np.testing.assert_array_equal(repeated.audio, results["first"].audio)
+        np.testing.assert_array_equal(repeated.audio, results["second"].audio)
     finally:
+        release_read.set()
         capture.close()
 
 

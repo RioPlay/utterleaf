@@ -165,7 +165,9 @@ def test_connect_forwards_exact_intent_then_clears_and_collapses_inputs(opened):
     assert window.password_var.get() == ""
     window.root.update_idletasks()
     assert not window.connection_card.winfo_ismapped()
-    assert window.connection_summary.winfo_ismapped()
+    assert bool(window.connection_summary.winfo_ismapped()) is (
+        window.root.winfo_height() >= 620
+    )
     assert "do-not-retain" not in repr(window)
 
 
@@ -200,10 +202,13 @@ def test_connection_latch_does_not_keep_summary_during_capture_or_result(opened,
         )
         window.refresh()
         tk_root.update()
-        assert bool(window.connection_summary.winfo_ismapped()) is (
-            value.state in {"ready", "armed"}
+        expected_summary = (
+            window.root.winfo_height() >= 620 and value.state in {"ready", "armed"}
         )
-    assert window.preview.winfo_height() >= 140
+        assert bool(window.connection_summary.winfo_ismapped()) is expected_summary
+        if value.state in {"active", "incomplete"}:
+            minimum = 140 if window.root.winfo_height() >= 720 else 100
+            assert window.preview.winfo_height() >= minimum
 
 
 @pytest.mark.parametrize("controller_state,recognition_state,tracks,connect,arm,stop,cancel,pair,export", [
@@ -380,7 +385,21 @@ def test_normal_capture_states_keep_transcript_readable(opened, tk_root,
     )
     window.root.geometry("840x720+40+40")
     tk_root.update()
-    assert window.preview.winfo_height() >= 140
+    minimum = 140 if (
+        window.root.winfo_width() >= 840 and window.root.winfo_height() >= 720
+    ) else 100
+    assert window.preview.winfo_height() >= minimum
+
+
+def test_degraded_status_keeps_compact_transcript_readable(opened, tk_root):
+    window, _controller, _coordinator, _actions = opened(
+        session("active", degraded=True, primary=0, buses=(0, 1), seconds=25),
+        recognition(RecognitionState.RUNNING, preview="Degraded transcript", tracks=2),
+    )
+    window.root.geometry("560x520+40+40")
+    tk_root.update()
+    assert window.degraded_text.get() == "Controls disconnected"
+    assert window.preview.winfo_height() >= 100
 
 
 def test_disabled_connection_form_fits_supported_compact_size(opened, tk_root):
