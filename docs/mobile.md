@@ -97,6 +97,14 @@ protected. These images do not establish phone or accessibility acceptance.
 
 ### Android validation — September 9, 2026
 
+Android **alpha12** (`aec275b`) passed [74 API 35 emulator tests with zero
+failures/skips, plus JVM tests, lint and release contracts](https://github.com/RioPlay/utterleaf/actions/runs/34498263015),
+including regression coverage for quick actions and stale-session guards. Signed
+publication checks in
+[34499446037](https://github.com/RioPlay/utterleaf/actions/runs/34499446037)
+verified certificate continuity and emulator upgrade/reinstall behavior. Current
+limits remain in [android-quick-actions.md](android-quick-actions.md).
+
 Alpha05 **f74b862 passed 4 JVM tests, 32 API 35 emulator tests and
 3 Python release-contract tests** in [CI run 34432378047](https://github.com/RioPlay/utterleaf/actions/runs/34432378047).
 The emulator report has **zero failures and zero skips**. Both tiny.en and base.en
