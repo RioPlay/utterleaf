@@ -81,6 +81,14 @@ One-hand reach and visual polish can proceed alongside foundation work.
   See the [private draft guide](android-private-draft.md). Physical, assistive-tech,
   landscape and release gates remain open.
 
+- **Editing strip and touch preview planned:** Select all, Cut, Copy and Paste
+  already exist in the full Edit panel; a compact banner and explicit local
+  touch-density preview are specified in
+  [the active plan](plans/active/android-editing-strip-and-touch-preview.md).
+  The original keyboard does not yet implement Incognito or a touch preview.
+  Any preview must be Off by default, exclude sensitive fields, avoid text/app
+  identity and persistent touch history, and clear at lifecycle boundaries.
+
 - **Direction decided; implementation in progress:** build Utterleaf's own Android
   foundation. The earlier LatinIME extraction experiment is superseded; no FUTO or
   LatinIME keyboard code is to be copied. R0 product contract and current evidence
