@@ -21,6 +21,9 @@ features are kept in the roadmap.
 | Find out what's coming next | [Roadmap hub](roadmap.md) · [Desktop](desktop-roadmap.md) · [Mobile](mobile-roadmap.md) |
 | See proposed ideas and product decisions | [Ideas](ideas.md) |
 | Try mobile voice input | [Android preview and iOS plans](mobile.md) |
+| Preview local emoji on Android | [Android emoji](android-emoji.md) |
+| Edit privately before inserting on Android | [Private draft preview](android-private-draft.md) |
+| Compose accented letters on Android | [Accent composition preview](android-latin-compose.md) |
 
 ## For contributors
 
@@ -33,6 +36,9 @@ features are kept in the roadmap.
 
 [Model and optional component policy](model-resource-policy.md) records review,
 acquisition, local/remote data and documentation gates for desktop extensions.
+
+[Android keyboard product specification](android-keyboard-product-spec.md) defines
+the independent foundation, community needs and design/UX acceptance gates.
 
 [Product design & usability audit](product-quality.md) tracks findings, fixes,
 and unverified release-quality scenarios.

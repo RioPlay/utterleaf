@@ -80,6 +80,19 @@ a closed request is not evidence of current broken behavior.
 | Hacker's Keyboard [#965](https://github.com/klausw/hackerskeyboard/issues/965), August 6, 2025, open | Voice becomes difficult to reach when address-bar punctuation changes | Keep an enabled Voice action reachable independently of comma/slash placement. Test URL fields and symbol layers. |
 | Hacker's Keyboard [#988](https://github.com/klausw/hackerskeyboard/issues/988), May 22, 2026, open | Convenient secondary special characters | Provide readable hints, consistent alternates and a visible tap-based picker; test hold timing and cancellation. |
 
+Public posts reviewed September 11, 2026. These are self-selected comments, not
+usage statistics or Utterleaf defects.
+
+| Report and scope | Need to address | Utterleaf acceptance case |
+| --- | --- | --- |
+| [X: Gboard prediction in a terminal](https://x.com/JebsSteve0x1/status/2092575642088878362), August 26, 2026 | Soft keyboards rewrite `ls` and similar tokens; users want password-like literal characters | Terminal mode stays literal. No suggestion/correction path in `TYPE_NULL` or when terminal controls are the input contract |
+| [X: Hacker's Keyboard + Termux extra keys](https://x.com/TommyYesItsMe/status/2085951305646805433), August 8, 2026 | Ctrl, Esc, Tab and a custom extra-key row for long sessions | Keep terminal keys in an explicit layer, not by shrinking letters. Extra keys must remain reachable in portrait |
+| [r/termux Unexpected Keyboard layouts](https://www.reddit.com/r/termux/comments/1ou9cg8/can_you_guess_which_keyboard_i_am_using/), November 11, 2025 | Gesture-dense layouts work after learning; people still want tap access | No essential action is gesture-only. Hold/slide accents keep Tools → Accents |
+| [r/commandline mobile terminal toolbar](https://www.reddit.com/r/commandline/comments/1s11d2p/i_made_a_terminal_for_your_phone_and_the_hardest/), March 22, 2026 | Non-negotiables: Ctrl+C, Tab, arrows, Esc; spacebar-as-arrows as an optional extra | Named terminal contracts plus visible **Key unavailable** when the host ignores them |
+| [X: FUTO dictation with Termux](https://x.com/mrLumatic/status/2094161541150933062), August 30, 2026 | Voice into a real terminal field, offline | Voice stays an explicit toolbar action, disabled in unknown-sensitive/`TYPE_NULL` fields |
+| [Carmack, act-on-press](https://x.com/ID_AA_Carmack/status/1787850053912064005), May 7, 2024 | Keyboards that wait for finger-up feel laggy; measured fewer typos on press | Ordinary letter taps already click on release through the button; do not add press-commit where hold/slide cancellation is required |
+| [r/termux 1337-board](https://www.reddit.com/r/termux/comments/1togoi7/dev_1337board_a_programmable_android_ime_for/), May 26, 2026 | Programmable layouts and offline privacy for Termux/vim/ssh | Custom layouts and floating remain later. Privacy/offline is already a ship gate, not a theme |
+
 Touch research adds a separate lesson: geometry needs measurement. Park and Han's
 2010 one-handed experiment found target size and location both affected accuracy;
 its controlled task and older devices do not establish an ideal modern keyboard.

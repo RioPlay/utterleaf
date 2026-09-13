@@ -13,6 +13,8 @@ class KeyboardTestActivity : Activity() {
         private set
     lateinit var password: EditText
         private set
+    lateinit var raw: EditText
+        private set
     var lastEditorAction = EditorInfo.IME_ACTION_NONE
         private set
 
@@ -32,10 +34,15 @@ class KeyboardTestActivity : Activity() {
             imeOptions = EditorInfo.IME_ACTION_DONE
             hint = "Synthetic password test"
         }
+        raw = EditText(this).apply {
+            inputType = InputType.TYPE_NULL
+            hint = "Synthetic terminal field"
+        }
         setContentView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(editor)
             addView(password)
+            addView(raw)
             Ui.applySystemInsets(this)
         })
     }

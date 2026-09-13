@@ -6,7 +6,14 @@
 accessibility and privacy evidence behind this plan. Proposed thresholds are project
 targets, not measured performance or universal human-factors limits.
 
-Reviewed September 9, 2026. The objective is an independently implemented Utterleaf
+The September 12 [product specification](android-keyboard-product-spec.md) makes
+independent implementation and design/UX acceptance explicit, refreshes the FUTO
+feature benchmark and adds current community evidence. Its
+[rebuild plan](plans/active/android-keyboard-rebuild.md) schedules work across the
+phases below; ergonomics and visual quality are continuous, not deferred to P5.
+
+Original capability review: September 9, 2026; product direction refreshed
+September 12 above. The objective is an independently implemented Utterleaf
 keyboard with a polished everyday surface and an optional terminal/power layout.
 The historical source observations below document design context; they do not
 define Utterleaf's identity or establish unverified capability, compatibility,
@@ -69,7 +76,7 @@ optional secondary hints, common Latin accent/symbol selection by long press or
 Tools → Accents → letter, and cancel, case and session guards. [CI](https://github.com/RioPlay/utterleaf/actions/runs/34440735943) passed 8 JVM,
 38 emulator and 3 release-contract tests. Signed installation/upgrade checks
 passed in [publishing run 34441330864](https://github.com/RioPlay/utterleaf/actions/runs/34441330864).
-Current follow-up source work adds direct Tools forward Delete and is extending
+Current follow-up source work adds direct Tools forward Delete and extends
 Spacebar Shift+Space selection and held-delete gestures; their release and
 real-editor validation remain open.
 
@@ -112,14 +119,14 @@ of these labels asserts every physical/editor/accessibility acceptance gate pass
 
 | Phase / priority | Capability and status | Acceptance gate |
 | --- | --- | --- |
-| P0 / security, continuous | **Implemented foundation; next hardening:** editor sessions, capture/import boundaries | Zero late commits across 100 synthetic field/hide/restart/lock transitions. Cancel releases capture and clears speech/composition/modifiers; password and unknown-sensitive contexts never learn, predict, read back or dictate. Denied permission never blocks ordinary typing. No input in logs, telemetry or preference files. |
+| P0 / security, continuous | **Implemented foundation; current-source hardening:** editor sessions, native work generations, capture/import boundaries | Zero late commits across field/hide/restart/lock/subtype transitions. Native decode aborts when `reset()` starts a newer generation or `cancel()` marks the current one; Java `TakeGate` / `uiGeneration` still reject stale speech and editor callbacks. Password and unknown-sensitive contexts never learn, predict, read back or dictate. Denied permission never blocks ordinary typing. No input in logs, telemetry or preference files. No LatinIME code is in the product tree. |
 | P1 / broader acceptance | **Implemented in alpha05:** everyday geometry, symbols, toolbar and optional number row | Staggered letters, wide spacebar, direct comma/period and obvious Voice/Tools. Number-row preference persists and does not collapse key widths. Keep letter/symbol pages' utility positions stable. Verify all layers in both orientations, smallest supported width, largest supported labels and both themes. No clipped essential control or forced scroll during ordinary typing. Preserve typing/voice/switch access when expanded. Validate real IME screenshots separately from settings previews, including status/navigation bars and cutouts. |
-| P1 / next refinement | **Released in alpha06; extended in unreleased PR14 source:** secondary hints and alternate characters | Visible optional hints; common Latin accents/symbols selectable by long press or Tools → Accents → letter, plus period-key hold/slide/release punctuation with a normal period tap. Verify cancellation, case and session guards, hold timing, slide-off, repeat filtering and assistive exploration; no essential character is gesture-only. Physical, TalkBack and Switch Access validation remains open. |
+| P1 / next refinement | **Released in alpha06; hold timing in unreleased source:** secondary hints and alternate characters | Visible optional hints; common Latin accents/symbols selectable by long press or Tools → Accents → letter, plus period-key hold/slide/release punctuation with a normal period tap. Adjustable hold timing (system default or 250–800 ms) changes only the delay before the preview strip; a tap still types the key and Tools → Accents remains. Verify cancellation, case and session guards, slide-off, repeat filtering and assistive exploration; no essential character is gesture-only. Physical, TalkBack and Switch Access validation remains open. |
 | P1 / next | **Implemented basic editing; next completion:** selection, Unicode, Enter and touch behavior | Real-IME tests for selected-text replacement, forward/back delete (including the direct Tools action), cursor boundaries, Shift+Space selection, held-delete cancellation, combining marks, emoji/ZWJ and multiline text; all supported Enter actions and no-enter-action flags. Direct-panel and live-IME Shift/Caps tests remain separate. Script 1,000 actions with zero duplicates or reordered characters; verify intended double letters with repeat filtering off/on. |
 | P2 / alongside P1; broader acceptance | **Implemented subset in alpha05:** terminal/power controls and dispatch | Esc, Tab, Ctrl, Alt, four arrows, Home/End, PgUp/PgDn and Fn/F1–F12/Insert/forward Delete use `TerminalInput`. Fn replaces letters rather than growing the panel; verify every key remains reachable. Meta and numpad remain planned. Every displayed key needs an explicit contract and named editor evidence. No hidden automatic command submission or global key injection. |
 | P2 / broader acceptance, then expansion | **Implemented one-shot Ctrl/Alt; planned:** latch/multi-touch and advanced editing | Provide explicit modifier release. Test Ctrl+C/D/Z/A, Alt combinations, Shift+arrows, tab versus focus navigation, repeats and cancel. Clear all local modifiers on mode/language/field changes and dismissal; never send cleanup keys to a newly bound editor. Distinguish Caps Lock, Shift and Shift Lock if offered. |
-| P2 / next | **Planned:** select/copy/cut/paste/undo/redo toolbar | Named editor actions where supported; no automatic clipboard reading/history. Verify undo/redo separately in native, browser, terminal and rich-text editors; do not assume Ctrl+Z/Y always edits text. Explicit paste reads current clipboard only, handles empty/oversized content, and never appends Enter in terminals. Provide a visible select-mode alternative to Shift+arrows. Refused/unsupported actions do not trigger blind retries or duplicate fallback edits. |
-| P3 / next after editor foundation | **Planned:** language layouts, accents, compose/dead keys and emoji | Start with a named, reviewed alphabetic-layout set, including QWERTY/QWERTZ/AZERTY alternatives; publish per-language layout/dictionary/speech status. Visible accent/compose picker and language switch work without holds. Test uppercase accents, RTL mixing, Unicode sequences and field changes mid-compose. Emoji search stays local; optional recents have off/clear controls. |
+| P2 / next | **Implemented in alpha12:** editor action toolbar for Undo/Redo, Select all, Cut/Copy/Paste and cursor navigation | Named editor actions where supported; no automatic clipboard reading/history. External-editor and physical-device acceptance remains open, including editor-specific undo/redo behavior; do not assume Ctrl+Z/Y always edits text. Explicit paste reads current clipboard only, handles empty/oversized content, and never appends Enter in terminals. Provide a visible select-mode alternative to Shift+arrows. Refused/unsupported actions do not trigger blind retries or duplicate fallback edits. |
+| P3 / next after editor foundation | **Original QWERTY/QWERTZ/AZERTY positions, local emoji and explicit Latin Compose implemented in unreleased source; further language support planned:** accents and compose/dead keys | Local Settings/Tools letter choices, positional hints, letter-bound accents, reset and switch cancellation have source/emulator checks in the [letter-layout plan](plans/active/android-letter-layouts.md). The separate [emoji slice](plans/active/android-local-emoji.md) adds the reviewed fully-qualified Emoji 17 catalog, local CLDR 48 English search, categories and explicit variants with no history or clipboard query. The [Compose slice](plans/active/android-latin-compose.md) provides ten named marks with atomic character insertion, uppercase, cancellation and stale-session checks. These features do not select dictionaries or speech languages. Publish separate layout/dictionary/composition/speech status as support expands. Visible accent/compose picker and layout switching work without holds; RTL mixing and full language support need separate acceptance. Optional emoji recents remain unimplemented and would require off/clear controls. |
 | P3 / next | **Planned:** offline suggestions, reversible correction, local vocabulary and snippets | Use only reviewed local resources. Suggestions and auto-correction have separate switches; direct replacement requires a valid composing range and immediate restore. Personal additions are explicit, inspectable, deletable and exportable; no implicit collection or learning in password/private fields. Test names, negation, URLs, email, code and rejected corrections. Terminal mode stays literal. Snippets insert explicit user-selected text, never executable scripts or automatic submit actions. |
 | P4 / later, after P3 | **Planned:** evaluated prediction and multilingual composition | Gate each engine/dictionary/model on provenance, license compatibility, offline behavior, bounded resources and a named-device latency/RAM/battery benchmark before enabling it. Bound per-session context (initial design cap: 256 Unicode code points); cancel work and clear context on field change. Learning defaults off; inspect/delete all learned data and honor no-learning editor flags. Complex-script IMEs require their own composition engine and native-speaker evaluation, not a character-map claim. |
 | P4 / later, after P3/P4 language engine | **Planned:** swipe/glide typing | Independently review engine/model/data licenses; no unreviewed proprietary blob. Measure words corrected, latency, RAM, battery and error recovery on named phones/languages. Preserve tap typing and a visible correction path; gesture navigation and destructive gestures must not collide. Do not retain swipe paths or typed words for training implicitly. |
@@ -221,9 +228,12 @@ IME reopening and field changes never start capture. Optional hold-to-insert is
 a separate deliberate gesture. Desktop state cutouts provide consistent feedback
 alongside text without displacing controls.
 
-**Still planned:** explicit Copy/Cut/Paste/Select all actions with host-editor
-semantics and no clipboard history; undo/redo scoped to the current editor;
-one-handed placement tests; and optional silence endpoint detection. Silence
+**Implemented:** editor commands now expose Copy/Cut/Paste/Select all and Undo/Redo
+through the `Edit` toolbar with host-editor semantics and no clipboard history
+fallbacks. Unreleased source adds Full/Left/Right alignment in Settings and Tools;
+see the [one-hand checks and limits](plans/active/android-one-hand.md).
+External-editor acceptance and physical one-hand comfort remain open.
+Optional silence endpoint detection remains planned. Silence
 detection must distinguish thinking pauses, quiet speech and background noise,
 stop capture before review, and offer adjustable timing. Automatic insertion
 must be a separate opt-in, never the default consequence of a pause. No ambient
@@ -251,3 +261,10 @@ Every capability ends with a recorded status: implemented, verified on named
 targets, unsupported with a reason, or still planned. Reassess any newly considered
 capability against Utterleaf's no-network, no-passive-capture and no-automatic-history
 boundaries before adding it.
+
+Current hardening has its own task list in
+[android-keyboard-hardening](plans/active/android-keyboard-hardening.md); broader
+completion follows the [independent rebuild](plans/active/android-keyboard-rebuild.md).
+The [foundation decision](android-keyboard-foundation-decision.md) supersedes the
+LatinIME experiment. Do not copy LatinIME/FUTO keyboard code or import their
+dictionaries, assets or permissions. Adaptive touch zones stay off.

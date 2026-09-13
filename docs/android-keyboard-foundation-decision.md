@@ -1,15 +1,27 @@
-# Android keyboard foundation decision: AOSP LatinIME
+# Android keyboard foundation decision
 
-Status, September 11, 2026: the pinned experimental LatinIME port has bounded build,
-typing, privacy and persistence evidence, and a separate
-[signed preview01](https://github.com/RioPlay/utterleaf/releases/tag/android-foundation-v0.1.0-preview01).
-It is not the shipping keyboard replacement. The user has since requested a
-[new Kotlin-owned core design](android-next/README.md); that design supersedes the
-sole-LatinIME-renderer decision for the new candidate, while this document remains
-the experiment's provenance and historical evaluation. Preserve both current apps.
-See the [foundation record](../mobile/latinime/README.md) and
-[execution evidence](../mobile/latinime/EXECUTION-EVIDENCE.md) for tested scope and
-remaining gates. The following initial adoption analysis is historical.
+Decision, September 12, 2026: build Utterleaf's shipping Android keyboard
+independently. A pinned experimental LatinIME port exists as the separate
+[signed preview01](https://github.com/RioPlay/utterleaf/releases/tag/android-foundation-v0.1.0-preview01),
+but it is not the shipping keyboard replacement or the active product foundation.
+Preserve it as historical comparison evidence; do not copy LatinIME or FUTO code
+into the independent keyboard. The user has also requested a
+[new Kotlin-owned core design](android-next/README.md), which remains a separate
+candidate until its parity and migration gates pass.
+
+The [product specification](android-keyboard-product-spec.md) defines the target
+experience and the [rebuild plan](plans/active/android-keyboard-rebuild.md) defines
+the work sequence. Preserve the current session guards, editor/terminal contracts,
+verified model imports and local speech while replacing weak components behind
+tested boundaries. Ground-up ownership does not require discarding working code.
+Any future reuse of a language engine or data resource requires its own provenance,
+format, permission and lifecycle review; source visibility is insufficient.
+
+The September 10 preliminary source review below and the later
+[foundation record](../mobile/latinime/README.md) remain historical evidence,
+not a current migration instruction. They do not establish that LatinIME or FUTO
+is universally defective, insecure or slower. No LatinIME source is linked into
+the shipping `mobile/android` app.
 
 ## Source reviewed
 
@@ -40,9 +52,9 @@ These are Utterleaf requirements, not guarantees made by AOSP LatinIME. AOSP's v
 
 The Java build declares Apache-2.0 and includes a [Java NOTICE](https://android.googlesource.com/platform/packages/inputmethods/LatinIME/+/127336e9f29d69607eab55982324b210279ae8c5/java/NOTICE). The repository-wide [NOTICE](https://android.googlesource.com/platform/packages/inputmethods/LatinIME/+/127336e9f29d69607eab55982324b210279ae8c5/NOTICE) separately says the distribution includes dictionaries © Lexiteria LLC used by permission. Therefore “LatinIME is Apache-2.0” is too broad for redistribution of the entire tree or its dictionary assets. Each Java, native, resource, dictionary, AndroidX and build dependency must have a recorded source revision, license text, NOTICE obligations and redistribution decision. Utterleaf must retain prominent modification notices for modified files and the relevant NOTICE text if it ships derived work.
 
-## Comparison with the current foundation
+## Comparison with the September 10 foundation
 
-| Concern | Current Utterleaf custom foundation | AOSP LatinIME reuse implication |
+| Concern | Utterleaf custom foundation at review | AOSP LatinIME reuse implication |
 | --- | --- | --- |
 | Build | Ordinary Android app module with pinned native speech dependency | Requires Soong/platform modules or a nontrivial extraction; old Gradle path is not proof of standalone buildability |
 | Default data path | No Internet permission, no contacts/accounts/sync, no persistent typed text or clipboard history | Manifest and code include optional download, contact, user-dictionary, account/sync and boot/update paths that must be removed or isolated |
@@ -51,21 +63,34 @@ The Java build declares Apache-2.0 and includes a [Java NOTICE](https://android.
 | Assets | Reviewed speech model catalog with hashes; no arbitrary native model/add-on import | AOSP dictionaries and JNI are separate provenance/licensing/supply-chain review items |
 | Evidence | Current live IME and focused gesture/delete/session tests, with physical/accessibility gates open | AOSP tests show upstream intent, not compatibility or privacy evidence for an extracted Utterleaf APK |
 
-## Migration plan
+## Historical migration proposal — superseded
 
-1. **Reconnaissance fork:** pin the SHA, preserve the full source/NOTICE inventory outside the product tree, and produce a dependency/license/permission manifest. Record the intended platform build as upstream context; first attempt a standalone public-SDK build in an isolated module rather than making a full Android platform checkout a prerequisite.
-2. **Small extraction spike:** determine whether the Java composition/dictionary pieces can compile in Utterleaf's app without platform-private libraries. Keep AOSP JNI and dictionaries in an isolated module; do not connect them to the live IME yet.
-3. **Permission/privacy reduction:** remove dictionary download/update receivers, contacts/accounts/sync, user-dictionary writes, boot behavior and cloud paths. Prove the resulting APK manifest and runtime traces match Utterleaf's offline contract.
-4. **Adapter boundary:** retain Utterleaf's `KeyboardIme` session generation, sensitive-field policy, `InputConnection` contracts, persistent visible terminal Ctrl/Alt/Shift plus Esc/Tab/Fn controls, the guarantees against stray commits from cancelled gestures and local STT. Treat LatinIME as a candidate composition/suggestion engine behind an interface with bounded context and cancellation. Separately evaluate its pointer tracking/sliding-input model; do not assume it is interchangeable with the current Shift-first chord or ordinary tap surface.
-5. **Matched validation:** compare the candidate with the current keyboard on literal text, Unicode/graphemes, selection, password/no-learning fields, field changes, terminal shortcuts, TalkBack/Switch Access, cold start, memory, battery and thermal behavior. Record host app, OS, build and language.
+The September 10 proposal considered a standalone extraction, a dependency and
+license inventory, removal of network/personalization paths and a bounded adapter
+evaluation. None of those import/extraction steps is authorized by the current
+plan. That proposal has been retired in favor of the independent implementation
+described at the top of this document.
 
-## Go/no-go gates
+## Historical adoption gates — superseded
 
-**Next step: a bounded standalone-build spike**, with a pinned source and a dependency/license inventory. Reproducible buildability and a reduced manifest are outcomes to establish in that spike, not claims from this review. It may evaluate pointer handling, composition and dictionaries without changing the shipped default; no consumer adoption occurs until the gates below pass.
+The earlier proposed next step was a bounded standalone-build spike with pinned
+source and a dependency/license inventory. That experiment is no longer scheduled.
+The following gates document the earlier assessment only.
 
 **No-go for product adoption** if standalone buildability depends on unavailable platform-private modules; if removing contacts, cloud, download/update, sync, user-dictionary or boot paths breaks ordinary typing; if any input/context path cannot be bounded and cancelled at field transitions; if the JNI/dictionary provenance cannot be documented; or if accessibility, terminal, lifecycle and sensitive-field tests regress against the custom foundation.
 
-The initial review recommended **evaluate selectively, do not adopt yet**. The subsequent product decision authorized a separate LatinIME fork and standalone port work. The experiment now builds with a restricted manifest and bounded automated evidence. Product adoption still requires the gates above, including remaining lifecycle/privacy work, complete attribution, feature parity, physical accessibility and migration acceptance.
+The earlier recommendation was **evaluate selectively, do not adopt yet**. A
+later, separate experiment produced bounded build and emulator evidence, but it
+was not adopted as the shipping keyboard. The active decision remains independent
+development; the experiment still requires its recorded attribution, lifecycle,
+physical-accessibility and migration gates before any different product decision.
+
+Current-source contracts that the independent implementation must keep:
+
+* `KeyboardIme.uiGeneration` gates every commit, key event, editor action and speech insert, including hide/show, field restart and subtype changes.
+* Native decode uses a generation (`work_id`) plus `WorkLease`. `reset()` starts a new generation; in-flight work from an older generation aborts and must not return text.
+* `TakeGate` still rejects delayed speech callbacks after field or panel replacement.
+* No ambient capture, clipboard history, contact learning or context collection outside an explicit, later-approved flow.
 
 ## Primary evidence
 

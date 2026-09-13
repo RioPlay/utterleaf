@@ -146,6 +146,27 @@ class KeyboardGesturesTest {
         assertTrue(f.inserted.isEmpty()); assertTrue(f.moves.isEmpty())
     }
 
+    @Test fun shorterHoldDelayOpensChoicesBeforeTheSystemTimeout() = withPanel(KeyboardOptions(holdDelayMs = 250)) { f ->
+        val key = f.key("e")
+        f.send(key, MotionEvent.ACTION_DOWN)
+        Thread.sleep(300)
+        instrumentation.waitForIdleSync()
+        assertTrue("Attached button did not open hold choices", f.hasStrip())
+        f.send(key, MotionEvent.ACTION_CANCEL)
+        assertTrue(f.inserted.isEmpty())
+        assertFalse(f.hasStrip())
+    }
+
+    @Test fun longerHoldDelayKeepsAPlainTap() = withPanel(KeyboardOptions(holdDelayMs = 800)) { f ->
+        val key = f.key("e")
+        f.send(key, MotionEvent.ACTION_DOWN)
+        Thread.sleep(300)
+        instrumentation.waitForIdleSync()
+        assertFalse(f.hasStrip())
+        f.send(key, MotionEvent.ACTION_UP)
+        assertEquals(listOf("e"), f.inserted)
+    }
+
     @Test fun letterDriftWithinKeyAndHoldReleaseChooseExactlyOnce() = withPanel { f ->
         val key = f.key("a")
         val drift = ViewConfiguration.get(key.context).scaledTouchSlop + 1f
@@ -154,10 +175,27 @@ class KeyboardGesturesTest {
         f.send(key, MotionEvent.ACTION_UP, drift)
         val height = main { f.panel.view.height }
         f.hold(key)
-        val expected = AlternateCharacters.choices('a', false)[main { f.strip().selectedIndex }]
+        val hint = AlternateCharacters.hint('a')!!
+        assertEquals(hint, AlternateCharacters.choices('a', false)[main { f.strip().selectedIndex }])
         assertEquals(height, main { f.panel.view.height })
         f.send(key, MotionEvent.ACTION_UP)
-        assertEquals(listOf("a", expected), f.inserted)
+        assertEquals(listOf("a", hint), f.inserted)
+        assertFalse(f.hasStrip())
+    }
+
+    @Test fun displayedHintSurvivesReleaseJitterAndDeliberateSlideSelectsAnotherChoice() = withPanel { f ->
+        var key = f.key("a")
+        assertEquals("@", main { (key as HintedKey).secondaryHint })
+        f.hold(key)
+        assertEquals("@", AlternateCharacters.choices('a', false)[main { f.strip().selectedIndex }])
+        f.send(key, MotionEvent.ACTION_MOVE, 1f, 1f)
+        f.send(key, MotionEvent.ACTION_UP, 1f, 1f)
+
+        key = f.key("a")
+        f.hold(key)
+        f.atCell(key, 0, MotionEvent.ACTION_MOVE)
+        f.atCell(key, 0, MotionEvent.ACTION_UP)
+        assertEquals(listOf("@", "á"), f.inserted)
         assertFalse(f.hasStrip())
     }
 

@@ -5,6 +5,14 @@ This is a focused engineering pass, not a complete audit.
 
 ## Current pass
 
+- **Unreleased after alpha13:** native speech `work_id` isolation, IME generation
+  gates on commit/key/editor/speech paths including subtype changes, and bounded
+  hold-timing preferences. Python release-contract tests, Android JVM tests,
+  lint, debug assembly and the full 79-test API 35 instrumentation suite passed
+  locally with the same hash-verified model/JFK fixtures CI uses. This is not a
+  published APK. Emulator results still do not establish physical-device or
+  accessibility acceptance. LatinIME is not linked into the shipping app.
+
 - **QA pass, subsequently released in alpha13:** revision `d942098` passed
   [CI 34513111803](https://github.com/RioPlay/utterleaf/actions/runs/34513111803):
   76 API 35 emulator tests (zero failures/skips), 8 JVM tests, lint, builds and

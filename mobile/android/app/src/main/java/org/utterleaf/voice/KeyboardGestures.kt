@@ -12,26 +12,33 @@ import android.widget.FrameLayout
 import kotlin.math.abs
 
 /** Owns one physical gesture; accessible click/long-click actions stay on the buttons. */
-internal class KeyboardGestures(private val root: FrameLayout) {
+internal class KeyboardGestures(private val root: FrameLayout, private val holdDelay: () -> Long) {
     private val slop = ViewConfiguration.get(root.context).scaledTouchSlop
     private val step = maxOf(slop.toFloat(), Ui.dp(root.context, 16).toFloat())
     private var generation = 0
     private var active: Press? = null
 
     fun attachSpace(button: Button, move: (left: Boolean) -> Unit) = bind(button, move = move)
-    fun attachLetter(button: Button, choices: () -> List<String>, choose: (String) -> Unit) = bind(button, choices, choose)
+    fun attachLetter(button: Button, choices: () -> List<String>, preferred: (() -> String?)? = null,
+                     choose: (String) -> Unit) = bind(button, choices, preferred, choose)
+    /** A hold strip or space drag already owns its pointer and cannot join typing rollover. */
+    fun permitsRollover(button: View): Boolean {
+        val press = active ?: return true
+        return press.button !== button || (!press.cancelled && !press.dragging && press.overlay == null)
+    }
 
     private fun bind(button: Button, choices: (() -> List<String>)? = null,
-                     choose: ((String) -> Unit)? = null, move: ((Boolean) -> Unit)? = null) {
+                     preferred: (() -> String?)? = null, choose: ((String) -> Unit)? = null,
+                     move: ((Boolean) -> Unit)? = null) {
         val token = generation
         button.setOnTouchListener { _, event ->
             if (token != generation || !button.isEnabled) return@setOnTouchListener true
             if (event.actionMasked == MotionEvent.ACTION_DOWN) {
                 end()
                 if (event.pointerCount == 1 && event.rawX.isFinite() && event.rawY.isFinite()) {
-                    active = Press(button, event.getPointerId(0), event.rawX, event.rawY, choices, move)
+                    active = Press(button, event.getPointerId(0), event.rawX, event.rawY, choices, preferred, move)
                     button.isPressed = true
-                    active?.let { if (choices != null) button.postDelayed(it.open, ViewConfiguration.getLongPressTimeout().toLong()) }
+                    active?.let { if (choices != null) button.postDelayed(it.open, maxOf(1L, holdDelay())) }
                 }
             } else {
                 val press = active
@@ -43,8 +50,7 @@ internal class KeyboardGestures(private val root: FrameLayout) {
                 } else when (event.actionMasked) {
                     MotionEvent.ACTION_MOVE -> press.slide(event.rawX, event.rawY)
                     MotionEvent.ACTION_UP -> {
-                        press.slide(event.rawX, event.rawY)
-                        val value = press.overlay?.selection(event.rawX, event.rawY)
+                        val value = press.release(event.rawX, event.rawY)
                         val tap = !press.cancelled && !press.dragging && press.overlay == null
                         end() // Remove callbacks/overlay before any editor mutation or rerender.
                         if (!press.cancelled && value != null) {
@@ -72,7 +78,8 @@ internal class KeyboardGestures(private val root: FrameLayout) {
     fun cancel() { end(); generation++ }
 
     private inner class Press(val button: Button, val pointer: Int, val downX: Float, val downY: Float,
-                              val choices: (() -> List<String>)?, val move: ((Boolean) -> Unit)?) {
+                              val choices: (() -> List<String>)?, val preferred: (() -> String?)?,
+                              val move: ((Boolean) -> Unit)?) {
         var cancelled = false
         var dragging = false
         var cursorX = downX
@@ -83,7 +90,7 @@ internal class KeyboardGestures(private val root: FrameLayout) {
                 if (values.isNotEmpty()) {
                     button.isPressed = false
                     button.parent?.requestDisallowInterceptTouchEvent(true)
-                    overlay = AlternateStrip(root, button, values, downX, downY)
+                    overlay = AlternateStrip(root, button, values, downX, preferred?.invoke())
                     // Explicit bounds prevent a wrap-content IME growing on hold.
                     root.addView(overlay, FrameLayout.LayoutParams(root.width, root.height))
                     button.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
@@ -92,7 +99,12 @@ internal class KeyboardGestures(private val root: FrameLayout) {
         }
         fun slide(x: Float, y: Float) {
             if (cancelled) return
-            overlay?.let { it.selection(x, y); return }
+            overlay?.let {
+                if (!dragging && abs(x - downX) <= slop && abs(y - downY) <= slop) return
+                dragging = true
+                it.selection(x, y)
+                return
+            }
             val dx = x - downX; val dy = y - downY
             if (move == null) {
                 if (abs(dx) > slop || abs(dy) > slop) {
@@ -119,12 +131,18 @@ internal class KeyboardGestures(private val root: FrameLayout) {
                 cursorX += count * step
             }
         }
+        fun release(x: Float, y: Float): String? {
+            val strip = overlay ?: return null
+            return if (!dragging && abs(x - downX) <= slop && abs(y - downY) <= slop)
+                strip.currentSelection(x, y) else strip.selection(x, y)
+        }
     }
 }
 
 /** Drawn inside the secure IME, never a separate popup window. */
 internal class AlternateStrip(private val host: FrameLayout, anchor: View,
-                              private val values: List<String>, downX: Float, downY: Float) : View(host.context) {
+                              private val values: List<String>, downX: Float,
+                              preferredValue: String? = null) : View(host.context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     val cells: List<RectF>
     private val anchorBounds: RectF
@@ -148,20 +166,33 @@ internal class AlternateStrip(private val host: FrameLayout, anchor: View,
             val x = left + index * (cellWidth + gap)
             RectF(x, top, x + cellWidth, top + cellHeight)
         }
-        selectedIndex = cells.indices.minBy { abs(cells[it].centerX() - (downX - origin[0])) }
-        selection(downX, downY)
+        selectedIndex = values.indexOf(preferredValue).takeIf { it >= 0 }
+            ?: cells.indices.minBy { abs(cells[it].centerX() - (downX - origin[0])) }
     }
     /** The band between the strip and original key allows a horizontal finger slide. */
     fun selection(rawX: Float, rawY: Float): String? {
+        if (!contains(rawX, rawY)) {
+            selectedIndex = -1
+        } else {
+            val x = rawX - origin[0]
+            selectedIndex = cells.indices.minBy { abs(cells[it].centerX() - x) }
+        }
+        invalidate()
+        return values.getOrNull(selectedIndex)
+    }
+    /** Preserve the hint through release jitter while still rejecting stale or outside coordinates. */
+    fun currentSelection(rawX: Float, rawY: Float): String? {
+        if (!contains(rawX, rawY)) selectedIndex = -1
+        invalidate()
+        return values.getOrNull(selectedIndex)
+    }
+    private fun contains(rawX: Float, rawY: Float): Boolean {
         val currentOrigin = IntArray(2); host.getLocationOnScreen(currentOrigin)
         val x = rawX - origin[0]; val y = rawY - origin[1]
         val margin = Ui.dp(context, 8)
-        selectedIndex = if (!currentOrigin.contentEquals(origin) || host.width != hostWidth || host.height != hostHeight ||
-            x < cells.first().left - margin || x > cells.last().right + margin ||
-            y < cells.first().top - margin || y > maxOf(cells.first().bottom, anchorBounds.bottom) + margin) -1
-        else cells.indices.minBy { abs(cells[it].centerX() - x) }
-        invalidate()
-        return values.getOrNull(selectedIndex)
+        return currentOrigin.contentEquals(origin) && host.width == hostWidth && host.height == hostHeight &&
+            x >= cells.first().left - margin && x <= cells.last().right + margin &&
+            y >= cells.first().top - margin && y <= maxOf(cells.first().bottom, anchorBounds.bottom) + margin
     }
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
