@@ -65,6 +65,13 @@ without skips. Fresh default/compact renders were inspected and independent
 source review cleared the correction. Actual macOS CI remains required; this
 Windows evidence does not establish the macOS fix.
 
+The corrected `ce3a61c` run completed macOS Settings tests without hanging; its
+only failure was a clipboard test invoking the real macOS foreground helper
+against a simulated clipboard. That helper's polling repeated the mocked copy
+event. The fixture now supplies a simulated editor identity as well, preserving
+its exact clipboard and no-dispatch assertions. All 30 injection tests pass
+locally; complete corrected CI remains required before integration.
+
 The refreshed documentation screenshots show the source layout, not the published
 RC2 binary. Local capture receipts are `root-native-1.png`, `root-native-1.5.png`
 and `root-native-2.png` under `.grok/desktop-dictation-layout/`.
