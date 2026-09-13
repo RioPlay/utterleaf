@@ -4,7 +4,7 @@
 
 Scope: Windows, macOS, and Linux desktop application only.
 
-Updated September 12, 2026. Priorities follow the
+Updated September 13, 2026. Priorities follow the
 [offline STT user research](offline-stt-user-research-2026-09-08.md).
 This is an ordered development plan, not a promise of release dates.
 
@@ -16,24 +16,29 @@ intended field, with understandable local processing and minimal interruption.
 
 ## Planned follow-up
 
-### Release priority: Windows 0.4.6 RC2
+### Published preview: Windows 0.4.6 RC2
 
-The [Windows prerelease plan](plans/active/desktop-prerelease.md) prepares the
+The [Windows prerelease plan](plans/active/desktop-prerelease.md) records the
 completed dictation, long-file, speech-end, Markdown and delivery improvements
-for an unsigned Windows x64 CPU preview. The candidate version is `0.4.6rc2`;
-publication and artifact verification are separate gates. Stable v0.4.5 remains
+in the [published unsigned Windows x64 CPU preview](https://github.com/RioPlay/utterleaf/releases/tag/desktop-v0.4.6-rc.2).
+Version `0.4.6rc2` was published on September 13 from immutable tag revision
+`90d2e147c6c84af2639317b427a2f5135b3ff997`. Stable v0.4.5 remains
 the default download. Android and live OBS work continue after this bounded release.
 
 RC2 runtime notice enforcement passes 23 focused tests and a fresh local CPU
 build. Following test-only Tk lifetime cleanup, the final local desktop suite
 passes 1,445 tests with 14 explicit skips; frozen diagnostics and an offline
-88-second file transcription also pass. Exact-tag CI and downloaded artifact
-verification remain pending. See the
+88-second file transcription also pass. [Exact-tag CI](https://github.com/RioPlay/utterleaf/actions/runs/34740809768)
+passed **1,446 tests with 13 skips**. Independent verification of the downloaded
+artifact passed archive, executable, dependency and retained-notice checks,
+frozen diagnostics and offline 88-second transcription. See the
 [runtime notice record](plans/active/desktop-runtime-notices.md).
 
 Historical source receipts below describe their original verification stage;
-they are not claims that this candidate has already shipped. The preview plan
-records the final artifact and test evidence.
+references to unreleased source or pending packaging describe those earlier
+checks. The preview plan records final artifact and publication evidence.
+Live-microphone endurance, broad editor and accessibility acceptance, other
+desktop binaries and live OBS remain unverified or unavailable as documented.
 
 ### Active: continuous recording, long files and OBS
 

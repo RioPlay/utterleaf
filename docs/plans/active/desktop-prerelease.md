@@ -57,7 +57,7 @@ clear. No stable or enterprise-readiness claim follows from this prerelease.
 
 ## Progress
 
-The current candidate is RC2. RC1 was not published: independent inspection of
+RC2 was published on September 13, 2026. RC1 was not published: independent inspection of
 its downloaded CI artifact found missing runtime license texts and an unused
 ASIO DLL. The [runtime notice correction](desktop-runtime-notices.md) adds full
 versioned texts, native payload identity checks and fail-closed notice handling.
@@ -70,7 +70,37 @@ local suite passes **1,445 tests, 14 skipped in 43.23 seconds** after independen
 reviewed test-only Tk cleanup. Frozen help, offline diagnostics, formatting and
 an empty worker request behave as expected. The existing 88-second PCM fixture
 exports SRT offline in 18.455 seconds with the verified local base.en model.
-Exact RC2 tag CI, downloaded-artifact checks and publication remain pending.
+Exact RC2 tag CI, downloaded-artifact checks and publication also passed, as
+recorded below.
+
+### Published RC2 evidence
+
+- Source/tag revision: `90d2e147c6c84af2639317b427a2f5135b3ff997`,
+  `desktop-v0.4.6-rc.2`, version `0.4.6rc2`.
+- [Exact-tag CI run 34740809768](https://github.com/RioPlay/utterleaf/actions/runs/34740809768):
+  **1,446 passed, 13 skipped**, no failures or errors. Actions artifact
+  `10311699407` was independently downloaded and inspected.
+- Public ZIP: `Utterleaf-windows-x64-cpu.zip`, 112,087,662 bytes, SHA-256
+  `3ff16b600fe83b88d1cc384c920098a7a85771a66099bbff50ccc40257917e07`.
+  Both archive layers passed integrity and safe-path checks; manifest, all three
+  executable hashes, dependency inventory and retained native notices matched.
+  No ASIO, FFmpeg-family, NVIDIA/CUDA or transcription weights were present.
+- The downloaded frozen build passed help, offline diagnostics and formatting.
+  Its empty worker request returned unavailable without requesting clipboard
+  access. The same verified 88-second fixture described below, using
+  `--transcribe-file <fixture> --audio-track 1 --output <new-file.srt> --offline`,
+  completed in 23.6954 seconds with 11 subtitle cues through 87.41 seconds and
+  176 words. This is a bounded path check, not general accuracy evidence.
+- [Public prerelease](https://github.com/RioPlay/utterleaf/releases/tag/desktop-v0.4.6-rc.2)
+  published at `2026-09-13T06:07:01Z` with the reviewed ZIP, checksum, manifest,
+  dependencies and pinned requirements. GitHub's asset digest matched the
+  verified ZIP. Stable v0.4.5 remained latest after publication.
+
+The preview acceptance gates are complete. Preserve the immutable tag/artifact;
+PR #26 integrates the reviewed source and publication records. Physical microphone,
+editor, accessibility and endurance limits remain explicit in the release notes.
+
+### Historical RC1 preparation
 
 The historical RC1 candidate is based on main `566839d`, with the desktop working-tree
 changes copied separately from Android. Both Python versions are `0.4.6rc1`.

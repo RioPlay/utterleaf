@@ -79,7 +79,18 @@ The final exact working-tree desktop run passes **1,445 tests, 14 skipped in
 43.23 seconds**, with JUnit evidence and no Tk initialization skips or native
 abort. Skips are 11 external-codec fixture cases, one absent local public-speech
 fixture, one Windows symlink privilege case and the opt-in clipboard isolation
-probe. Exact-tag CI and downloaded RC2 artifact checks remain pending.
+probe.
+
+The correction is complete in the [published RC2 preview](https://github.com/RioPlay/utterleaf/releases/tag/desktop-v0.4.6-rc.2).
+[Exact-tag CI run 34740809768](https://github.com/RioPlay/utterleaf/actions/runs/34740809768)
+passed 1,446 tests with 13 skips at `90d2e14`. Independent inspection of the
+downloaded artifact verified 41 license directories with 419 files, no empty or
+metadata-only placeholders, 12 exact-source provenance records, 357 retained
+references and 10 native payload references. No ASIO DLL or excluded codec/GPU
+payload was present. Frozen diagnostics, formatting and the offline 88-second
+transcription check passed on that downloaded build. The
+[prerelease record](desktop-prerelease.md#published-rc2-evidence) contains the
+published ZIP identity and publication checks; stable v0.4.5 remains latest.
 
 ## Non-goals and stop
 
