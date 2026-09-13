@@ -24,6 +24,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--build", type=Path, help="Reviewed development build for libobs dispatch checks")
     parser.add_argument("--headers", type=Path, help="Pinned public-header cache used by --build")
+    parser.add_argument("--ui", action="store_true", help="Also run the bounded native dialog fixture (needs a Windows desktop)")
     args = parser.parse_args()
     if (args.build is None) != (args.headers is None):
         parser.error("--build and --headers must be supplied together")
@@ -49,6 +50,8 @@ def main() -> None:
         "src/plugin_state.c", "src/plugin_state.h", "tests/plugin_state_test.c",
         "src/vendor_dispatch.c", "src/vendor_dispatch.h", "tests/vendor_dispatch_shim.c",
         "src/bridge.c", "tests/bridge_test.c",
+        "src/pairing_ui.c", "src/pairing_ui.h", "src/bridge.rc", "src/bridge.manifest",
+        "tests/pairing_ui_test.c", "tools/test_pairing_ui.py",
         "tests/vendor_dispatch.def", "tests/test_vendor_dispatch.py", "dependencies.json",
         "tests/handshake_test.c", "tests/handshake_failure_test.c",
         "tests/admission_identity_test.c",
@@ -187,6 +190,10 @@ def main() -> None:
         run("vendor-dispatch-test", [sys._base_executable, ROOT / "tests/test_vendor_dispatch.py",
                                      runtime, vendor_dll])
         artifacts.append(vendor_dll)
+    if args.ui:
+        run("pairing-ui-acceptance", [sys._base_executable, ROOT / "tools/test_pairing_ui.py",
+                                      "--toolchain", args.toolchain, "--output", output / "pairing-ui"], timeout=60)
+        artifacts.append(output / "pairing-ui/pairing-ui-receipt.json")
     if source_hashes != {str(path.relative_to(ROOT)): digest(path) for path in sources}:
         raise RuntimeError("Source changed during native verification")
     if client_hashes != {str(path.relative_to(REPO)): digest(path) for path in client_sources}:
@@ -196,10 +203,11 @@ def main() -> None:
     receipt = {
         "schema": 2, "scope": "pairing/admission/runtime; optional parsed libobs dispatch; no OBS application, arming or audio",
         "vendor_dispatch": "passed" if args.build is not None else "not run: supply --build and --headers",
+        "native_dialog": "passed" if args.ui else "not run: supply --ui on a Windows desktop",
         "dispatch_inputs": {str(path): expected for path, expected in dispatch_inputs.items()},
         "sources": source_hashes, "client_sources": client_hashes,
         "compiler_sha256": digest(compiler),
-        "artifacts": {path.name: digest(path) for path in artifacts},
+        "artifacts": {str(path.relative_to(output)): digest(path) for path in artifacts},
         "logs": {path.name: digest(path) for path in logs},
         "commands": commands,
     }

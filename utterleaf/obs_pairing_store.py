@@ -444,6 +444,12 @@ class _Native:
             offset += received.value
         return buffer.raw
 
+    def size(self, handle: int) -> int:
+        size = C.c_int64()
+        if not self.k.GetFileSizeEx(handle, C.byref(size)) or size.value < 0:
+            raise PairingStoreError("Could not inspect the pairing owner lock")
+        return size.value
+
     def write(self, handle: int, payload: bytes) -> None:
         if type(payload) is not bytes or not 13 <= len(payload) <= MAX_PACKAGE_BYTES:
             raise PairingStoreError("Invalid pairing file size")
@@ -485,6 +491,8 @@ class ObsPairingStore:
         self._root = _path(_root if _root is not None else self._native.known_folder())
         self.directory = ntpath.join(self._root, "Utterleaf", "desktop")
         self.path = ntpath.join(self.directory, "obs-pairing-v1.dat")
+        self._owner_path = ntpath.join(self.directory, "obs-pairing-owner-v1.lock")
+        self._owner_claimed = False
         try:
             self._held.enter_context(self._native.parents(self._root))
             for folder in (ntpath.join(self._root, "Utterleaf"), self.directory):
@@ -516,7 +524,29 @@ class ObsPairingStore:
         with _STORE_LOCK:
             if not self._closed:
                 self._closed = True
+                self._owner_claimed = False
                 self._held.close()
+
+    def claim_owner(self) -> None:
+        """Retain the one per-user desktop pairing setup owner until close."""
+        with _STORE_LOCK:
+            self._ensure_open()
+            if self._owner_claimed:
+                return
+            owner = ExitStack()
+            try:
+                handle = owner.enter_context(
+                    self._native.opened(self._owner_path, missing=True))
+                if handle is None:
+                    handle = owner.enter_context(
+                        self._native.opened(self._owner_path, create=True))
+                if self._native.size(handle) != 0:
+                    raise PairingStoreError("The pairing owner lock is invalid")
+                self._held.callback(owner.close)
+                self._owner_claimed = True
+            except BaseException:
+                owner.close()
+                raise
 
     def load(self) -> bytearray | None:
         with _STORE_LOCK:

@@ -135,6 +135,19 @@ precommit replacement failure and worker cancellation. Actual child processes
 compete for the private store owner. With `--build` and `--headers`, it verifies
 the recorded build/header inputs, runs a shimmed bridge registration/teardown
 fixture and six parser cases through real libobs data APIs (without libobs startup).
-All 28 compilation/test commands pass in `native-final/test-receipt.json`.
+The linked checkpoint's 28 compilation/test commands pass in
+`native-final/test-receipt.json`.
 Omitting both optional arguments leaves those two frontend-boundary fixtures
 explicitly unrun; it does not establish their acceptance.
+
+Add `--ui` on a Windows desktop to also run the isolated native TaskDialog
+fixture. The setup follow-up passes all 29 top-level driver commands at
+`.grok/obs-enrollment-flow/setup-native-final/test-receipt.json`; the UI command
+contains its own five compile/link/run commands and nested receipt. Its real
+common-controls manifest activation, modal owner, command links, Escape
+cancellation with zero mutations, duplicate-open guard and cleanup pass for
+unpaired, paired and storage-error states. The three window captures contain
+only the fixture. Pass-through observation wrappers call the actual Windows
+TaskDialog function; no OBS or store implementation is linked into that fixture.
+This verifies native dialog behavior in isolation, not real OBS frontend load,
+file-picker import/export interaction, physical input or accessibility support.
