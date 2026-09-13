@@ -53,17 +53,20 @@ verification passed. RC2 remains the published immutable tag; this evidence
 does not extend to stable desktop release status or unverified physical/editor
 acceptance. PR #26 merged into main at `bf4dfda`.
 
-### Active: compact Dictation settings
+### Integrated source: compact Dictation settings
 
 The [compact Dictation plan](plans/active/desktop-dictation-layout.md) groups
 shortcut, activation and microphone controls near the top, moves Output style
 to Dictation, and places speech-end stopping before secondary recording options.
 The two input groups stack when text needs more width. This is a source follow-up
-to RC2; the published preview keeps Output style under Vocabulary. All **49**
+to RC2; the published preview keeps Output style under Vocabulary. All **50**
 focused settings/configuration tests pass with no skips, including resize, focus,
 validation, microphone Test/Stop/retry, and save/discard/reset checks. Default and
-compact captures and controlled larger-font checks pass. Independent review is clear;
-CI remains the integration gate. Physical display-scaling and assistive-technology
+compact captures and controlled larger-font checks pass. Independent review is clear.
+[Exact-source CI](https://github.com/RioPlay/utterleaf/actions/runs/34750749369)
+passed all five desktop jobs at `76f448c`; PR #31 merged at `03a1c9b`. The macOS
+layout loop and a native-foreground dependency in a simulated clipboard test
+were corrected before integration. Physical display-scaling and assistive-technology
 behavior remain separate.
 
 ### Active: continuous recording, long files and OBS

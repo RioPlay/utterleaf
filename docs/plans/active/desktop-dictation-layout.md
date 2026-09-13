@@ -1,5 +1,10 @@
 # Compact desktop Dictation settings
 
+Status: source integrated through PR #31 at `03a1c9b`. Exact-source CI run
+[34750749369](https://github.com/RioPlay/utterleaf/actions/runs/34750749369)
+passed all five desktop jobs at `76f448c`. This source change is not in the
+published RC2 binary; physical display and assistive-technology follow-up remains.
+
 ## Goal and area
 
 Keep everyday Dictation settings easy to find at 770x655 without reducing the
@@ -42,6 +47,8 @@ must be inspected separately from physical display-scaling or screen-reader
 acceptance.
 
 ## Status
+
+The notes below record verification before the final CI and integration above.
 
 The prior partial work was checkpointed at `20ed5fa`, then main was merged cleanly
 at `330f9de`. The revised overview retains default font sizes, responsive columns,
