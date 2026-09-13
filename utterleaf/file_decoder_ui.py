@@ -22,7 +22,7 @@ class DecoderDialog:
         page = ttk.Frame(self.root, padding=12)
         page.pack(fill="both", expand=True)
         page.columnconfigure(0, weight=1)
-        page.rowconfigure(5, weight=1)
+        page.rowconfigure(2, weight=1)
         ttk.Label(page, text="More file formats", style="Section.TLabel").grid(row=0, column=0, sticky="w")
         self.labels = []
         def label(text, row):
@@ -42,7 +42,20 @@ class DecoderDialog:
             instructions = ("1. Install FFmpeg from your distribution's package manager.\n"
                             "2. Find both paths: command -v ffmpeg ffprobe\n"
                             "3. Choose each executable below (usually in /usr/bin).")
-        label(instructions, 2)
+        guide = ttk.Frame(page)
+        guide.grid(row=2, column=0, sticky="nsew", pady=(8, 0))
+        self.instructions = tk.Text(
+            guide, height=4, width=1, wrap="word", relief="flat", borderwidth=0,
+            highlightthickness=0, background=theme.SURFACE, foreground=theme.ON_SURFACE,
+            selectbackground=theme.PRIMARY_CONTAINER, selectforeground=theme.ON_SURFACE,
+            exportselection=False,
+        )
+        guide_scroll = ttk.Scrollbar(guide, command=self.instructions.yview)
+        guide_scroll.pack(side="right", fill="y")
+        self.instructions.configure(yscrollcommand=guide_scroll.set)
+        self.instructions.pack(side="left", fill="both", expand=True)
+        self.instructions.insert("1.0", instructions)
+        self.instructions.configure(state="disabled")
         tools = ttk.Frame(page)
         tools.grid(row=3, column=0, sticky="ew", pady=(8, 0))
         tools.columnconfigure(0, weight=1)

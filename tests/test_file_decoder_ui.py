@@ -105,3 +105,27 @@ def test_probe_selection_decline_then_select_and_forget_preserves_executable(dia
 def test_refresh_reports_both_tool_states(dialog):
     assert "FFmpeg" not in dialog.ffmpeg_status.get()
     assert "PCM WAV inspection works" in dialog.ffprobe_status.get()
+
+
+def test_long_setup_instructions_scroll_without_displacing_tool_actions(dialog):
+    dialog.root.master.deiconify()
+    dialog.root.deiconify()
+    dialog.root.geometry("560x500")
+    dialog.instructions.configure(state="normal")
+    dialog.instructions.insert("end", "\n" + "Additional installation guidance.\n" * 40)
+    dialog.instructions.configure(state="disabled")
+    dialog.root.update()
+    assert str(dialog.instructions.cget("state")) == "disabled"
+    assert dialog.instructions.yview()[1] < 1
+    dialog.instructions.yview_moveto(1)
+    assert dialog.instructions.yview()[1] == 1
+    assert dialog.instructions.winfo_height() > 30
+    def descendants(widget):
+        for child in widget.winfo_children():
+            yield child
+            yield from descendants(child)
+    for widget in descendants(dialog.root):
+        if widget.winfo_class() in ("TButton", "TEntry"):
+            assert widget.winfo_ismapped()
+            assert widget.winfo_rooty() + widget.winfo_height() <= dialog.root.winfo_rooty() + dialog.root.winfo_height()
+    dialog.root.master.withdraw()

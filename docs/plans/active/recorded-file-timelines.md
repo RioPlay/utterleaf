@@ -246,7 +246,7 @@ before asserting the backing file is closed. The complete OBS transcription
 test file passes locally. A new source CI run is required after this repair;
 the failed run is not described as green.
 
-The UI/CLI regression now passes **45 tests**. Independent review covers 19 file
+The UI/CLI regression passed **45 tests** before the scrollable guide follow-up. Independent review covers 19 file
 window cases and the decoder dialog, including queued cancellation,
 duplicate jobs, ordinary source changes, stale queues after close, explicit
 selection/forget and failed worker startup. Seven synthetic captures from
@@ -264,6 +264,13 @@ layout correction; local Windows checks do not replace that evidence.
 A retained controlled Windows experiment with 12-point body/button text also
 fits at 560×500 after reducing excess spacing. This is a narrow layout check,
 not arbitrary font-size or native macOS/Linux accessibility acceptance.
+
+CI `34785128759` at `4507545` cleared Linux's compact checks but exposed remaining
+macOS footer clipping. Installation guidance now uses a bounded, read-only
+scrolling text area that absorbs the available height; tool choices and footer
+actions stay outside it. Eleven local dialog tests pass, including long guidance
+that scrolls to the end without moving the controls. Native CI is still required
+for this structural layout correction.
 
 ## Non-goals and stop
 
