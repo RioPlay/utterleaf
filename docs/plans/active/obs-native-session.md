@@ -2,8 +2,9 @@
 
 ## Goal and area
 
-Continue the original bridge after its reviewed build/load prerequisite, merged
-through PR #32 at `e61c7dd`. Implement the native server boundary required for
+The original bridge build/load prerequisite merged through PR #32 at `e61c7dd`;
+the bounded handshake/admission components below merged through PR #33 at
+`006d482`. The remaining goal is the complete native server boundary required for
 actual primary stream-mix and optional separate-bus capture. This plan does not
 replace the full [OBS design](obs-audio-design.md) or its live acceptance gates.
 
@@ -111,8 +112,13 @@ $env:PYTHONPATH = (Get-Location).Path
 
 ## Status and stop
 
-In progress on `feat/obs-native-session`. Independent source, test-driver and
-saved-evidence review is clear for the bounded handshake/admission components.
+The bounded components are integrated from `feat/obs-native-session`.
+Independent source, test-driver and saved-evidence review is clear.
+PR #33 merged at `006d482` after all five exact-source desktop CI jobs passed in
+[run 34752363075](https://github.com/RioPlay/utterleaf/actions/runs/34752363075)
+at `5306df0`. The owning follow-up is
+[client enrollment](obs-native-enrollment.md) on `feat/obs-native-enrollment`:
+vendor callback arrival does not prove authenticated dispatch.
 Cancellation now prevents new pipe borrowing, while previously borrowed handles
 still require caller-owned workers to stop and join before destruction.
 Vendor/enrollment/arming and PCM are not implemented or verified. Stop editing

@@ -116,8 +116,11 @@ The separate [native session components](plans/active/obs-native-session.md) now
 pass fixed Hello/ACK and CNG-failure checks, 11 actual child-process transport
 tests, current-logon DACL/noninheritance checks and 64 create/destroy handle
 balance cycles. A focused desktop boundary/pipe regression passes 54 tests.
-Independent admission source/test/evidence review is clear. These components are not linked into the
-module; vendor authorization/enrollment, atomic arming and PCM capture remain
+Independent admission source/test/evidence review is clear; PR #33 merged at
+`006d482` after all five exact-source desktop CI jobs passed. The next
+[enrollment step](plans/active/obs-native-enrollment.md) accounts for the public
+vendor API's lack of caller authentication context. These components are not
+linked into the module; vendor authorization/enrollment, atomic arming and PCM capture remain
 unimplemented. Cross-user/logon, remote clients, forced PID reuse and kernel
 completion failure are not established by these fixtures. The installed toolchain
 is not fully pinned and native redistribution review remains open; no plugin
