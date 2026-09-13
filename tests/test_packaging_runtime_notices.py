@@ -62,6 +62,59 @@ def test_exact_fallback_retains_distinct_component_texts_and_provenance(runtime)
     assert not (output / "LICENSE-DECLARED.txt").exists()
 
 
+def test_platform_fallback_requires_exact_version_and_native_target(runtime, monkeypatch):
+    module, manifest, entry, output = runtime
+    manifest["packages"].pop("example")
+    manifest["package_variants"] = {
+        "example": {"1.0": {"linux:x86_64": entry}}
+    }
+    module.sys.platform = "linux"
+    monkeypatch.setattr(module.platform, "machine", lambda: "AMD64")
+    module.copy_license_files(module.SITE / "example.dist-info", package_metadata(), output)
+    assert (output / "LICENSE").read_text() == "Complete primary terms"
+
+    monkeypatch.setattr(module.platform, "machine", lambda: "aarch64")
+    with pytest.raises(SystemExit, match="full license text unavailable"):
+        module.copy_license_files(module.SITE / "example.dist-info", package_metadata(), output / "wrong-arch")
+    with pytest.raises(SystemExit, match="full license text unavailable"):
+        module.copy_license_files(
+            module.SITE / "example.dist-info", package_metadata(version="1.1"), output / "wrong-version"
+        )
+
+
+def test_target_restriction_prevents_reusing_a_platform_specific_review(runtime, monkeypatch):
+    module, _, entry, output = runtime
+    entry["targets"] = ["win32:x86_64"]
+    module.sys.platform = "darwin"
+    monkeypatch.setattr(module.platform, "machine", lambda: "arm64")
+    with pytest.raises(SystemExit, match="full license text unavailable"):
+        module.copy_license_files(module.SITE / "example.dist-info", package_metadata(), output)
+
+
+def test_platform_review_binds_source_hash_and_packaged_native_inventory(runtime):
+    module, _, entry, _ = runtime
+    source = module.SITE / "example" / "native.so"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"reviewed native input")
+    packaged = module.DIST / "_internal" / "example" / "native.so"
+    packaged.parent.mkdir(parents=True, exist_ok=True)
+    packaged.write_bytes(b"possibly transformed packaged input")
+    entry["payload_review"] = {
+        "source_files": {"example/native.so": hashlib.sha256(source.read_bytes()).hexdigest()},
+        "packaged_roots": ["example"],
+        "packaged_native_files": ["example/native.so"],
+    }
+    module.verify_reviewed_package_payload(entry)
+
+    source.write_bytes(b"changed native input")
+    with pytest.raises(SystemExit, match="unreviewed package native payload"):
+        module.verify_reviewed_package_payload(entry)
+    source.write_bytes(b"reviewed native input")
+    (packaged.parent / "unexpected.dylib").write_bytes(b"unexpected")
+    with pytest.raises(SystemExit, match="does not match its reviewed inventory"):
+        module.verify_reviewed_package_payload(entry)
+
+
 def test_wheel_full_text_does_not_need_a_fallback_record(runtime):
     module, _, _, output = runtime
     info = module.SITE / "unknown.dist-info"
@@ -136,3 +189,38 @@ def test_asio_binary_is_rejected_even_if_a_build_hook_reintroduces_it(runtime, n
     (module.DIST / "_internal" / name).write_bytes(b"binary fixture")
     with pytest.raises(SystemExit, match="Excluded ASIO library"):
         module.verify_media_policy(module.DIST)
+
+
+def test_checked_in_ct2_platform_reviews_have_verified_distinct_closures(tmp_path):
+    source = Path(__file__).resolve().parents[1] / "packaging" / "collect_notices.py"
+    spec = importlib.util.spec_from_file_location("checked_in_runtime_notices", source)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    variants = module.runtime_notice_manifest()["package_variants"]["ctranslate2"]["4.8.2"]
+
+    linux = tmp_path / "linux"
+    module.copy_reviewed_notice_files(variants["linux:x86_64"], linux)
+    assert (linux / "native" / "libgomp" / "COPYING3").is_file()
+    assert (linux / "native" / "libgomp" / "COPYING.RUNTIME").is_file()
+    assert (linux / "native" / "oneDNN-v3.1.1-LICENSE.txt").is_file()
+
+    macos = tmp_path / "macos"
+    module.copy_reviewed_notice_files(variants["darwin:arm64"], macos)
+    assert (macos / "ruy" / "cpuinfo" / "LICENSE").is_file()
+    assert not (macos / "native" / "libgomp").exists()
+    assert not (macos / "native" / "oneDNN-v3.1.1-LICENSE.txt").exists()
+
+
+def test_general_windows_ci_uses_the_reviewed_runtime_inputs():
+    root = Path(__file__).resolve().parents[1]
+    workflow = (root / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
+    lock = (root / "packaging" / "requirements-windows-preview.txt").read_text(encoding="utf-8")
+    manifest = json.loads(
+        (root / "packaging" / "notices" / "runtime-manifest.json").read_text(encoding="utf-8")
+    )
+
+    assert 'python-version: "3.14.6"' in workflow
+    assert "pip install --require-hashes -r packaging\\requirements-windows-preview.txt" in workflow
+    assert "pip install --no-deps --no-build-isolation -e ." in workflow
+    assert "ctranslate2==4.8.1" in lock
+    assert manifest["packages"]["ctranslate2"]["targets"] == ["win32:x86_64"]

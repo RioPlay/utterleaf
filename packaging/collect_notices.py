@@ -13,6 +13,7 @@ from __future__ import annotations
 import email
 import hashlib
 import json
+import platform
 import shutil
 import sys
 from pathlib import Path
@@ -43,7 +44,7 @@ PACKAGES: list[tuple[str, str]] = [
     ("onnxruntime", ""),
     ("numpy", ""),
     ("pillow", ""),
-    ("sounddevice", "The Windows build includes non-ASIO PortAudio; see licenses/portaudio/LICENSE.txt."),
+    ("sounddevice", "The unused Windows ASIO binary is excluded on every host; the retained sounddevice license tree documents bundled code."),
     ("cffi", ""),
     ("pycparser", ""),
     ("pynput", "LGPLv3. Corresponding source: https://github.com/moses-palmer/pynput"),
@@ -152,9 +153,23 @@ def copy_license_files(dist_info: Path, meta: email.message.Message, out_dir: Pa
     # A license expression is not a substitute for the actual terms. Older
     # wheels need a version-specific, locally reviewed upstream text.
     name = (meta.get("Name") or "").lower().replace("-", "_")
-    entry = runtime_notice_manifest()["packages"].get(name)
-    if entry is None or entry["version"] != meta.get("Version"):
+    manifest = runtime_notice_manifest()
+    entry = manifest["packages"].get(name)
+    version = meta.get("Version")
+    if entry is not None and entry["version"] == version:
+        targets = entry.get("targets")
+        if targets is not None and _notice_target() not in targets:
+            entry = None
+    else:
+        entry = None
+    if entry is None:
+        entry = (manifest.get("package_variants", {})
+                 .get(name, {})
+                 .get(version, {})
+                 .get(_notice_target()))
+    if entry is None:
         raise SystemExit(f"collect_notices: full license text unavailable for {name} {meta.get('Version')}")
+    verify_reviewed_package_payload(entry)
     copy_reviewed_notice_files(entry, out_dir)
 
 
@@ -162,6 +177,47 @@ def runtime_notice_manifest() -> dict:
     """Local reviewed inputs only; packaging never fetches license material."""
     path = ROOT / "packaging" / "notices" / "runtime-manifest.json"
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _notice_target() -> str:
+    """Return the reviewed native-wheel target, rejecting unknown architectures."""
+    machine = platform.machine().lower()
+    if machine in {"amd64", "x86_64"}:
+        machine = "x86_64"
+    elif machine in {"aarch64", "arm64"}:
+        machine = "arm64"
+    return f"{sys.platform}:{machine}"
+
+
+def verify_reviewed_package_payload(entry: dict) -> None:
+    """Bind a platform notice review to its installed and packaged native files."""
+    review = entry.get("payload_review")
+    if review is None:
+        return
+    if SITE is None:
+        raise SystemExit("collect_notices: site-packages unavailable for native payload review")
+    for relative, expected in review.get("source_files", {}).items():
+        source = SITE / relative
+        if not source.is_file() or hashlib.sha256(source.read_bytes()).hexdigest() != expected:
+            raise SystemExit(f"collect_notices: unreviewed package native payload: {relative}")
+
+    expected = set(review.get("packaged_native_files", []))
+    actual = set()
+    for relative_root in review.get("packaged_roots", []):
+        root = DIST / "_internal" / relative_root
+        if not root.is_dir():
+            continue
+        for path in root.rglob("*"):
+            if path.is_file() and _is_native_library(path.name):
+                actual.add(path.relative_to(DIST / "_internal").as_posix())
+    if actual != expected:
+        raise SystemExit("collect_notices: packaged native payload does not match its reviewed inventory")
+
+
+def _is_native_library(name: str) -> bool:
+    lower = name.lower()
+    return (lower.endswith((".dll", ".dylib", ".pyd", ".so"))
+            or ".so." in lower)
 
 
 def copy_reviewed_notice_files(entry: dict, out_dir: Path) -> None:

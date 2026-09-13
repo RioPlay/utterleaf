@@ -161,7 +161,10 @@
           "source": "Exact source/build/license references for retained static components"
         }
       ],
-      "scope": "MIT wrapper plus retained native component terms; static oneDNN/oneMKL and modified SIMD_Utils attribution are recorded separately."
+      "scope": "MIT wrapper plus retained native component terms; static oneDNN/oneMKL and modified SIMD_Utils attribution are recorded separately.",
+      "targets": [
+        "win32:x86_64"
+      ]
     },
     "protobuf": {
       "name": "protobuf",
@@ -4396,6 +4399,247 @@
           "note": "The crate inherits these license alternatives from the exact wasm-tools workspace; its source file licenses.rs is implementation code and is not a license notice."
         }
       ]
+    }
+  },
+  "package_variants": {
+    "ctranslate2": {
+      "4.8.2": {
+        "linux:x86_64": {
+          "name": "ctranslate2",
+          "version": "4.8.2",
+          "license": "MIT plus retained BSD/MIT/Apache/Intel component terms; bundled libgomp is GPL-3.0-or-later WITH GCC-exception-3.1",
+          "review_status": "complete",
+          "upstream_commit": "d44d2d069eb88c7b7804da864c10c201501cb4a9",
+          "files": [
+            {
+              "path": "runtime/ctranslate2/LICENSE",
+              "destination": "LICENSE",
+              "sha256": "54aa79d9fe3c09e67a16dcd95b9e88676405a6ec174efda31036983cf7672ecb",
+              "source": "https://github.com/OpenNMT/CTranslate2/blob/d44d2d069eb88c7b7804da864c10c201501cb4a9/LICENSE"
+            },
+            {
+              "path": "runtime/ctranslate2/cpu_features/LICENSE",
+              "destination": "cpu_features/LICENSE",
+              "sha256": "af272c1b4dd08dd61d43e001d3134119d03ca7a2b057a64f7355fdf27fbea3dd",
+              "source": "https://github.com/google/cpu_features/blob/8a494eb1e158ec2050e5f699a504fbc9b896a43b/LICENSE"
+            },
+            {
+              "path": "runtime/ctranslate2/cutlass/LICENSE.txt",
+              "destination": "cutlass/LICENSE.txt",
+              "sha256": "6fc6ad419e4d26571a14c7c4d26b65345865c20dd8686ddcf5e8673f54d3d233",
+              "source": "https://github.com/NVIDIA/cutlass/blob/bbe579a9e3beb6ea6626d9227ec32d0dae119a49/LICENSE.txt"
+            },
+            {
+              "path": "runtime/ctranslate2/thrust/LICENSE",
+              "destination": "thrust/LICENSE",
+              "sha256": "01b767dcd7d36f42efb608076741cf83f154a995e198028cb698aadc3a43b63b",
+              "source": "https://github.com/NVIDIA/cccl/blob/b5fe509fd11a925f90d6495176707cc1184eed9d/LICENSE"
+            },
+            {
+              "path": "runtime/ctranslate2/spdlog/LICENSE",
+              "destination": "spdlog/LICENSE",
+              "sha256": "a7241a379cb98d37788f82c2fc2e484c3ae85dae881fd3406f0637644850926f",
+              "source": "https://github.com/gabime/spdlog/blob/76fb40d95455f249bd70824ecfcae7a8f0930fa3/LICENSE"
+            },
+            {
+              "path": "runtime/ctranslate2/native/spdlog-fmt-LICENSE.txt",
+              "destination": "native/spdlog-fmt-LICENSE.txt",
+              "sha256": "825c9324e70f8c839c8ba910543dd4a7daee243b86ef960594c11381a19980b8",
+              "source": "https://github.com/gabime/spdlog/blob/76fb40d95455f249bd70824ecfcae7a8f0930fa3/include/spdlog/fmt/bundled/fmt.license.rst"
+            },
+            {
+              "path": "runtime/ctranslate2/native/BS-thread-pool-v5.1.0-LICENSE.txt",
+              "destination": "native/BS-thread-pool-v5.1.0-LICENSE.txt",
+              "sha256": "712a867cc12ebfcdecf6cea097f5aa7ec5acaa435a8f818c9f370960df35acbf",
+              "source": "https://github.com/bshoshany/thread-pool/blob/bd4533f1f70c2b975cbd5769a60d8eaaea1d2233/LICENSE.txt"
+            },
+            {
+              "path": "runtime/ctranslate2/native/simd-utils-0.2.5-BSD-2-LICENSE.txt",
+              "destination": "native/simd-utils-0.2.5-BSD-2-LICENSE.txt",
+              "sha256": "dfaa54b4188ffa0e6298ce7ea27c865d12edcf73d742e2200ce9812db6268c0f",
+              "source": "https://github.com/JishinMaster/simd_utils/blob/77cc4a0bdb997a2855f2632e8f03ef7b7cf6c321/LICENSE"
+            },
+            {
+              "path": "runtime/ctranslate2/native/oneDNN-v3.1.1-LICENSE.txt",
+              "destination": "native/oneDNN-v3.1.1-LICENSE.txt",
+              "sha256": "dd12452e1ae11e3282271aa5895d8175296b83e936a027209f9399d26a407d0f",
+              "source": "https://github.com/oneapi-src/oneDNN/blob/64f6bcbcbab628e96f33a62c3e975f8535a7bde4/LICENSE"
+            },
+            {
+              "path": "runtime/ctranslate2/native/oneDNN-v3.1.1-THIRD-PARTY-PROGRAMS.txt",
+              "destination": "native/oneDNN-v3.1.1-THIRD-PARTY-PROGRAMS.txt",
+              "sha256": "9117585dfc6b5cd0fafc063312f28a86ec82eb97bf68316dcefcaaa7fc11428e",
+              "source": "https://github.com/oneapi-src/oneDNN/blob/64f6bcbcbab628e96f33a62c3e975f8535a7bde4/THIRD-PARTY-PROGRAMS"
+            },
+            {
+              "path": "runtime/ctranslate2/native/intel-oneMKL-2025.3.0-LICENSE.txt",
+              "destination": "native/intel-oneMKL-2025.3.0-LICENSE.txt",
+              "sha256": "7721633d0ddff43fae25ebfd405f8166a0ce730cbcec44f2f3ad9d5eb8ac9a6f",
+              "source": "https://files.pythonhosted.org/packages/88/11/b43e8cde058c368ce7f8f9b1ca9f812f7397e4309148da7d24cb6b81b513/onemkl_license-2025.3.0-py2.py3-none-manylinux_2_28_x86_64.whl"
+            },
+            {
+              "path": "runtime/ctranslate2/native/intel-oneMKL-2025.3.0-third-party-programs-benchmarks.txt",
+              "destination": "native/intel-oneMKL-2025.3.0-third-party-programs-benchmarks.txt",
+              "sha256": "1f1224af12a7d3e51150ce6f762e32472076a31f6e44db41d3b651a7fa20f2f5",
+              "source": "https://files.pythonhosted.org/packages/88/11/b43e8cde058c368ce7f8f9b1ca9f812f7397e4309148da7d24cb6b81b513/onemkl_license-2025.3.0-py2.py3-none-manylinux_2_28_x86_64.whl"
+            },
+            {
+              "path": "runtime/ctranslate2/native/intel-oneMKL-2025.3.0-third-party-programs-IntelMPI.txt",
+              "destination": "native/intel-oneMKL-2025.3.0-third-party-programs-IntelMPI.txt",
+              "sha256": "82fa46762c37662a52ab9df58781813c1dc6c268ae2b6f9cf2d83183e706aa09",
+              "source": "https://files.pythonhosted.org/packages/88/11/b43e8cde058c368ce7f8f9b1ca9f812f7397e4309148da7d24cb6b81b513/onemkl_license-2025.3.0-py2.py3-none-manylinux_2_28_x86_64.whl"
+            },
+            {
+              "path": "runtime/ctranslate2/native/intel-oneMKL-2025.3.0-third-party-programs-level-zero.txt",
+              "destination": "native/intel-oneMKL-2025.3.0-third-party-programs-level-zero.txt",
+              "sha256": "cfe7d2ba4b4cd53271c7f91937e906256c0f14ea62ba33ffb556664b8d39aa59",
+              "source": "https://files.pythonhosted.org/packages/88/11/b43e8cde058c368ce7f8f9b1ca9f812f7397e4309148da7d24cb6b81b513/onemkl_license-2025.3.0-py2.py3-none-manylinux_2_28_x86_64.whl"
+            },
+            {
+              "path": "runtime/ctranslate2/native/intel-oneMKL-2025.3.0-third-party-programs-oneMath.txt",
+              "destination": "native/intel-oneMKL-2025.3.0-third-party-programs-oneMath.txt",
+              "sha256": "2ba4e9858c253331691370f4e8e3899ca6a5baa20907f189f5970635870b860d",
+              "source": "https://files.pythonhosted.org/packages/88/11/b43e8cde058c368ce7f8f9b1ca9f812f7397e4309148da7d24cb6b81b513/onemkl_license-2025.3.0-py2.py3-none-manylinux_2_28_x86_64.whl"
+            },
+            {
+              "path": "runtime/ctranslate2/native/intel-oneMKL-2025.3.0-third-party-programs-oneTBB.txt",
+              "destination": "native/intel-oneMKL-2025.3.0-third-party-programs-oneTBB.txt",
+              "sha256": "d507da4fffae647ebc1bbb7e12cc5cca8087d36b0d78cc75caa96cae37688cb1",
+              "source": "https://files.pythonhosted.org/packages/88/11/b43e8cde058c368ce7f8f9b1ca9f812f7397e4309148da7d24cb6b81b513/onemkl_license-2025.3.0-py2.py3-none-manylinux_2_28_x86_64.whl"
+            },
+            {
+              "path": "runtime/ctranslate2/native/intel-oneMKL-2025.3.0-third-party-programs-openmp.txt",
+              "destination": "native/intel-oneMKL-2025.3.0-third-party-programs-openmp.txt",
+              "sha256": "8fdfbbdfed13bca3641da35182e7ee1bb92a99f302ce8b0deb981ac1f18adee2",
+              "source": "https://files.pythonhosted.org/packages/88/11/b43e8cde058c368ce7f8f9b1ca9f812f7397e4309148da7d24cb6b81b513/onemkl_license-2025.3.0-py2.py3-none-manylinux_2_28_x86_64.whl"
+            },
+            {
+              "path": "runtime/ctranslate2/native/intel-oneMKL-2025.3.0-third-party-programs-safestring.txt",
+              "destination": "native/intel-oneMKL-2025.3.0-third-party-programs-safestring.txt",
+              "sha256": "415000d1887939ffc6826e0ed3f099cebcab6aaeda2da0acb017110a456b3d42",
+              "source": "https://files.pythonhosted.org/packages/88/11/b43e8cde058c368ce7f8f9b1ca9f812f7397e4309148da7d24cb6b81b513/onemkl_license-2025.3.0-py2.py3-none-manylinux_2_28_x86_64.whl"
+            },
+            {
+              "path": "runtime/ctranslate2/native/intel-oneMKL-2025.3.0-third-party-programs.txt",
+              "destination": "native/intel-oneMKL-2025.3.0-third-party-programs.txt",
+              "sha256": "6fb57367c2107b8b3347e0e9db10d368c7b9ea898a08132b2f841b24b86f076f",
+              "source": "https://files.pythonhosted.org/packages/88/11/b43e8cde058c368ce7f8f9b1ca9f812f7397e4309148da7d24cb6b81b513/onemkl_license-2025.3.0-py2.py3-none-manylinux_2_28_x86_64.whl"
+            },
+            {
+              "path": "runtime/ctranslate2/native/avx_mathfun.h-notice.txt",
+              "destination": "native/avx_mathfun.h-notice.txt",
+              "sha256": "ec85ca4026c4faad748865a03574b6937f346885a7fe81d03b1f70ab33bca46b",
+              "source": "https://github.com/OpenNMT/CTranslate2/blob/0d8bcd362ac75ef860ef161d6f0efad0ae439ff0/third_party/avx_mathfun.h (verbatim leading notice comments)"
+            },
+            {
+              "path": "runtime/ctranslate2-4.8.2/libgomp/COPYING3",
+              "destination": "native/libgomp/COPYING3",
+              "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+              "source": "https://github.com/gcc-mirror/gcc/blob/eafe83f2f20ef0c1e7703c361ba314b44574523c/COPYING3"
+            },
+            {
+              "path": "runtime/ctranslate2-4.8.2/libgomp/COPYING.RUNTIME",
+              "destination": "native/libgomp/COPYING.RUNTIME",
+              "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74",
+              "source": "https://github.com/gcc-mirror/gcc/blob/eafe83f2f20ef0c1e7703c361ba314b44574523c/COPYING.RUNTIME"
+            },
+            {
+              "path": "runtime/ctranslate2-4.8.2/linux-x86_64-provenance.json",
+              "destination": "native/platform-provenance.json",
+              "sha256": "8ff1859200c5291d47ff2a1d250dfbe77e8798eef2c85cfac5d4e3f62a0410e6",
+              "source": "Exact source, build, wheel, and binary inspection references for Linux x86_64"
+            }
+          ],
+          "scope": "Official CPython 3.14 Linux x86_64 wheel: CTranslate2 and retained static component terms, plus bundled GCC 8.5 libgomp terms.",
+          "payload_review": {
+            "source_files": {
+              "ctranslate2/_ext.cpython-312-x86_64-linux-gnu.so": "89b0d28c37f158ec8f98a001cd3b68ea733e8ed1bab2b7b092834019c02f390e",
+              "ctranslate2.libs/libctranslate2-fd146744.so.4.8.2": "ebebd2799bf0c8a4c89044b986e94512ed5c80cd7ef1c95dc67872a4384df9f7",
+              "ctranslate2.libs/libgomp-e985bcbb.so.1.0.0": "a43904e4fa297301d4640dc1bb3c8a3480b406f99e498eba9b1914b68aab604a"
+            },
+            "packaged_roots": [
+              "ctranslate2",
+              "ctranslate2.libs"
+            ],
+            "packaged_native_files": [
+              "ctranslate2/_ext.cpython-312-x86_64-linux-gnu.so",
+              "ctranslate2.libs/libctranslate2-fd146744.so.4.8.2",
+              "ctranslate2.libs/libgomp-e985bcbb.so.1.0.0"
+            ]
+          }
+        },
+        "darwin:arm64": {
+          "name": "ctranslate2",
+          "version": "4.8.2",
+          "license": "MIT plus retained Apache-2.0/BSD/MIT component terms",
+          "review_status": "complete",
+          "upstream_commit": "d44d2d069eb88c7b7804da864c10c201501cb4a9",
+          "files": [
+            {
+              "path": "runtime/ctranslate2/LICENSE",
+              "destination": "LICENSE",
+              "sha256": "54aa79d9fe3c09e67a16dcd95b9e88676405a6ec174efda31036983cf7672ecb",
+              "source": "https://github.com/OpenNMT/CTranslate2/blob/d44d2d069eb88c7b7804da864c10c201501cb4a9/LICENSE"
+            },
+            {
+              "path": "runtime/ctranslate2/ruy/LICENSE",
+              "destination": "ruy/LICENSE",
+              "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+              "source": "https://github.com/google/ruy/blob/363f252289fb7a1fba1703d99196524698cb884d/LICENSE"
+            },
+            {
+              "path": "runtime/ctranslate2/spdlog/LICENSE",
+              "destination": "spdlog/LICENSE",
+              "sha256": "a7241a379cb98d37788f82c2fc2e484c3ae85dae881fd3406f0637644850926f",
+              "source": "https://github.com/gabime/spdlog/blob/76fb40d95455f249bd70824ecfcae7a8f0930fa3/LICENSE"
+            },
+            {
+              "path": "runtime/ctranslate2/native/spdlog-fmt-LICENSE.txt",
+              "destination": "native/spdlog-fmt-LICENSE.txt",
+              "sha256": "825c9324e70f8c839c8ba910543dd4a7daee243b86ef960594c11381a19980b8",
+              "source": "https://github.com/gabime/spdlog/blob/76fb40d95455f249bd70824ecfcae7a8f0930fa3/include/spdlog/fmt/bundled/fmt.license.rst"
+            },
+            {
+              "path": "runtime/ctranslate2/native/BS-thread-pool-v5.1.0-LICENSE.txt",
+              "destination": "native/BS-thread-pool-v5.1.0-LICENSE.txt",
+              "sha256": "712a867cc12ebfcdecf6cea097f5aa7ec5acaa435a8f818c9f370960df35acbf",
+              "source": "https://github.com/bshoshany/thread-pool/blob/bd4533f1f70c2b975cbd5769a60d8eaaea1d2233/LICENSE.txt"
+            },
+            {
+              "path": "runtime/ctranslate2/native/neon_mathfun.h-notice.txt",
+              "destination": "native/neon_mathfun.h-notice.txt",
+              "sha256": "c017593174300b83bc3eb24ff5726cb182761cb2f150b134bc51922e1569a611",
+              "source": "https://github.com/OpenNMT/CTranslate2/blob/0d8bcd362ac75ef860ef161d6f0efad0ae439ff0/third_party/neon_mathfun.h (verbatim leading notice comments)"
+            },
+            {
+              "path": "runtime/ctranslate2-4.8.2/ruy-cpuinfo/LICENSE",
+              "destination": "ruy/cpuinfo/LICENSE",
+              "sha256": "8e7e60636c3aa0cb03571a1a841ce5697f9551ff92b3c426c2561613d15ade70",
+              "source": "https://github.com/pytorch/cpuinfo/blob/082deffc80ce517f81dc2f3aebe6ba671fcd09c9/LICENSE"
+            },
+            {
+              "path": "runtime/ctranslate2-4.8.2/macos-arm64-provenance.json",
+              "destination": "native/platform-provenance.json",
+              "sha256": "369c49d69699017ad671a7df79bbbb7d272d57019e68ce9e364cd4a1518d5246",
+              "source": "Exact source, build, wheel, and binary inspection references for macOS ARM64"
+            }
+          ],
+          "scope": "Official CPython 3.14 macOS ARM64 wheel: Accelerate/Ruy build and retained compiled component terms.",
+          "payload_review": {
+            "source_files": {
+              "ctranslate2/_ext.cpython-314-darwin.so": "8a3b56a0601f34c90bce99b6e3c14cc00c7d6a8539b03df37da4406bef6d5b10",
+              "ctranslate2/.dylibs/libctranslate2.4.8.2.dylib": "f05bdfeccbbd04f27e248588eb2a8e4f4d21b5ec5ddfd3a1a0d8318c31868416"
+            },
+            "packaged_roots": [
+              "ctranslate2"
+            ],
+            "packaged_native_files": [
+              "ctranslate2/_ext.cpython-314-darwin.so",
+              "ctranslate2/.dylibs/libctranslate2.4.8.2.dylib"
+            ]
+          }
+        }
+      }
     }
   }
 }

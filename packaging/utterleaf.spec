@@ -76,12 +76,11 @@ a = Analysis(
     noarchive=False,
 )
 
-# sounddevice's hook collects both Windows PortAudio variants. The advertised
-# Windows input path uses MME/DirectSound/WDM-KS/WASAPI; omit the unused ASIO SDK
-# binary from both possible collection groups before creating the distribution.
-if sys.platform == "win32":
-    a.binaries = [item for item in a.binaries if not item[0].lower().endswith("-asio.dll")]
-    a.datas = [item for item in a.datas if not item[0].lower().endswith("-asio.dll")]
+# sounddevice's platform-neutral wheel contains both Windows PortAudio variants
+# even on macOS. Utterleaf does not use the ASIO build on any supported host, so
+# omit the foreign DLL from both possible collection groups everywhere.
+a.binaries = [item for item in a.binaries if not item[0].lower().endswith("-asio.dll")]
+a.datas = [item for item in a.datas if not item[0].lower().endswith("-asio.dll")]
 
 pyz = PYZ(a.pure)
 

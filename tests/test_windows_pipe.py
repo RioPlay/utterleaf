@@ -138,7 +138,8 @@ def test_create_file_uses_local_overlapped_identification_flags(monkeypatch):
         GetNamedPipeServerProcessId = Function()
         CloseHandle = Function()
     monkeypatch.setattr(pipe_mod.sys, "platform", "win32")
-    monkeypatch.setattr(pipe_mod.ctypes, "WinDLL", lambda *args, **kwargs: Kernel())
+    # ctypes doesn't expose WinDLL on POSIX, where this ABI test also runs.
+    monkeypatch.setattr(pipe_mod.ctypes, "WinDLL", lambda *args, **kwargs: Kernel(), raising=False)
     native = pipe_mod._Native()
     assert native.open_pipe(NAME) == 7
     name, access, share, security, disposition, flags, template = calls[0]
