@@ -55,6 +55,16 @@ captures use 1.5 and 2 times that value. Input groups, focus reveal, microphone
 Test/Stop/retry, wrapped hints and the sidebar disclosure pass their geometry
 checks. Independent review is clear. CI remains the source integration gate.
 
+CI at `4e829ff` passed Windows/Linux checks and all three builds, but macOS
+job `103703425241` hung in the first Settings constructor's `update_idletasks`
+and reached its 15-minute limit. The candidate correction gives expanding hint
+labels a fixed minimal requested width: wrapped text can request height but
+cannot feed a new width back into its own columns. A new regression fails under
+the prior behavior and passes with the fix; all **50 focused tests** pass locally
+without skips. Fresh default/compact renders were inspected and independent
+source review cleared the correction. Actual macOS CI remains required; this
+Windows evidence does not establish the macOS fix.
+
 The refreshed documentation screenshots show the source layout, not the published
 RC2 binary. Local capture receipts are `root-native-1.png`, `root-native-1.5.png`
 and `root-native-2.png` under `.grok/desktop-dictation-layout/`.

@@ -223,13 +223,14 @@ class SettingsWindow:
         return box
 
     def _column_hint(self, parent, text="", *, textvariable=None):
+        # Hint text takes the width assigned by its controls. Its wrapped text
+        # must not request a new column width and feed back into Configure.
         label = ttk.Label(parent, text=text, textvariable=textvariable,
-                          style="Hint.TLabel", wraplength=180, justify="left")
+                          style="Hint.TLabel", width=1, wraplength=180, justify="left")
         label.pack(fill="x", pady=(2, 0))
         self._column_labels.add(label)
         def wrap_hint(event):
-            # Leave room for the label's border. Wrapping at its outer width
-            # can request an extra pixel and make uniform columns oscillate.
+            # Leave room for the label's border inside the allocated width.
             width = max(1, event.width - 4)
             if event.width > 1 and int(label.cget("wraplength")) != width:
                 label.configure(wraplength=width)

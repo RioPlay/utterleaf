@@ -703,3 +703,22 @@ def test_compact_microphone_button_starts_stops_and_recovers(window, monkeypatch
     assert not window.mic_stop.is_set()
     callbacks.pop()(RuntimeError("unavailable"))
     assert window.mic_button.cget("text") == "Test"
+
+
+def test_microphone_feedback_cannot_request_wider_columns(window):
+    window.root.deiconify()
+    window.root.geometry("770x655")
+    window.mic_message.set("Ready.")
+    window.root.update()
+    widths = {label: label.winfo_reqwidth() for label in window._column_labels}
+    window.mic_message.set(
+        "The selected microphone is disconnected. Reconnect it and refresh devices. "
+        "Choose another input if it is still unavailable."
+    )
+    for geometry in ("960x780", "760x560", "770x655"):
+        window.root.geometry(geometry)
+        window.root.update()
+        for label, width in widths.items():
+            assert label.winfo_reqwidth() == width
+            if label.winfo_ismapped():
+                assert label.winfo_height() >= label.winfo_reqheight()
