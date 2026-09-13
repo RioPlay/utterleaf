@@ -24,6 +24,11 @@ out of that everyday path until they serve a clear user need.
 - Retain keyboard navigation, focus indication, readable contrast, and system
   scaling. Check the compact 760 × 560 layout as well as the default window.
 
+On Windows, the current Tk settings window has a known UI Automation limitation:
+many controls may be exposed by the OS as unnamed panes even though their visual
+labels are present. Treat screen-reader and broader UI Automation acceptance as
+an explicit manual gate; source screenshots and Tk tests do not establish it.
+
 The current UI is Tkinter/ttk, styled in `utterleaf/theme.py`, with layout in
 `utterleaf/settings_ui.py`. It uses the existing Pillow dependency for bundled
 artwork. This refresh adds no UI package, web runtime, remote fonts, or animation

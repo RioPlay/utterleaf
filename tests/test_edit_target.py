@@ -33,6 +33,13 @@ def test_capture_requires_exact_insertion_and_handles_utf16(monkeypatch):
     assert edit.capture(before, "grow") is None
 
 
+def test_insertion_neighbors_returns_only_scalars_around_utf16_selection():
+    field = edit.Field((1, 2, 3), "Before 🍃after", 7, 7)
+    assert edit.insertion_neighbors(field) == (" ", "🍃")
+    inside_pair = edit.Field((1, 2, 3), "🍃", 1, 1)
+    assert edit.insertion_neighbors(inside_pair) is None
+
+
 def test_scoped_replacement_uses_selection_and_verifies_result(monkeypatch):
     saved = receipt()
     current = iter([saved.after, edit.Field((1, 2, 3), "Hello world", 6, 11),

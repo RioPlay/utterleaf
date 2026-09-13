@@ -24,6 +24,13 @@ clipboard restoration, live preview, hotkeys, microphone, model/device settings,
 paths, control tokens, logs, audio, and transcripts are excluded. Imported unknown
 keys are rejected, rather than silently retained for future use.
 
+The 0.4.6 RC1 Windows preview also offers **Output style** (`output_format`)
+as an explicitly selectable portable preference, validated as `prose` or `markdown`.
+Backups without it preserve the destination's existing choice. Older applications
+reject this new key under their strict schema; omit Output style when preparing a
+backup for an older build. Models, credentials, network and clipboard permissions
+remain outside this portable preference set.
+
 Vocabulary export is optional and contains explicit `spoken`/`written` pairs;
 comments are omitted. Vocabulary can contain personal information the user entered,
 so the caller must show the selected content before saving or sharing the JSON.
@@ -35,6 +42,12 @@ unknown preferences, invalid types, duplicate case-insensitive spoken terms and
 control/format characters are rejected. Vocabulary is limited to 2,000 entries,
 256 characters per term and 256 KiB of rendered dictionary text. Existing malformed
 or oversized vocabulary causes merge to fail, without dropping existing entries.
+
+The same preview includes the separately selectable speech-end enable,
+pause and automatic-insert preferences. These are local behavior choices; backup
+does not contain audio, detector weights or reviewed transcript text. Imported
+preferences still require a deliberately started take and the normal resource
+and target checks. Older applications do not recognize these new keys.
 
 ## Integration API
 

@@ -1,6 +1,7 @@
 """Exercise real Tk widgets without hardware, network, or personal config writes."""
 import time
 import tkinter as tk
+from tkinter import ttk
 import pytest
 
 from utterleaf.config import Config
@@ -255,6 +256,91 @@ def test_close_preserves_unsaved_work(window, monkeypatch):
     assert not window.closed
 
 
+def test_markdown_output_choice_is_previewed_saved_and_reset(window, monkeypatch):
+    window.vars["output_format"].set("markdown")
+    window.sample.delete("1.0", "end")
+    window.sample.insert("1.0", "heading two Project notes")
+    window.preview()
+    assert window.preview_result.get() == "## Project notes"
+    saved = []
+    monkeypatch.setattr("utterleaf.settings.save", saved.append)
+    monkeypatch.setattr("utterleaf.settings.set_startup", lambda _on: None)
+    monkeypatch.setattr("utterleaf.settings.save_dictionary", lambda _names: None)
+    monkeypatch.setattr("utterleaf.ipc.send", lambda _command: "ok")
+    monkeypatch.setattr(window, "_worker", lambda action, done: done(action()))
+    window.save()
+    assert saved[-1].output_format == "markdown"
+    monkeypatch.setattr("utterleaf.settings_ui.messagebox.askyesno", lambda *a, **k: True)
+    window.restore_defaults()
+    assert window.vars["output_format"].get() == "prose"
+
+
+def test_discarded_markdown_choice_reopens_with_last_saved_value(window, monkeypatch):
+    saved = []
+    monkeypatch.setattr("utterleaf.settings.save", saved.append)
+    monkeypatch.setattr("utterleaf.settings.set_startup", lambda _on: None)
+    monkeypatch.setattr("utterleaf.settings.save_dictionary", lambda _names: None)
+    monkeypatch.setattr("utterleaf.ipc.send", lambda _command: "ok")
+    monkeypatch.setattr(window, "_worker", lambda action, done: done(action()))
+    window.vars["output_format"].set("markdown")
+    window.save()
+    window.vars["output_format"].set("prose")
+    monkeypatch.setattr("utterleaf.settings_ui.messagebox.askyesno", lambda *a, **k: True)
+    window.close()
+    reopened = SettingsWindow(tk.Toplevel(window.root.master), saved[-1], background=False)
+    try:
+        assert reopened.vars["output_format"].get() == "markdown"
+    finally:
+        reopened.closed = True
+        reopened.root.after_cancel(reopened.poll_id)
+        reopened.root.destroy()
+
+
+def test_invalid_output_format_returns_to_vocabulary_page(window, monkeypatch):
+    from utterleaf.settings import FormValidationError
+
+    pages = []
+    monkeypatch.setattr(window, "show_page", pages.append)
+    monkeypatch.setattr("utterleaf.settings_ui.messagebox.showerror", lambda *a, **k: None)
+    window._show_invalid_field(FormValidationError("output_format", "Choose prose or Markdown output."))
+    assert pages == ["Vocabulary"]
+
+
+def test_speech_end_preferences_save_discard_reopen_and_reset(window, monkeypatch):
+    assert not window.vars["speech_end_enabled"].get()
+    assert str(window.speech_end_pause.cget("state")) == "disabled"
+    window.vars["speech_end_enabled"].set(True)
+    window.vars["speech_end_pause_seconds"].set("1.8")
+    window.vars["speech_end_insert"].set(True)
+    saved = []
+    monkeypatch.setattr("utterleaf.settings.save", saved.append)
+    monkeypatch.setattr("utterleaf.settings.set_startup", lambda _on: None)
+    monkeypatch.setattr("utterleaf.settings.save_dictionary", lambda _names: None)
+    monkeypatch.setattr("utterleaf.ipc.send", lambda _command: "ok")
+    monkeypatch.setattr(window, "_worker", lambda action, done: done(action()))
+    window.save()
+    assert saved[-1].speech_end_enabled is True
+    assert saved[-1].speech_end_pause_seconds == 1.8
+    assert saved[-1].speech_end_insert is True
+    window.vars["speech_end_pause_seconds"].set("2.5")
+    monkeypatch.setattr("utterleaf.settings_ui.messagebox.askyesno", lambda *a, **k: True)
+    window.close()
+    reopened = SettingsWindow(tk.Toplevel(window.root.master), saved[-1], background=False)
+    try:
+        assert reopened.vars["speech_end_enabled"].get() is True
+        assert float(reopened.vars["speech_end_pause_seconds"].get()) == 1.8
+        assert reopened.vars["speech_end_insert"].get() is True
+        monkeypatch.setattr("utterleaf.settings_ui.messagebox.askyesno", lambda *a, **k: True)
+        reopened.restore_defaults()
+        assert reopened.vars["speech_end_enabled"].get() is False
+        assert float(reopened.vars["speech_end_pause_seconds"].get()) == 1.2
+        assert reopened.vars["speech_end_insert"].get() is False
+    finally:
+        reopened.closed = True
+        reopened.root.after_cancel(reopened.poll_id)
+        reopened.root.destroy()
+
+
 def test_restore_defaults_is_staged_and_preserves_vocabulary(window, monkeypatch):
     window.vars["device"].set("gpu")
     window.vars["indicator"].set(True)
@@ -363,6 +449,91 @@ def test_friendly_device_labels_keep_config_values_and_reset_in_sync(window):
     assert window._snapshot()["device"] == "gpu"
     window.vars["device"].set("auto")
     assert field.get() == "Automatic"
+
+
+def test_first_combobox_click_does_not_scroll_or_detach_popup(window):
+    window.root.deiconify()
+    window.root.geometry("770x655")
+    window.show_page("Dictation")
+    window.root.update()
+    box = window.hotkey_box
+    assert window.canvas.yview()[0] == pytest.approx(0)
+    box.event_generate("<Button-1>", x=box.winfo_width() - 5, y=box.winfo_height() // 2)
+    window.root.update()
+    popup = box.tk.call("ttk::combobox::PopdownWindow", str(box))
+    assert window.canvas.yview()[0] == pytest.approx(0)
+    assert int(box.tk.call("winfo", "rootx", popup)) == box.winfo_rootx()
+    assert int(box.tk.call("winfo", "rooty", popup)) == box.winfo_rooty() + box.winfo_height()
+    window.root.event_generate("<Escape>")
+    window.root.update()
+
+
+def test_focus_reveal_handles_above_and_near_bottom_controls(window):
+    window.root.deiconify()
+    window.root.geometry("770x655")
+    window.show_page("Vocabulary")
+    window.root.update()
+    canvas_top = window.canvas.winfo_rooty()
+    canvas_bottom = canvas_top + window.canvas.winfo_height()
+
+    window.canvas.yview_moveto(1)
+    window.root.update()
+    above = window.names
+    assert above.winfo_rooty() < canvas_top
+    # Exercise Tk's focus binding without depending on this test process owning
+    # the Windows foreground; focus_set() is only a request when it does not.
+    above.event_generate("<FocusIn>")
+    window.root.update()
+    assert above.winfo_rooty() >= canvas_top
+    assert above.winfo_rooty() + above.winfo_height() <= canvas_bottom
+
+    window.canvas.yview_moveto(0)
+    window.root.update()
+    near_bottom = window.sample
+    assert near_bottom.winfo_rooty() + near_bottom.winfo_height() > canvas_bottom
+    near_bottom.event_generate("<FocusIn>")
+    window.root.update()
+    assert near_bottom.winfo_rooty() >= canvas_top
+    assert near_bottom.winfo_rooty() + near_bottom.winfo_height() <= canvas_bottom
+
+
+def test_first_button_click_activates_without_focus_scroll(window, monkeypatch):
+    window.root.deiconify()
+    window.root.geometry("770x655")
+    window.show_page("Dictation")
+    window.root.update()
+    calls = []
+    button = window.mic_button
+    button.configure(command=lambda: calls.append("mic"))
+    window.canvas.yview_moveto(.25)
+    window.root.update()
+    assert button.winfo_rooty() >= window.canvas.winfo_rooty()
+    button.event_generate("<ButtonPress-1>", x=10, y=10)
+    button.event_generate("<ButtonRelease-1>", x=10, y=10)
+    window.root.update()
+    assert calls == ["mic"]
+
+
+def test_vocabulary_explanatory_labels_are_not_clipped_at_compact_size(window):
+    window.root.deiconify()
+    window.root.geometry("770x655")
+    window.show_page("Vocabulary")
+    window.root.update()
+    labels = []
+
+    def collect(widget):
+        for child in widget.winfo_children():
+            if isinstance(child, ttk.Label) and child.cget("text") in {
+                "Turn off to keep the model transcript unchanged. Vocabulary replacements and spoken commands are also paused. Speech recognition can still make mistakes.",
+                "One replacement per line: spoken = written. For example: utter leaf = Utterleaf",
+            }:
+                labels.append(child)
+            collect(child)
+
+    collect(window.pages["Vocabulary"])
+    assert len(labels) == 2
+    assert all(label.winfo_height() >= label.winfo_reqheight() for label in labels)
+    assert window.canvas.yview()[0] == pytest.approx(0)
 
 
 def test_tab_order_excludes_hidden_pages_and_reaches_close(window):

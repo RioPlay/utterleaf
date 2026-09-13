@@ -60,7 +60,7 @@ def test_malformed_empty_missing_and_oversized(tmp_path, monkeypatch):
 
 
 def test_no_model_downloads_and_explicit_engine_capability(monkeypatch):
-    monkeypatch.setattr("utterleaf.file_transcription.decode_local_file", lambda *a, **k: np.zeros(16000))
+    monkeypatch.setattr("utterleaf.file_transcription.iter_local_audio", lambda *a, **k: (x for x in [np.zeros(16000, dtype=np.float32)]))
     seen = []
 
     def load(cfg):
@@ -76,7 +76,7 @@ def test_no_model_downloads_and_explicit_engine_capability(monkeypatch):
 
 
 def test_missing_model_error_is_preserved(monkeypatch):
-    monkeypatch.setattr("utterleaf.file_transcription.decode_local_file", lambda *a, **k: np.zeros(16000))
+    monkeypatch.setattr("utterleaf.file_transcription.iter_local_audio", lambda *a, **k: (x for x in [np.zeros(16000, dtype=np.float32)]))
     def load(cfg):
         assert cfg.allow_network is False
         raise FileNotFoundError("Install the selected model first")
@@ -86,7 +86,7 @@ def test_missing_model_error_is_preserved(monkeypatch):
 
 
 def test_file_silence_progress_no_automatic_export(monkeypatch):
-    monkeypatch.setattr("utterleaf.file_transcription.decode_local_file", lambda *a, **k: np.zeros(16000))
+    monkeypatch.setattr("utterleaf.file_transcription.iter_local_audio", lambda *a, **k: (x for x in [np.zeros(16000, dtype=np.float32)]))
     class Model:
         def transcribe(self, *args, **kwargs):
             return iter([]), None
@@ -98,7 +98,7 @@ def test_file_silence_progress_no_automatic_export(monkeypatch):
 
 def test_gpu_runtime_fallback_stays_offline(monkeypatch):
     from utterleaf.transcribe import CPU
-    monkeypatch.setattr("utterleaf.file_transcription.decode_local_file", lambda *a, **k: np.zeros(16000))
+    monkeypatch.setattr("utterleaf.file_transcription.iter_local_audio", lambda *a, **k: (x for x in [np.zeros(16000, dtype=np.float32)]))
     class Model:
         def __init__(self, fail):
             self.fail = fail

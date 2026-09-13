@@ -47,6 +47,31 @@ def test_unicode_round_trip_and_review_make_no_mutations():
     assert asdict(original) == before
 
 
+def test_markdown_output_preference_is_portable_and_explicitly_applied():
+    plan = inspect_backup(export_backup(Config(output_format="markdown"), ""))
+    assert dict(plan.preferences)["output_format"] == "markdown"
+    merged = merge_backup(plan, Config(), "", preference_keys=["output_format"])
+    assert merged.config.output_format == "markdown"
+
+
+def test_backup_rejects_unknown_output_style():
+    with pytest.raises(BackupError):
+        inspect_backup(document(preferences={"output_format": "cloud"}))
+
+
+def test_speech_end_preferences_are_portable_and_strict():
+    cfg = Config(speech_end_enabled=True, speech_end_pause_seconds=1.8, speech_end_insert=True)
+    plan = inspect_backup(export_backup(cfg, ""))
+    preferences = dict(plan.preferences)
+    assert preferences["speech_end_enabled"] is True
+    assert preferences["speech_end_pause_seconds"] == 1.8
+    assert preferences["speech_end_insert"] is True
+    with pytest.raises(BackupError):
+        inspect_backup(document(preferences={"speech_end_pause_seconds": 9}))
+    with pytest.raises(BackupError):
+        inspect_backup(document(preferences={"speech_end_insert": "yes"}))
+
+
 def test_explicit_merge_preserves_existing_definitions_comments_and_reports_conflicts():
     plan = inspect_backup(export_backup(Config(), "NAME = Imported\nnew = New\n"))
     current = "# keep this comment\nname = Original"  # No trailing newline.

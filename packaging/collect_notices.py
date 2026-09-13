@@ -11,6 +11,7 @@ packaging/stubs/av replaces it and no FFmpeg code is distributed.
 from __future__ import annotations
 
 import email
+import hashlib
 import shutil
 import sys
 from pathlib import Path
@@ -35,7 +36,7 @@ SITE = site_packages()
 # dist-info names for everything the frozen app ships. The notice column adds
 # context the license files themselves don't have (LGPL source offers, bundles).
 PACKAGES: list[tuple[str, str]] = [
-    ("faster_whisper", ""),
+    ("faster_whisper", "Includes the Silero VAD model; see the separate Silero entry."),
     ("ctranslate2", ""),
     ("tokenizers", ""),
     ("onnxruntime", ""),
@@ -47,6 +48,7 @@ PACKAGES: list[tuple[str, str]] = [
     ("pynput", "LGPLv3. Corresponding source: https://github.com/moses-palmer/pynput"),
     ("pystray", "LGPLv3. Corresponding source: https://github.com/moses-palmer/pystray"),
     ("pyperclip", ""),
+    ("websockets", "Local OBS control transport; BSD-3-Clause."),
     ("pywin32_ctypes", ""),
     ("six", ""),
     ("huggingface_hub", ""),
@@ -95,8 +97,8 @@ accept those terms — a distribution policy, not a claim that permissive
 licenses cannot be combined with GPL. Utterleaf feeds microphone audio to
 faster-whisper as raw PCM. Packaged file transcription decodes integer PCM WAV
 using Python's standard library and the existing NumPy resampler. Other media
-formats require a source installation. The frozen build replaces PyAV
-it with an import-only stub (packaging/stubs/av). No FFmpeg code is
+formats use an explicitly selected external FFmpeg executable. The frozen build
+replaces PyAV with an import-only stub (packaging/stubs/av). No FFmpeg code is
 distributed.
 
 """
@@ -174,6 +176,42 @@ def verify_media_policy(directory: Path) -> None:
             raise SystemExit(f"Excluded media library found in packaged output: {path}")
 
 
+def copy_vad_notices(licenses_dir: Path) -> tuple[str, str, str, str]:
+    """Verify the actual bundled VAD and retain upstream/model/runtime notices.
+
+    Wheel metadata alone omits the Silero copyright and ONNX Runtime's bundled
+    third-party notices in the inspected versions. Unknown model bytes need a
+    fresh resource review before a new binary is distributed.
+    """
+    for package, expected in (("faster_whisper", "1.2.1"), ("onnxruntime", "1.28.0")):
+        source_info = find_dist_info(package)
+        bundled = list((DIST / "_internal").glob(f"{package}-*.dist-info"))
+        if (source_info is None or metadata(source_info).get("Version") != expected
+                or len(bundled) != 1 or metadata(bundled[0]).get("Version") != expected):
+            raise SystemExit(f"collect_notices: unreviewed {package} version; review the VAD wrapper/runtime before distributing")
+    model = DIST / "_internal" / "faster_whisper" / "assets" / "silero_vad_v6.onnx"
+    approved = "4cbf549b8326f60f80f2536d9eefeb450a9abe83365a098031c89719f1be17d2"
+    if (not model.is_file() or model.stat().st_size != 1245151
+            or hashlib.sha256(model.read_bytes()).hexdigest() != approved):
+        raise SystemExit("collect_notices: bundled Silero identity is unreviewed; review the resource before distributing")
+    sources = [
+        (ROOT / "packaging" / "notices" / "silero-vad-LICENSE.txt", "silero_vad", "LICENSE.txt"),
+        (SITE / "onnxruntime" / "LICENSE", "onnxruntime", "LICENSE"),
+        (SITE / "onnxruntime" / "ThirdPartyNotices.txt", "onnxruntime", "ThirdPartyNotices.txt"),
+    ]
+    for source, package, filename in sources:
+        if not source.is_file():
+            raise SystemExit(f"collect_notices: required VAD/runtime notice missing: {source.name}")
+        destination = licenses_dir / package / filename
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+    note = ("Reviewed faster-whisper 1.2.1 sequence export, 1245151 bytes; SHA-256 " + approved
+            + ". Origin: https://github.com/SYSTRAN/faster-whisper/tree/65882eee9f5cdbeeb2d877f1131d48cf241b327d"
+            + "; upstream model: https://github.com/snakers4/silero-vad/tree/v6.0"
+            + ". Full Silero notice: licenses/silero_vad/LICENSE.txt.")
+    return ("Silero VAD", "6.0 (faster-whisper export)", "MIT", note)
+
+
 def main() -> int:
     if SITE is None:
         raise SystemExit("collect_notices: could not find .venv site-packages — run from the repo root")
@@ -200,6 +238,7 @@ def main() -> int:
         expression = license_expression(meta)
         copy_license_files(dist_info, meta, licenses_dir / name)
         rows.append((meta.get("Name") or name, meta.get("Version") or "?", expression, notes[name]))
+    rows.append(copy_vad_notices(licenses_dir))
     lines = [HEADER]
     for pkg, version, expression, note in sorted(rows, key=lambda r: r[0].lower()):
         lines.append(f"* {pkg} {version} — {expression}")

@@ -5,6 +5,7 @@
 This guide covers desktop development. Android has its own [build guide](../mobile/android/README.md).
 See [development boundaries](development-boundaries.md) for source ownership,
 independent dependencies, CI routing and release conventions.
+Agents start from [AGENTS.md](../AGENTS.md); Aden is required when it is connected.
 
 Use the [production-readiness standard](production-readiness.md) for proposed
 reliability metrics, security gates and evidence required before stable releases.
@@ -51,12 +52,18 @@ Windows (build and verify on a Windows box):
 To bundle the installed CUDA libraries for NVIDIA acceleration, set `$env:UTTERLEAF_BUNDLE_CUDA = "1"` before building. This creates a substantially larger distribution; the default build omits these optional libraries. Verify the selected device with the packaged `--doctor` command.
 
 `utterleafw.exe` is what start-at-login uses; `startup.py`, the settings relaunch,
-and the --pill subprocess are all frozen-aware. Sign the exes (signtool) before
-shipping — unsigned builds trip SmartScreen.
+and the --pill subprocess are all frozen-aware. Stable releases should sign the
+executables before shipping. The explicitly labeled 0.4.6 RC1 Windows preview is
+an unsigned exception and must disclose the resulting SmartScreen warning.
 
 `packaging\build.ps1` is the canonical Windows build entry point. It runs PyInstaller, writes executable checksums, ships `README.md` at the top of the dist folder, and collects third-party notices; invoking PyInstaller directly skips those release steps. Install the development dependencies above before running it. The script installs PyInstaller if needed.
 
 CI (`.github/workflows/build.yml`) runs pytest on Windows, macOS, and Linux, and builds native binaries for all three: the Windows CPU build via the same `packaging\build.ps1` script, and macOS/Linux bundles via the shared PyInstaller spec plus third-party notice collection. Pushes to `main` and pull requests run the full matrix except changes confined to mobile source, mobile guides, or Android CI. Only `v*` tags publish a desktop GitHub Release with all three archives. The CUDA release is prepared manually with the CUDA bundle flag. Signing is a manual pre-publish step.
+
+Windows preview tags use the separate `desktop-v*` namespace and a Windows-only
+workflow. After the exact artifact and source revision are reviewed, publication
+uses GitHub prerelease status with `latest=false`; it does not replace or relabel
+the stable `v*` release. This exception does not change stable release automation.
 
 ## Platform verification
 

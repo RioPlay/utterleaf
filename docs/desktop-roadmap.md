@@ -4,7 +4,7 @@
 
 Scope: Windows, macOS, and Linux desktop application only.
 
-Updated September 10, 2026. Priorities follow the
+Updated September 12, 2026. Priorities follow the
 [offline STT user research](offline-stt-user-research-2026-09-08.md).
 This is an ordered development plan, not a promise of release dates.
 
@@ -15,6 +15,133 @@ The product goal is simple: press a key, speak, and get dependable text in the
 intended field, with understandable local processing and minimal interruption.
 
 ## Planned follow-up
+
+### Release priority: Windows 0.4.6 RC1
+
+The [Windows prerelease plan](plans/active/desktop-prerelease.md) prepares the
+completed dictation, long-file, speech-end, Markdown and delivery improvements
+for an unsigned Windows x64 CPU preview. The candidate version is `0.4.6rc1`;
+publication and artifact verification are separate gates. Stable v0.4.5 remains
+the default download. Android and live OBS work continue after this bounded release.
+
+Historical source receipts below describe their original verification stage;
+they are not claims that this candidate has already shipped. The preview plan
+records the final artifact and test evidence.
+
+### Active: continuous recording, long files and OBS
+
+The [continuous transcription plan](plans/active/desktop-continuous-transcription.md)
+tracks the September 12 request to remove the recording countdown, transcribe long
+recordings and optionally follow OBS streams with combined or separate tracks.
+The first continuous microphone path is now in unreleased source: no scheduled
+duration cutoff, bounded write queue and preview tail, automatic temporary-file
+cleanup and recognition windows of at most 30 seconds. Synthetic checks cover 251-second
+capture at three input rates, 601-second storage/recognition, cancellation, queue
+pressure, storage failure and recovery-only incomplete results. The first
+integrated run passed 245 tests, including affected Settings tests; that capture
+phase's full desktop run passed **984 tests with 14 skips**. A native synthetic subprocess
+termination check confirms temporary-file cleanup. Free-space checks maintain a
+best-effort 256 MiB reserve; normal/compact Settings guidance passed visual review.
+Independent review and fixes now enforce filesystem locality instead of checking
+only UNC spelling, and report storage-inspection/create/startup failures accurately.
+Real microphone, general long-speech quality and release checks remain.
+The imported-file source path now streams decoding into bounded recognition
+windows without total-duration/file-size limits, carries subtitle times across
+batches, and selects actual audio tracks per job. The focused decoder/transcription/
+streaming/CLI bundle passed **71 tests, 11 explicit codec-fixture skips**; independent
+review and 13 file-UI tests pass, with the compact view inspected. This includes a real 601-second PCM file and
+separate synthetic container tracks, not long-speech accuracy or release proof.
+Live OBS remains unavailable. Its [design contract](plans/active/obs-audio-design.md)
+separates authenticated stream events from actual PCM transport. The first
+[protocol and receiver components](plans/active/obs-audio-implementation.md) now
+cover consent/order guards, separate-bus temporary storage, timing, cancellation
+and incomplete recovery. Reviewed internal components also provide read-only
+WebSocket control, mandatory Windows process identity before authentication and
+the [native audio pipe client](plans/active/windows-obs-audio-pipe.md). Actual
+synthetic Windows peers verify IPv4/IPv6 process attribution, bounded I/O cleanup,
+audio delivery after TCP loss and wrong-process rejection with zero secret bytes
+received. This checks the originally attributed process and current path/file
+identity; it is not historical loaded-image attestation.
+
+There is no app entry point. Actual OBS enrollment, the original server plugin's
+restrictive DACL/client authentication, atomic arming/start coordination,
+controller/UI, live recognition and streaming-load acceptance remain open.
+Installed OBS is
+32.2.2; its development headers/import libraries are not prepared. An existing
+LLVM-MinGW compiler provides a proposed original C-only plugin build route, with
+compile/load proof still required in the [build plan](plans/active/obs-plugin-build.md). The
+[control dependency record](desktop-obs-control-resource.md) records the pinned
+library, reviewed full license and development-wheel provenance.
+
+Current integrated desktop regression: **1,432 passed, 13 skipped in 39.47 seconds**,
+including the reviewed OBS control, native identity, pipe and audio handshake.
+The combined focused OBS/pipe/privacy/configuration/boundary/packaging bundle
+passed 385 tests in 6.29 seconds. The preceding continuous
+transcription integration passed 1,068 tests with 13 skips.
+Storage failures show Recording interrupted and preserve their actual cause and
+recovery message. The shared batcher now prefers quiet pauses near the 30-second
+limit, retaining every audio sample exactly once. Both normalized comparisons
+of an 88-second public-speech fixture had 176 candidate and 176 reference words,
+with zero alignment insertions or deletions; a two-word duplication measured
+with fixed boundaries was absent. Substitutions
+varied between runs, so this is a narrow boundary check, not a general accuracy
+claim. Independent review cleared the integration and cancellation at batch handoff.
+A separate one-hour synthetic capture stored 691.2 MB temporarily, retained all
+samples through resampling/batching, stayed below the 8 MiB write-queue bound and
+removed its temporary file on close. This measures the storage path, not total
+process memory, model load or an hour of real-time microphone use.
+
+### Active: dictation boundaries and explicit Markdown
+
+The [dictation completion plan](plans/active/desktop-dictation-completion.md)
+addresses reported fused sentences, list continuation and caret-adjacent spacing,
+plus a local optional Markdown output mode. Preserve raw/literal input and use
+only supported verified editor context. Source changes, installed-build behavior
+and browser/macOS/Linux limits must be recorded separately.
+
+**Implemented in unreleased source:** explicit list boundaries, native Windows
+Edit insertion-neighbor spacing, and **Vocabulary → Output style → Markdown**.
+The preference persists locally, participates in selective backup, resets to Prose
+and leaves raw/code input unchanged. Explicit headings and lists have structural
+separators. Full desktop pytest reports 763 passed and 18 skipped locally (11
+explicit-codec-fixture requirements, 6 file-review Tk setup failures, 1 unavailable
+symlink privilege); current Settings captures were
+rendered without a microphone and inspected. Browser caret awareness, installed
+live-dictation behavior and a new packaged release are not established by this pass.
+
+**Implemented and independently reviewed in unreleased source:** optional local
+speech-end stopping with a 0.5–3 second pause, separate default review versus
+automatic insertion, and explicit manual start for each take. Hold/toggle,
+cancellation remain; the newer continuous-recording work supersedes the duration
+cutoff. A visible two-minute review offers
+Copy/Insert/Discard; insertion requires the original supported native field/text/
+caret. Other editors use Copy. The [speech-endpoint plan](plans/active/desktop-speech-endpoint.md)
+records tests, resolved review findings and remaining verification. The final
+integrated suite passed 827 tests with 12 skips (11 explicit FFmpeg-fixture
+requirements and one unavailable symlink privilege); all Tk/UI tests ran and
+passed. Earlier intermittent Tk setup skips were not reproduced in the final
+run, but their cause remains undiagnosed. No physical-mic,
+packaged-release or installed-app claim follows from these source checks.
+
+The [VAD resource review](desktop-vad-resource.md) records exact local model,
+wrapper/runtime identity and full Silero/ONNX Runtime notices. Unknown detector
+resources leave manual stopping available; no automatic detector acquisition.
+
+Wispr Flow's [documented features](https://wisprflow.ai/features) and
+[formatting behavior](https://docs.wisprflow.ai/articles/5373093536-how-do-i-use-smart-formatting-and-backtrack)
+provide workflow references: punctuation, lists, spoken corrections, dictionary
+and snippets. Their existence is not evidence of Utterleaf parity. Prioritize
+reliable local dictation and repair; explicit recap/rewrite remains a separate
+future action with preview, not an automatic interpretation of dictated questions.
+
+### Planned: reviewed resources and optional providers
+
+Follow the [model/component policy](model-resource-policy.md) for reviewed local
+models, explicit user acquisition and separately enabled speech/text endpoints.
+Local processing stays the default. No unchecked repository code, hidden remote
+fallback or assumption that a download button resolves license compatibility.
+Existing model download controls remain; arbitrary providers and a complete
+component compliance audit are not claimed as implemented.
 
 ### Later: optional on-screen keyboard
 
@@ -28,16 +155,44 @@ principles and assets; do not assume Android input code is portable or request
 broad permissions merely for convenience. No desktop on-screen keyboard is
 implemented or promised as part of the current Android release.
 
-### Responsiveness audit follow-up — September 10
+### Responsiveness audit follow-up — September 10–12
 
-A scoped Aden/source review confirmed that settings work and IPC dispatch run
-outside the UI event loop. The local desktop test suite passed during this pass.
-Two delivery paths still need focused work: macOS/Linux paste subprocesses have
-no timeout, and cancellation is not propagated through the final paste operation.
-Add bounded helper execution and delivery cancellation tests before changing
-these paths; a timed-out helper must not trigger an automatic duplicate paste.
-This is an initial audit, not proof that every state or framework entry point has
-been covered or that the repository contains no unused code.
+A scoped Aden/source review on September 10 confirmed that settings work and IPC
+dispatch run outside the UI event loop. It identified unbounded macOS/Linux paste
+subprocesses and cancellation that did not reach final delivery.
+
+**Implemented and independently reviewed in unreleased source on September 12:**
+per-job Esc/quit cancellation now reaches final delivery without waiting for the
+capture lock. Owned macOS/Linux paste helpers have bounded waits and cleanup, and
+a launched helper is never retried after failure, timeout or cancellation. A
+partial Windows `SendInput` result is uncertain rather than failed and releases
+possibly held modifier keys without sending a second paste. Final target and
+clipboard-ownership checks remain in place. The app reports uncertain delivery
+visibly and asks the user to check the original field before using recovery,
+because insertion may already have occurred. The independent focused suite passed
+167 tests; the final desktop suite passed 860 tests with 12 expected/environmental
+skips (11 explicit FFmpeg-fixture checks and one Windows symlink-privilege check),
+and all Tk/UI tests ran. See the
+[delivery cancellation plan](plans/active/desktop-delivery-cancellation.md) for
+the remaining synchronous-call limits. Native platform/editor acceptance and a
+packaged release remain open.
+
+**Windows clipboard follow-up implemented and independently reviewed in source:**
+reads and writes
+run in a private one-shot child. Restoration uses a sequence check and replacement
+while the clipboard is exclusively open; a normal delivery reads previous text
+at most once. Copy/recovery uses the same bounded write path. Windows job ownership
+must succeed before the child receives a request. The full suite passed 936 tests
+with the same 12 environment skips; the final focused suite passed 231 tests,
+including harmless native checks for job close and abrupt parent exit. See the
+[clipboard plan](plans/active/desktop-clipboard-bounds.md) for native metadata,
+hostile-owner and frozen-startup acceptance gaps.
+
+The [names-only isolation probe](plans/active/windows-isolated-clipboard-acceptance.md)
+passed source review and mocked checks. This Windows session denies permission to
+create the required private station (error 5); the parent station/desktop remained
+unchanged and no clipboard operation ran. Isolated ordinary/stalled-owner tests
+remain open for an environment that permits the reviewed boundary.
 
 ## Foundation implemented
 
@@ -59,6 +214,26 @@ paused “scratch that” with verified replacement. Windows GPU setup gives
 platform-specific runtime instructions. Automatic correction still requires a
 supported native Windows Edit field; browsers and other unsupported fields use
 manual recovery. See the [user guide](user-guide.md) for the exact behavior.
+
+**September 12, 2026 bounded Settings pass:** source-level Tk checks reproduce
+the compact 770 × 655 layout and verify that the first shortcut-combobox click
+does not scroll the canvas or detach its popup. Focus reveal now ignores Tk
+`FocusIn` propagation through container frames while retaining off-screen
+control reveal. Focused settings tests and the no-microphone screenshot capture
+pass; the current source screenshot shows the vocabulary explanatory labels
+fully rendered at the compact size. This is source evidence, not a packaged
+release claim.
+
+Installed downloaded CPU-build observations are recorded separately: all five
+main pages opened; microphone checking produced both low-audio and
+audio-detected feedback; staging the floating indicator enabled Save; Close
+opened the discard dialog; choosing No retained edits; returning to Tray icon
+cleared the dirty state; and the CPU device report completed with GPU-runtime
+unavailable guidance. No personal preference was saved. Windows UI Automation
+exposed nearly all settings controls as unnamed panes, so control naming and
+screen-reader acceptance remain open. Live dictation, paste delivery,
+persistence across relaunch, reset, and screen-reader behavior were not
+verified in that build. Microphone feedback is not transcription proof.
 
 
 **Version 0.3.7 usability audit:** direct task headings, compact decorative art,
@@ -93,11 +268,12 @@ recovery. These changes are not included in older v0.3.8 downloads.
 See [file transcription](desktop-file-transcription.md) and
 [backup and import](desktop-backup.md) for supported scope and remaining gates.
 
-**Planned, not implemented:** long dictation without the fixed hold-mode cutoff,
-system-audio captions, meetings, speaker
+**Planned, not implemented:** system-audio captions, meetings, speaker
 labels, and translation. See the [feature plan](feature-plan.md) for dependencies
 and acceptance criteria, and [microphone troubleshooting](microphone-troubleshooting.md)
-for current behavior and limits.
+for current behavior and limits. Continuous dictation without the fixed cutoff
+is implemented in unreleased source as recorded above; installed releases retain
+their separately documented behavior.
 
 These are implemented capabilities, not proof of end-to-end quality on every platform.
 
@@ -118,7 +294,7 @@ archives, or background reading of other apps are required.
 | Order | Deliverable | Acceptance gate |
 | --- | --- | --- |
 | 1 — active | Microphone recovery, safe delivery, clear readiness | Missing named inputs never open a substitute; reconnect/permission errors offer recovery. Test native device loss and editor delivery before broader reliability claims. Show loading/download/ready states and require explicit download approval. |
-| 2 | Comfortable long dictation | Bounded RAM and queued processing, ordered text across chunk boundaries, cancel/discard, elapsed time and optional limits; no automatic disk recording. |
+| 2 | Comfortable long dictation | Bounded RAM and queued processing, ordered text across chunk boundaries, cancel/discard and elapsed time. Authorized temporary audio supports long takes; no automatic permanent recording archive. |
 | 3 | Understandable speed choices | Local, user-requested measurements inform Faster/Balanced/More accurate choices; show actual engine/device and explain fallback. Never upload benchmark speech. |
 | 4 | Vocabulary helper and selective backup | Explicit local vocabulary additions; preview exported preferences/vocabulary. Exclude recordings, transcripts, device-specific control tokens, and secrets. No contacts or clipboard-history scanning. |
 | 5 | Local file transcription | Explicit file selection, text/SRT/VTT export and discard; handle missing models and media support without unexpected downloads. |
@@ -135,15 +311,28 @@ the selection. Native hotplug recovery and device identity remain open work.
 
 ## 1. Reliable delivery — active
 
-Implemented in the current pass: check focus after the shortcut-settling delay;
-verify clipboard text before sending paste. If focus moved, leave dictation on
-the clipboard. If the clipboard changed or cannot be read, cancel delivery and
-retain the existing recovery path. Do not overwrite a user's intervening copy.
+Implemented in unreleased source: check focus after the shortcut-settling delay;
+verify clipboard ownership before sending paste. If focus moved, leave dictation
+on the clipboard. If final clipboard ownership cannot be verified, cancel
+delivery and retain the existing recovery path. Windows data operations now use
+bounded children, with conditional writes guarding a user's intervening copy.
+Esc and quit signal each delivery job independently of the capture lock. Owned
+macOS/Linux helper processes have bounded waits and cleanup; after any possible
+dispatch, timeout, cancellation or failure is reported as uncertain without a
+fallback retry. Windows partial native dispatch receives the same treatment and
+releases possibly held paste keys. Uncertain delivery remains recoverable and
+tells the user to check the original field before copying the result again. See
+the [delivery cancellation plan](plans/active/desktop-delivery-cancellation.md).
 
 Remaining work:
 
 - Preserve rich clipboard formats, not only plain text.
 - Investigate restoration timing in slow applications.
+- Complete Windows clipboard native/packaged acceptance;
+  address synchronous macOS/Linux clipboard backends separately without a
+  detached worker that could mutate the clipboard after cancellation.
+- Assess synchronous native `edit_target.replace` calls; cancellation cannot
+  interrupt or retract an edit after the native operation is dispatched.
 - Distinguish sending a paste shortcut from observing successful insertion.
 - Test browser fields, native and rich-text editors, terminals, and elevated apps.
 - Test window and field changes, held modifiers, busy clipboards, and fast repeated takes.

@@ -9,7 +9,9 @@ from utterleaf.backup_store import apply_import, prepare_import, write_backup
 
 LABELS = {"text_cleanup": "Text cleanup", "remove_fillers": "Remove fillers",
           "fix_corrections": "Fix spoken corrections", "beep": "Sound feedback",
-          "tray": "Tray icon", "indicator": "Floating indicator", "denoise": "Noise reduction"}
+          "tray": "Tray icon", "indicator": "Floating indicator", "denoise": "Noise reduction",
+          "output_format": "Output style", "speech_end_enabled": "Stop after speech",
+          "speech_end_pause_seconds": "Speech-end pause", "speech_end_insert": "Insert after speech end"}
 
 
 class BackupDialog:

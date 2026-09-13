@@ -26,10 +26,13 @@ features are kept in the roadmap.
 
 <img src="assets/brand/utterling-typing.png" width="72" alt="Utterling working on improvements" />
 
-[Development & builds](development.md) · [Platform validation](platform-testing.md) ·
+[AGENTS.md](../AGENTS.md) · [Development & builds](development.md) · [Platform validation](platform-testing.md) ·
 [Desktop/mobile boundaries](development-boundaries.md) ·
 [Interface guidelines](interface.md) · [Brand & assets](branding.md) ·
 [Product principles](consumer-experience.md)
+
+[Model and optional component policy](model-resource-policy.md) records review,
+acquisition, local/remote data and documentation gates for desktop extensions.
 
 [Product design & usability audit](product-quality.md) tracks findings, fixes,
 and unverified release-quality scenarios.

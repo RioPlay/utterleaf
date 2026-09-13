@@ -23,12 +23,13 @@ LOOK = {
     "too_short": ("Too short", "#1C1B1F", "#938F99"),
     # Failures. Red accent, and the caption carries the detail.
     "no_mic": ("Microphone unavailable", "#2B1618", "#E46962"),
+    "capture_error": ("Recording interrupted", "#2B1618", "#E46962"),
     "engine": ("Engine not ready", "#2B1618", "#E46962"),
     "transcribe": ("Couldn't transcribe", "#2B1618", "#E46962"),
     "no_paste": ("Couldn't paste", "#2B1618", "#E46962"),
 }
 
-ERROR_KINDS = frozenset({"no_mic", "engine", "transcribe", "no_paste"})
+ERROR_KINDS = frozenset({"no_mic", "capture_error", "engine", "transcribe", "no_paste"})
 
 # Queue items: ("kind", caption) from set(), or "quit" from close().
 PillItem = str | tuple[str, str]

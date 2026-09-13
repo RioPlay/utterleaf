@@ -21,9 +21,20 @@ See [Know your leaf](status-guide.md) for each icon's meaning and what to do nex
 
 The microphone opens for a take and is released after its short ending buffer;
 it is not kept listening while idle. Microphone checks in Settings open it only
-for the check. Audio stays in memory for processing and is not saved as a
-recording history. Takes stop automatically at 120 seconds by default, with a
-notice to start another take. When enabled, the floating indicator shows the remaining time.
+for the check. **0.4.6 RC1 preview:** takes have no duration
+countdown. Release the hold shortcut or press the toggle shortcut again to finish;
+Esc cancels where supported. The optional speech-end setting can also stop a take.
+Audio uses a temporary local file and a short preview tail in memory, then is
+recognized in small batches after you finish. The temporary file is removed after processing,
+cancellation or quit; it is not recording history or an exported recording.
+Storage is not encrypted by Utterleaf, and file removal is not secure erasure.
+Temporary storage must be on an OS-reported local filesystem. Network shares,
+mapped remote drives and unverified mounts are refused. On Linux this conservative
+check also excludes FUSE and overlay filesystems; use a native local temporary
+directory. Operating-system backups or other authorized software remain outside
+Utterleaf's control.
+Available disk space still limits recording; storage failures are reported and
+any recovered prefix is never automatically pasted as a complete take.
 Up to four takes can wait behind a slow decode;
 Utterleaf asks you to wait before accepting more.
 
@@ -34,6 +45,14 @@ previous edit context immediately; quitting also clears it. Copying deliberately
 puts the text on your system clipboard, where your OS clipboard history may
 retain it. You can also bind a desktop shortcut to `utterleaf --copy-last` or
 clear it with `utterleaf --forget-last`.
+
+If Esc or quit reaches delivery before a paste shortcut is sent, Utterleaf cancels
+the delivery and keeps the result available for recovery. If a platform helper or
+native edit may already have started, the tray reports that delivery could not be
+confirmed. Check the original field before choosing **Copy last dictation (2 min)**
+or pasting again, because the text may already be present. Utterleaf preserves a
+newer clipboard copy made by you; when a shortcut may have been sent, it keeps the
+dictated clipboard payload so a late paste cannot consume unrelated restored text.
 
 ## Settings and recovery
 
@@ -116,6 +135,99 @@ dictation** clears this context sooner.
 Completed prose takes include a separating space so a later take cannot become
 `sentence.Next` merely because you paused or a window title changed. Existing
 newlines are preserved. Literal/code mode does not add this separator.
+
+### 0.4.6 RC1 preview: caret spacing and Markdown
+
+The September 12 source changes improve spacing next to existing text in supported
+native Windows Edit fields. Completed prose retains its separator at the end of
+the field, including after a long pause. Cleanup suppresses a final full stop before
+an existing `.`, `,`, `;` or `:`; it preserves question/exclamation marks, quotes and
+parentheses. It changes the inserted payload, not the surrounding document. Browser
+editors, rich fields, macOS and Linux still use the existing conservative delivery
+path; arbitrary caret-aware joining is not established there.
+
+Explicit lists now end with a structural line break. Choose **Settings → Vocabulary
+→ Output style → Markdown** for Markdown block spacing and explicit headings.
+**Prose** remains the default. Examples:
+
+| Say | Markdown output |
+| --- | --- |
+| `heading two Project notes` | `## Project notes` |
+| `heading level one Release plan` | `# Release plan` |
+| `make this a heading 3: Open questions` | `### Open questions` |
+| `make a bulleted list apples and pears` | Two lines: `- Apples` and `- Pears` |
+
+Heading levels one through six work as words or digits. Headings and Markdown lists
+are separated from following prose with a blank line. Existing **new paragraph**,
+**new line**, list-item and **end list** commands retain their explicit scope.
+A heading title is treated as content, including a question mark or exclamation;
+it does not run further commands embedded in the title.
+
+Use **Preview clean text** before saving to try the output. The choice stays local,
+can be included in a selective backup, and Reset to defaults restores Prose without
+deleting vocabulary or models. Closing without saving preserves the old preference.
+Turning **Clean up dictated text** off or using literal/code input bypasses Markdown
+formatting. Markdown does not summarize your speech, answer questions or send it to
+another model. These controls are part of the Windows RC1 preview.
+
+### 0.4.6 RC1 preview: bounded delivery cancellation
+
+Esc and quit now signal the current final-delivery job even while another delivery
+step holds the capture lock. On macOS and Linux, owned paste-helper processes have
+bounded waits and cleanup. Utterleaf does not try another paste method after a
+launched helper fails, times out or is cancelled, because the first helper may
+already have inserted some or all of the text. Partial Windows shortcut dispatch
+is handled the same way and releases possibly held paste keys.
+
+When delivery may have happened, the tray reports an uncertain result. Check the
+original field before using recovery to avoid inserting the same dictation twice.
+Windows clipboard reads and writes now use a separate process with a one-second
+operation limit plus cleanup. Utterleaf reads the previous text only when needed
+for restoration, and restores it only if the clipboard still belongs to that
+delivery. A failed or cancelled copy can leave dictation on the clipboard even
+though no paste shortcut was sent. Cancel does not start another restoration
+operation or clear your OS clipboard history. Copy and Copy last dictation use
+the same write limit; an unconfirmed copy leaves recovery available in memory.
+
+The macOS/Linux clipboard backends and native field replacement remain
+synchronous. Cancellation cannot interrupt or undo a native edit after it starts.
+Native metadata/input calls also retain their platform limits. Isolated Windows
+clipboard/editor acceptance remains open. Frozen diagnostics and offline file
+transcription passed for the Windows RC1 preview; live delivery still needs native
+editor validation.
+
+### 0.4.6 RC1 preview: stop after speech
+
+In **Settings → Dictation → Stop after speech**, enable **Stop after speech and a
+pause** and choose a pause from 0.5 to 3 seconds (default 1.2). Start every take
+yourself with the existing hold or toggle shortcut. Detection runs locally during
+that take; it does not listen while idle or restart recording after stopping.
+Silence before detected speech does not end the take. Manual stop and Esc remain
+available; continuous recording no longer imposes a duration countdown.
+
+**Insert immediately after automatic stop** is a separate option, off by default.
+With it off, a temporary window shows the result with **Copy**, **Insert** and
+**Discard**. The preview clears after two minutes; Copy keeps text on your
+clipboard. Closing the window leaves the current recovery slot available until
+it expires or is replaced; Discard clears that reviewed result.
+
+Insertion requires a supported native Windows Edit field whose text and caret
+remain unchanged. If that cannot be verified, use Copy and paste into your chosen
+field. Browser/rich editors and macOS/Linux use this manual fallback. Moving to
+another window while recording disables automatic stopping for that take; stop
+manually. Changing the field during processing prevents automatic insertion and
+opens review when the take is still current.
+
+The result uses the take's cleanup and Prose/Markdown preferences. Automatic stops
+never execute spoken editor commands such as “scratch that”; those words remain
+literal. Ordinary manual-stop command behavior is unchanged.
+
+Only the [reviewed local detector](desktop-vad-resource.md) is admitted. If it is
+loading, missing, unsupported or fails, the recording status tells you to stop
+manually. No detector is downloaded automatically. Quiet speech, noise, another
+speaker or a thinking pause can affect when detection stops; choose a longer pause
+if needed. Physical microphone/noise/latency acceptance remains pending for this
+Windows RC1 preview.
 
 ## Model setup and windows
 

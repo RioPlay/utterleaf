@@ -13,6 +13,11 @@
   <a href="docs/README.md">Help & docs</a>
 </p>
 
+> **Windows desktop 0.4.6 RC1 preview:** this checkout contains the
+> continuous-dictation, long-file, speech-end, Markdown and delivery-safety update.
+> See the [preview notes](packaging/preview-notes.md). Preview downloads use a
+> separate prerelease; the Download links below point to stable v0.4.5.
+
 Speak into the app you're already using. Utterleaf turns your words into text,
 then gets out of the way. No account, no cloud transcription, and no saved audio
 history. Your microphone closes between takes.
@@ -44,6 +49,8 @@ Linux builds target Ubuntu 24.04 or compatible distributions. Downloads are
 unsigned on desktop; the Android APK is signed. macOS is not notarized. Wayland needs manual shortcut/paste setup and
 XWayland; native desktop dictation is still being validated.
 [Release notes & checksums](https://github.com/RioPlay/utterleaf/releases/latest).
+The separate Windows RC, once published, is a prerelease and does not replace
+these stable `latest` downloads.
 
 ## Your first words on desktop
 
@@ -60,7 +67,7 @@ XWayland; native desktop dictation is still being validated.
 | Speak naturally | Make it yours | Find your way back |
 | :--- | :--- | :--- |
 | <img src="docs/assets/brand/utterling-listening.png" width="72" alt="Utterling listening" /> | <img src="docs/assets/brand/utterling-typing.png" width="72" alt="Utterling typing" /> | <img src="docs/assets/brand/utterling-thinking.png" width="72" alt="Utterling thinking" /> |
-| Say punctuation and bullet lists. Keep the desktop quiet, or enable a countdown and dictation preview. | Add names and phrases to your vocabulary. Turn cleanup off when you want the model transcript unchanged. | Copy the latest dictation within two minutes. Restore defaults without losing vocabulary, models, or privacy preferences. |
+| Say punctuation and bullet lists. Keep the desktop quiet, or enable recording guidance and dictation preview. | Add names and phrases to your vocabulary. Turn cleanup off when you want the model transcript unchanged. | Copy the latest dictation within two minutes. Restore defaults without losing vocabulary, models, or privacy preferences. |
 | [Dictation basics](docs/user-guide.md#dictate-and-recover-text) | [Voice commands](docs/user-guide.md#voice-commands) | [Settings & recovery](docs/user-guide.md#settings-and-recovery) |
 
 ## Know your leaf

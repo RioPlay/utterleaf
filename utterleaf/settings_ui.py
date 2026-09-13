@@ -37,7 +37,8 @@ class SettingsWindow:
         self.fields = {}
         for key in ("hotkey", "mode", "model", "device", "language", "denoise", "microphone",
                     "beep", "indicator", "live_preview", "remove_fillers", "fix_corrections",
-                    "restore_clipboard", "allow_network", "text_cleanup"):
+                    "restore_clipboard", "allow_network", "text_cleanup", "output_format",
+                    "speech_end_enabled", "speech_end_pause_seconds", "speech_end_insert"):
             value = getattr(cfg, key)
             cls = tk.BooleanVar if isinstance(value, bool) else tk.StringVar
             self.vars[key] = cls(root, value=value)
@@ -267,6 +268,35 @@ class SettingsWindow:
         self.preview_toggle = self._check(p, "Preview dictation while recording", "live_preview",
                                          "Optional draft words while you speak. Uses additional processing power.")
         self._check(p, "Play start / stop sounds", "beep")
+        p = self._section(
+            page,
+            "Stop after speech",
+            "Optional local pause detection for a recording you start. It never opens the microphone or starts another take.",
+        )
+        self.speech_end_toggle = self._check(
+            p,
+            "Stop after speech and a pause",
+            "speech_end_enabled",
+            "Manual stop and Esc remain available. Quiet speech, noise, and thinking pauses can affect detection.",
+        )
+        self.speech_end_pause = self._choice(
+            p,
+            "Pause (seconds)",
+            "speech_end_pause_seconds",
+            ["0.5", "0.8", "1.2", "1.8", "2.5", "3.0"],
+        )
+        self.speech_end_insert_toggle = self._check(
+            p,
+            "Insert immediately after automatic stop",
+            "speech_end_insert",
+            "Off by default. When off, or when the original field cannot be verified, a review window lets you copy, insert, or discard the text.",
+        )
+        ttk.Label(
+            p,
+            text="Uses only the reviewed detector bundled with an installed local speech engine. If it is unavailable, recording continues until you stop it manually.",
+            style="Hint.TLabel",
+            wraplength=510,
+        ).pack(anchor="w", pady=(2, 6))
         p = self._section(page, "Startup")
         self._check(p, login_label(), "start_at_login")
 
@@ -277,6 +307,9 @@ class SettingsWindow:
         self._check(p, "Clean up dictated text", "text_cleanup",
                     "Turn off to keep the model transcript unchanged. Vocabulary replacements and spoken commands "
                     "are also paused. Speech recognition can still make mistakes.")
+        p = self._section(page, "Output style", "Both styles are local. Markdown uses only explicit spoken formatting commands, such as “heading two Project notes”.")
+        ttk.Radiobutton(p, text="Prose", variable=self.vars["output_format"], value="prose").pack(anchor="w", pady=4)
+        ttk.Radiobutton(p, text="Markdown", variable=self.vars["output_format"], value="markdown").pack(anchor="w", pady=4)
         p = self._section(page, "Personal vocabulary", "One replacement per line: spoken = written. For example: utter leaf = Utterleaf")
         self.names = self._text(p, 8)
         self.fields["names"] = self.names
@@ -510,6 +543,15 @@ class SettingsWindow:
         available = event.width - self.close_button.winfo_reqwidth() - self.save_button.winfo_reqwidth() - 68
         self.footer_status.configure(wraplength=max(120, min(450, available)))
 
+    @staticmethod
+    def _is_focus_control(widget):
+        """Ignore FocusIn propagation through frames and other containers."""
+        if isinstance(widget, (tk.Entry, tk.Text, ttk.Combobox, ttk.Entry)):
+            return True
+        return widget.winfo_class() in {
+            "Button", "TButton", "TCheckbutton", "TRadiobutton", "TScale", "TSpinbox",
+        }
+
     def _wheel(self, event, direction=None):
         if isinstance(event.widget, (tk.Text, ttk.Combobox)):
             return
@@ -520,16 +562,26 @@ class SettingsWindow:
 
     def _reveal_focus(self, event):
         widget = event.widget
-        if not str(widget).startswith(str(self.body) + "."):
+        if (not str(widget).startswith(str(self.body) + ".") or
+                not widget.winfo_ismapped() or not self._is_focus_control(widget)):
             return
         self.root.update_idletasks()
         top = widget.winfo_rooty() - self.canvas.winfo_rooty()
         bottom = top + widget.winfo_height()
-        total = max(1, self.body.winfo_height())
+        viewport = self.canvas.winfo_height()
+        bounds = self.canvas.bbox("all") or (0, 0, 0, viewport)
+        region_height = max(viewport, bounds[3] - bounds[1])
+        scrollable = max(0, region_height - viewport)
+        if not scrollable:
+            return
+        current = self.canvas.yview()[0] * region_height
         if top < 0:
-            self.canvas.yview_moveto(self.canvas.yview()[0] + (top - 12) / total)
-        elif bottom > self.canvas.winfo_height():
-            self.canvas.yview_moveto(self.canvas.yview()[0] + (bottom - self.canvas.winfo_height() + 12) / total)
+            target = current + top - 12
+        elif bottom > viewport:
+            target = current + bottom - viewport + 12
+        else:
+            return
+        self.canvas.yview_moveto(max(0, min(scrollable, target)) / region_height)
 
     def _snapshot(self):
         return {**{key: var.get() for key, var in self.vars.items()}, "names": self.names.get("1.0", "end-1c")}
@@ -559,6 +611,9 @@ class SettingsWindow:
 
     def _dirty(self, *_):
         self.preview_toggle.configure(state="normal" if self.vars["indicator"].get() else "disabled")
+        endpoint_state = "normal" if self.vars["speech_end_enabled"].get() else "disabled"
+        self.speech_end_pause.configure(state="readonly" if endpoint_state == "normal" else "disabled")
+        self.speech_end_insert_toggle.configure(state=endpoint_state)
         dirty = self._reset_pending or self._snapshot() != self.baseline
         if not self.saving:
             self.save_button.configure(state="normal" if dirty else "disabled")
@@ -574,10 +629,9 @@ class SettingsWindow:
             if is_wayland() or self.vars["mode"].get() == "toggle"
             else "Click a text field. Hold until Listening, speak, then release to paste."
         )
-        limit = Config().max_seconds if self._reset_pending else self.cfg.max_seconds
         self.limit_hint.set(
             ("Desktop shortcut toggles recording; global Esc is unavailable. " if is_wayland() else "Esc cancels a take. ")
-            + f"Stops automatically after {limit:g} seconds."
+            + "No recording countdown. Temporary local audio is removed after processing or cancellation."
         )
 
     def _names_changed(self, _event):
@@ -691,7 +745,8 @@ class SettingsWindow:
         result = polish_local(self.sample.get("1.0", "end-1c"), vocab=pairs,
                               remove_fillers=self.vars["remove_fillers"].get(),
                               fix_corrections=self.vars["fix_corrections"].get(),
-                              text_cleanup=self.vars["text_cleanup"].get())
+                              text_cleanup=self.vars["text_cleanup"].get(),
+                              output_format=self.vars["output_format"].get())
         self.preview_result.set(result.text or "No text to keep.")
 
     def diagnostics(self):
@@ -777,8 +832,9 @@ class SettingsWindow:
         self._worker(commit, done)
 
     def _show_invalid_field(self, error):
-        page = ("Vocabulary" if error.field == "names" else "Dictation"
-                if error.field in {"hotkey", "mode"} else "Engine")
+        page = ("Vocabulary" if error.field in {"names", "output_format"} else "Dictation"
+                if error.field in {"hotkey", "mode", "speech_end_enabled",
+                                   "speech_end_pause_seconds", "speech_end_insert"} else "Engine")
         self.show_page(page)
         if self._page_reset is not None:
             self.root.after_cancel(self._page_reset)

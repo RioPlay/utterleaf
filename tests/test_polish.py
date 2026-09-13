@@ -284,6 +284,12 @@ def test_make_a_list_of_prefix() -> None:
     assert "- Bread" in result.text
 
 
+def test_list_request_keeps_following_prose_out_of_final_bullet() -> None:
+    result = polish_local("make a list of eggs, milk, and bread. Then buy them")
+    assert result.command == "bullets"
+    assert result.text == "- Eggs\n- Milk\n- Bread\n\nThen buy them."
+
+
 def test_numbered_first_second_third() -> None:
     result = polish_local(
         "first open the ticket second assign it third close it as a numbered list"
@@ -451,6 +457,27 @@ def test_sentence_spacing_survives_adjacent_sentences() -> None:
     assert result.text == "The first sentence. The second sentence."
 
 
+def test_sentence_spacing_repairs_reported_multi_sentence_voice_join() -> None:
+    raw = (
+        "Here is what is going on.Apparently, it keeps working."
+        "Oh, it moved over.So that's cool.Okay, let's continue."
+    )
+    result = polish_local(raw)
+    assert result.text == (
+        "Here is what is going on. Apparently, it keeps working. "
+        "Oh, it moved over. So that's cool. Okay, let's continue."
+    )
+
+
+def test_sentence_spacing_handles_opening_and_closing_quotes() -> None:
+    opening = polish_local('It finished."Next step" is ready.')
+    closing = polish_local('She said "Go."Then left.')
+    curly = polish_local('She said “Go.”Then left.')
+    assert opening.text == 'It finished. "Next step" is ready.'
+    assert closing.text == 'She said "Go." Then left.'
+    assert curly.text == 'She said “Go.” Then left.'
+
+
 @pytest.mark.parametrize("command, suffix", [("new line", "\n"), ("new paragraph", "\n\n")])
 def test_layout_command_repairs_fused_sentence_openings(command, suffix):
     result = polish_local(f"That is wrong.Maybe say no.I have an idea.Whatever works {command}", vocab=[])
@@ -511,6 +538,24 @@ def test_list_mention_in_planning_prose_stays_prose() -> None:
     result = polish_local("We need to make a list of things to fix")
     assert result.command is None
     assert result.text == "We need to make a list of things to fix."
+
+
+def test_markdown_headings_require_an_explicit_anchored_command() -> None:
+    heading = polish_local("heading level two release notes", vocab=[], output_format="markdown")
+    assert heading.text == "## Release notes"
+    assert heading.command == "heading"
+    assert polish_local("make this a heading 3: Known issues", vocab=[], output_format="markdown").text == "### Known issues"
+    assert polish_local("heading two Why?", vocab=[], output_format="markdown").text == "## Why?"
+    assert polish_local("heading two Project notes period", vocab=[], output_format="markdown").text == "## Project notes."
+    assert polish_local("heading two Make a list of features", vocab=[], output_format="markdown").text == "## Make a list of features"
+    assert polish_local("heading to the store", vocab=[], output_format="markdown").text == "Heading to the store."
+    assert polish_local('"heading two release notes"', vocab=[], output_format="markdown").text == '"heading two release notes".'
+
+
+def test_markdown_mode_preserves_raw_transcript_and_code() -> None:
+    raw = "heading two release notes"
+    assert polish_local(raw, vocab=[], text_cleanup=False, output_format="markdown").text == raw
+    assert polish_local(raw, vocab=[], app_name="code.exe", output_format="markdown").text == raw
 
 
 def test_reported_list_command_stays_prose() -> None:

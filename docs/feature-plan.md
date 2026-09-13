@@ -7,10 +7,12 @@
 Scope: Windows, macOS and Linux. Mobile has a separate [keyboard roadmap](mobile-roadmap.md);
 these modes are not promises of Android or iOS availability.
 
-Updated September 9, 2026. This is a development plan, not a list of available
+Updated September 12, 2026. This is a development plan, not a list of available
 features or promised release dates. Microphone open recovery is included in v0.3.4;
-the larger live modes below remain planned. File transcription and export are
-available from desktop v0.4.0 and are not in older v0.3.8 downloads.
+continuous recording and expanded file transcription are included in the
+0.4.6 RC1 Windows preview. Live captions, meetings and the other larger modes remain planned.
+File transcription and export first became available in desktop v0.4.0 and are
+not in older v0.3.8 downloads.
 
 ## First: reliable capture and comfortable long takes
 
@@ -21,20 +23,23 @@ available from desktop v0.4.0 and are not in older v0.3.8 downloads.
 | Missing selected microphone | v0.3.8 | Exact saved name required; no partial-name or default fallback. Refresh preserves selection and explains recovery. Identical hardware names remain a limitation. |
 | Device loss during recording | v0.4.0 | Detect stopped streams or 3 seconds without callbacks; preserve captured speech for explicit recovery without automatic insertion. Silence remains valid. Native hotplug/timeout evidence pending. |
 | Reconnect and permission recovery | Planned | Refresh devices, show selected/actual input, retry without restart; never change system permissions automatically. |
-| Hold until release | Planned | Replace the 120-second hold-mode cutoff with bounded incremental processing; preserve words and order across boundaries. |
-| Optional toggle-session limit | Planned | Configurable duration; countdown only when limited, optional elapsed time otherwise. |
+| Continuous hold/toggle recording | 0.4.6 RC1 preview | No scheduled duration cutoff; authorized local temporary storage, a bounded write queue and recognition windows preserve samples and order. Stop, Esc, quit and incomplete-result recovery remain explicit. |
+| Optional stop after speech | 0.4.6 RC1 preview | A locally reviewed detector can stop an explicitly started take after a selected 0.5–3 second pause. Review is the default; automatic insertion is separate and target-guarded. |
 
 The current retry adds 150 ms only after PortAudio reports device unavailable.
 It does not wait indefinitely or force another application to release its input.
 Native contention, reconnect, Bluetooth, sleep/wake, and permission tests remain
 release gates for broader recovery claims.
 
-Long dictation is an audio-pipeline change, not simply deleting a timer. The
-current engine serializes final decoding, and the recorder holds an entire take
-in memory. The replacement needs bounded audio chunks, overlapping context,
-duplicate removal, ordered output, cancellation, and backpressure when decoding
-cannot keep up. No silent disk spooling. Define explicit user choices before any
-temporary audio persistence is introduced.
+The RC1 preview treats long dictation as an audio-pipeline change, not merely a
+deleted timer. Explicitly authorized audio uses a local temporary file, an 8 MiB
+pending-write bound and recognition windows of at most 30 seconds. The recorder
+keeps only a short preview/endpoint tail in memory. Quiet-boundary batching retains
+every sample once and preserves order; it does not infer or delete repeated words.
+Storage/queue failure produces an incomplete recovery result instead of a
+complete-looking paste. Temporary files are removed on owned cleanup, without an
+encryption or secure-erasure claim. Physical microphone endurance, full-process
+memory and broader long-speech accuracy remain prerelease limits.
 
 ## Shared foundation for new modes
 

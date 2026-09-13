@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from contextlib import closing
 import io
 import json
 import os
@@ -101,7 +102,9 @@ def decoder_selection() -> dict | None:
         raise DecoderSetupError("Decoder settings are invalid. Open More formats and choose FFmpeg again.") from None
 
 
-def _command(executable: Path, path: Path, seconds: float) -> list[str]:
+def _command(executable: Path, path: Path, seconds: float | None, audio_track: int = 0) -> list[str]:
+    if type(audio_track) is not int or not 0 <= audio_track <= 255:
+        raise ValueError("Choose an audio track from 1 to 256")
     format = FORMATS.get(path.suffix.lower())
     if format is None:
         raise ValueError("Choose MP3, M4A, AAC, FLAC, OGG, Opus, MP4, MOV, WebM, MKV, or WAV media")
@@ -110,23 +113,53 @@ def _command(executable: Path, path: Path, seconds: float) -> list[str]:
                "-protocol_whitelist", "file", "-format_whitelist", format, "-f", format]
     if format == "mov":
         options += ["-enable_drefs", "0", "-use_absolute_path", "0"]
-    return options + ["-i", str(path), "-map", "0:a:0", "-vn", "-sn", "-dn", "-ac", "1",
-                      "-ar", "16000", "-t", str(seconds + 0.001), "-f", "s16le", "pipe:1"]
+    duration = [] if seconds is None else ["-t", str(seconds + 0.001)]
+    return options + ["-i", str(path), "-map", f"0:a:{audio_track}", "-vn", "-sn", "-dn", "-ac", "1",
+                      "-ar", "16000"] + duration + ["-f", "s16le", "pipe:1"]
 
 
 def decode_with_ffmpeg(path: Path, *, max_bytes: int, max_seconds: float,
                        cancel=None, progress=None) -> np.ndarray:
-    """Bound PCM and process lifetime; the selected executable remains trusted code."""
+    """Compatibility helper for callers that explicitly require a bounded array."""
+    with closing(_iter_ffmpeg_pcm(path, max_bytes=max_bytes, max_seconds=max_seconds,
+                                  cancel=cancel, progress=progress)) as blocks:
+        raw = io.BytesIO()
+        for block in blocks:
+            raw.write(block)
+        return np.frombuffer(raw.getbuffer(), dtype="<i2").astype(np.float32) / 32768.0
+
+
+def iter_ffmpeg_audio(path: Path, *, audio_track: int = 0, cancel=None, progress=None):
+    """Stream one selected track without a total-duration or file-size cap.
+
+    Close the iterator on early exit. Audio buffering and decoder inactivity are
+    bounded; time spent recognizing an already yielded block is not a stall.
+    """
+    with closing(_iter_ffmpeg_pcm(path, max_bytes=None, max_seconds=None, audio_track=audio_track,
+                                  cancel=cancel, progress=progress)) as blocks:
+        tail = b""
+        for block in blocks:
+            data = tail + block
+            complete = len(data) // 2 * 2
+            if complete:
+                yield np.frombuffer(data[:complete], dtype="<i2").astype(np.float32) / 32768.0
+            tail = data[complete:]
+
+
+def _iter_ffmpeg_pcm(path: Path, *, max_bytes: int | None, max_seconds: float | None,
+                     audio_track: int = 0, cancel=None, progress=None):
+    """One decoder process, bounded pipe queue, explicit cancellation and cleanup."""
+    from utterleaf.local_filesystem import require_local_filesystem
     def check():
         if cancel is not None and cancel.is_set():
             raise TranscriptionCancelled("File transcription cancelled")
 
     check()
-    path = Path(path).absolute()
-    if str(path).startswith(("\\\\", "//")):
-        raise ValueError("Select a media file on this computer, not a network share")
+    path = require_local_filesystem(path)
     info = path.stat()
-    if not stat.S_ISREG(info.st_mode) or not 0 < info.st_size <= max_bytes:
+    if not stat.S_ISREG(info.st_mode) or info.st_size <= 0:
+        raise ValueError("Select a nonempty regular local file")
+    if max_bytes is not None and info.st_size > max_bytes:
         raise ValueError("Select a nonempty local file no larger than 256 MiB")
     selected = decoder_selection()
     if selected is None:
@@ -135,7 +168,7 @@ def decode_with_ffmpeg(path: Path, *, max_bytes: int, max_seconds: float,
     if _identity(executable) != selected["sha256"]:
         raise DecoderSetupError("FFmpeg changed since you selected it. Open More formats and select the updated executable again.")
     check()
-    command = _command(executable, path, max_seconds)
+    command = _command(executable, path, max_seconds, audio_track)
     environment = os.environ.copy()
     environment.pop("FFREPORT", None)  # Never create FFmpeg's automatic report file.
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
@@ -169,14 +202,14 @@ def decode_with_ffmpeg(path: Path, *, max_bytes: int, max_seconds: float,
                     pass
 
     thread = threading.Thread(target=reader, name="utterleaf-decoder-output", daemon=True)
-    thread.start()
-    raw = io.BytesIO()
-    deadline = time.monotonic() + DECODE_TIMEOUT_SECONDS
+    decoded_bytes = 0
     try:
+        thread.start()
+        deadline = time.monotonic() + DECODE_TIMEOUT_SECONDS
         while True:
             check()
             if time.monotonic() >= deadline:
-                raise RuntimeError("Media decoding took too long and was stopped. Try a shorter or different file.")
+                raise RuntimeError("Media decoding made no progress for too long and was stopped.")
             try:
                 data = chunks.get(timeout=0.1)
             except queue.Empty:
@@ -185,11 +218,13 @@ def decode_with_ffmpeg(path: Path, *, max_bytes: int, max_seconds: float,
                 raise RuntimeError("Could not read decoded audio from FFmpeg")
             if not data:
                 break
-            if raw.tell() + len(data) > max_seconds * 16000 * 2:
+            decoded_bytes += len(data)
+            if max_seconds is not None and decoded_bytes > max_seconds * 16000 * 2:
                 raise ValueError("File audio exceeds the current 10-minute limit; select a shorter clip")
-            raw.write(data)
             if progress is not None:
                 progress("decoding", None)
+            yield data
+            deadline = time.monotonic() + DECODE_TIMEOUT_SECONDS
         check()
         while process.poll() is None:
             check()
@@ -202,13 +237,13 @@ def decode_with_ffmpeg(path: Path, *, max_bytes: int, max_seconds: float,
         code = process.returncode
         if code != 0:
             raise RuntimeError("FFmpeg could not decode the selected audio track. The file may be damaged or unsupported by this installation.")
-        if not raw.tell() or raw.tell() % 2:
+        if not decoded_bytes or decoded_bytes % 2:
             raise ValueError("The selected file contains no complete decodable audio")
-        return np.frombuffer(raw.getbuffer(), dtype="<i2").astype(np.float32) / 32768.0
     finally:
         stopped.set()
         if process.poll() is None:
             process.kill()
         process.wait(timeout=5)
-        thread.join(timeout=2)
+        if thread.ident is not None:
+            thread.join(timeout=2)
         process.stdout.close()

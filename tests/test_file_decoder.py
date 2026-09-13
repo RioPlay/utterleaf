@@ -134,6 +134,72 @@ def test_failed_decoder_never_returns_partial_audio(selected, monkeypatch):
         decoder.decode_with_ffmpeg(media, max_bytes=1024, max_seconds=10)
 
 
+def test_stream_command_selects_exact_audio_track_without_duration_limit(tmp_path):
+    command = decoder._command(tmp_path / "ffmpeg.exe", tmp_path / "stream.mkv", None, 2)
+    assert command[command.index("-map") + 1] == "0:a:2"
+    assert "-t" not in command
+    for track in (-1, 256, True, 1.5):
+        with pytest.raises(ValueError, match="audio track"):
+            decoder._command(tmp_path / "ffmpeg.exe", tmp_path / "stream.mkv", None, track)
+
+
+def test_stream_601_seconds_has_bounded_blocks_and_no_total_cap(selected, monkeypatch):
+    media, processes = _standin(selected, monkeypatch,
+        "import sys\nfor _ in range(601):\n sys.stdout.buffer.write(bytes(32000))\n")
+    total = 0
+    for audio in decoder.iter_ffmpeg_audio(media):
+        assert audio.dtype == np.float32
+        assert len(audio) <= decoder.BLOCK_BYTES // 2
+        total += len(audio)
+    assert total == 601 * 16000
+    assert processes[0].returncode == 0
+
+
+def test_slow_model_consumer_is_not_a_decoder_timeout(selected, monkeypatch):
+    from contextlib import closing
+    from types import SimpleNamespace
+    import time
+    media, processes = _standin(selected, monkeypatch,
+        "import sys; sys.stdout.buffer.write(bytes(320000))")
+    elapsed = [0]
+    monkeypatch.setattr(decoder, "time", SimpleNamespace(monotonic=lambda: time.monotonic() + elapsed[0]))
+    with closing(decoder.iter_ffmpeg_audio(media)) as audio:
+        first = next(audio)
+        elapsed[0] = 3600  # Consumer owns the block for an hour; no wall-clock delay.
+        assert len(first) + sum(len(x) for x in audio) == 160000
+    assert processes[0].returncode == 0
+
+
+def test_abandoned_stream_kills_and_reaps_decoder(selected, monkeypatch):
+    media, processes = _standin(selected, monkeypatch,
+        "import sys,time; sys.stdout.buffer.write(bytes(65536)); sys.stdout.flush(); time.sleep(20)")
+    stream = decoder.iter_ffmpeg_audio(media)
+    assert len(next(stream)) == 32768
+    stream.close()
+    assert processes[0].poll() is not None
+
+
+def test_stream_reader_start_failure_still_reaps_child(selected, monkeypatch):
+    media, processes = _standin(selected, monkeypatch, "import time; time.sleep(20)")
+    def fail(*args):
+        raise RuntimeError("No worker available")
+    monkeypatch.setattr(threading.Thread, "start", fail)
+    with pytest.raises(RuntimeError, match="No worker"):
+        list(decoder.iter_ffmpeg_audio(media))
+    assert processes[0].poll() is not None
+
+
+@pytest.mark.parametrize("script,message", [
+    ("import sys; sys.stdout.buffer.write(bytes(32000)); sys.exit(1)", "could not decode"),
+    ("import sys; sys.stdout.buffer.write(bytes(32001))", "complete decodable audio"),
+])
+def test_stream_reports_late_failure_instead_of_success(selected, monkeypatch, script, message):
+    media, processes = _standin(selected, monkeypatch, script)
+    with pytest.raises((ValueError, RuntimeError), match=message):
+        list(decoder.iter_ffmpeg_audio(media))
+    assert processes[0].poll() is not None
+
+
 @pytest.mark.parametrize("extension,codec", [("mp3", "libmp3lame"), ("m4a", "aac"), ("aac", "aac"),
     ("flac", "flac"), ("ogg", "libvorbis"), ("opus", "libopus"), ("mp4", "aac"),
     ("mov", "aac"), ("webm", "libopus"), ("mkv", "flac")])

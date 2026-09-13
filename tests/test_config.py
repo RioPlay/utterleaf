@@ -28,6 +28,33 @@ def test_unchanged_transcript_preference_survives_config_roundtrip():
     assert Config(**values).text_cleanup is False
 
 
+def test_markdown_output_preference_survives_config_roundtrip():
+    values = _parse_toml(_dump_toml(Config(output_format="markdown")))
+    assert Config(**values).output_format == "markdown"
+
+
+def test_speech_end_preferences_survive_config_roundtrip():
+    values = _parse_toml(_dump_toml(Config(
+        speech_end_enabled=True, speech_end_pause_seconds=1.8, speech_end_insert=True)))
+    loaded = Config(**values)
+    assert loaded.speech_end_enabled is True
+    assert loaded.speech_end_pause_seconds == 1.8
+    assert loaded.speech_end_insert is True
+
+
+def test_invalid_speech_end_config_fails_closed(tmp_path, monkeypatch):
+    monkeypatch.setattr("utterleaf.config.config_path", lambda: tmp_path / "config.toml")
+    (tmp_path / "config.toml").write_text(
+        'speech_end_enabled = "true"\nspeech_end_insert = "true"\n'
+        'speech_end_pause_seconds = 99\n', encoding="utf-8")
+    from utterleaf.config import load
+
+    loaded = load()
+    assert loaded.speech_end_enabled is False
+    assert loaded.speech_end_insert is False
+    assert loaded.speech_end_pause_seconds == 1.2
+
+
 def test_first_run_does_not_enable_startup(tmp_path, monkeypatch) -> None:
     called = {"n": 0}
     monkeypatch.setattr("utterleaf.config.data_dir", lambda: tmp_path)

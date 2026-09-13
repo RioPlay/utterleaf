@@ -13,9 +13,12 @@ import importlib.util
 from pathlib import Path
 
 from PyInstaller.building.api import EXE, COLLECT, PYZ
-from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs
+from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, copy_metadata
 
 datas = collect_data_files("faster_whisper")
+# Optional speech-end stopping admits only its reviewed wrapper/runtime versions.
+datas += copy_metadata("faster-whisper")
+datas += copy_metadata("onnxruntime")
 datas += collect_data_files("utterleaf", includes=["assets/*.png"])
 project_root = Path(SPECPATH).parent
 # The readme travels with every build so an extracted download explains itself.

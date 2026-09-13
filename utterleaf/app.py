@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import logging
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from logging.handlers import RotatingFileHandler
 import os
 import socket
 import sys
 import threading
 import time
+from typing import Callable
 from utterleaf.host import is_wayland, pin_tray_backend
 
 # Linux tray backend must be selected before pystray imports (see host.pin_tray_backend).
@@ -20,9 +21,12 @@ from pystray import Icon, Menu, MenuItem
 from utterleaf.beep import beep
 from utterleaf import edit_target, ipc
 from utterleaf.audio import TAIL_SECONDS, Recorder, list_devices, microphone_error_hint
+from utterleaf.capture_store import CaptureStore, CaptureStorageError
+from utterleaf.audio_batching import audio_windows
+from utterleaf.transcript import TranscriptionCancelled
 from utterleaf.config import Config, config_path, dictionary_path, log_path
 from utterleaf.hotkey import HotkeyWatcher, parse_hotkey
-from utterleaf.indicator import Indicator, recording_caption
+from utterleaf.indicator import Indicator
 from utterleaf.inject import copy_text, foreground_app, foreground_id, paste
 from utterleaf.polish import polish, infer_style
 from utterleaf.dictation_spacing import prepare_delivery
@@ -53,6 +57,8 @@ NO_MIC = "microphone unavailable"
 DOWNLOADING = "Downloading your speech model… First use only."
 MAX_PENDING_TAKES = 4
 CAPTURE_CHECK_SECONDS = 0.5
+ENDPOINT_POLL_SECONDS = 0.25
+ENDPOINT_FRESH_SAMPLES = 8000
 
 
 @dataclass(frozen=True)
@@ -60,6 +66,33 @@ class _InterruptedTake:
     """An unsolicited stop may recover text but must never target an editor."""
 
     reason: str
+
+
+@dataclass(frozen=True)
+class _EndpointTake:
+    """An automatic stop with take-start settings and an original target."""
+
+    target: object
+    app_name: str
+    action: str  # review | insert
+    config: Config
+    continuation: object = None
+    field: object = None
+    format_command: str | None = None
+
+
+@dataclass
+class _ReviewState:
+    generation: int
+    recovery_generation: int
+    text: str
+    target: object
+    app_name: str
+    config: Config
+    continuation: object = None
+    field: object = None
+    format_command: str | None = None
+    handle: object = None
 
 
 # How long a result pill stays up. Failures linger longer than successes.
@@ -71,7 +104,9 @@ LINGER = {
     "too_short": 1.2,
     "transcribe": 3.5,
     "no_paste": 3.5,
+    "uncertain": 8.0,
     "no_mic": 8.0,
+    "capture_error": 8.0,
 }
 
 
@@ -137,7 +172,7 @@ def open_path(path) -> None:
 class Utterleaf:
     def __init__(self, cfg: Config) -> None:
         self.cfg = cfg
-        self.recorder = Recorder(device=cfg.microphone)
+        self.recorder = Recorder(device=cfg.microphone, continuous=True)
         self.state: State = "idle"
         self.last_text = ""
         self._recent_generation = 0
@@ -156,6 +191,8 @@ class Utterleaf:
         self._queued_takes = deque()
         self._take_continuation = None
         self._cancel_job = False
+        # Rotate on cancellation; never clear a signal held by an older job.
+        self._delivery_cancel = threading.Event()
         self._job_running = False
         self._preview_stop = threading.Event()
         self._cut_id = 0
@@ -165,6 +202,18 @@ class Utterleaf:
         self._limit_timer: threading.Timer | None = None
         self._countdown_timer: threading.Timer | None = None
         self._capture_timer: threading.Timer | None = None
+        self._endpoint_timer: threading.Timer | None = None
+        self._endpoint = None
+        self._endpoint_generation = 0
+        self._endpoint_cut_id = -1
+        self._endpoint_target = None
+        self._endpoint_unavailable = False
+        self._endpoint_detector = None
+        self._endpoint_detector_loaded = False
+        self._endpoint_detector_loading = False
+        self._review: _ReviewState | None = None
+        self._review_generation = 0
+        self._review_lock = threading.RLock()
         self._recording_deadline = 0.0
         self._recording_draft = ""
         self._lock = threading.Lock()
@@ -194,6 +243,7 @@ class Utterleaf:
             self._start_recording()
 
     def _start_recording(self) -> None:
+        self._close_review()
         self._harvest_pending_tail()
         with self._lock:
             full = len(self._queued_takes) + (self._queued_audio is not None) >= MAX_PENDING_TAKES
@@ -206,6 +256,7 @@ class Utterleaf:
             return
         start_target = foreground_id()
         start_app = foreground_app()
+        take_config = replace(self.cfg)
         continuation = None
         if (
             self.last_text
@@ -224,35 +275,206 @@ class Utterleaf:
             self._take_continuation = continuation
         self._set_icon("busy", "opening microphone", badge="loading", caption="Getting your microphone ready…")
         try:
-            self.recorder.start(max_seconds=self.cfg.max_seconds)
-            self._recording_deadline = time.monotonic() + self.cfg.max_seconds
+            self.recorder.start(max_seconds=None)
+            start_field = edit_target.read_field() if take_config.speech_end_enabled else None
+            self._recording_deadline = 0.0
             self._recording_draft = ""
             log.info("Recording")
             self._set_icon("recording", "listening", badge="listening",
-                           caption=recording_caption(self.cfg.max_seconds))
+                           caption=self._recording_caption())
             beep("start", self.cfg.beep)
-            timer = threading.Timer(self.cfg.max_seconds, self._recording_limit, args=(self._cut_id,))
-            timer.daemon = True
-            self._limit_timer = timer
-            timer.start()
-            self._update_countdown(self._cut_id)
             self._schedule_capture_check(self._cut_id)
+            self._start_speech_endpoint(self._cut_id, start_target, start_app,
+                                        continuation, take_config, start_field)
             if self.cfg.live_preview and self.indicator.enabled:
                 self._preview_stop.clear()
                 threading.Thread(target=self._preview_loop, args=(self._cut_id,), daemon=True).start()
         except Exception as exc:
             log.exception("Microphone failed")
             self._cancel_limit_timer()
+            try:
+                self.recorder.close()
+            except Exception:
+                log.warning("Could not release failed capture", exc_info=True)
             if self.hotkey is not None:
                 self.hotkey.reset_active()
             beep("err", self.cfg.beep)
             with self._lock:
                 self.state = "idle"
-            self._show_error(
-                "no_mic",
-                NO_MIC,
-                microphone_error_hint(exc),
+            if isinstance(exc, CaptureStorageError):
+                self._show_error("transcribe", "audio storage unavailable", str(exc))
+            else:
+                self._show_error("no_mic", NO_MIC, microphone_error_hint(exc))
+
+    def _ensure_endpoint_detector(self) -> None:
+        if (not self.cfg.speech_end_enabled or self._endpoint_detector_loaded
+                or self._endpoint_detector_loading or self._stop.is_set()):
+            return
+        self._endpoint_detector_loading = True
+
+        def load() -> None:
+            try:
+                from utterleaf.speech_endpoint import local_silero_detector
+
+                detector = local_silero_detector()
+            except Exception:
+                log.warning("Local speech-end detector unavailable", exc_info=True)
+                detector = None
+            with self._capture_lock:
+                self._endpoint_detector = detector
+                self._endpoint_detector_loaded = True
+                self._endpoint_detector_loading = False
+
+        try:
+            worker = threading.Thread(target=load, daemon=True,
+                                      name="utterleaf-speech-end-load")
+            worker.start()
+        except Exception:
+            log.warning("Could not start local speech-end detector loader", exc_info=True)
+            self._endpoint_detector_loading = False
+
+    def _start_speech_endpoint(self, cut_id: int, target, app_name: str,
+                               continuation, take_config: Config, target_field=None) -> None:
+        self._cancel_speech_endpoint()
+        self._endpoint_unavailable = False
+        if not take_config.speech_end_enabled:
+            return
+        if not self._endpoint_detector_loaded:
+            self._ensure_endpoint_detector()
+        detector = self._endpoint_detector
+        snapshot = getattr(self.recorder, "endpoint_snapshot", None)
+        if detector is None or not callable(snapshot):
+            self._mark_endpoint_unavailable()
+            return
+        from utterleaf.speech_endpoint import EndpointOptions, SpeechEndpoint
+
+        take = _EndpointTake(
+            target,
+            app_name,
+            "insert" if take_config.speech_end_insert and target_field is not None else "review",
+            take_config,
+            continuation,
+            target_field,
+        )
+        generation_box = [0]
+        try:
+            options = EndpointOptions(take_config.speech_end_pause_seconds)
+        except (TypeError, ValueError):
+            self._mark_endpoint_unavailable()
+            return
+        endpoint = None
+        try:
+            endpoint = SpeechEndpoint(
+                detector,
+                lambda end_sample: self._speech_endpoint_end(
+                    endpoint, generation_box[0], cut_id, end_sample, take),
+                options=options,
+                on_error=lambda: self._speech_endpoint_error(
+                    endpoint, generation_box[0], cut_id, take.target),
             )
+            generation = endpoint.start()
+        except Exception:
+            log.warning("Speech-end detection could not start for this take", exc_info=True)
+            if endpoint is not None:
+                endpoint.cancel()
+            self._mark_endpoint_unavailable()
+            return
+        generation_box[0] = generation
+        self._endpoint = endpoint
+        self._endpoint_generation = generation
+        self._endpoint_cut_id = cut_id
+        self._endpoint_target = target
+        self._schedule_endpoint_poll(endpoint, generation, cut_id)
+
+    def _recording_caption(self, draft: str = "") -> str:
+        stop_hint = "Press shortcut to finish" if self.cfg.mode == "toggle" or is_wayland() else "Release shortcut to finish"
+        caption = stop_hint if is_wayland() else f"{stop_hint} · Esc cancels"
+        if draft:
+            caption += f" · {draft}"
+        if self._endpoint_unavailable:
+            caption += " · Automatic stop unavailable; stop manually"
+        return caption
+
+    def _mark_endpoint_unavailable(self) -> None:
+        self._endpoint_unavailable = True
+        caption = self._recording_caption(self._recording_draft)
+        self._set_icon(
+            "recording",
+            "listening — automatic stop unavailable; stop manually",
+            badge="listening",
+            caption=caption,
+        )
+
+    def _schedule_endpoint_poll(self, endpoint, generation: int, cut_id: int) -> None:
+        if self._stop.is_set() or endpoint is not self._endpoint or not endpoint.active:
+            return
+        timer = threading.Timer(ENDPOINT_POLL_SECONDS, self._poll_speech_endpoint,
+                                args=(endpoint, generation, cut_id))
+        timer.daemon = True
+        self._endpoint_timer = timer
+        timer.start()
+
+    def _poll_speech_endpoint(self, endpoint, generation: int, cut_id: int) -> None:
+        with self._capture_lock:
+            if (self.state != "recording" or cut_id != self._cut_id
+                    or endpoint is not self._endpoint or generation != self._endpoint_generation
+                    or self._stop.is_set()):
+                return
+            self._endpoint_timer = None
+            if foreground_id() != self._endpoint_target:
+                self._cancel_speech_endpoint()
+                self._mark_endpoint_unavailable()
+                return
+            try:
+                audio, end_sample = self.recorder.endpoint_snapshot()
+                endpoint.submit(audio, generation, end_sample=end_sample)
+            except Exception:
+                log.warning("Speech-end detection unavailable for this take", exc_info=True)
+                self._cancel_speech_endpoint()
+                self._mark_endpoint_unavailable()
+                return
+            self._schedule_endpoint_poll(endpoint, generation, cut_id)
+
+    def _speech_endpoint_error(self, endpoint, generation: int, cut_id: int,
+                               target) -> None:
+        with self._capture_lock:
+            if (endpoint is not self._endpoint or generation != self._endpoint_generation
+                    or cut_id != self._cut_id or self.state != "recording"):
+                return
+            self._cancel_speech_endpoint()
+            self._mark_endpoint_unavailable()
+
+    def _speech_endpoint_end(self, endpoint, generation: int, cut_id: int,
+                             analyzed_end: int, take: _EndpointTake) -> None:
+        with self._capture_lock:
+            if (endpoint is not self._endpoint or generation != self._endpoint_generation
+                    or cut_id != self._cut_id or self.state != "recording"
+                    or self._stop.is_set()):
+                return
+            if foreground_id() != take.target:
+                self._cancel_speech_endpoint()
+                self._mark_endpoint_unavailable()
+                return
+            try:
+                _, current_end = self.recorder.endpoint_snapshot()
+            except Exception:
+                current_end = analyzed_end + ENDPOINT_FRESH_SAMPLES + 1
+            if current_end - analyzed_end > ENDPOINT_FRESH_SAMPLES:
+                self._cancel_speech_endpoint()
+                self._mark_endpoint_unavailable()
+                return
+            self._stop_recording(endpoint_take=take)
+
+    def _cancel_speech_endpoint(self) -> None:
+        timer, self._endpoint_timer = self._endpoint_timer, None
+        if timer is not None:
+            timer.cancel()
+        endpoint, self._endpoint = self._endpoint, None
+        self._endpoint_generation = 0
+        self._endpoint_cut_id = -1
+        self._endpoint_target = None
+        if endpoint is not None:
+            endpoint.cancel()
 
     def _preview_loop(self, cut_id: int) -> None:
         while not self._preview_stop.wait(0.75):
@@ -271,20 +493,13 @@ class Utterleaf:
             with self._capture_lock:
                 if draft and self.state == "recording" and cut_id == self._cut_id and not self._preview_stop.is_set():
                     self._recording_draft = draft
-                    self.indicator.set("listening", recording_caption(
-                        self._recording_deadline - time.monotonic(), draft))
+                    self.indicator.set("listening", self._recording_caption(draft))
 
     def _update_countdown(self, cut_id: int) -> None:
         with self._capture_lock:
             if self.state != "recording" or cut_id != self._cut_id or self._stop.is_set():
                 return
-            remaining = self._recording_deadline - time.monotonic()
-            self.indicator.set("listening", recording_caption(remaining, self._recording_draft))
-            if remaining > 0 and self.indicator.enabled:
-                timer = threading.Timer(min(1.0, remaining), self._update_countdown, args=(cut_id,))
-                timer.daemon = True
-                self._countdown_timer = timer
-                timer.start()
+            self.indicator.set("listening", self._recording_caption(self._recording_draft))
 
     def _recording_limit(self, cut_id: int) -> None:
         self.stop_recording(limit_cut_id=cut_id)
@@ -326,7 +541,9 @@ class Utterleaf:
         with self._capture_lock:
             self._stop_recording(limit_cut_id=limit_cut_id)
 
-    def _stop_recording(self, *, limit_cut_id: int | None = None, interruption: str | None = None) -> None:
+    def _stop_recording(self, *, limit_cut_id: int | None = None,
+                        interruption: str | None = None,
+                        endpoint_take: _EndpointTake | None = None) -> None:
         with self._lock:
             if self.state != "recording" or (limit_cut_id is not None and limit_cut_id != self._cut_id):
                 return
@@ -338,14 +555,15 @@ class Utterleaf:
             check = getattr(self.recorder, "capture_error", None)
             if callable(check):
                 interruption = check()
+        self._cancel_speech_endpoint()
         self._preview_stop.set()
         self._cancel_limit_timer()
-        if (limit_cut_id is not None or interruption) and self.hotkey is not None:
+        if (limit_cut_id is not None or interruption or endpoint_take is not None) and self.hotkey is not None:
             self.hotkey.reset_active()
         request_final()
         caption = "Recording limit reached. Start another take to continue." if limit_cut_id is not None else ""
         if interruption:
-            caption = f"{interruption} Recovering captured speech. Reconnect your microphone, then try again."
+            caption = f"{interruption} Recovering captured speech."
         self._set_icon("busy", "recovering interrupted dictation" if interruption else "transcribing",
                        badge="transcribing", caption=caption)
         beep("stop", self.cfg.beep)
@@ -354,6 +572,11 @@ class Utterleaf:
         if interruption:
             # No trailing capture or automatic field delivery after device loss.
             self._cut(_InterruptedTake(interruption), follow_on, cut_id)
+            return
+        if endpoint_take is not None:
+            # The detector has already observed the requested quiet interval.
+            # Release capture immediately; no trailing microphone tail is needed.
+            self._cut(endpoint_take, follow_on, cut_id, endpoint_take.continuation)
             return
         target = foreground_id()
         self._tail_args = (target, follow_on, cut_id, continuation)
@@ -400,6 +623,8 @@ class Utterleaf:
             log.warning("Microphone release failed", exc_info=True)
         seconds = self.recorder.seconds(audio)
         if seconds < self.cfg.min_seconds:
+            if isinstance(audio, CaptureStore):
+                audio.close()
             log.info("Ignored short tap (%.2fs)", seconds)
             with self._lock:
                 if follow_on and self._job_running:
@@ -408,7 +633,7 @@ class Utterleaf:
                 self._job_running = False
             clear_final()
             if isinstance(target, _InterruptedTake):
-                self._flash("no_mic", f"{target.reason} Too little audio to recover. Reconnect your microphone, then try again.")
+                self._flash("capture_error", f"{target.reason} Too little audio to recover.")
             else:
                 self._flash("too_short")
             return
@@ -429,56 +654,101 @@ class Utterleaf:
         ).start()
 
     def cancel_recording(self) -> None:
+        with self._lock:
+            self._delivery_cancel.set()
+            self._delivery_cancel = threading.Event()
+            cut_id = self._cut_id
+            if self._job_running or self.state == "busy":
+                self._cancel_job = True
+            self._discard_queued_stores()
+            self._queued_audio = None
+            self._queued_target = None
+            self._queued_continuation = None
+            self._queued_takes.clear()
         with self._capture_lock:
-            self._cancel_recording()
+            # A delayed cancel must not stop a newer deliberate recording.
+            if cut_id == self._cut_id:
+                self._cancel_recording()
+
+    def _delivery_guard(self) -> Callable[[], bool]:
+        with self._lock:
+            event = self._delivery_cancel
+        return lambda: event.is_set() or self._cancel_job or self._stop.is_set()
+
+    def _discard_queued_stores(self) -> None:
+        if isinstance(self._queued_audio, CaptureStore):
+            self._queued_audio.close()
+        for audio, _, _ in self._queued_takes:
+            if isinstance(audio, CaptureStore):
+                audio.close()
 
     def _cancel_recording(self) -> None:
+        self._cancel_speech_endpoint()
         self._cancel_limit_timer()
         self._preview_stop.set()
         clear_final()
-        self._queued_audio = None
-        self._queued_target = None
-        self._queued_continuation = None
-        self._queued_takes.clear()
         with self._lock:
+            self._discard_queued_stores()
+            self._queued_audio = None
+            self._queued_target = None
+            self._queued_continuation = None
+            self._queued_takes.clear()
             if self.state == "recording":
                 self.state = "idle"
-                self.recorder.stop()
+                discarded = self.recorder.stop()
+                if isinstance(discarded, CaptureStore):
+                    discarded.close()
                 self.recorder.close()
                 log.info("Cancelled")
                 self._set_icon("idle", badge="hide")
                 beep("err", self.cfg.beep)
                 return
             if self.state == "busy":
-                self._cancel_job = True
+                # Public cancel already signaled the job before waiting for
+                # capture ownership. Re-arming here can cancel the next job.
                 log.info("Will skip this paste")
                 return
         # Idle Esc is left to the focused app (close pickers, leave fullscreen).
 
     def _finish(self, audio, target=None, continuation=None) -> None:
+        cancelled = self._delivery_guard()
         try:
-            if self._cancel_job:
+            endpoint_take = target if isinstance(target, _EndpointTake) else None
+            if endpoint_take is not None:
+                target = endpoint_take.target
+                continuation = endpoint_take.continuation
+            take_config = endpoint_take.config if endpoint_take is not None else self.cfg
+            if cancelled():
                 self._cancel_job = False
-                self._queued_audio = None
-                self._queued_target = None
-                self._queued_continuation = None
-                self._queued_takes.clear()
                 log.info("Paste skipped")
                 self._after_job()
                 return
-            app_name = "" if isinstance(target, _InterruptedTake) else foreground_app()
+            if isinstance(audio, CaptureStore):
+                audio.wait_ready(cancelled)
+                if audio.error:
+                    target = _InterruptedTake(audio.error)
+                    endpoint_take = None
+                    continuation = None
+            app_name = (endpoint_take.app_name if endpoint_take is not None else
+                        "" if isinstance(target, _InterruptedTake) else foreground_app())
             decode_started = time.perf_counter()
-            raw = transcribe(audio, self.cfg)
+            if isinstance(audio, CaptureStore):
+                parts = []
+                for chunk in audio_windows(audio.chunks(cancelled), cancel=cancelled):
+                    if cancelled():
+                        raise TranscriptionCancelled("Recording cancelled")
+                    parts.append(transcribe(chunk, take_config).strip())
+                    if cancelled():
+                        raise TranscriptionCancelled("Recording cancelled")
+                raw = " ".join(part for part in parts if part)
+            else:
+                raw = transcribe(audio, take_config)
             log.info("Dictation timing: audio=%.2fs decode=%.3fs",
                      len(audio) / 16000, time.perf_counter() - decode_started)
             # Esc may arrive during a long decode. Check again before editing
             # or pasting into the user's app, not just before transcription.
-            if self._cancel_job or self._stop.is_set():
+            if cancelled():
                 self._cancel_job = False
-                self._queued_audio = None
-                self._queued_target = None
-                self._queued_continuation = None
-                self._queued_takes.clear()
                 self._after_job()
                 return
             log.debug("Transcription received (%d characters)", len(raw))
@@ -488,12 +758,8 @@ class Utterleaf:
                 # Cancel takes this same lock. It must not win between the
                 # earlier post-decode check and retaining the recovered result.
                 with self._capture_lock:
-                    if self._cancel_job or self._stop.is_set():
+                    if cancelled():
                         self._cancel_job = False
-                        self._queued_audio = None
-                        self._queued_target = None
-                        self._queued_continuation = None
-                        self._queued_takes.clear()
                         self._after_job()
                         return
                     text = raw.strip()
@@ -502,10 +768,48 @@ class Utterleaf:
                         hint = "Captured speech is ready. Use Copy last dictation in the tray within two minutes."
                     else:
                         hint = "No speech was recovered from this take."
-                    self._after_job("no_mic", f"{target.reason} {hint} Reconnect your microphone, then try again.")
+                    self._after_job("capture_error", f"{target.reason} {hint}")
                 return
             if not raw:
                 self._after_job("missed")
+                return
+            if endpoint_take is not None:
+                # Automatic stops never execute spoken editor commands. The
+                # formatting pass is pure; editor-action commands remain literal.
+                formatted = polish(
+                    raw,
+                    app_name=endpoint_take.app_name,
+                    remove_fillers=take_config.remove_fillers,
+                    fix_corrections=take_config.fix_corrections,
+                    text_cleanup=take_config.text_cleanup,
+                    output_format=take_config.output_format,
+                )
+                text = (raw.strip() if formatted.command in {
+                    "discard", "replace", "shorter", "professional"
+                } else formatted.text)
+                safe_command = (formatted.command if formatted.command in {
+                    "heading", "bullets", "numbered", "newline", "paragraph"
+                } else None)
+                endpoint_take = replace(endpoint_take, format_command=safe_command)
+                if not text:
+                    self._after_job("missed")
+                    return
+                if endpoint_take.action == "review":
+                    with self._capture_lock:
+                        if cancelled():
+                            self._after_job()
+                            return
+                        self._remember_result(text)
+                        # An older queued decode must not raise a window over a
+                        # newer take that the user deliberately started.
+                        shown = self.state != "recording" and self._present_review(text, endpoint_take)
+                    self._after_job("hide" if shown else "no_paste",
+                                    "Review could not open. Use Copy last dictation in the tray within two minutes."
+                                    if not shown else "")
+                    return
+                with self._capture_lock:
+                    self._deliver_endpoint_text(text, endpoint_take,
+                                                fallback_review=True, cancelled=cancelled)
                 return
             format_started = time.perf_counter()
             result = polish(
@@ -514,29 +818,35 @@ class Utterleaf:
                 remove_fillers=self.cfg.remove_fillers,
                 fix_corrections=self.cfg.fix_corrections,
                 text_cleanup=self.cfg.text_cleanup,
+                output_format=self.cfg.output_format,
             )
             log.info("Dictation timing: formatting=%.3fs", time.perf_counter() - format_started)
             # Formatting/vocabulary work can outlast an Esc or shutdown request.
             # The post-decode check alone does not cover this stage.
-            if self._cancel_job or self._stop.is_set():
+            if cancelled():
                 self._cancel_job = False
-                self._queued_audio = None
-                self._queued_target = None
-                self._queued_continuation = None
-                self._queued_takes.clear()
                 self._after_job()
                 return
             if result.command == "replace":
                 replacement = prepare_delivery(result.text, text_cleanup=self.cfg.text_cleanup,
-                                               code_mode=infer_style(app_name) == "code")
+                                               code_mode=infer_style(app_name) == "code",
+                                               markdown=self.cfg.output_format == "markdown")
                 self._remember_result(replacement.text)
                 if (not self.last_text or not self.last_target or target != self.last_target
                         or foreground_id() != self.last_target
                         or (time.time() - self.last_paste_at) >= self.recent_dictation.ttl):
                     self._after_job("no_paste", "Replacement ready. Select the old entry, then use Copy last dictation and paste.")
                     return
-                outcome, self._edit_receipt = edit_target.replace(
+                if cancelled():
+                    self._cancel_job = False
+                    self._after_job()
+                    return
+                outcome, receipt = edit_target.replace(
                     self._edit_receipt, self._last_prefix + replacement.payload)
+                if cancelled():
+                    self._delivery_interrupted("uncertain")
+                    return
+                self._edit_receipt = receipt
                 if outcome != "replaced":
                     message = ("Replacement ready. Select the old entry, then use Copy last dictation and paste."
                                if outcome == "unavailable" else
@@ -562,7 +872,15 @@ class Utterleaf:
                 return
             if result.discarded:
                 if result.command_only and self.last_text:
-                    outcome, self._edit_receipt = edit_target.replace(self._edit_receipt, None)
+                    if cancelled():
+                        self._cancel_job = False
+                        self._after_job()
+                        return
+                    outcome, receipt = edit_target.replace(self._edit_receipt, None)
+                    if cancelled():
+                        self._delivery_interrupted("uncertain")
+                        return
+                    self._edit_receipt = receipt
                     if outcome != "replaced":
                         self._after_job("no_paste", "Select your last dictation and delete it manually. This field could not be verified.")
                         return
@@ -584,9 +902,18 @@ class Utterleaf:
                     text = polish_local(text, app_name="outlook").text or text
                 if text and text != self.last_text:
                     revision = prepare_delivery(text, text_cleanup=self.cfg.text_cleanup,
-                                                code_mode=infer_style(app_name) == "code")
+                                                code_mode=infer_style(app_name) == "code",
+                                                markdown=self.cfg.output_format == "markdown")
                     self._remember_result(revision.text)
-                    outcome, self._edit_receipt = edit_target.replace(self._edit_receipt, self._last_prefix + revision.payload)
+                    if cancelled():
+                        self._cancel_job = False
+                        self._after_job()
+                        return
+                    outcome, receipt = edit_target.replace(self._edit_receipt, self._last_prefix + revision.payload)
+                    if cancelled():
+                        self._delivery_interrupted("uncertain")
+                        return
+                    self._edit_receipt = receipt
                     if outcome != "replaced":
                         beep("err", self.cfg.beep)
                         if outcome == "unavailable" and copy_text(text):
@@ -621,20 +948,29 @@ class Utterleaf:
                     and app_name == continuation_app == self.last_app
                 )
             previous = self.last_text + self._last_suffix if same_place else ""
-            delivery = prepare_delivery(text, previous_delivered=previous,
-                                        text_cleanup=self.cfg.text_cleanup,
-                                        code_mode=infer_style(app_name) == "code", command=result.command)
-            to_paste = delivery.payload
             delivery_started = time.perf_counter()
             before = edit_target.read_field()
+            neighbors = edit_target.insertion_neighbors(before)
+            delivery = prepare_delivery(text, previous_delivered=previous,
+                                        text_cleanup=self.cfg.text_cleanup,
+                                        code_mode=infer_style(app_name) == "code", command=result.command,
+                                        neighbors=neighbors, markdown=self.cfg.output_format == "markdown")
+            to_paste = delivery.payload
+            if cancelled():
+                self._cancel_job = False
+                self._after_job()
+                return
             self._remember_result(delivery.prefix + delivery.text)
             outcome = paste(
                 to_paste,
                 restore_clipboard=self.cfg.restore_clipboard,
                 target=target,
+                cancel=cancelled,
             )
             log.info("Dictation timing: delivery=%.3fs outcome=%s",
                      time.perf_counter() - delivery_started, outcome)
+            if self._delivery_interrupted(outcome):
+                return
             if outcome == "pasted":
                 self._edit_receipt = edit_target.capture(before, to_paste)
                 self._last_prefix = delivery.prefix
@@ -656,18 +992,212 @@ class Utterleaf:
             beep("err", self.cfg.beep)
             self._after_job("no_paste", "Use Copy last dictation in the tray menu to recover your text.")
             return
+        except TranscriptionCancelled:
+            self._after_job()
+            return
         except Exception:
             log.exception("Transcription failed")
             beep("err", self.cfg.beep)
             self._after_job("transcribe", "Try another take. If this repeats, open Settings → Help & diagnostics.")
             return
+        finally:
+            if isinstance(audio, CaptureStore):
+                audio.close()
+
+    def _deliver_endpoint_text(self, text: str, take: _EndpointTake, *,
+                               fallback_review: bool = False,
+                               cancelled: Callable[[], bool] | None = None) -> None:
+        """Insert literal endpoint text through the ordinary target guards."""
+        cancelled = cancelled or self._delivery_guard()
+        if cancelled():
+            self._after_job()
+            return
+        same_place = bool(
+            self.last_text
+            and take.target == self.last_target
+            and take.app_name == self.last_app
+            and (take.continuation is not None or time.time() - self.last_paste_at < 20)
+        )
+        previous = self.last_text + self._last_suffix if same_place else ""
+        current_target = foreground_id()
+        if cancelled():
+            self._after_job()
+            return
+        if current_target != take.target:
+            self._endpoint_delivery_failed(text, take, fallback_review,
+                                           "The original window changed. Use Copy to place the text safely.")
+            return
+        before = edit_target.read_field()
+        if cancelled():
+            self._after_job()
+            return
+        if take.field is None or before != take.field:
+            self._endpoint_delivery_failed(text, take, fallback_review,
+                                           "The original field or caret changed. Use Copy to place the text safely.")
+            return
+        neighbors = edit_target.insertion_neighbors(before)
+        delivery = prepare_delivery(text, previous_delivered=previous,
+                                    text_cleanup=take.config.text_cleanup,
+                                    code_mode=infer_style(take.app_name) == "code",
+                                    command=take.format_command,
+                                    neighbors=neighbors,
+                                    markdown=take.config.output_format == "markdown")
+        to_paste = delivery.payload
+        self._remember_result(delivery.prefix + delivery.text)
+        if cancelled():
+            self._after_job()
+            return
+        outcome = paste(to_paste, restore_clipboard=take.config.restore_clipboard,
+                        target=take.target, cancel=cancelled)
+        if self._delivery_interrupted(outcome):
+            return
+        if outcome == "pasted":
+            self._edit_receipt = edit_target.capture(before, to_paste)
+            self._last_prefix = delivery.prefix
+            self._last_suffix = delivery.suffix
+            self.last_text = delivery.text
+            self.last_app = take.app_name
+            self.last_target = take.target
+            self.last_paste_at = time.time()
+            self._schedule_edit_expiry()
+            beep("ok", take.config.beep)
+            self._after_job("pasted", to_paste)
+        elif outcome == "clipboard":
+            beep("err", take.config.beep)
+            self._after_job("clipboard", to_paste)
+        else:
+            beep("err", take.config.beep)
+            self._after_job("no_paste", "Use Copy last dictation in the tray menu to recover your text.")
+
+    def _delivery_interrupted(self, outcome: str) -> bool:
+        if self._stop.is_set() or outcome == "cancelled":
+            self._cancel_job = False
+            self._after_job()
+            return True
+        if outcome == "uncertain":
+            self._cancel_job = False
+            self._clear_edit_context()
+            self._after_job("uncertain", "Delivery could not be confirmed. Check the field before using Copy last dictation; text may already be inserted.")
+            return True
+        return False
+
+    def _endpoint_delivery_failed(self, text: str, take: _EndpointTake,
+                                  fallback_review: bool, message: str) -> None:
+        if fallback_review and self.state == "busy" and not self._stop.is_set() and not self._cancel_job:
+            self._remember_result(text)
+            shown = self._present_review(text, replace(take, action="review"))
+            self._after_job("hide" if shown else "no_paste",
+                            message if not shown else "")
+            return
+        self._after_job("no_paste", message)
 
     def _remember_result(self, text: str) -> None:
-        self._recent_generation = self.recent_dictation.put(text)
+        with self._review_lock:
+            if self._stop.is_set():
+                return
+            state, self._review = self._review, None
+            self._review_generation += 1
+            self._recent_generation = self.recent_dictation.put(text)
+        if state is not None and state.handle is not None:
+            state.handle.close()
+
+    def _present_review(self, text: str, take: _EndpointTake) -> bool:
+        from utterleaf.review_ui import launch_review
+
+        self._close_review()
+        with self._review_lock:
+            if self._stop.is_set():
+                return False
+            self._review_generation += 1
+            generation = self._review_generation
+            state = _ReviewState(generation, self._recent_generation, text, take.target,
+                                 take.app_name, take.config, take.continuation, take.field,
+                                 take.format_command)
+            self._review = state
+            handle = launch_review(
+                text,
+                lambda action: self._review_action(generation, action),
+                lambda: self._review_failed(generation),
+                allow_insert=take.field is not None,
+            )
+            if handle is None:
+                self._review = None
+                return False
+            if self._review is state:
+                state.handle = handle
+            return True
+
+    def _close_review(self) -> None:
+        with self._review_lock:
+            state, self._review = self._review, None
+            self._review_generation += 1
+        if state is not None and state.handle is not None:
+            state.handle.close()
+
+    def _review_action(self, generation: int, action: str) -> None:
+        cancelled = self._delivery_guard()
+        if action not in {"copy", "insert", "discard", "dismiss"}:
+            return
+        with self._review_lock:
+            state = self._review
+            if state is None or state.generation != generation:
+                return
+            self._review = None
+        if (self._recent_generation != state.recovery_generation
+                or self.recent_dictation.get() != state.text):
+            return
+        if action == "dismiss":
+            return
+        if action == "discard":
+            if self._recent_generation == state.recovery_generation:
+                self.recent_dictation.clear()
+            if self.state == "idle":
+                self._idle()
+            return
+        if action == "copy":
+            if copy_text(state.text):
+                if self.state == "idle":
+                    self._flash("clipboard", "Reviewed dictation copied. Return to your field and paste.")
+            else:
+                self._show_error("no_paste", "copy unconfirmed",
+                                 "Copy could not be confirmed. Your reviewed text remains available in Copy last dictation.")
+            return
+        take = _EndpointTake(state.target, state.app_name, "insert", state.config,
+                             state.continuation, state.field, state.format_command)
+        with self._capture_lock:
+            if self.state != "idle" or cancelled():
+                return
+            # The child closes after reporting the choice. Give the OS a short,
+            # bounded interval to restore focus, then require the exact native
+            # field contents and selection captured when recording began.
+            deadline = time.monotonic() + 1.0
+            while time.monotonic() < deadline:
+                if cancelled():
+                    return
+                if foreground_id() == take.target and edit_target.read_field() == take.field:
+                    break
+                time.sleep(0.05)
+            self._deliver_endpoint_text(state.text, take, cancelled=cancelled)
+
+    def _review_failed(self, generation: int) -> None:
+        with self._review_lock:
+            if self._review is None or self._review.generation != generation:
+                return
+            self._review = None
+        if self.state == "idle":
+            self._flash("no_paste", "Review could not open. Use Copy last dictation in the tray within two minutes.")
 
     def _expire_recovery_context(self, generation: int) -> None:
-        if self._recent_generation == generation:
+        state = None
+        with self._review_lock:
+            if self._recent_generation != generation:
+                return
+            if self._review is not None and self._review.recovery_generation == generation:
+                state, self._review = self._review, None
+                self._review_generation += 1
             self._clear_edit_context()
+        if state is not None and state.handle is not None:
+            state.handle.close()
 
     def copy_last_dictation(self) -> bool:
         text = self.recent_dictation.get()
@@ -675,7 +1205,7 @@ class Utterleaf:
             self._show_error("no_paste", "nothing to recover", "No recent dictation. Recovery text expires after two minutes.")
             return False
         if not copy_text(text):
-            self._show_error("no_paste", "clipboard unavailable", "Could not copy. Your recent text is still available; try again.")
+            self._show_error("no_paste", "copy unconfirmed", "Copy could not be confirmed. Your recent text is still available in Copy last dictation.")
             return False
         # Copying from the tray must not reset an active recording or decode.
         if self.state == "idle":
@@ -683,6 +1213,7 @@ class Utterleaf:
         return True
 
     def forget_last_dictation(self) -> None:
+        self._close_review()
         self.recent_dictation.clear()
         self._clear_edit_context()
         if self.state == "idle":
@@ -713,6 +1244,16 @@ class Utterleaf:
 
     def _after_job(self, badge: str = "hide", caption: str = "") -> None:
         with self._lock:
+            if self._cancel_job:
+                self._cancel_job = False
+            if self._stop.is_set():
+                self._discard_queued_stores()
+                self._queued_audio = None
+                self._queued_target = None
+                self._queued_continuation = None
+                self._queued_takes.clear()
+                self._job_running = False
+                return
             queued = self._queued_audio
             queued_target = self._queued_target
             queued_continuation = self._queued_continuation
@@ -768,8 +1309,12 @@ class Utterleaf:
                 self.state = "idle"
         linger = LINGER.get(badge)
         if linger is not None:
-            status = "microphone interrupted — check microphone and recovery" if badge == "no_mic" else status_hint(self.cfg)
-            self._set_icon("idle", status, badge=badge, caption=caption)
+            status = {
+                "no_mic": "microphone interrupted — check microphone and recovery",
+                "capture_error": "recording interrupted — check the capture error and recovery",
+                "uncertain": "delivery unconfirmed — check the field before retrying",
+            }.get(badge, status_hint(self.cfg))
+            self._set_icon("idle", status, badge="no_paste" if badge == "uncertain" else badge, caption=caption)
             self._hide_after(linger)
             return
         self._idle()
@@ -796,7 +1341,7 @@ class Utterleaf:
             self._status = status
         if color == "idle" and self._status == LOADING:
             color = "busy"
-        if badge in {"no_mic", "engine", "transcribe", "no_paste"}:
+        if badge in {"no_mic", "capture_error", "engine", "transcribe", "no_paste"}:
             color = "error"
         if self.icon is not None:
             self.icon.icon = leaf_image(color)
@@ -807,7 +1352,11 @@ class Utterleaf:
 
     def quit(self) -> None:
         self._stop.set()
-        self.recent_dictation.clear()
+        self._cancel_speech_endpoint()
+        with self._review_lock:
+            self._close_review()
+            self.recent_dictation.clear()
+            self._clear_edit_context()
         self._cancel_limit_timer()
         if self._edit_expiry is not None:
             self._edit_expiry.cancel()
@@ -815,8 +1364,14 @@ class Utterleaf:
         if self.hotkey is not None:
             self.hotkey.stop()
         if self.state == "recording":
-            self.recorder.stop()
+            discarded = self.recorder.stop()
+            if isinstance(discarded, CaptureStore):
+                discarded.close()
         self.recorder.close()
+        with self._lock:
+            self._discard_queued_stores()
+            self._queued_audio = None
+            self._queued_takes.clear()
         ipc.clear()
         if self._server is not None:
             try:
@@ -889,7 +1444,12 @@ class Utterleaf:
             log.info("Dictation control: %s", status_hint(new))
         if new.microphone != old.microphone:
             with self._capture_lock:
+                self._cancel_speech_endpoint()
+                if self.state == "recording":
+                    self._endpoint_unavailable = True
                 self.recorder.set_device(new.microphone)
+        if new.speech_end_enabled:
+            self._ensure_endpoint_detector()
         model_changed = (
             new.model != old.model
             or new.device != old.device
@@ -992,6 +1552,7 @@ class Utterleaf:
             _hide_console()
         self._server = ipc.bind()
         threading.Thread(target=self._ipc_loop, daemon=True).start()
+        self._ensure_endpoint_detector()
 
         def warmup() -> None:
             try:

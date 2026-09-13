@@ -63,6 +63,68 @@ def test_cancel_discards_late_success_and_blocks_duplicate_jobs(window, monkeypa
     assert list(tmp_path.iterdir()) == []
 
 
+def test_audio_track_is_per_job_one_based_ui_and_zero_based_api(window, monkeypatch, tmp_path):
+    calls = []
+
+    def recognize(*args, **kwargs):
+        calls.append(kwargs["audio_track"])
+        return Transcript((Segment(0, 1, "selected track"),))
+
+    monkeypatch.setattr("utterleaf.file_ui.transcribe_file", recognize)
+    window.path = tmp_path / "multi-track.mkv"
+    assert window.audio_track.get() == "1"
+    window.start()
+    pump(window, lambda: not window.busy)
+    window.audio_track.set("256")
+    window.start()
+    pump(window, lambda: not window.busy)
+    assert calls == [0, 255]
+    assert str(window.audio_track_input.cget("state")) == "normal"
+
+
+@pytest.mark.parametrize("value", ("", "0", "257", "1.5", "guest"))
+def test_invalid_audio_track_does_not_start_or_discard_preview(window, monkeypatch, tmp_path, value):
+    called = False
+
+    def recognize(*args, **kwargs):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr("utterleaf.file_ui.transcribe_file", recognize)
+    window.path = tmp_path / "multi-track.mkv"
+    window.result = Transcript((Segment(0, 1, "keep preview"),))
+    window._preview(window.result.text)
+    window.audio_track.set(value)
+    window.start()
+    assert not called
+    assert not window.busy
+    assert window.result.text == "keep preview"
+    assert window.preview.get("1.0", "end").strip() == "keep preview"
+    assert "1 to 256" in window.status.get()
+
+
+def test_audio_track_control_and_guidance_are_explicit(window, monkeypatch, tmp_path):
+    started, release = threading.Event(), threading.Event()
+
+    def recognize(*args, **kwargs):
+        started.set()
+        release.wait(3)
+        return Transcript(())
+
+    monkeypatch.setattr("utterleaf.file_ui.transcribe_file", recognize)
+    window.path = tmp_path / "multi-track.mkv"
+    assert "No duration limit" in window.file_guidance.cget("text")
+    assert "not a stereo channel" in window.audio_track_hint.cget("text")
+    assert "does not identify speakers" in window.audio_track_hint.cget("text")
+    assert int(window.audio_track_label.cget("underline")) == 0
+    window.start()
+    assert started.wait(1)
+    window.root.update()
+    assert str(window.audio_track_input.cget("state")) == "disabled"
+    release.set()
+    pump(window, lambda: not window.busy)
+
+
 def test_close_discards_queued_result_without_widget_callbacks(window):
     result = Transcript((Segment(0, 1, "private words"),))
     old_events = window.events

@@ -117,6 +117,25 @@ def test_three_prose_passes_keep_separators_after_title_change_and_timeout(monke
     app.recent_dictation.clear()
 
 
+def test_native_edit_neighbors_are_included_in_verified_delivery(monkeypatch):
+    from utterleaf import edit_target
+
+    app = _app(monkeypatch)
+    before = edit_target.Field((1, 2, 3), "Beforeafter", 6, 6)
+    pasted, captured = [], []
+    monkeypatch.setattr("utterleaf.app.foreground_app", lambda: "chat")
+    monkeypatch.setattr("utterleaf.app.foreground_id", lambda: 123)
+    monkeypatch.setattr("utterleaf.app.transcribe", lambda *_a: "hello there")
+    monkeypatch.setattr("utterleaf.app.edit_target.read_field", lambda: before)
+    monkeypatch.setattr("utterleaf.app.paste", lambda text, **_k: pasted.append(text) or "pasted")
+    monkeypatch.setattr("utterleaf.app.edit_target.capture", lambda field, text: captured.append((field, text)) or None)
+    monkeypatch.setattr(app, "_schedule_edit_expiry", lambda: None)
+    app._finish(np.ones(16000, dtype=np.float32), target=123)
+    assert pasted == [" Hello there. "]
+    assert captured == [(before, " Hello there. ")]
+    app.recent_dictation.clear()
+
+
 def test_layout_take_repairs_inner_sentences_and_keeps_next_take_separate(monkeypatch):
     app = _app(monkeypatch)
     takes = iter(["That is wrong.Maybe say no.I have an idea.Whatever works new paragraph",
@@ -502,7 +521,7 @@ def test_failed_microphone_start_resets_toggle_for_next_attempt(monkeypatch):
     assert app._limit_timer is None
 
 
-def test_countdown_keeps_preview_and_stale_ticks_cannot_overwrite_status(monkeypatch):
+def test_continuous_caption_keeps_preview_without_scheduling_countdown(monkeypatch):
     app = _app(monkeypatch)
     shown, timers = [], []
     app.indicator = SimpleNamespace(enabled=True, set=lambda *args: shown.append(args))
@@ -521,13 +540,13 @@ def test_countdown_keeps_preview_and_stale_ticks_cannot_overwrite_status(monkeyp
             self.cancelled = True
     monkeypatch.setattr("utterleaf.app.threading.Timer", Timer)
     app._update_countdown(5)
-    assert shown == [("listening", "0:10 left · Finishing soon · My draft")]
-    assert len(timers) == 1
+    assert shown == [("listening", "Release shortcut to finish · Esc cancels · My draft")]
+    assert not timers
     app._update_countdown(4)
     assert len(shown) == 1
     app.state = "busy"
     app._cancel_limit_timer()
-    assert timers[0].cancelled
+    assert not timers
     app._update_countdown(5)
     assert len(shown) == 1
 
@@ -613,6 +632,8 @@ def test_recovery_copy_failure_is_honest_and_keeps_text(monkeypatch):
     assert app.copy_last_dictation() is False
     assert app.recent_dictation.get() == "Keep me."
     assert messages[0][0] == "no_paste"
+    assert messages[0][1] == "copy unconfirmed"
+    assert "Copy could not be confirmed" in messages[0][2]
 
 
 def test_forget_clears_recovery_and_edit_context_without_changing_clipboard(monkeypatch):
@@ -684,7 +705,6 @@ def test_cancel_busy_drops_queued_take(monkeypatch) -> None:
 
 def test_cancelled_finish_does_not_run_queue(monkeypatch) -> None:
     app = _app(monkeypatch)
-    app._cancel_job = True
     app._queued_audio = np.ones(16000, dtype=np.float32)
     app._queued_target = "hwnd"
     started: list[object] = []
@@ -701,6 +721,7 @@ def test_cancelled_finish_does_not_run_queue(monkeypatch) -> None:
     monkeypatch.setattr(app, "_flash", lambda badge, caption="": flashed.append(badge))
     app.state = "busy"
     app._job_running = True
+    app.cancel_recording()
     app._finish(np.ones(16000, dtype=np.float32))
     assert app._queued_audio is None
     assert started == []

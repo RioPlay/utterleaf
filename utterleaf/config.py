@@ -60,6 +60,10 @@ class Config:
 
     # Local rules only. Unknown keys in an old config.toml (polish, ollama, …) are ignored.
     text_cleanup: bool = True
+    speech_end_enabled: bool = False
+    speech_end_pause_seconds: float = 1.2
+    speech_end_insert: bool = False
+    output_format: str = "prose"
     remove_fillers: bool = True
     fix_corrections: bool = True
 
@@ -69,7 +73,8 @@ class Config:
     live_preview: bool = False
     beep: bool = True
     min_seconds: float = 0.35
-    max_seconds: float = 120.0
+    # Legacy round-trip field. Continuous desktop recording does not use a timer.
+    max_seconds: float = 0.0
 
 
 def _parse_toml(text: str) -> dict[str, object]:
@@ -103,6 +108,10 @@ def _dump_toml(cfg: Config) -> str:
         f'microphone = {quote(cfg.microphone)}',
         "",
         f"text_cleanup = {str(cfg.text_cleanup).lower()}",
+        f"speech_end_enabled = {str(cfg.speech_end_enabled).lower()}",
+        f"speech_end_pause_seconds = {cfg.speech_end_pause_seconds}",
+        f"speech_end_insert = {str(cfg.speech_end_insert).lower()}",
+        f'output_format = {quote(cfg.output_format)}',
         f"remove_fillers = {str(cfg.remove_fillers).lower()}",
         f"fix_corrections = {str(cfg.fix_corrections).lower()}",
         "",
@@ -125,6 +134,14 @@ def load() -> Config:
     raw = _parse_toml(path.read_text(encoding="utf-8"))
     known = {f.name for f in fields(Config)}
     values = {k: v for k, v in raw.items() if k in known}
+    # These opt-ins can trigger an automatic stop or insertion. A malformed or
+    # hand-edited file must fail closed instead of treating truthy strings as consent.
+    for key in ("speech_end_enabled", "speech_end_insert"):
+        if key in values and type(values[key]) is not bool:
+            values.pop(key)
+    pause = values.get("speech_end_pause_seconds", 1.2)
+    if (type(pause) not in {int, float} or not 0.5 <= float(pause) <= 3.0):
+        values.pop("speech_end_pause_seconds", None)
     return Config(**values)
 
 

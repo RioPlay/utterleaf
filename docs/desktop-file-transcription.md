@@ -3,6 +3,11 @@
 Available from desktop v0.4.0. This first version processes one explicitly selected
 local file. It does not record system audio or create transcript history.
 
+**0.4.6 RC1 Windows preview:** imported recordings have no total-duration or file-size
+cutoff. Audio is decoded and recognized in bounded batches. The file window and
+`--audio-track` CLI option can select an individual audio track for each job.
+Live OBS capture remains separate, unimplemented work.
+
 Open **Tools → Transcribe a file** from the tray, or run `utterleaf --files`.
 Choose a file, select **Transcribe**, and review the preview. Choose TXT, SRT, or
 VTT before **Export**. Existing destinations require a replace confirmation;
@@ -11,9 +16,9 @@ clears the preview and **Close** cancels any work and discards the preview.
 Opening the tool again brings its existing window forward. Settings keeps its
 own separate window. No microphone opens merely because this tool is open.
 
-![Local file review and export window](assets/screenshots/file-transcription.png)
+![0.4.6 RC1 preview local file window with audio-track selection and explicit export controls](assets/screenshots/desktop-file-tracks.png)
 
-Actual application window with synthetic sample text; no personal recording is shown.
+Actual RC1 preview application window with a synthetic filename; no personal recording is shown.
 
 PCM WAV works immediately: mono or stereo, 8/16/24/32-bit integer samples, and
 8–48 kHz sample rates. **More formats…** connects a separately installed FFmpeg
@@ -33,7 +38,7 @@ Actual Windows setup window, captured with an empty synthetic configuration.
 3. Choose **Choose FFmpeg…**, select its executable, and confirm that you want
    Utterleaf to use that program. Nothing is executed during this selection.
 4. Choose **Done**, select your MP3, M4A, video, or other supported file, and
-   choose **Transcribe**. The first audio track is used; video is not decoded.
+   choose **Transcribe**. Track 1 is the default; video is not decoded.
 
 On **Windows**, choose **Download page…**. On the official FFmpeg page, follow
 **Windows builds from gyan.dev**, then download **release essentials ZIP**.
@@ -73,24 +78,28 @@ continues working even when the optional decoder is missing or changed.
 The built-in PCM reader uses Python's standard library and the existing NumPy
 resampler in bounded one-second blocks. Source installations with PyAV can also
 read additional media without setup. An explicitly selected FFmpeg installation
-is used for non-WAV media in both source and packaged builds; WAV uses the built-in
-reader or PyAV when possible and the optional decoder when the packaged reader
-cannot support that WAV variant.
+is used in both source and packaged builds. Ordinary PCM WAV track 1 uses the
+built-in reader first; other WAV variants use the selected decoder or source PyAV.
 
 Decoding downmixes audio to mono at 16 kHz. Playlists, URLs, capture devices, and
 reference movies are outside the optional decoder's supported input set. No audio is uploaded, downloaded, or written
 to temporary storage. File mode never downloads models, even if ordinary dictation
 allows downloads: install the selected model explicitly first.
 
-The initial limits are **256 MiB input and 10 minutes of decoded audio**. Longer
-audio is rejected rather than silently truncated. Decoding checks the sample budget
-incrementally, independent of possibly incorrect media duration metadata. PCM is
-bounded, but native decoder/model memory and execution time are not hard sandbox
-limits. Model inference still holds the bounded clip in memory. Full-hour streaming
-and cancellation during a native inference call are not implemented.
+The stable v0.4.5 workflow's **256 MiB input and 10-minute** limits are removed from
+the 0.4.6 RC1 preview. Recognition consumes at most 30 seconds of
+mono 16 kHz audio per batch, preferring a quiet pause in the final five seconds.
+If no qualifying pause is found, the batch ends at 30 seconds. Every sample is
+retained once, in order; batching does not remove repeated transcript words.
+Decoding pauses while recognition uses a batch; the
+app does not retain a whole-recording waveform or create a temporary audio copy.
+Transcript text and subtitle segments still grow with the result. Native decoder
+and model memory are not hard sandbox limits. There is no arbitrary replacement
+duration cap, but available resources and the selected media format still matter.
 
-The optional FFmpeg process has a 120-second decoding deadline and is terminated
-on cancellation, failure, or excess decoded output. Output buffering is bounded;
+The optional FFmpeg process has a 120-second **inactivity** timeout while waiting
+for audio; time spent recognizing a delivered batch does not count as inactivity.
+It is terminated on cancellation, failure, or an abandoned decode. Output buffering is bounded;
 stderr is discarded and automatic FFmpeg reports are disabled. Its allowed input
 formats are fixed, input protocols are restricted to local files, and MOV external
 track loading is disabled. FFmpeg's 64 MiB allocation setting limits individual
@@ -108,12 +117,26 @@ does not expose validated timestamps and returns an actionable error; it never
 fabricates subtitle timing. CUDA runtime failures retry on CPU using installed
 weights. Dictation's existing string recognition API is unchanged.
 
-Model segment start/end values are retained in seconds, relative to decoded audio.
+Model segment start/end values are offset by each batch's position in decoded audio.
+An end time beyond the batch is clipped to its actual duration while preserving
+the recognized text. A segment starting at or beyond the batch's end, or otherwise
+invalid timing, fails the job instead of silently dropping recognized words.
 They are estimated speech boundaries, not independently verified alignment or
 original container timecodes. Container timestamp gaps/offsets are not preserved.
 There are no speaker labels. Spoken phrases such as “scratch that” remain literal
 transcript text; dictation editing, filler removal, dictionary prompting, and
 denoising are not applied to file transcripts.
+
+Choose **Audio track** in the file window, or pass `--audio-track 2` for the second
+audio stream. Track numbers start at 1 and identify container audio streams, not
+left/right stereo channels, OBS mixer numbers, or inferred speakers. Transcribe
+each selected track to a distinct output when a recording actually has isolated
+tracks. A mixed track stays mixed. These exports do not establish synchronization
+between tracks whose original offsets or gaps differ.
+
+```powershell
+utterleaf --transcribe-file stream.mkv --audio-track 2 --output guests.vtt
+```
 
 Exports are explicit UTF-8 TXT, SRT, or VTT. Subtitle times round to milliseconds
 with correct carry into minutes/hours. A cue that rounds to zero duration causes
@@ -130,9 +153,14 @@ There is no automatic save on completion, error, or cancellation.
 from utterleaf.file_transcription import transcribe_file
 from utterleaf.transcript import export_transcript, TranscriptionCancelled
 
-result = transcribe_file(selected_path, cfg, cancel=stop_event, progress=on_progress)
+result = transcribe_file(selected_path, cfg, audio_track=1, cancel=stop_event, progress=on_progress)
 export_transcript(result, selected_output, format="vtt", overwrite=False)
 ```
+
+The API uses zero-based `audio_track` ordinals (the example selects the second
+track); the UI and CLI use numbers starting at 1. The legacy `decode_local_file`
+array-returning helper retains its old bounds; the app uses `iter_local_audio`
+and `audio_windows` instead. Close an audio iterator when abandoning it early.
 
 `cancel` is an optional `threading.Event`. `progress(phase, fraction)` receives
 `decoding`, `loading`, `recognizing`, or `complete`; unknown fractions are `None`.
@@ -152,7 +180,23 @@ returns the destination `Path`. It does not create missing parent directories.
 
 ## Verification and remaining gates
 
-The Windows executable passed local tiny.en CPU recognition of a public speech
+The new streaming path passed a focused **71-test** bundle with **11 explicit
+FFmpeg-fixture skips** on September 12. Tests exercise a genuine 601-second PCM
+file, bounded decoding/recognition interleaving, global SRT/VTT timestamps,
+cancellation and late-failure cleanup, separate real PyAV FLAC tracks, and a
+harmless native decoder stand-in producing 601 seconds of PCM. No whole-file
+waveform or automatic output is created. These are source and synthetic-audio
+checks. A later offline evaluation of an 88-second repeated public-speech fixture
+used the installed base.en model. Both runs through the integrated quiet-boundary
+path preserved all samples. Both normalized comparisons had 176 candidate words
+and 176 reference words, with zero alignment insertions or deletions; the two-word
+duplication measured with fixed boundaries was absent. Substitutions varied
+between runs. This narrow result is not a general accuracy
+benchmark; see the [evaluation record](plans/active/desktop-continuous-transcription.md#speech-boundary-evaluation).
+General speech quality, hour-scale resource stress, native codec/platform coverage
+and RC artifact verification remain open until recorded by the prerelease plan.
+
+The earlier Windows executable passed local tiny.en CPU recognition of a public speech
 fixture and TXT/SRT/VTT exports. Its file window and existing-window activation
 also passed. Windows, macOS, and Linux builds/tests passed in
 [candidate CI](https://github.com/RioPlay/utterleaf/actions/runs/34426942978).
