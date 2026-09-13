@@ -11,9 +11,10 @@ The full goal remains an authenticated OBS audio bridge: a restrictive native
 server, process and pipe identity checks, explicit idle-to-arm control, actual
 primary streaming-mix and selected-bus PCM delivery, bounded conversion and
 storage, cancellation and gap handling, visible control, local recognition,
-and live OBS acceptance. None of the server, post-load vendor registration,
-stream-following, PCM, controller, Arm, or real OBS application behavior is
-implemented or proven by this prerequisite.
+and live OBS acceptance. Separate native Hello/ACK and retained-process pipe
+admission components now have an explicit test build, described below. They are
+not linked into the inert module: post-load vendor registration, stream-following,
+PCM, controller, Arm and real OBS application behavior remain unimplemented.
 
 ## Inputs and legal boundary
 
@@ -63,3 +64,34 @@ successful initialization and returned shutdown. The local libobs log also
 records the module's unload callback. Scratch copies with a flipped
 cached header byte and a changed plugin were rejected before compilation or
 native load, respectively.
+
+## Native admission tests
+
+`src/handshake.c` and `src/admission.c` implement a separate Windows Hello/ACK
+and once-only pipe-admission component. An authenticated caller must first
+authorize the expected PID; the component retains its process object and
+checks the actual kernel pipe-client PID, liveness, creation time and user/logon
+identity before reading a Hello. The explicit DACL allows the current logon,
+and failure or cancellation consumes the pending session.
+
+The obs-websocket vendor API does not expose its caller's WebSocket connection.
+An expected PID from vendor JSON is a credential holder's assertion, not reverse
+connection attribution or trusted Utterleaf executable enrollment. That
+integration must be resolved before exposing arming. These primitives are not
+linked into the current module or started by loading it.
+
+Run from the owning repository root with an existing Windows LLVM-MinGW toolchain:
+
+```powershell
+$output = "C:\Users\unknown\Projects\Mindict\.grok\obs-native-session\check-b"
+& $py native/obs-plugin/tools/test_native.py --toolchain $toolchain --output $output
+```
+
+The driver performs fixed-vector and injected CNG-failure checks, actual token/
+pipe-security checks and 11 disposable child-process transport tests. It runs
+without OBS or audio, scopes Python imports to this checkout and records local
+source/tool/compiler/output hashes. Every translation unit uses warnings as
+errors; the test-only macro-renamed heap shim link has three local-import
+warnings. The [native session plan](../../docs/plans/active/obs-native-session.md)
+records commands, results and remaining kernel-failure, cross-user/logon,
+vendor/arming and live-audio acceptance gates. Do not distribute the test DLL.

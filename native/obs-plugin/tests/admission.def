@@ -1,0 +1,8 @@
+LIBRARY utterleaf-admission-test
+EXPORTS
+    ul_admission_create
+    ul_admission_authenticate
+    ul_admission_cancel
+    ul_admission_destroy
+    ul_admission_read_count
+    ul_admission_pipe
