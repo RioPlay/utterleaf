@@ -9,6 +9,7 @@
 #include "pairing_ui.h"
 #include "vendor_dispatch.h"
 #include "frontend_dispatch.h"
+#include "audio_metadata.h"
 
 OBS_DECLARE_MODULE()
 
@@ -93,6 +94,14 @@ static bool queue_cleanup(uintptr_t generation)
     return queued;
 }
 
+/* OBS can invoke source signals while holding its signal mutex. This callback
+ * must not acquire frontend_gate, which teardown can hold during disconnect. */
+static bool queue_metadata(uintptr_t generation)
+{
+    return generation != 0u &&
+           ul_frontend_dispatch_try_post(4u, generation);
+}
+
 static void dispatch_frontend(unsigned command, uintptr_t generation)
 {
     ul_audio_capture *capture;
@@ -106,14 +115,23 @@ static void dispatch_frontend(unsigned command, uintptr_t generation)
             queued_capture = 0u;
             capture = ul_plugin_capture_retain(generation);
             if (capture != NULL) {
-                bool connected = ul_audio_capture_connect_frontend(capture, generation);
+                bool metadata_open =
+                    ul_plugin_metadata_open_frontend(generation);
+                bool connected = metadata_open &&
+                    ul_audio_capture_connect_frontend(capture, generation);
+                if (!connected && metadata_open)
+                    (void)ul_plugin_metadata_close_frontend(generation,
+                                                            false);
                 ul_plugin_capture_attached(generation, capture, connected);
                 ul_audio_capture_release(capture);
             }
         } else if (command == 3u && queued_cleanup == generation) {
             queued_cleanup = 0u;
+            (void)ul_plugin_metadata_close_frontend(generation, false);
             ul_audio_capture_disconnect_frontend(generation, false);
             ul_plugin_capture_cleanup_complete(generation);
+        } else if (command == 4u) {
+            (void)ul_plugin_metadata_refresh_frontend(generation);
         }
     }
     ReleaseSRWLockExclusive(&frontend_gate);
@@ -164,12 +182,16 @@ static void frontend_event(enum obs_frontend_event event, void *private_data)
                 stream_busy = true;
                 ul_plugin_capture_stop_frontend();
                 ul_audio_capture_disconnect_frontend(0u, true);
-                ul_plugin_stream_event(UL_STREAM_STOPPING); break;
+                ul_plugin_stream_event(UL_STREAM_STOPPING);
+                (void)ul_plugin_metadata_close_frontend(0u, true);
+                break;
             case OBS_FRONTEND_EVENT_STREAMING_STOPPED:
                 stream_busy = false;
                 ul_plugin_capture_stop_frontend();
                 ul_audio_capture_disconnect_frontend(0u, true);
-                ul_plugin_stream_event(UL_STREAM_STOPPED); break;
+                ul_plugin_stream_event(UL_STREAM_STOPPED);
+                (void)ul_plugin_metadata_close_frontend(0u, true);
+                break;
             default: break;
             }
         }
@@ -178,15 +200,16 @@ static void frontend_event(enum obs_frontend_event event, void *private_data)
     }
     /* Normal EXIT still owns live OBS audio. Disconnect before closing the
      * frontend gate and before any native worker join. */
+    ul_vendor_set_enabled(false);
+    ul_plugin_stop_accepting();
     AcquireSRWLockExclusive(&frontend_gate);
     if (frontend_open) {
         ul_plugin_capture_stop_frontend();
+        (void)ul_plugin_metadata_close_frontend(0u, true);
         ul_audio_capture_disconnect_frontend(0u, true);
     }
     ReleaseSRWLockExclusive(&frontend_gate);
     close_frontend();
-    ul_vendor_set_enabled(false);
-    ul_plugin_stop_accepting();
     if (prepare_registered)
         obs_websocket_vendor_unregister_request(vendor, "PrepareSession");
     if (issue_registered)
@@ -208,7 +231,8 @@ bool obs_module_load(void)
         return false;
     if (!ul_frontend_dispatch_open(dispatch_frontend) ||
         !ul_plugin_set_arm_scheduler(queue_arm) ||
-        !ul_plugin_set_capture_schedulers(queue_capture, queue_cleanup)) {
+        !ul_plugin_set_capture_schedulers(queue_capture, queue_cleanup) ||
+        !ul_plugin_set_metadata_scheduler(queue_metadata)) {
         ul_frontend_dispatch_close();
         ul_plugin_close();
         return false;
@@ -257,6 +281,7 @@ void obs_module_unload(void)
     /* Native-only fallback: frontend/websocket teardown order is not assumed. */
     close_frontend();
     ul_audio_capture_abandon_after_shutdown();
+    ul_audio_metadata_abandon_after_shutdown();
     ul_vendor_set_enabled(false);
     ul_plugin_close();
 }

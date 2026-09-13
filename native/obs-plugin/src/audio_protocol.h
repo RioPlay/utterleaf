@@ -16,6 +16,15 @@
 #define UL_AUDIO_MAX_ROUTING_BODY_BYTES 19302u
 #define UL_AUDIO_MAX_ROUTING_PACKET_BYTES \
     (UL_AUDIO_HEADER_BYTES + UL_AUDIO_MAX_ROUTING_BODY_BYTES)
+#define UL_AUDIO_PROTOCOL_LEGACY_VERSION 1u
+#define UL_AUDIO_PROTOCOL_PROVENANCE_VERSION 2u
+#ifndef UL_AUDIO_RUNTIME_VERSION
+#define UL_AUDIO_RUNTIME_VERSION UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+#endif
+#if UL_AUDIO_RUNTIME_VERSION != UL_AUDIO_PROTOCOL_LEGACY_VERSION && \
+    UL_AUDIO_RUNTIME_VERSION != UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+#error "UL_AUDIO_RUNTIME_VERSION must be 1 or 2"
+#endif
 
 enum ul_audio_end_reason {
     UL_AUDIO_END_STREAM_STOPPED = 1,
@@ -54,25 +63,40 @@ size_t ul_audio_encode_start(uint8_t *out, size_t capacity,
                              const uint8_t session_id[16],
                              uint32_t sample_rate, uint8_t primary_bus,
                              uint8_t bus_mask, uint64_t origin_ns);
+size_t ul_audio_encode_start_version(
+    uint8_t version, uint8_t *out, size_t capacity,
+    const uint8_t session_id[16], uint32_t sample_rate,
+    uint8_t primary_bus, uint8_t bus_mask, uint64_t origin_ns);
 
 size_t ul_audio_encode_audio(uint8_t *out, size_t capacity,
                              const uint8_t session_id[16], uint8_t bus,
                              uint64_t sequence, uint64_t timestamp_ns,
                              uint32_t frames, const float *stereo_pcm);
+size_t ul_audio_encode_audio_version(
+    uint8_t version, uint8_t *out, size_t capacity,
+    const uint8_t session_id[16], uint8_t bus, uint64_t sequence,
+    uint64_t timestamp_ns, uint32_t frames, const float *stereo_pcm);
 
 size_t ul_audio_encode_gap(uint8_t *out, size_t capacity,
                            const uint8_t session_id[16], uint8_t bus,
                            uint64_t first_sequence, uint64_t count,
                            uint64_t timestamp_ns);
+size_t ul_audio_encode_gap_version(
+    uint8_t version, uint8_t *out, size_t capacity,
+    const uint8_t session_id[16], uint8_t bus, uint64_t first_sequence,
+    uint64_t count, uint64_t timestamp_ns);
 
 size_t ul_audio_encode_end(uint8_t *out, size_t capacity,
                            const uint8_t session_id[16], uint8_t reason,
                            const ul_audio_end_sequence *last_sequences,
                            size_t sequence_count);
+size_t ul_audio_encode_end_version(
+    uint8_t version, uint8_t *out, size_t capacity,
+    const uint8_t session_id[16], uint8_t reason,
+    const ul_audio_end_sequence *last_sequences, size_t sequence_count);
 
-/* Routing is an observation-only version-2 record. Existing media records
- * remain version 1 until the complete runtime migrates as one unit. Labels and
- * source names are already-private UTF-8 bytes and are never logged here. */
+/* Routing is an observation-only version-2 record. Labels and source names
+ * are already-private UTF-8 bytes and are never logged here. */
 size_t ul_audio_encode_routing(
     uint8_t *out, size_t capacity, const uint8_t session_id[16],
     uint64_t revision, uint64_t observed_at_ns, uint8_t primary_bus,

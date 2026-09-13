@@ -82,6 +82,15 @@ def main() -> None:
     if frames != expected:
         raise AssertionError("Python decoder disagrees with native wire bytes")
 
+    emitted_v2 = run([executable, "--emit-v2"], binary=True)
+    if emitted_v2.stderr:
+        raise AssertionError("native version-2 emitter wrote diagnostics")
+    decoder_v2 = protocol.FrameDecoder(version=protocol.PROVENANCE_VERSION)
+    frames_v2 = decoder_v2.feed(emitted_v2.stdout)
+    decoder_v2.finish()
+    if frames_v2 != expected:
+        raise AssertionError("Python version-2 decoder disagrees with native wire bytes")
+
     emitted_routing = run([executable, "--emit-routing"], binary=True)
     if emitted_routing.stderr:
         raise AssertionError("native routing emitter wrote diagnostics")

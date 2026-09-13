@@ -254,8 +254,17 @@ is active on `feat/obs-mix-provenance`. Its bounded assignment model and explici
 version-2 routing codec pass 224 focused tests, native/Python interoperability,
 796 affected desktop tests, all 51 native verification commands, the linked build
 and headless refusal. Independent component review is clear and 446 recorded
-hash comparisons match. The active runtime remains version 1; native observation,
-receiver/history integration and visible attribution remain incomplete.
+hash comparisons match for codec checkpoint `5183cc2`.
+The integration implements a bounded native observer, private routing
+history, explicit-v2 receiver/controller transport and compact Mix details tab.
+Final verification passes 873 affected desktop tests, 48 Tk checks, all 55 native
+commands, the 25-command linked build and headless refusal. Eleven UI captures
+were inspected; 488 recorded hash comparisons match the final inputs and outputs.
+Independent review is clear after correcting stop/drain, stale refresh and
+metadata retirement races, callback scheduling contention and cancellation cleanup.
+Production source requires audio version 2 before Arm. Source CI remains pending;
+the integration receipts are separate from the earlier codec evidence. Live OBS,
+export, distribution and application-entry gates remain open.
 
 Current integrated desktop regression: **1,432 passed, 13 skipped in 39.47 seconds**,
 including the reviewed OBS control, native identity, pipe and audio handshake.

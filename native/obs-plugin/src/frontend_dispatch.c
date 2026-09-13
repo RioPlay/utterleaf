@@ -5,7 +5,7 @@
 
 #define UL_FRONTEND_WM_COMMAND (WM_APP + 0x51)
 #define UL_FRONTEND_COMMAND_MIN 1u
-#define UL_FRONTEND_COMMAND_MAX 3u
+#define UL_FRONTEND_COMMAND_MAX 4u
 
 static SRWLOCK state_lock = SRWLOCK_INIT;
 static HWND dispatch_window;
@@ -99,7 +99,8 @@ fail:
     return false;
 }
 
-bool ul_frontend_dispatch_post(unsigned command, uintptr_t generation)
+static bool post_command(unsigned command, uintptr_t generation,
+                         bool nonblocking)
 {
     HWND window;
     bool valid;
@@ -107,7 +108,12 @@ bool ul_frontend_dispatch_post(unsigned command, uintptr_t generation)
     if (command < UL_FRONTEND_COMMAND_MIN ||
         command > UL_FRONTEND_COMMAND_MAX || generation == 0u)
         return false;
-    AcquireSRWLockShared(&state_lock);
+    if (nonblocking) {
+        if (!TryAcquireSRWLockShared(&state_lock))
+            return false;
+    } else {
+        AcquireSRWLockShared(&state_lock);
+    }
     valid = opened && !closing && dispatch_window != NULL;
     window = dispatch_window;
     if (!valid) {
@@ -118,6 +124,16 @@ bool ul_frontend_dispatch_post(unsigned command, uintptr_t generation)
                          (WPARAM)command, (LPARAM)generation) != 0;
     ReleaseSRWLockShared(&state_lock);
     return valid;
+}
+
+bool ul_frontend_dispatch_post(unsigned command, uintptr_t generation)
+{
+    return post_command(command, generation, false);
+}
+
+bool ul_frontend_dispatch_try_post(unsigned command, uintptr_t generation)
+{
+    return post_command(command, generation, true);
 }
 
 void ul_frontend_dispatch_close(void)

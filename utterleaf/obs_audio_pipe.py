@@ -91,10 +91,11 @@ class ObsAudioPipe:
     No control socket is consulted after the independently owned lease is issued.
     """
 
-    def __init__(self, pipe, peer, session_id: bytes, cancelled: Callable[[], bool]):
+    def __init__(self, pipe, peer, session_id: bytes, cancelled: Callable[[], bool],
+                 *, protocol_version: int = obs_protocol.VERSION):
+        self._decoder = obs_protocol.FrameDecoder(version=protocol_version)
         self._pipe, self._peer = pipe, peer
         self._session_id, self._cancelled = session_id, cancelled
-        self._decoder = obs_protocol.FrameDecoder()
         self._io_lock = threading.Lock()
         self._closed = threading.Event()
         self._armed = False
@@ -278,7 +279,8 @@ class ObsAudioPipe:
 
 
 def connect(session_id: bytes, peer: windows_peer_identity.VerifiedProcessLease,
-            *, cancelled: Callable[[], bool], deadline: float) -> ObsAudioPipe:
+            *, cancelled: Callable[[], bool], deadline: float,
+            protocol_version: int = obs_protocol.VERSION) -> ObsAudioPipe:
     """Consume an independent authenticated-control process lease on every exit.
 
     The pipe name is constructed from the exact 16-byte nonsecret session ID.
@@ -291,6 +293,9 @@ def connect(session_id: bytes, peer: windows_peer_identity.VerifiedProcessLease,
     hello = bytearray()
     try:
         _check(cancelled, deadline)
+        if (type(protocol_version) is not int
+                or protocol_version not in (obs_protocol.VERSION, obs_protocol.PROVENANCE_VERSION)):
+            raise ObsAudioPipeError("Unsupported OBS audio protocol version")
         if type(session_id) is not bytes or len(session_id) != 16:
             raise ObsAudioPipeError("Invalid OBS audio session")
         peer.verify_pid(peer.pid, cancelled=cancelled, deadline=deadline)
@@ -313,7 +318,7 @@ def connect(session_id: bytes, peer: windows_peer_identity.VerifiedProcessLease,
                 or returned_session != session_id or not hmac.compare_digest(mac, expected)):
             raise ObsAudioPipeError("Invalid OBS audio handshake")
         _check(cancelled, deadline)
-        return ObsAudioPipe(pipe, peer, session_id, cancelled)
+        return ObsAudioPipe(pipe, peer, session_id, cancelled, protocol_version=protocol_version)
     except BaseException as exc:
         try:
             if pipe is not None:

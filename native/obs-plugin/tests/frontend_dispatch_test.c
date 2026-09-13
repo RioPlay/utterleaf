@@ -26,8 +26,9 @@ static void callback(unsigned command, uintptr_t generation)
 static DWORD WINAPI worker(void *unused)
 {
     (void)unused;
-    assert(ul_frontend_dispatch_post(2u, (uintptr_t)42u));
+    assert(ul_frontend_dispatch_post(4u, (uintptr_t)42u));
     assert(!ul_frontend_dispatch_post(0u, 42u));
+    assert(!ul_frontend_dispatch_post(5u, 42u));
     assert(!ul_frontend_dispatch_post(1u, 0u));
     while (InterlockedCompareExchange(&callback_complete, 0, 0) == 0)
         Sleep(1u);
@@ -51,7 +52,7 @@ int main(void)
     }
     assert(WaitForSingleObject(thread, 2000u) == WAIT_OBJECT_0);
     CloseHandle(thread);
-    assert(callbacks == 1u && seen_command == 2u && seen_generation == 42u);
+    assert(callbacks == 1u && seen_command == 4u && seen_generation == 42u);
     assert(!ul_frontend_dispatch_post(1u, (uintptr_t)43u));
     close_in_callback = 1;
     /* The worker's cross-thread close made the dispatcher inert; owner cleanup

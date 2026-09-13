@@ -71,6 +71,37 @@ static void test_fixed_vectors(void)
     assert(memcmp(out, expected_end, size) == 0);
 }
 
+static void test_explicit_versions(void)
+{
+    const float pcm[2] = {0.25f, -0.25f};
+    const ul_audio_end_sequence entry = {0u, true, 0u};
+    uint8_t out[64];
+    assert(ul_audio_encode_start_version(2u, out, sizeof(out), session,
+                                         48000u, 0u, 1u, 0u) == 42u);
+    assert(out[4] == 2u && out[5] == 1u);
+    assert(ul_audio_encode_audio_version(2u, out, sizeof(out), session,
+                                         0u, 0u, 0u, 1u, pcm) == 57u);
+    assert(out[4] == 2u && out[5] == 2u);
+    assert(ul_audio_encode_gap_version(2u, out, sizeof(out), session,
+                                       0u, 0u, 1u, 0u) == 53u);
+    assert(out[4] == 2u && out[5] == 3u);
+    assert(ul_audio_encode_end_version(2u, out, sizeof(out), session,
+                                       UL_AUDIO_END_STREAM_STOPPED,
+                                       &entry, 1u) == 39u);
+    assert(out[4] == 2u && out[5] == 4u);
+    reset(out, sizeof(out));
+    assert(ul_audio_encode_start_version(0u, out, sizeof(out), session,
+                                         48000u, 0u, 1u, 0u) == 0u);
+    assert(ul_audio_encode_audio_version(3u, out, sizeof(out), session,
+                                         0u, 0u, 0u, 1u, pcm) == 0u);
+    assert(ul_audio_encode_gap_version(0u, out, sizeof(out), session,
+                                       0u, 0u, 1u, 0u) == 0u);
+    assert(ul_audio_encode_end_version(3u, out, sizeof(out), session,
+                                       UL_AUDIO_END_STREAM_STOPPED,
+                                       &entry, 1u) == 0u);
+    assert_untouched(out, sizeof(out));
+}
+
 static void test_start_validation(void)
 {
     static const uint32_t rates[] = {16000, 32000, 44100, 48000, 88200, 96000};
@@ -386,6 +417,31 @@ static int emit_frames(void)
     return 0;
 }
 
+static int emit_frames_v2(void)
+{
+    const float pcm[2] = {0.25f, -0.25f};
+    const ul_audio_end_sequence entries[2] = {{1, true, 9}, {2, false, 0}};
+    uint8_t out[64];
+    size_t size;
+    if (_setmode(_fileno(stdout), _O_BINARY) == -1)
+        return 1;
+#define EMIT(expression) do { \
+    size = (expression); \
+    if (size == 0u || fwrite(out, 1u, size, stdout) != size) return 1; \
+} while (0)
+    EMIT(ul_audio_encode_start_version(2u, out, sizeof(out), session,
+                                       48000u, 1u, 6u, 10u));
+    EMIT(ul_audio_encode_audio_version(2u, out, sizeof(out), session,
+                                       1u, 7u, 456u, 1u, pcm));
+    EMIT(ul_audio_encode_gap_version(2u, out, sizeof(out), session,
+                                     1u, 8u, 2u, 789u));
+    EMIT(ul_audio_encode_end_version(2u, out, sizeof(out), session,
+                                     UL_AUDIO_END_STREAM_STOPPED,
+                                     entries, 2u));
+#undef EMIT
+    return 0;
+}
+
 static int emit_routing(void)
 {
     uint8_t out[128];
@@ -400,10 +456,13 @@ int main(int argc, char **argv)
 {
     if (argc == 2 && strcmp(argv[1], "--emit") == 0)
         return emit_frames();
+    if (argc == 2 && strcmp(argv[1], "--emit-v2") == 0)
+        return emit_frames_v2();
     if (argc == 2 && strcmp(argv[1], "--emit-routing") == 0)
         return emit_routing();
     assert(argc == 1);
     test_fixed_vectors();
+    test_explicit_versions();
     test_start_validation();
     test_audio_validation_and_maximum();
     test_gap_validation();

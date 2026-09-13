@@ -276,6 +276,8 @@ static void test_inspection_and_replacement(void)
     assert(spec.audio_identity == (uintptr_t)&audio_a);
     assert(spec.output_identity == (uintptr_t)&output_a);
     assert(release_calls == 1u);
+    assert(ul_audio_capture_matches_frontend(&spec));
+    assert(release_calls == 2u);
     assert(!ul_audio_capture_inspect_frontend(0x40u, &zero));
     assert(memcmp(&zero, &(ul_audio_capture_spec){0}, sizeof(zero)) == 0);
     current_output = 0u;
@@ -287,6 +289,7 @@ static void test_inspection_and_replacement(void)
     capture = ul_audio_capture_create_worker(&spec);
     assert(capture != NULL);
     current_output = (uintptr_t)&output_b;
+    assert(!ul_audio_capture_matches_frontend(&spec));
     assert(!ul_audio_capture_connect_frontend(capture, 1u));
     current_output = (uintptr_t)&output_a;
     ul_audio_capture_release(capture);

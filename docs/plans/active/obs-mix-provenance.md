@@ -61,26 +61,28 @@ metadata/wire/stream fixtures. Then run the affected OBS regression and canonica
 native build/test driver when integration changes its linked inputs. Record
 exact commands, final source hashes and independent review results here.
 
-Commands for the verified component, from the owning worktree:
+Commands for the current integration, from the owning worktree. The earlier
+codec checkpoint retains separate receipts in the parent output directory.
 
 ```powershell
 $py = "C:/Users/unknown/Projects/Mindict/.venv/Scripts/python.exe"
 $toolchain = "C:/Users/unknown/.local/llvm-mingw-20260616-ucrt-x86_64"
 $obsBin = "C:/Program Files/obs-studio/bin/64bit"
 $headers = "C:/Users/unknown/Projects/Mindict/.grok/obs-native-build/headers"
-$output = "C:/Users/unknown/Projects/Mindict/.grok/obs-mix-provenance"
+$output = "C:/Users/unknown/Projects/Mindict/.grok/obs-mix-provenance/integration"
 & $py -m pytest tests/test_obs_mix.py tests/test_obs_routing_protocol.py tests/test_obs_protocol.py -o addopts= -q
 & $py native/obs-plugin/tools/build.py --toolchain $toolchain --obs-bin $obsBin --headers $headers --output "$output/build"
-& $py native/obs-plugin/tools/smoke.py --build "$output/build"
+& $py native/obs-plugin/tools/smoke.py --build "$output/build" *> "$output/build/smoke-run.log"
 & $py native/obs-plugin/tools/test_native.py --toolchain $toolchain --build "$output/build" --headers $headers --output "$output/verification"
+& $py -m pytest tests/test_obs_session_ui.py -o addopts= -q
 ```
 
 ## Current work and open decisions
 
 The preceding controller checkpoint remains frozen. Bounded immutable models,
 Python framing and the independent C encoder are implemented and independently
-reviewed. Native observation, receiver/history integration
-and the visible workflow remain incomplete.
+reviewed. The following codec evidence belongs to checkpoint `5183cc2`;
+it does not verify the in-progress integration described below.
 
 The focused model/routing/legacy codec bundle passes **224 tests**. The canonical
 driver passes **796 affected desktop tests** and all **51 native commands**;
@@ -95,7 +97,76 @@ and `hash-audit.json`. No OBS application, audio device, consumer profile or
 model was used. This proves the component checks, not the remaining package
 acceptance or live OBS behavior.
 
-### Observation contract
+### Current integration
+
+The receiver, private routing history, transcript ownership and explicit v2
+pipe/controller path are implemented. Routing is validated against accepted
+per-bus sequence positions before publication. Initial metadata must follow Start
+and precede PCM; a pre-Start Disarm creates neither audio nor metadata stores.
+Each later accepted observation has exactly the next wire revision. Equal
+observation timestamps are allowed; these timestamps are not sample boundaries.
+
+The private journal queues at most eight bounded records and performs file I/O
+on its own worker. Disk-backed history remains with the transcript owner after
+audio is released. Cancellation clears visible metadata immediately, then waits
+off the UI thread for owned files and active readers to close. Cleanup failure
+remains visible even after a formerly complete or cancelled result. Review found
+and fixed an internal recognition-cancellation path that had omitted history
+closure after ownership transfer.
+
+The view places latest mix details beside the transcript in a tab, preserving
+the window dimensions and minimum preview heights. It distinguishes complete,
+same-input, different-input and unassigned mixes and states timing uncertainty.
+It shows configuration observations without identifying speakers or asserting
+audibility. Private names are absent from representations and cleared on discard;
+selecting text does not publish it to the platform selection clipboard.
+
+Final integration verification passes **873 affected desktop tests**, **48 Tk
+checks**, all **55 native verification commands**, the **25-command linked
+build** and headless refusal smoke. Eleven synthetic captures include normal
+and compact mix-detail tabs. All **488** recorded source, SDK, tool, runtime,
+generated-file, artifact, log and UI source/render hash comparisons match.
+Evidence lives in `.grok/obs-mix-provenance/integration/`, with the separate
+`ui-integration-verification.json` also checked by its `hash-audit.json`.
+Earlier 120-check integration evidence describes its original source stage only.
+
+Independent receiver/controller/pipe, private-history, view, native integration
+and build-driver reviews are clear. Review corrected cached private metadata
+retention on explicit close and external destruction. Keyboard traversal and the
+full six-bus, 128-source display bounds are covered. These checks used no OBS
+application, audio device, consumer profile or model. Source CI remains pending.
+
+Native observation uses fixed watcher/snapshot limits and an OBS monotonic clock
+declared by the newly pinned public `util/platform.h`; its ISC notice is retained.
+Independent review found and fixed an old-worker/new-session snapshot race by
+serializing lifecycle mutation and snapshot access. Synthetic close/reopen checks
+pass. OBS's own signal-disconnect calls can wait for foreign signal callbacks
+before the local quiescence timeout begins; this is a public-API teardown limit,
+not a proven globally bounded close. Scheduler callbacks use a nonblocking
+frontend post and fail visibly if its state lock is contended.
+
+Final native review corrected three lifecycle races. Normal stop or Disarm can
+close observation before initial Routing reaches the pipe, so the exact-generation
+immutable snapshot remains readable through the bounded audio drain; worker
+retirement wipes it. Stale queued refresh commands cannot stop a newer capture.
+Snapshot comparison and publication revalidate lifecycle state under the same
+lock as worker retirement, preventing a paused refresh from republishing after
+retirement. Deterministic fixtures cover each race and callback scheduling
+contention. Independent reruns pass on the same frozen native inputs.
+
+Production source advertises and requires audio version 2. Protocol/command
+versions remain 1. Older audio-version-1 plugins and unknown future versions are
+refused before Arm. Actual live OBS/audio/load acceptance, application entry,
+export integration and native distribution remain open.
+
+Copy source names and UUIDs entirely inside the enumeration callback. The pinned
+[core implementation](https://github.com/obsproject/obs-studio/blob/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs.c)
+holds the source mutex across that callback; source renaming and UUID reset use
+the same mutex. A retained reference also prevents destruction. This is a
+pinned-implementation constraint: the public getter API does not separately
+promise borrowed-string lifetime or thread safety outside enumeration.
+
+### Observation semantics
 
 The public [source API](https://docs.obsproject.com/reference-sources) describes
 assignment and rename signals but supplies no audio timestamp or documented
@@ -114,10 +185,11 @@ with uncertainty explicit. A later observation never rewrites earlier entries.
 
 The 12-byte ULAP header retains its existing layout. Version 2 adds kind 5;
 existing Start/Audio/Gap/End body layouts are unchanged. Python encoding/decoding
-requires explicit version selection and rejects version mixing. The active
-native runtime and compatibility reply remain version 1 until producer and
-receiver integration can require initial metadata before PCM. The new C Routing
-encoder is not yet called by that runtime.
+requires explicit version selection and rejects version mixing. The native
+runtime and compatibility reply now select version 2, and the desktop status
+check requires it before Arm. Explicit legacy codec wrappers and the legacy
+stream fixture retain version 1; the new runtime fixture verifies Start,
+initial Routing, continuous Audio, later Routing and End under version 2.
 
 Routing body, little-endian:
 

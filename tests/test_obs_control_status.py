@@ -16,7 +16,7 @@ STATUS = {
     "ok": True,
     "protocolVersion": 1,
     "commandVersion": 1,
-    "audioVersion": 1,
+    "audioVersion": 2,
     "maxBusMask": 63,
 }
 
@@ -51,7 +51,7 @@ def _connected(monkeypatch, responses, *, vendor=True):
 def test_plugin_status_uses_exact_empty_request_and_typed_result(monkeypatch):
     control, transport = _connected(monkeypatch, [_status_response])
     with control:
-        assert control.plugin_status() == ObsPluginStatus(1, 1, 1, 63)
+        assert control.plugin_status() == ObsPluginStatus(1, 1, 2, 63)
         request = json.loads(transport.sent[-1])["d"]
         assert request["requestType"] == "CallVendorRequest"
         assert request["requestData"] == {
@@ -63,11 +63,11 @@ def test_repeated_status_is_inert_before_and_after_preparation(monkeypatch):
     responses = [_status_response, _status_response, _vendor_response, _prepare_response, _status_response]
     control, transport = _connected(monkeypatch, responses)
     with control:
-        assert control.plugin_status() == ObsPluginStatus(1, 1, 1, 63)
-        assert control.plugin_status() == ObsPluginStatus(1, 1, 1, 63)
+        assert control.plugin_status() == ObsPluginStatus(1, 1, 2, 63)
+        assert control.plugin_status() == ObsPluginStatus(1, 1, 2, 63)
         session = control.prepare_session(KEY)
         assert len(session) == 16
-        assert control.plugin_status() == ObsPluginStatus(1, 1, 1, 63)
+        assert control.plugin_status() == ObsPluginStatus(1, 1, 2, 63)
     operations = [
         json.loads(item)["d"]["requestData"]["requestType"]
         for item in transport.sent[2:]
@@ -78,7 +78,8 @@ def test_repeated_status_is_inert_before_and_after_preparation(monkeypatch):
 @pytest.mark.parametrize("change", [
     lambda data: data.update(protocolVersion=2),
     lambda data: data.update(commandVersion=2),
-    lambda data: data.update(audioVersion=2),
+    lambda data: data.update(audioVersion=1),
+    lambda data: data.update(audioVersion=3),
     lambda data: data.update(maxBusMask=62),
     lambda data: data.update(commandVersion=True),
     lambda data: data.update(extra=0),

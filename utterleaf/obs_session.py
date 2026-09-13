@@ -18,7 +18,9 @@ from typing import Callable
 import numpy as np
 
 from utterleaf.capture_store import CaptureStore
-from utterleaf.obs_protocol import AudioFrame, EndFrame, EndReason, GapFrame, StartFrame
+from utterleaf.obs_protocol import (AudioFrame, EndFrame, EndReason, GapFrame,
+                                   RoutingFrame, StartFrame, VERSION, PROVENANCE_VERSION)
+from utterleaf.obs_routing_store import ObsRoutingStore
 
 
 class ObsSessionError(RuntimeError):
@@ -43,7 +45,8 @@ class ObsCaptureResult:
     """
 
     def __init__(self, tracks: tuple[CapturedTrack, ...], *, primary_bus: int | None,
-                 origin_ns: int | None, clean_end: bool, reason: str):
+                 origin_ns: int | None, clean_end: bool, reason: str,
+                 routing_history: ObsRoutingStore | None = None):
         self.tracks = tracks
         self.primary_bus = primary_bus
         self.origin_ns = origin_ns
@@ -51,10 +54,14 @@ class ObsCaptureResult:
         self._reason = reason
         self._ready = False
         self.closed = False
+        self.routing_history = routing_history
+        self._owns_routing_history = routing_history is not None
+        self._routing_taken = False
 
     @property
     def complete(self) -> bool:
         return (not self.closed and self._ready and self._clean_end and bool(self.tracks)
+                and (self.routing_history is None or self.routing_history.error is None)
                 and all(track.received_frames > 0 and track.store.error is None
                         for track in self.tracks))
 
@@ -62,10 +69,13 @@ class ObsCaptureResult:
     def empty(self) -> bool:
         """A verified clean Disarm before audio, distinct from a failed empty capture."""
         return (not self.closed and self._ready and self._clean_end and not self.tracks
-                and self.primary_bus is None and self.origin_ns is None)
+                and self.primary_bus is None and self.origin_ns is None
+                and self.routing_history is None)
 
     @property
     def reason(self) -> str:
+        if self.routing_history is not None and self.routing_history.error is not None:
+            return "OBS mix history could not be preserved. The capture is incomplete."
         if any(track.store.error for track in self.tracks):
             return "OBS audio storage failed. Only the stored portion can be recovered."
         if self._clean_end and any(track.received_frames == 0 for track in self.tracks):
@@ -78,17 +88,40 @@ class ObsCaptureResult:
         try:
             for track in self.tracks:
                 track.store.wait_ready(cancelled)
+            if self.routing_history is not None:
+                self.routing_history.wait_ready(cancelled)
         except BaseException:
             self.close()
             raise
         self._ready = True
 
+    def take_routing_history(self) -> ObsRoutingStore | None:
+        """Transfer history once; keep borrowed completion/error facts on this result.
+
+        The transcript owner retains it after decoded audio is released. The new
+        owner must close and wait for it on discard, including failed completion.
+        """
+        if self.closed or self._routing_taken:
+            raise ObsSessionError("OBS routing history is not transferable")
+        self._routing_taken = True
+        self._owns_routing_history = False
+        return self.routing_history
+
     def close(self) -> None:
         if self.closed:
             return
         self.closed = True
-        for track in self.tracks:
-            track.store.close()
+        try:
+            for track in self.tracks:
+                track.store.close()
+        finally:
+            if self._owns_routing_history:
+                self.routing_history.close()
+
+    def wait_closed(self, timeout: float | None = None) -> bool:
+        """Wait for owned routing cleanup after close, off the UI thread."""
+        return (self.routing_history.wait_closed(timeout)
+                if self._owns_routing_history else True)
 
 
 @dataclass
@@ -112,7 +145,10 @@ class ObsCaptureSession:
 
     def __init__(self, session_id: bytes, primary_bus: int | None = None,
                  buses: tuple[int, ...] = (), *,
-                 stream_active: bool, store_factory=CaptureStore):
+                 stream_active: bool, store_factory=CaptureStore,
+                 protocol_version: int = VERSION, routing_factory=ObsRoutingStore):
+        if type(protocol_version) is not int or protocol_version not in (VERSION, PROVENANCE_VERSION):
+            raise ValueError("Invalid OBS audio protocol version")
         if type(stream_active) is not bool or stream_active:
             raise ObsSessionError("Arm OBS transcription while the stream is stopped")
         if type(session_id) is not bytes or len(session_id) != 16:
@@ -128,6 +164,10 @@ class ObsCaptureSession:
         self.buses = buses
         self._mask = sum(1 << bus for bus in buses)
         self._factory = store_factory
+        self._routing_factory = routing_factory
+        self._requires_routing = protocol_version == PROVENANCE_VERSION
+        self.routing_history: ObsRoutingStore | None = None
+        self.current_routing: RoutingFrame | None = None
         self._tracks: dict[int, _Track] = {}
         self._started = False
         self._origin_ns: int | None = None
@@ -149,8 +189,8 @@ class ObsCaptureSession:
             self._fail("OBS stream start was stale or repeated")
         self._started = True
 
-    def accept(self, frame: StartFrame | AudioFrame | GapFrame | EndFrame) -> None:
-        if type(frame) not in (StartFrame, AudioFrame, GapFrame, EndFrame):
+    def accept(self, frame: StartFrame | AudioFrame | GapFrame | EndFrame | RoutingFrame) -> None:
+        if type(frame) not in (StartFrame, AudioFrame, GapFrame, EndFrame, RoutingFrame):
             self._fail("Unexpected OBS audio message")
         self._check_identity(frame.session_id)
         if self.state not in {"armed", "active"}:
@@ -168,6 +208,13 @@ class ObsCaptureSession:
             return
         if self.state != "active":
             self._fail("OBS audio arrived before the armed stream started")
+        if isinstance(frame, RoutingFrame):
+            self._routing(frame)
+            return
+        if self._requires_routing and self.current_routing is None:
+            self._fail("OBS supplied no initial mix observation. The capture is incomplete.")
+        if self.routing_history is not None and self.routing_history.error is not None:
+            self._fail("OBS mix history could not be preserved. The capture is incomplete.")
         if isinstance(frame, AudioFrame):
             self._audio(frame)
         elif isinstance(frame, GapFrame):
@@ -202,6 +249,30 @@ class ObsCaptureSession:
         self._origin_ns = frame.origin_ns
         self.state = "active"
         self.reason = "Receiving the armed OBS stream."
+
+    def _routing(self, frame: RoutingFrame) -> None:
+        previous = self.current_routing
+        expected_revision = 1 if previous is None else previous.revision + 1
+        expected_positions = tuple((bus, track.next_sequence)
+                                   for bus, track in self._tracks.items())
+        if (not self._requires_routing or frame.revision != expected_revision
+                or (previous is not None and frame.observed_at_ns < previous.observed_at_ns)
+                or frame.snapshot.primary_bus != self.primary_bus
+                or frame.snapshot.bus_mask != sum(1 << bus for bus in self.buses)
+                or frame.positions != expected_positions):
+            self._fail("OBS mix observation was stale or inconsistent. The capture is incomplete.")
+        # Observation time can precede buffered PCM and the Start origin. It is
+        # not an effective sample timestamp. The sequence cut is publication
+        # order, and metadata does not alter the audio continuity calculation.
+        try:
+            if self.routing_history is None:
+                self.routing_history = self._routing_factory()
+            accepted = self.routing_history.append(frame)
+        except Exception:
+            self._fail("OBS mix history could not start or continue. Check local storage.")
+        if not accepted:
+            self._fail("OBS mix history could not keep up. The capture is incomplete.")
+        self.current_routing = frame
 
     def _audio(self, frame: AudioFrame) -> None:
         if frame.bus not in self._tracks:
@@ -246,6 +317,8 @@ class ObsCaptureSession:
                        else "OBS capture was interrupted. Only the prefix can be recovered.")
         for track in self._tracks.values():
             track.store.finish()
+        if self.routing_history is not None:
+            self.routing_history.finish()
 
     def _fail(self, reason: str) -> None:
         # A late callback cannot reopen or mutate an already transferred result.
@@ -255,7 +328,9 @@ class ObsCaptureSession:
             self._clean_end = False
             for track in self._tracks.values():
                 track.store.finish()
-        raise ObsSessionError(reason)
+            if self.routing_history is not None:
+                self.routing_history.finish()
+        raise ObsSessionError(reason) from None
 
     def connection_lost(self) -> None:
         """Signal loss of the authenticated audio channel, not control-only lag."""
@@ -268,8 +343,10 @@ class ObsCaptureSession:
                                      item.next_sequence - 1 if item.next_sequence else None,
                                      item.store) for bus, item in self._tracks.items())
         result = ObsCaptureResult(tracks, primary_bus=self.primary_bus, origin_ns=self._origin_ns,
-                                  clean_end=self._clean_end, reason=self.reason)
+                                  clean_end=self._clean_end, reason=self.reason,
+                                  routing_history=self.routing_history)
         self._tracks.clear()
+        self.routing_history = None
         self._taken = True
         return result
 
@@ -288,12 +365,22 @@ class ObsCaptureSession:
 
     def cancel(self) -> None:
         """Discard this receiver's audio; a transferred result has its own owner."""
-        for track in self._tracks.values():
-            track.store.close()
-        self._tracks.clear()
-        self._session_id = b""
-        self._clean_end = False
-        self.state = "cancelled"
-        self.reason = "OBS capture cancelled."
+        try:
+            for track in self._tracks.values():
+                track.store.close()
+        finally:
+            self._tracks.clear()
+            if self.routing_history is not None:
+                self.routing_history.close()
+            self.current_routing = None
+            self._session_id = b""
+            self._clean_end = False
+            self.state = "cancelled"
+            self.reason = "OBS capture cancelled."
+
+    def wait_closed(self, timeout: float | None = None) -> bool:
+        """Wait for untransferred routing cleanup after cancel/close."""
+        return (self.routing_history.wait_closed(timeout)
+                if self.routing_history is not None else True)
 
     close = cancel

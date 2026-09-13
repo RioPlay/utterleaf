@@ -2,6 +2,8 @@
 #include "plugin_state.h"
 #include "session_protocol.h"
 #include "audio_stream.h"
+#include "audio_protocol.h"
+#include "audio_metadata.h"
 
 #include <windows.h>
 
@@ -57,6 +59,7 @@ typedef struct ul_plugin_runtime {
     ul_arm_scheduler schedule_arm;
     ul_arm_scheduler schedule_capture;
     ul_arm_scheduler schedule_cleanup;
+    ul_arm_scheduler schedule_metadata;
     ul_audio_capture_spec capture_spec;
     ul_audio_capture *capture;
     bool capture_spec_ready;
@@ -301,10 +304,17 @@ static int capture_worker(ul_plugin_runtime *runtime, ul_admission *admission)
                 goto done;
             }
             result = was_attached
+#if UL_AUDIO_RUNTIME_VERSION == UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+                ? ul_audio_stream_run_disarmed_metadata(
+                      capture, &spec, admission,
+                      runtime->session_options.session, runtime->stream_stop,
+                      runtime->cleanup_complete, generation)
+#else
                 ? ul_audio_stream_run_disarmed(
                       capture, &spec, admission,
                       runtime->session_options.session, runtime->stream_stop,
                       runtime->cleanup_complete)
+#endif
                 : ul_audio_stream_finish_empty_disarm(
                       admission, runtime->session_options.session,
                       runtime->cleanup_complete);
@@ -321,9 +331,16 @@ static int capture_worker(ul_plugin_runtime *runtime, ul_admission *admission)
                InterlockedCompareExchange(&runtime->closing, 0, 0) == 0;
     ReleaseSRWLockShared(&runtime->session_lock);
     if (accepted) {
-        int streamed = ul_audio_stream_run(capture, &spec, admission,
+        int streamed =
+#if UL_AUDIO_RUNTIME_VERSION == UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+            ul_audio_stream_run_metadata(capture, &spec, admission,
+            runtime->session_options.session, runtime->stream_stop,
+            runtime->cleanup_complete, request_disarm, runtime, generation);
+#else
+            ul_audio_stream_run(capture, &spec, admission,
             runtime->session_options.session, runtime->stream_stop,
             runtime->cleanup_complete, request_disarm, runtime);
+#endif
         result = streamed == UL_AUDIO_STREAM_OK ? UL_ADMISSION_AUTH_OK : UL_ADMISSION_REJECTED;
     }
 done:
@@ -333,6 +350,9 @@ done:
         runtime->capture = NULL;
     ReleaseSRWLockExclusive(&runtime->session_lock);
     ul_audio_capture_release(capture);
+#if UL_AUDIO_RUNTIME_VERSION == UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+    ul_audio_metadata_retire_worker(generation);
+#endif
     /* Posting never waits for the frontend, including when that thread is
      * joining us during revocation. A stale generation cannot detach new hooks. */
     (void)cleanup(generation);
@@ -978,6 +998,126 @@ bool ul_plugin_set_capture_schedulers(ul_arm_scheduler attach,
     ReleaseSRWLockExclusive(&runtime->operation_lock);
     runtime_release(runtime);
     return accepted;
+}
+
+bool ul_plugin_set_metadata_scheduler(ul_arm_scheduler refresh)
+{
+    ul_plugin_runtime *runtime = runtime_acquire();
+    bool accepted = false;
+    if (runtime == NULL || refresh == NULL) {
+        if (runtime != NULL)
+            runtime_release(runtime);
+        return false;
+    }
+    AcquireSRWLockExclusive(&runtime->operation_lock);
+    AcquireSRWLockExclusive(&runtime->session_lock);
+    if (runtime->schedule_metadata == NULL && runtime->worker == NULL &&
+        InterlockedCompareExchange(&runtime->closing, 0, 0) == 0) {
+        runtime->schedule_metadata = refresh;
+        accepted = true;
+    }
+    ReleaseSRWLockExclusive(&runtime->session_lock);
+    ReleaseSRWLockExclusive(&runtime->operation_lock);
+    runtime_release(runtime);
+    return accepted;
+}
+
+bool ul_plugin_metadata_open_frontend(uintptr_t generation)
+{
+#if UL_AUDIO_RUNTIME_VERSION == UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+    ul_plugin_runtime *runtime = runtime_acquire();
+    ul_audio_capture_spec spec;
+    ul_arm_scheduler scheduler = NULL;
+    bool current = false, opened;
+    if (runtime == NULL || generation == 0u)
+        return false;
+    AcquireSRWLockShared(&runtime->session_lock);
+    if (runtime->session_generation == generation &&
+        runtime->session_phase == UL_SESSION_STARTED &&
+        runtime->capture_spec_ready && runtime->capture_spec_valid) {
+        spec = runtime->capture_spec;
+        scheduler = runtime->schedule_metadata;
+        current = scheduler != NULL;
+    }
+    ReleaseSRWLockShared(&runtime->session_lock);
+    runtime_release(runtime);
+    if (!current)
+        return false;
+    opened = ul_audio_metadata_open_frontend(
+        generation, spec.primary_bus, spec.mix_mask, scheduler);
+    if (!opened)
+        return false;
+    runtime = runtime_acquire();
+    if (runtime != NULL) {
+        AcquireSRWLockShared(&runtime->session_lock);
+        current = runtime->session_generation == generation &&
+                  runtime->session_phase == UL_SESSION_STARTED &&
+                  runtime->capture_spec_ready && runtime->capture_spec_valid;
+        ReleaseSRWLockShared(&runtime->session_lock);
+        runtime_release(runtime);
+    } else {
+        current = false;
+    }
+    if (!current)
+        (void)ul_audio_metadata_close_frontend(generation, false);
+    return current;
+#else
+    (void)generation;
+    return true;
+#endif
+}
+
+bool ul_plugin_metadata_refresh_frontend(uintptr_t generation)
+{
+#if UL_AUDIO_RUNTIME_VERSION == UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+    ul_plugin_runtime *runtime = runtime_acquire();
+    ul_audio_capture_spec spec;
+    bool current = false;
+    if (runtime == NULL || generation == 0u)
+        return false;
+    AcquireSRWLockShared(&runtime->session_lock);
+    if (runtime->session_generation == generation &&
+        runtime->session_phase == UL_SESSION_STARTED &&
+        runtime->capture_spec_ready && runtime->capture_spec_valid) {
+        spec = runtime->capture_spec;
+        current = true;
+    }
+    ReleaseSRWLockShared(&runtime->session_lock);
+    runtime_release(runtime);
+    if (!current)
+        return false;
+    if (!ul_audio_capture_matches_frontend(&spec) ||
+        !ul_audio_metadata_refresh_frontend(generation)) {
+        runtime = runtime_acquire();
+        if (runtime == NULL)
+            return false;
+        AcquireSRWLockExclusive(&runtime->session_lock);
+        if (runtime->session_generation == generation &&
+            runtime->session_phase == UL_SESSION_STARTED) {
+            ul_audio_metadata_fail_frontend(generation);
+            if (runtime->capture != NULL)
+                ul_audio_capture_deactivate(runtime->capture);
+        }
+        ReleaseSRWLockExclusive(&runtime->session_lock);
+        runtime_release(runtime);
+        return false;
+    }
+    return true;
+#else
+    (void)generation;
+    return true;
+#endif
+}
+
+bool ul_plugin_metadata_close_frontend(uintptr_t generation, bool all)
+{
+#if UL_AUDIO_RUNTIME_VERSION == UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+    return ul_audio_metadata_close_frontend(generation, all);
+#else
+    (void)generation;
+    (void)all;
+    return true;
+#endif
 }
 
 bool ul_plugin_capture_inspect_request(uintptr_t *generation, uint8_t *mask)

@@ -42,6 +42,19 @@ int ul_audio_stream_run(ul_audio_capture *capture,
                         ul_audio_disarm_callback disarm,
                         void *disarm_context);
 
+/* Version-selectable runtime entry used by the plugin session worker. A
+ * version-2 run requires the current generation's metadata observation. Its
+ * final immutable snapshot remains usable after frontend watcher disconnect
+ * so an already-accepted stop/Disarm tail can finish; version 1 ignores it. */
+int ul_audio_stream_run_metadata(ul_audio_capture *capture,
+                                 const ul_audio_capture_spec *spec,
+                                 ul_admission *admission,
+                                 const uint8_t session[16], HANDLE stop_event,
+                                 HANDLE cleanup_complete,
+                                 ul_audio_disarm_callback disarm,
+                                 void *disarm_context,
+                                 uintptr_t metadata_generation);
+
 /* Continues after plugin_state already consumed Disarm and atomically observed
  * an attached capture. The capture must already be deactivated. */
 int ul_audio_stream_run_disarmed(ul_audio_capture *capture,
@@ -49,6 +62,10 @@ int ul_audio_stream_run_disarmed(ul_audio_capture *capture,
                                  ul_admission *admission,
                                  const uint8_t session[16], HANDLE stop_event,
                                  HANDLE cleanup_complete);
+int ul_audio_stream_run_disarmed_metadata(
+    ul_audio_capture *capture, const ul_audio_capture_spec *spec,
+    ul_admission *admission, const uint8_t session[16], HANDLE stop_event,
+    HANDLE cleanup_complete, uintptr_t metadata_generation);
 
 /* Completes a valid Disarm before capture emitted Start. The only wire packet
  * is End(DISARMED) with zero sequence entries, followed by its exact receipt.

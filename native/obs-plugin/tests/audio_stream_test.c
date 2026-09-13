@@ -406,8 +406,11 @@ static void test_staging_refusals_emit_nothing(void)
     enqueue(&capture, 0, 0, 10, (ul_audio_gap){0}, 1.0f);
     spec = spec_for(1u);
     assert(run_stream(&capture, &spec, &admission, stop) ==
-           UL_AUDIO_STREAM_INCOMPLETE);
-    assert(admission.write_count == 0u && capture.deactivate_calls == 1u);
+           UL_AUDIO_STREAM_OK);
+    assert(admission.write_count == 3u && capture.deactivate_calls == 1u);
+    assert(admission.writes[0][5] == 1u && admission.writes[1][5] == 2u &&
+           admission.writes[2][5] == 4u &&
+           admission.writes[2][28] == UL_AUDIO_END_STREAM_STOPPED);
     CloseHandle(stop);
 
     memset(&capture, 0, sizeof(capture));

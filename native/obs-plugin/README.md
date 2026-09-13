@@ -67,10 +67,17 @@ The [mix provenance increment](../../docs/plans/active/obs-mix-provenance.md)
 adds an original bounded version-2 Routing encoder and matching Python metadata
 model/codec. Independent byte vectors and native/Python interoperability pass;
 the final canonical run passes 796 affected desktop tests and all 51 native
-commands, plus the linked build and headless refusal. The current plugin runtime
-still emits version 1 and does not call the new encoder. Source observation,
-serialized metadata publication, private history and view integration remain
-required before this can describe a live OBS mix.
+commands, plus the linked build and headless refusal at codec checkpoint `5183cc2`.
+The current integration adds bounded native input observation, continuous
+version-2 routing/audio transport, private desktop history and a compact Mix
+details tab. Production source advertises audio version 2; desktop status requires
+that version before Arm. Final integration passes 873 affected desktop tests,
+48 Tk checks, all 55 native commands, the 25-command linked build and headless
+refusal. Independent review is clear, including normal stop/Disarm metadata drain,
+stale refresh, retirement/publication races and nonblocking callback scheduling.
+The 488-comparison hash audit includes current UI source and eleven captures.
+Source CI remains pending. OBS frontend/audio acceptance, application entry,
+export integration and native distribution remain open.
 
 The native test driver needs the desktop virtualenv for NumPy-backed
 protocol validation, and `--build` plus `--headers` for conversion fixtures.
@@ -78,14 +85,14 @@ protocol validation, and `--build` plus `--headers` for conversion fixtures.
 ## Inputs and legal boundary
 
 `dependencies.json` pins the exact OBS source revision
-`ba2f32bdf791005443988a4955e963663e16b1ed` for 41 public resources, including the
-frontend and audio-resampler headers, configuration template and license. The obs-websocket API header
-is pinned separately at `1ef34bf48110c2a18184e50e41cd0b1a855e2147`, for 42 total
+`ba2f32bdf791005443988a4955e963663e16b1ed` for 42 public resources, including the
+frontend, audio-resampler and platform clock headers, configuration template and license. The obs-websocket API header
+is pinned separately at `1ef34bf48110c2a18184e50e41cd0b1a855e2147`, for 43 total
 resources. The build verifies every
 resource's URL, byte count and SHA-256 before compiling. It generates
 `obsconfig.h`, derives local import libraries from installed `obs.dll` and
 `obs-frontend-api.dll`, embeds the common-controls activation manifest, and
-emits source/input/generated-file receipts. The nine ISC header notices in
+emits source/input/generated-file receipts. The ten ISC header notices in
 `OBS-HEADER-NOTICES.txt` and the obs-websocket notice reproduce each header's
 complete leading comment.
 

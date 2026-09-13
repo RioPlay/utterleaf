@@ -106,7 +106,7 @@ class VendorTests(unittest.TestCase):
 
     def test_status_is_exact_read_only_compatibility_metadata(self):
         expected = {"ok": True, "protocolVersion": 1, "commandVersion": 1,
-                    "audioVersion": 1, "maxBusMask": 63}
+                    "audioVersion": 2, "maxBusMask": 63}
         self.assertEqual(self.dispatch({}, operation="status"), expected)
         self.assertEqual(self.dispatch({}, operation="status"), expected)
         self.assertEqual([VENDOR.ul_vendor_test_count(i) for i in range(3)], [0, 0, 0])

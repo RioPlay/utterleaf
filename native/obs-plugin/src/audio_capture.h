@@ -32,6 +32,8 @@ typedef struct ul_audio_capture_spec {
  * and releases its own reference to the current streaming output. */
 bool ul_audio_capture_inspect_frontend(uint8_t additional_mask,
                                        ul_audio_capture_spec *out);
+/* Frontend-thread identity/format guard for an active generation. */
+bool ul_audio_capture_matches_frontend(const ul_audio_capture_spec *expected);
 
 /* Worker-only. Allocates bounded per-bus queues and independent converters. */
 ul_audio_capture *ul_audio_capture_create_worker(

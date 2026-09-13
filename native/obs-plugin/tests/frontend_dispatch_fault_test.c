@@ -125,12 +125,19 @@ static void scenario(int mode)
         CloseHandle(worker);
         CloseHandle(close_started); CloseHandle(close_finished);
         pump(); assert(callbacks == 0 && closing);
-    } else {
-        assert(mode == 6);
+    } else if (mode == 6) {
+        assert(!ul_frontend_dispatch_post(5, 42));
         fail_post = true;
         assert(!ul_frontend_dispatch_post(2, 42));
         fail_post = false;
         assert(ul_frontend_dispatch_post(2, 42));
+        pump(); assert(callbacks == 1);
+    } else {
+        assert(mode == 7);
+        AcquireSRWLockExclusive(&state_lock);
+        assert(!ul_frontend_dispatch_try_post(2, 42));
+        ReleaseSRWLockExclusive(&state_lock);
+        assert(ul_frontend_dispatch_try_post(2, 42));
         pump(); assert(callbacks == 1);
     }
     ul_frontend_dispatch_close();
@@ -147,7 +154,7 @@ int main(int argc, char **argv)
     if (argc == 2) { scenario(atoi(argv[1])); return 0; }
     WCHAR executable[MAX_PATH], command[MAX_PATH + 16];
     assert(GetModuleFileNameW(NULL, executable, MAX_PATH));
-    for (unsigned mode = 1; mode <= 6; ++mode) {
+    for (unsigned mode = 1; mode <= 7; ++mode) {
         STARTUPINFOW start = {0};
         PROCESS_INFORMATION process = {0};
         DWORD code;

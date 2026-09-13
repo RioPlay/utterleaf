@@ -23,6 +23,8 @@ import numpy as np
 from utterleaf.capture_store import CaptureReadState
 from utterleaf.config import Config
 from utterleaf.local_filesystem import LocalFilesystemError, require_local_filesystem
+from utterleaf.obs_protocol import RoutingFrame
+from utterleaf.obs_routing_store import ObsRoutingStore, ObsRoutingStoreError
 from utterleaf.obs_session import CapturedTrack, ObsCaptureResult
 from utterleaf.transcript import Transcript, TranscriptionCancelled
 
@@ -141,6 +143,10 @@ class ObsTranscriptionCoordinator:
         self._cleanup_done = threading.Event()
         self._tracks: dict[int, _TrackCursor] = {}
         self._result: ObsCaptureResult | None = None
+        self._borrowed_routing_history: ObsRoutingStore | None = None
+        self._routing_history: ObsRoutingStore | None = None
+        self._routing_error: ObsRoutingStoreError | None = None
+        self._routing_cleanup_error: ObsRoutingStoreError | None = None
         self._origin_ns: int | None = None
         self._sample_rate: float | None = None
         self._primary_bus: int | None = None
@@ -194,6 +200,20 @@ class ObsTranscriptionCoordinator:
                 self._message = "Transcribing OBS audio locally."
             self._condition.notify_all()
 
+    def attach_routing_history(self, history: ObsRoutingStore) -> None:
+        """Borrow live failure state until the final capture transfers ownership."""
+        if type(history) is not ObsRoutingStore:
+            raise TypeError("OBS transcription requires an exact routing history")
+        with self._condition:
+            if self._cancel.is_set() or self._closed or self._result is not None:
+                raise ObsTranscriptionError("OBS transcription cannot attach routing history")
+            if self._borrowed_routing_history is not None:
+                if self._borrowed_routing_history is history:
+                    return
+                raise ObsTranscriptionError("OBS transcription already has routing history")
+            self._borrowed_routing_history = history
+            self._condition.notify_all()
+
     def finish_capture(self, result: ObsCaptureResult) -> None:
         """Accept ownership of the final capture after validating live registrations."""
         if not isinstance(result, ObsCaptureResult):
@@ -202,6 +222,14 @@ class ObsTranscriptionCoordinator:
             if self._cancel.is_set() or self._closed or self._result is not None:
                 raise ObsTranscriptionError("OBS transcription cannot accept this result")
             self._validate_result_locked(result)
+            try:
+                history = result.take_routing_history()
+            except Exception:
+                raise ObsTranscriptionError(
+                    "OBS capture routing history could not be transferred"
+                ) from None
+            self._routing_history = history
+            self._borrowed_routing_history = None
             self._result = result
             self._track_count = len(result.tracks)
             if not self._fatal:
@@ -210,15 +238,18 @@ class ObsTranscriptionCoordinator:
             self._condition.notify_all()
 
     def cancel(self) -> None:
-        """Set nonblocking stop/discard intent; borrowed stores stay with their owner."""
+        """Set discard intent; borrowed audio and routing stay with their owner."""
         with self._condition:
             self._cancel.set()
             self._discard_requested.set()
             self._preview = ""
-            if self._cleanup_error is None:
+            history = self._routing_history
+            if self._cleanup_error is None and self._routing_error is None:
                 self._state = ObsTranscriptionState.CANCELLED
                 self._message = "OBS transcription cancelled."
             self._condition.notify_all()
+        if history is not None:
+            history.close()
         self._request_cleanup()
 
     def wait(self, timeout: float | None = None) -> bool:
@@ -228,14 +259,28 @@ class ObsTranscriptionCoordinator:
         if not self._discard_requested.is_set():
             return True
         remaining = None if deadline is None else max(0.0, deadline - time.monotonic())
-        return self._cleanup_done.wait(remaining)
+        if not self._cleanup_done.wait(remaining):
+            return False
+        with self._condition:
+            history = self._routing_history or self._borrowed_routing_history
+        if history is not None:
+            remaining = None if deadline is None else max(0.0, deadline - time.monotonic())
+            if not history.wait_closed(remaining):
+                return False
+            self._record_routing_failure(history, cleanup=history.cleanup_failed)
+        return True
 
     @property
     def failed(self) -> bool:
         """Cheap failure signal for control and pipe cancellation predicates."""
-        return self._failed.is_set()
+        if self._failed.is_set():
+            return True
+        with self._condition:
+            history = self._routing_history or self._borrowed_routing_history
+        return history is not None and history.failed
 
     def snapshot(self) -> ObsTranscriptionSnapshot:
+        self._refresh_routing_failure()
         with self._condition:
             return ObsTranscriptionSnapshot(
                 state=self._state,
@@ -245,6 +290,24 @@ class ObsTranscriptionCoordinator:
                 completed_tracks=self._completed_tracks,
                 incomplete=self._incomplete,
             )
+
+    def iter_routing_observations(self) -> Iterator[RoutingFrame]:
+        """Stream the owned routing history after recognition completes."""
+        if not self._done.is_set():
+            raise ObsTranscriptionError(
+                "Wait for OBS transcription before reading routing history"
+            )
+        if self._discard_requested.is_set():
+            return
+        with self._condition:
+            history = self._routing_history
+        if history is None:
+            return
+        try:
+            yield from history.iter_observations()
+        except ObsRoutingStoreError:
+            self._record_routing_failure(history)
+            raise ObsTranscriptionError("OBS routing history could not be read") from None
 
     def iter_segments(self) -> Iterator[ObsTranscriptSegment]:
         """Stream the private journal after recognition has stopped."""
@@ -299,10 +362,15 @@ class ObsTranscriptionCoordinator:
         with self._condition:
             self._closed = True
             cleanup_error = self._cleanup_error
+            routing_cleanup_error = self._routing_cleanup_error
         if cleanup_error is not None:
             raise ObsTranscriptionError(
                 "Private OBS transcript storage could not be deleted"
             ) from cleanup_error
+        if routing_cleanup_error is not None:
+            raise ObsTranscriptionError(
+                "Private OBS routing history could not be discarded"
+            ) from None
         return True
 
     @staticmethod
@@ -346,6 +414,8 @@ class ObsTranscriptionCoordinator:
             raise ObsTranscriptionError("OBS capture result changed its timeline")
         if not registered and result.tracks and any(track.received_frames > 0 for track in result.tracks):
             raise ObsTranscriptionError("OBS capture result skipped live track registration")
+        if result.routing_history is not self._borrowed_routing_history:
+            raise ObsTranscriptionError("OBS capture result changed its routing history")
 
     def _run(self) -> None:
         try:
@@ -387,6 +457,10 @@ class ObsTranscriptionCoordinator:
             self._finish_after_failure()
         finally:
             if self._discard_requested.is_set():
+                with self._condition:
+                    history = self._routing_history
+                if history is not None:
+                    history.close()
                 self._request_cleanup()
 
     def _poll_round(self, cursors: tuple[_TrackCursor, ...]) -> bool:
@@ -546,6 +620,27 @@ class ObsTranscriptionCoordinator:
             self._message = "Private OBS transcript cleanup failed."
             self._condition.notify_all()
 
+    def _refresh_routing_failure(self) -> None:
+        with self._condition:
+            history = self._routing_history or self._borrowed_routing_history
+        if history is not None and history.error is not None:
+            self._record_routing_failure(history)
+
+    def _record_routing_failure(self, history: ObsRoutingStore, *, cleanup: bool = False) -> None:
+        error = history.error
+        if error is None:
+            return
+        with self._condition:
+            if cleanup or self._routing_error is None:
+                self._routing_error = error
+            if cleanup:
+                self._routing_cleanup_error = error
+            self._failed.set()
+            self._preview = ""
+            self._state = ObsTranscriptionState.FAILED
+            self._message = str(self._routing_error)
+            self._condition.notify_all()
+
     def _write_all(self, data: bytes) -> None:
         view = memoryview(data)
         written = 0
@@ -624,7 +719,7 @@ class ObsTranscriptionCoordinator:
         result = self._result
         if result is not None:
             result.close()
-        if self._cleanup_error is None:
+        if self._cleanup_error is None and self._routing_error is None:
             self._state = ObsTranscriptionState.CANCELLED
             self._message = "OBS transcription cancelled."
         self._done.set()

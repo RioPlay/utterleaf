@@ -2,6 +2,7 @@
 #include <windows.h>
 
 #include <stdbool.h>
+#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -9,6 +10,8 @@
 #include "../src/plugin_state.h"
 #include "../src/session_protocol.h"
 #include "../src/audio_stream.h"
+#include "../src/audio_protocol.h"
+#include "../src/audio_metadata.h"
 
 static BOOL WINAPI shim_GetModuleHandleExW(DWORD flags, LPCWSTR address,
                                             HMODULE *module);
@@ -71,6 +74,27 @@ static int shim_ul_audio_stream_run_disarmed(
     ul_audio_capture *capture, const ul_audio_capture_spec *spec,
     ul_admission *admission, const uint8_t session[16], HANDLE stop_event,
     HANDLE cleanup_complete);
+#if UL_AUDIO_RUNTIME_VERSION == UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+static int shim_ul_audio_stream_run_metadata(
+    ul_audio_capture *capture, const ul_audio_capture_spec *spec,
+    ul_admission *admission, const uint8_t session[16], HANDLE stop_event,
+    HANDLE cleanup_complete, ul_audio_disarm_callback disarm,
+    void *disarm_context, uintptr_t metadata_generation);
+static int shim_ul_audio_stream_run_disarmed_metadata(
+    ul_audio_capture *capture, const ul_audio_capture_spec *spec,
+    ul_admission *admission, const uint8_t session[16], HANDLE stop_event,
+    HANDLE cleanup_complete, uintptr_t metadata_generation);
+static bool shim_ul_audio_capture_matches_frontend(
+    const ul_audio_capture_spec *expected);
+static bool shim_ul_audio_metadata_open_frontend(
+    uintptr_t generation, uint8_t primary_bus, uint8_t bus_mask,
+    ul_audio_metadata_schedule schedule);
+static bool shim_ul_audio_metadata_refresh_frontend(uintptr_t generation);
+static bool shim_ul_audio_metadata_close_frontend(uintptr_t generation,
+                                                  bool all);
+static void shim_ul_audio_metadata_fail_frontend(uintptr_t generation);
+static void shim_ul_audio_metadata_retire_worker(uintptr_t generation);
+#endif
 
 #define GetModuleHandleExW shim_GetModuleHandleExW
 #define ul_pairing_store_open shim_ul_pairing_store_open
@@ -104,6 +128,16 @@ static int shim_ul_audio_stream_run_disarmed(
 #define ul_audio_stream_run shim_ul_audio_stream_run
 #define ul_audio_stream_finish_empty_disarm shim_ul_audio_stream_finish_empty_disarm
 #define ul_audio_stream_run_disarmed shim_ul_audio_stream_run_disarmed
+#if UL_AUDIO_RUNTIME_VERSION == UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+#define ul_audio_stream_run_metadata shim_ul_audio_stream_run_metadata
+#define ul_audio_stream_run_disarmed_metadata shim_ul_audio_stream_run_disarmed_metadata
+#define ul_audio_capture_matches_frontend shim_ul_audio_capture_matches_frontend
+#define ul_audio_metadata_open_frontend shim_ul_audio_metadata_open_frontend
+#define ul_audio_metadata_refresh_frontend shim_ul_audio_metadata_refresh_frontend
+#define ul_audio_metadata_close_frontend shim_ul_audio_metadata_close_frontend
+#define ul_audio_metadata_fail_frontend shim_ul_audio_metadata_fail_frontend
+#define ul_audio_metadata_retire_worker shim_ul_audio_metadata_retire_worker
+#endif
 #define UL_PLUGIN_AUTH_TIMEOUT_MS 40u
 #define UL_PLUGIN_READY_TIMEOUT_MS 40u
 #define UL_PLUGIN_START_TIMEOUT_MS 80u
@@ -141,6 +175,16 @@ static int shim_ul_audio_stream_run_disarmed(
 #undef ul_audio_stream_run
 #undef ul_audio_stream_finish_empty_disarm
 #undef ul_audio_stream_run_disarmed
+#if UL_AUDIO_RUNTIME_VERSION == UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+#undef ul_audio_stream_run_metadata
+#undef ul_audio_stream_run_disarmed_metadata
+#undef ul_audio_capture_matches_frontend
+#undef ul_audio_metadata_open_frontend
+#undef ul_audio_metadata_refresh_frontend
+#undef ul_audio_metadata_close_frontend
+#undef ul_audio_metadata_fail_frontend
+#undef ul_audio_metadata_retire_worker
+#endif
 
 struct ul_pairing_store {
     int unused;
@@ -641,6 +685,85 @@ static int shim_ul_audio_stream_run_disarmed(
                ? UL_AUDIO_STREAM_OK : UL_AUDIO_STREAM_INCOMPLETE;
 }
 
+#if UL_AUDIO_RUNTIME_VERSION == UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+static uintptr_t fake_metadata_generation;
+static unsigned fake_metadata_open_count, fake_metadata_refresh_count,
+                fake_metadata_close_count, fake_metadata_fail_count,
+                fake_metadata_retire_count;
+static bool fake_metadata_open_result = true;
+static bool fake_metadata_match_result = true;
+
+static int shim_ul_audio_stream_run_metadata(
+    ul_audio_capture *capture, const ul_audio_capture_spec *spec,
+    ul_admission *admission, const uint8_t exact_session[16],
+    HANDLE stop_event, HANDLE cleanup_complete,
+    ul_audio_disarm_callback disarm, void *disarm_context,
+    uintptr_t metadata_generation)
+{
+    fake_metadata_generation = metadata_generation;
+    return shim_ul_audio_stream_run(capture, spec, admission, exact_session,
+                                    stop_event, cleanup_complete, disarm,
+                                    disarm_context);
+}
+
+static int shim_ul_audio_stream_run_disarmed_metadata(
+    ul_audio_capture *capture, const ul_audio_capture_spec *spec,
+    ul_admission *admission, const uint8_t exact_session[16],
+    HANDLE stop_event, HANDLE cleanup_complete,
+    uintptr_t metadata_generation)
+{
+    fake_metadata_generation = metadata_generation;
+    return shim_ul_audio_stream_run_disarmed(capture, spec, admission,
+                                             exact_session, stop_event,
+                                             cleanup_complete);
+}
+
+static bool shim_ul_audio_capture_matches_frontend(
+    const ul_audio_capture_spec *expected)
+{
+    return expected != NULL && fake_metadata_match_result;
+}
+
+static bool shim_ul_audio_metadata_open_frontend(
+    uintptr_t generation, uint8_t primary_bus, uint8_t bus_mask,
+    ul_audio_metadata_schedule schedule)
+{
+    assert(generation != 0u && primary_bus < 6u && bus_mask != 0u &&
+           schedule != NULL);
+    fake_metadata_generation = generation;
+    fake_metadata_open_count++;
+    return fake_metadata_open_result;
+}
+
+static bool shim_ul_audio_metadata_refresh_frontend(uintptr_t generation)
+{
+    assert(generation == fake_metadata_generation);
+    fake_metadata_refresh_count++;
+    return true;
+}
+
+static bool shim_ul_audio_metadata_close_frontend(uintptr_t generation,
+                                                  bool all)
+{
+    (void)all;
+    assert(generation == 0u || generation == fake_metadata_generation);
+    fake_metadata_close_count++;
+    return true;
+}
+
+static void shim_ul_audio_metadata_fail_frontend(uintptr_t generation)
+{
+    assert(generation == fake_metadata_generation);
+    fake_metadata_fail_count++;
+}
+
+static void shim_ul_audio_metadata_retire_worker(uintptr_t generation)
+{
+    if (generation == fake_metadata_generation)
+        fake_metadata_retire_count++;
+}
+#endif
+
 static bool queued_arm_scheduler(uintptr_t generation)
 {
     fake_scheduled_generation = generation;
@@ -665,6 +788,14 @@ static bool queued_cleanup_scheduler(uintptr_t generation)
         SetEvent(fake_cleanup_entered);
     return fake_cleanup_schedule_result;
 }
+
+#if UL_AUDIO_RUNTIME_VERSION == UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+static bool queued_metadata_scheduler(uintptr_t generation)
+{
+    fake_metadata_generation = generation;
+    return true;
+}
+#endif
 
 static DWORD WINAPI export_thread(void *unused)
 {
@@ -844,6 +975,11 @@ static int start_capture_runtime(void)
     failures += check(ul_plugin_set_capture_schedulers(
                           queued_capture_scheduler, queued_cleanup_scheduler),
                       "install capture schedulers before worker");
+#if UL_AUDIO_RUNTIME_VERSION == UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+    failures += check(ul_plugin_set_metadata_scheduler(
+                          queued_metadata_scheduler),
+                      "install metadata scheduler before worker");
+#endif
     return failures;
 }
 
@@ -1175,6 +1311,55 @@ static int scenario_capture_clean(void)
                       "capture result and stream stop handles close with runtime");
     return failures;
 }
+
+#if UL_AUDIO_RUNTIME_VERSION == UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+static int scenario_metadata_lifecycle(void)
+{
+    uint8_t session[16] = {0x6d, 2, 3, 4};
+    uintptr_t generation = 0u;
+    ul_audio_capture_spec spec = capture_spec(0u, 5u);
+    int failures = start_capture_runtime();
+    LONG deactivations;
+    failures += reach_capture_started(session, 4u, &generation);
+    ul_plugin_capture_inspected(generation, &spec);
+    failures += check(WaitForSingleObject(fake_capture_schedule_entered,
+                                          2000u) == WAIT_OBJECT_0,
+                      "capture exists before metadata lifecycle checks");
+    failures += check(!ul_plugin_metadata_open_frontend(generation + 1u),
+                      "stale generation cannot open metadata");
+    failures += check(ul_plugin_metadata_open_frontend(generation) &&
+                          fake_metadata_open_count == 1u &&
+                          fake_metadata_generation == generation,
+                      "current generation opens bounded metadata observer");
+    deactivations = InterlockedCompareExchange(
+        &fake_capture_deactivate_count, 0, 0);
+    failures += check(!ul_plugin_metadata_refresh_frontend(generation + 1u) &&
+                          fake_metadata_fail_count == 0u &&
+                          InterlockedCompareExchange(
+                              &fake_capture_deactivate_count, 0, 0) ==
+                              deactivations,
+                      "stale metadata task cannot stop current capture");
+    failures += check(ul_plugin_metadata_refresh_frontend(generation) &&
+                          fake_metadata_refresh_count == 1u,
+                      "matching output refreshes metadata");
+    fake_metadata_match_result = false;
+    failures += check(!ul_plugin_metadata_refresh_frontend(generation) &&
+                          fake_metadata_fail_count == 1u &&
+                          InterlockedCompareExchange(
+                              &fake_capture_deactivate_count, 0, 0) >
+                              deactivations,
+                      "identity change terminally fails metadata");
+    failures += check(ul_plugin_metadata_close_frontend(generation, false) &&
+                          fake_metadata_close_count == 1u,
+                      "generation closes metadata observer");
+    ul_plugin_stop_accepting();
+    ul_plugin_close();
+    failures += check(fake_metadata_retire_count == 1u,
+                      "worker retirement clears private metadata snapshot");
+    close_capture_events();
+    return failures;
+}
+#endif
 
 static int scenario_capture_failures(void)
 {
@@ -1905,6 +2090,10 @@ static int run_child(const char *scenario)
         return scenario_disarm_lifecycle();
     if (strcmp(scenario, "disarm-close") == 0)
         return scenario_disarm_close_pending();
+#if UL_AUDIO_RUNTIME_VERSION == UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+    if (strcmp(scenario, "metadata") == 0)
+        return scenario_metadata_lifecycle();
+#endif
     return 1;
 }
 
@@ -1941,7 +2130,11 @@ int main(int argc, char **argv)
         L"arm-start-timeout", L"arm-stale", L"arm-bound", L"arm-teardown",
         L"arm-close", L"capture-clean", L"capture-failures",
         L"capture-cancel", L"capture-event-fail", L"cleanup-event-fail",
-        L"stream-event-fail", L"disarm-lifecycle", L"disarm-close"};
+        L"stream-event-fail", L"disarm-lifecycle", L"disarm-close"
+#if UL_AUDIO_RUNTIME_VERSION == UL_AUDIO_PROTOCOL_PROVENANCE_VERSION
+        , L"metadata"
+#endif
+    };
     wchar_t executable[32768];
     size_t index;
     int failures = 0;

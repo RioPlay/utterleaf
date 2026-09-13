@@ -22,12 +22,16 @@ static ul_arm_scheduler arm_scheduler;
 static ul_frontend_dispatch_callback queued_task;
 static uintptr_t queued_parameter;
 static unsigned queued_command;
-static ul_arm_scheduler capture_scheduler, cleanup_scheduler;
-static bool allow_dispatch, allow_post, allow_capture_schedulers;
+static ul_arm_scheduler capture_scheduler, cleanup_scheduler, metadata_scheduler;
+static bool allow_dispatch, allow_post, allow_capture_schedulers,
+            allow_metadata_scheduler;
 static bool inspect_requested, allow_inspect, allow_connect, capture_available;
 static unsigned inspect_calls, inspected_calls, connect_calls, attached_calls;
 static unsigned capture_releases, stop_calls, disconnect_calls, abandon_calls;
 static unsigned cleanup_completed_calls;
+static unsigned metadata_open_calls, metadata_refresh_calls,
+                metadata_close_calls, metadata_abandon_calls;
+static bool allow_metadata_open;
 static uintptr_t capture_generation, disconnected_generation;
 static bool inspected_ok, attached_ok, disconnected_all;
 static ul_audio_capture *test_capture = (ul_audio_capture *)(uintptr_t)55;
@@ -37,6 +41,10 @@ static unsigned queue_calls, idle_checks, output_releases, stream_events;
 static ul_stream_event last_stream_event;
 static obs_output_t *current_output = (obs_output_t *)(uintptr_t)3;
 static bool after_exit;
+static SRWLOCK frontend_gate;
+static unsigned lifecycle_order, metadata_open_order, connect_order,
+                metadata_close_order, disconnect_order;
+static bool require_metadata_post_unlocked;
 
 static void record(char value) { assert(order_size + 1 < sizeof(order)); order[order_size++] = value; order[order_size] = 0; }
 static uint32_t test_version(void) { return LIBOBS_API_VER; }
@@ -87,13 +95,27 @@ bool ul_frontend_dispatch_open(ul_frontend_dispatch_callback callback)
 { queued_task = callback; return allow_dispatch; }
 bool ul_frontend_dispatch_post(unsigned command, uintptr_t generation)
 {
-    assert(!exiting && command >= 1 && command <= 3 && generation != 0);
+    assert(!exiting && command >= 1 && command <= 4 && generation != 0);
+    if (command == 4 && require_metadata_post_unlocked) {
+        assert(TryAcquireSRWLockExclusive(&frontend_gate));
+        ReleaseSRWLockExclusive(&frontend_gate);
+    }
     if (!allow_post) return false;
     queued_command = command; queued_parameter = generation; ++queue_calls; return true;
 }
+bool ul_frontend_dispatch_try_post(unsigned command, uintptr_t generation)
+{ return ul_frontend_dispatch_post(command, generation); }
 void ul_frontend_dispatch_close(void) { /* Retain copied callback for late delivery. */ }
 bool ul_plugin_set_capture_schedulers(ul_arm_scheduler attach, ul_arm_scheduler cleanup)
 { capture_scheduler = attach; cleanup_scheduler = cleanup; return allow_capture_schedulers; }
+bool ul_plugin_set_metadata_scheduler(ul_arm_scheduler refresh)
+{ metadata_scheduler = refresh; return allow_metadata_scheduler; }
+bool ul_plugin_metadata_open_frontend(uintptr_t generation)
+{ assert(!after_exit && generation == capture_generation); ++metadata_open_calls; metadata_open_order = ++lifecycle_order; return allow_metadata_open; }
+bool ul_plugin_metadata_refresh_frontend(uintptr_t generation)
+{ assert(!after_exit && generation == capture_generation); ++metadata_refresh_calls; return true; }
+bool ul_plugin_metadata_close_frontend(uintptr_t generation, bool all)
+{ assert(!after_exit); assert(all || generation == capture_generation); if (all && !exiting) assert(last_stream_event == UL_STREAM_STOPPING || last_stream_event == UL_STREAM_STOPPED); ++metadata_close_calls; metadata_close_order = ++lifecycle_order; return true; }
 bool ul_plugin_capture_inspect_request(uintptr_t *generation, uint8_t *mask)
 { assert(!after_exit); *generation = capture_generation; *mask = 4; return inspect_requested; }
 bool ul_audio_capture_inspect_frontend(uint8_t mask, ul_audio_capture_spec *spec)
@@ -111,14 +133,14 @@ void ul_plugin_capture_inspected(uintptr_t generation, const ul_audio_capture_sp
 ul_audio_capture *ul_plugin_capture_retain(uintptr_t generation)
 { assert(!after_exit); return capture_available && generation == capture_generation ? test_capture : NULL; }
 bool ul_audio_capture_connect_frontend(ul_audio_capture *capture, uintptr_t generation)
-{ assert(!after_exit && capture == test_capture && generation == capture_generation); ++connect_calls; return allow_connect; }
+{ assert(!after_exit && capture == test_capture && generation == capture_generation); ++connect_calls; connect_order = ++lifecycle_order; return allow_connect; }
 void ul_plugin_capture_attached(uintptr_t generation, ul_audio_capture *capture, bool success)
 { assert(!after_exit && generation == capture_generation && capture == test_capture); ++attached_calls; attached_ok = success; }
 void ul_audio_capture_release(ul_audio_capture *capture)
 { assert(capture == test_capture); ++capture_releases; }
 void ul_plugin_capture_stop_frontend(void) { assert(!after_exit); ++stop_calls; }
 void ul_audio_capture_disconnect_frontend(uintptr_t generation, bool all)
-{ assert(!after_exit); ++disconnect_calls; disconnected_generation = generation; disconnected_all = all; }
+{ assert(!after_exit); ++disconnect_calls; disconnect_order = ++lifecycle_order; disconnected_generation = generation; disconnected_all = all; }
 void ul_plugin_capture_cleanup_complete(uintptr_t generation)
 {
     assert(!after_exit && disconnect_calls != 0 && !disconnected_all);
@@ -126,6 +148,7 @@ void ul_plugin_capture_cleanup_complete(uintptr_t generation)
     ++cleanup_completed_calls;
 }
 void ul_audio_capture_abandon_after_shutdown(void) { ++abandon_calls; }
+void ul_audio_metadata_abandon_after_shutdown(void) { ++metadata_abandon_calls; }
 ul_plugin_snapshot ul_plugin_get_status(void) { return snapshot; }
 void ul_plugin_stop_accepting(void) { assert(!enabled); snapshot.status = UL_PLUGIN_CLOSED; record('S'); }
 void ul_plugin_close(void) { assert(!enabled); snapshot.status = UL_PLUGIN_CLOSED; record('C'); }
@@ -169,16 +192,22 @@ static void reset(void)
     order_size = 0;
     order[0] = 0;
     frontend_open = false; queued_arm = 0; stream_busy = false;
-    arm_scheduler = capture_scheduler = cleanup_scheduler = NULL;
+    arm_scheduler = capture_scheduler = cleanup_scheduler = metadata_scheduler = NULL;
     queued_task = NULL; queued_parameter = 0; queued_command = 0;
     queued_capture = queued_cleanup = 0;
     allow_dispatch = allow_post = allow_capture_schedulers = true;
+    allow_metadata_scheduler = allow_metadata_open = true;
     allow_inspect = allow_connect = true;
     inspect_requested = capture_available = inspected_ok = attached_ok = disconnected_all = false;
     capture_generation = 40; disconnected_generation = 0;
     inspect_calls = inspected_calls = connect_calls = attached_calls = 0;
     capture_releases = stop_calls = disconnect_calls = abandon_calls = 0;
     cleanup_completed_calls = 0;
+    metadata_open_calls = metadata_refresh_calls = metadata_close_calls = 0;
+    metadata_abandon_calls = 0;
+    lifecycle_order = metadata_open_order = connect_order = 0;
+    metadata_close_order = disconnect_order = 0;
+    require_metadata_post_unlocked = false;
     checked_generation = 0;
     allow_scheduler = has_output = true;
     current_active = current_output_active = checked_idle = false;
@@ -322,6 +351,8 @@ int main(void)
     assert(!obs_module_load() && tools_calls == 0 && event_calls == 0);
     reset(); allow_capture_schedulers = false;
     assert(!obs_module_load() && tools_calls == 0 && event_calls == 0);
+    reset(); allow_metadata_scheduler = false;
+    assert(!obs_module_load() && tools_calls == 0 && event_calls == 0);
 
     /* Read-only inspection belongs to STARTED and reports unsupported formats. */
     reset(); assert(obs_module_load()); inspect_requested = true;
@@ -344,12 +375,19 @@ int main(void)
     dispatch_frontend(2, 39);
     assert(queued_capture == 40 && connect_calls == 0);
     queued_task(queued_command, queued_parameter);
-    assert(connect_calls == 1 && attached_calls == 1 && attached_ok && capture_releases == 1);
+    assert(connect_calls == 1 && metadata_open_calls == 1 &&
+           metadata_open_order < connect_order && attached_calls == 1 &&
+           attached_ok && capture_releases == 1);
     queued_task(queued_command, queued_parameter);
     assert(connect_calls == 1 && capture_releases == 1);
     allow_connect = false;
     assert(capture_scheduler(40)); queued_task(queued_command, queued_parameter);
-    assert(connect_calls == 2 && attached_calls == 2 && !attached_ok && capture_releases == 2);
+    assert(connect_calls == 2 && metadata_open_calls == 2 && metadata_close_calls == 1 && attached_calls == 2 && !attached_ok && capture_releases == 2);
+    allow_metadata_open = false;
+    assert(capture_scheduler(40)); queued_task(queued_command, queued_parameter);
+    assert(connect_calls == 2 && metadata_open_calls == 3 &&
+           attached_calls == 3 && !attached_ok && capture_releases == 3);
+    allow_metadata_open = true;
     capture_available = false;
     assert(capture_scheduler(40)); queued_task(queued_command, queued_parameter);
     assert(connect_calls == 2 && queued_capture == 0);
@@ -358,10 +396,16 @@ int main(void)
     dispatch_frontend(3, 39);
     assert(queued_cleanup == 40 && disconnect_calls == 0 && cleanup_completed_calls == 0);
     queued_task(queued_command, queued_parameter);
-    assert(disconnect_calls == 1 && disconnected_generation == 40 && !disconnected_all
-           && cleanup_completed_calls == 1);
+    assert(disconnect_calls == 1 && metadata_close_calls == 2 && disconnected_generation == 40 && !disconnected_all
+           && metadata_close_order < disconnect_order &&
+           cleanup_completed_calls == 1);
     queued_task(queued_command, queued_parameter);
-    assert(disconnect_calls == 1 && cleanup_completed_calls == 1);
+    assert(disconnect_calls == 1 && metadata_close_calls == 2 && cleanup_completed_calls == 1);
+    require_metadata_post_unlocked = true;
+    assert(metadata_scheduler(40));
+    require_metadata_post_unlocked = false;
+    queued_task(queued_command, queued_parameter);
+    assert(metadata_refresh_calls == 1);
     frontend_event(OBS_FRONTEND_EVENT_STREAMING_STOPPING, NULL);
     assert(stop_calls == 1 && disconnect_calls == 2 && disconnected_all);
     frontend_event(OBS_FRONTEND_EVENT_STREAMING_STOPPED, NULL);
@@ -373,13 +417,13 @@ int main(void)
            && cleanup_completed_calls == 1);
     assert(!capture_scheduler(40) && !cleanup_scheduler(40));
     obs_module_unload();
-    assert(abandon_calls == 1 && disconnect_calls == 4);
+    assert(abandon_calls == 1 && metadata_abandon_calls == 1 && disconnect_calls == 4);
 
     /* Missed EXIT must use only native abandonment, even with queued capture. */
     reset(); assert(obs_module_load()); capture_available = true;
     assert(capture_scheduler(40)); after_exit = true;
     obs_module_unload(); queued_task(queued_command, queued_parameter);
-    assert(abandon_calls == 1 && disconnect_calls == 0 && connect_calls == 0);
+    assert(abandon_calls == 1 && metadata_abandon_calls == 1 && disconnect_calls == 0 && connect_calls == 0);
 
     puts("bridge lifecycle, frontend handoff and stream-busy gate tests passed");
     return 0;

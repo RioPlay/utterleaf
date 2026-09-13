@@ -14,6 +14,8 @@ from PIL import ImageGrab
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from utterleaf.obs_session_ui import ObsSessionWindow
+from utterleaf.obs_mix import BusLabel, MixSnapshot, SourceAssignment
+from utterleaf.obs_protocol import RoutingFrame
 
 
 class SnapshotSource:
@@ -108,6 +110,14 @@ STATES = {
     ),
 }
 
+STATES["active"][0].routing = RoutingFrame(
+    b"s" * 16, 2, 80_000_000_000, ((0, 20), (2, 20)),
+    MixSnapshot(0, 5,
+                (SourceAssignment(b"a" * 16, "Host microphone", 5),
+                 SourceAssignment(b"b" * 16, "Guest call and desktop audio", 5)),
+                (BusLabel(0, "Mix 1"), BusLabel(2, "Mix 3"))),
+)
+
 CAPTURES = (
     ("disabled", "disabled", "840x720+80+60"),
     ("ready", "ready", "840x720+80+60"),
@@ -118,6 +128,8 @@ CAPTURES = (
     ("compact-disabled", "disabled", "560x520+80+60"),
     ("compact-active", "active", "560x520+80+60"),
     ("compact-degraded", "degraded", "560x520+80+60"),
+    ("active-mixes", "active", "840x720+80+60"),
+    ("compact-mixes", "active", "560x520+80+60"),
 )
 
 
@@ -141,6 +153,7 @@ def capture(output: Path | None = None) -> Path:
             controller.value, coordinator.value = STATES[state_name]
             window.root.geometry(geometry)
             window.refresh()
+            window.preview_tabs.select(1 if name.endswith("-mixes") else 0)
             for _ in range(5):
                 root.update()
                 time.sleep(0.04)

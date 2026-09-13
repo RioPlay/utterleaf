@@ -49,6 +49,7 @@ typedef bool (*ul_arm_scheduler)(uintptr_t generation);
 bool ul_plugin_set_arm_scheduler(ul_arm_scheduler scheduler);
 bool ul_plugin_set_capture_schedulers(ul_arm_scheduler attach,
                                       ul_arm_scheduler cleanup);
+bool ul_plugin_set_metadata_scheduler(ul_arm_scheduler refresh);
 void ul_plugin_arm_checked(uintptr_t generation, bool idle);
 void ul_plugin_stream_event(ul_stream_event event);
 ul_session_phase ul_plugin_session_status(void);
@@ -67,6 +68,12 @@ void ul_plugin_capture_attached(uintptr_t generation,
 void ul_plugin_capture_cleanup_complete(uintptr_t generation);
 /* Deactivates and drains callback readers without calling OBS. */
 void ul_plugin_capture_stop_frontend(void);
+
+/* Frontend-only provenance observer lifecycle for the current capture
+ * generation. Refresh also revalidates the streaming output/audio format. */
+bool ul_plugin_metadata_open_frontend(uintptr_t generation);
+bool ul_plugin_metadata_refresh_frontend(uintptr_t generation);
+bool ul_plugin_metadata_close_frontend(uintptr_t generation, bool all);
 
 /*
  * Permanently pins this DLL generation before callbacks may be registered.

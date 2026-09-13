@@ -9,6 +9,8 @@ from tkinter import ttk
 import pytest
 
 from utterleaf import obs_session_ui as ui
+from utterleaf.obs_mix import BusLabel, MixSnapshot, SourceAssignment
+from utterleaf.obs_protocol import RoutingFrame
 
 
 class RecognitionState(Enum):
@@ -478,3 +480,124 @@ def test_browse_is_explicit_and_render_never_opens_picker(opened, monkeypatch):
     assert calls == []
     window.browse_button.invoke()
     assert len(calls) == 1 and window.executable_var.get() == r"C:\OBS\obs64.exe"
+
+
+def routing_observation(revision=1, *, name="Guest and desktop"):
+    return RoutingFrame(
+        b"s" * 16, revision, 100 + revision, ((0, 0), (1, 0), (2, 0), (3, 0)),
+        MixSnapshot(0, 15,
+                    (SourceAssignment(b"a" * 16, name, 3),
+                     SourceAssignment(b"b" * 16, "Music", 4)),
+                    tuple(BusLabel(bus, f"Mix {bus + 1}") for bus in range(4))),
+    )
+
+
+def test_mix_details_are_local_read_only_and_distinguish_assignments(opened, tk_root):
+    snapshot = session("active", primary=0, buses=(0, 1, 2, 3), seconds=25)
+    snapshot.routing = routing_observation()
+    window, controller, _coordinator, actions = opened(
+        snapshot, recognition(RecognitionState.RUNNING, preview="Original transcript", tracks=4),
+    )
+    window.preview_tabs.select(1)
+    tk_root.update()
+    details = window.mix_details.get("1.0", "end-1c")
+    assert "Complete streaming mix" in details
+    assert "Same assigned inputs as the primary mix; audio may differ" in details
+    assert "Different assigned inputs" in details and "No observed assigned inputs" in details
+    assert "before or after this observation" in details
+    assert "Guest and desktop" in details and "Music" in details
+    assert "update 1" in details
+    assert state(window.mix_details) == "disabled"
+    assert not int(window.mix_details.cget("exportselection"))
+    assert actions.calls == []
+
+    controller.value.routing = routing_observation(2, name="Renamed guest")
+    window.refresh()
+    assert window.preview.get("1.0", "end-1c") == "Original transcript"
+    assert "Renamed guest" in window.mix_details.get("1.0", "end-1c")
+    assert "Guest and desktop" not in window.mix_details.get("1.0", "end-1c")
+    assert window.preview_tabs.index("current") == 1
+    assert "Renamed guest" not in repr(window)
+
+    controller.value.state = "cancelling"
+    window.refresh()
+    assert window.mix_details.get("1.0", "end-1c") == ""
+    assert window.preview_tabs.index("current") == 0
+    assert str(window.preview_tabs.tab(1, "state")) == "disabled"
+
+
+@pytest.mark.parametrize("geometry", ["560x520", "840x720"])
+def test_mix_details_share_preview_space_and_keep_stop_accessible(opened, tk_root, geometry):
+    snapshot = session("active", primary=0, buses=(0, 1, 2, 3))
+    snapshot.routing = routing_observation(name="Long private input name " * 5)
+    window, _controller, _coordinator, actions = opened(snapshot)
+    window.root.geometry(geometry + "+40+40")
+    window.preview_tabs.select(1)
+    tk_root.update()
+    bottom = window.root.winfo_rooty() + window.root.winfo_height()
+    assert window.mix_details.winfo_ismapped()
+    assert window.mix_details.winfo_height() >= 100
+    for widget in (window.stop_button, window.cancel_button, window.close_button):
+        assert widget.winfo_ismapped()
+        assert widget.winfo_rooty() + widget.winfo_height() <= bottom
+    assert actions.calls == []
+
+
+@pytest.mark.parametrize("external_destroy", [False, True])
+def test_closing_view_releases_cached_private_routing(opened, tk_root, external_destroy):
+    snapshot = session("active", primary=0, buses=(0, 1, 2, 3))
+    snapshot.routing = routing_observation()
+    window, _controller, _coordinator, actions = opened(snapshot)
+    assert window._last_routing is snapshot.routing
+    if external_destroy:
+        window.root.destroy()
+        tk_root.update()
+    else:
+        window.close()
+    assert window.closed and window._last_routing is None
+    assert actions.calls == [("close",)]
+
+
+def test_mix_tabs_support_keyboard_navigation_without_actions(opened, tk_root):
+    snapshot = session("active", primary=0, buses=(0, 1, 2, 3))
+    snapshot.routing = routing_observation()
+    window, _controller, _coordinator, actions = opened(snapshot)
+    window.preview.focus_force()
+    tk_root.update()
+    window.root.event_generate("<Control-Tab>")
+    tk_root.update()
+    assert window.preview_tabs.index("current") == 1
+    window.root.event_generate("<Control-Tab>")
+    tk_root.update()
+    assert window.preview_tabs.index("current") == 0
+    window.root.event_generate("<Alt-m>")
+    tk_root.update()
+    assert window.preview_tabs.index("current") == 1
+    assert actions.calls == []
+
+
+def test_maximum_mix_details_remain_bounded_scrollable_and_local(opened, tk_root):
+    snapshot = session("active", primary=0, buses=tuple(range(6)))
+    snapshot.routing = RoutingFrame(
+        b"s" * 16, 1, 0, tuple((bus, 0) for bus in range(6)),
+        MixSnapshot(0, 63,
+                    tuple(SourceAssignment(index.to_bytes(16, "big"),
+                                           f"Input {index:03d} ".ljust(128, "x"), 63)
+                          for index in range(128)),
+                    tuple(BusLabel(bus, f"Label {bus} ".ljust(64, "x")) for bus in range(6))),
+    )
+    window, _controller, _coordinator, actions = opened(snapshot)
+    window.root.geometry("560x520+40+40")
+    window.preview_tabs.select(1)
+    tk_root.update()
+    details = window.mix_details.get("1.0", "end-1c")
+    assert details.count("Input 127 ") == 6
+    assert details.count("Same assigned inputs") == 5
+    assert len(details) < 110_000
+    assert window.mix_details.yview()[1] < 1
+    assert window.mix_details.winfo_height() >= 100
+    assert window.stop_button.winfo_ismapped()
+    window.mix_details.yview_moveto(1)
+    tk_root.update()
+    assert window.mix_details.yview()[1] == 1
+    assert actions.calls == []
