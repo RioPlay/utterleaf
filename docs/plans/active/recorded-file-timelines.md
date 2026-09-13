@@ -85,7 +85,14 @@ $py = "C:/Users/unknown/Projects/Mindict/.venv/Scripts/python.exe"
 
 Run focused UI captures/tests when its controls change. CI owns the full desktop
 matrix and package checks. Use only explicitly verified local executables for
-real codec fixtures; do not download codecs or access user media for tests.
+real codec fixtures and do not access user media. The initial local/WSL inventory
+found no FFmpeg/FFprobe, so the development fixture prerequisite uses a release build from
+an FFmpeg-listed Windows publisher, verified against its published checksum
+before execution. Keep the tools and retained notices in ignored test tooling,
+outside product packages, and use an isolated test selection record. This is
+development setup; it does not authorize automatic discovery/downloads in the app
+or add redistributed codecs to Utterleaf. Retain only the needed executables and
+notices, remove the verified download archive, and record source/individual hashes.
 Record exact commands, source hashes, fixture inputs and independent reviews.
 
 ## Current state
@@ -124,18 +131,27 @@ Timing and resampler APIs follow the primary [PyAV time documentation](https://p
 and [audio API](https://pyav.org/docs/stable/api/audio.html); installed-version
 synthetic fixtures are the behavioral evidence. Separate explicit FFprobe
 selection/forget and hash revalidation APIs are implemented and independently
-reviewed. They neither discover nor run an executable and are not yet exposed
-in the UI. The shared identity helper retains the existing FFmpeg behavior.
-The packaged decoder's timing transport, bounded probe runner/metadata parser
-and selection UI remain unfinished.
+reviewed. They neither discover nor run an executable. The More formats dialog
+now exposes explicit FFmpeg decoding and FFprobe inspection selections; the
+shared identity helper retains the existing FFmpeg behavior. Timed decoder
+transport, gap-aware resampling/build pairing, original-frame journaling,
+aligned transcription and shared-clock export remain unfinished.
 
-Current focused verification: **149 passed, 12 skipped** with the shared Python:
+The current file window automatically inspects a newly chosen file in a
+background worker, presents actual audio-stream metadata while retaining global
+container indexes, and passes the selected audio ordinal to the existing
+transcription call. PCM WAV inspection uses the standard-library WAV reader
+without either external tool. This picker does not claim aligned timestamps:
+subtitles remain relative to the selected track until timed decoder and export
+integration are complete.
+
+Initial committed-core verification: **149 passed, 12 skipped** with the shared Python:
 
 ```powershell
 & $py -m pytest tests/test_file_media.py tests/test_file_timeline.py tests/test_file_probe.py tests/test_audio_batching.py tests/test_file_streaming.py tests/test_file_decoder.py tests/test_file_transcription.py tests/test_transcript.py tests/test_privacy.py tests/test_config.py tests/test_repo_boundaries.py -o addopts= -q
 ```
 
-The 12 skips are 11 existing external-codec fixtures without a selected test
+Those 12 skips were 11 existing external-codec fixtures without a selected test
 FFmpeg and one Windows symlink-creation restriction. Independent review passed
 the original 49 timing/batching tests, then the changed probe/helper and AAC
 checks (**31 passed, 12 skipped**). No microphone, user recording, model download,
@@ -146,13 +162,32 @@ baseline because Windows creation/change timestamps can differ across APIs.
 ### Packaged decoder design evidence and next work
 
 The [FFmpeg format reference](https://ffmpeg.org/ffmpeg-formats.html) documents
-that raw PCM has no timing and that framehash records packet timing, byte size
-and content hash. A candidate cross-platform transport uses a private bounded
-framehash journal, then an identical second decode to raw PCM with every packet
-verified against that journal. Keeping the original rate during those passes
-would allow each accepted contiguous run to be resampled and EOF-flushed
-separately. This design is **not implemented or accepted**; double decoding,
-bounded storage, process cleanup and real codec timing require verification.
+that raw PCM has no timing. Real synthetic checks also show why a framehash
+journal alone is insufficient: FFmpeg invents missing audio timestamps even
+with `-copyts` and without `+genpts`. Timestamp evidence must come from original
+decoded-frame PTS exposed by FFprobe with `-fflags +nofillin`, never a
+best-effort timestamp fallback.
+
+The current two-pass candidate is **not implemented or accepted**:
+
+1. Explicitly selected FFprobe records original frame PTS and sample counts in
+   a bounded private journal, validating stream time base/rate and frame format,
+   channels and layout. FFprobe 9 does not expose per-frame sample rate or time
+   base; requesting those fields does not make them available.
+2. A separately selected, compatible FFmpeg build decodes that stream with
+   `-copyts -reinit_filter 0 -xerror` to mono PCM at the original rate. Accept only
+   successful exit, unchanged source checks and exactly the first pass's sample
+   count. Partition bytes using the journal, then resample and EOF-flush each
+   accepted contiguous run separately before recognition.
+
+Real 48→44.1 kHz and mono→stereo ADTS changes fail under that command, but emit
+a partial 22,528-byte prefix before failure. All output must therefore remain
+provisional until final validation. Default reinitialization silently converts
+the rate change. Single-frame or very short runs may not corroborate first-frame
+rate metadata; their rejection/unsupported policy remains to be finalized.
+Build compatibility, frame-journal limits, per-run resampling, cleanup and
+decoder determinism remain implementation/review gates. Exact sample counts
+are not a cryptographic binding between the two decoder passes.
 
 The alternative tee approach avoids double decoding but needs two safely drained
 private channels on Windows; mixing timing with arbitrary stderr diagnostics is
@@ -163,10 +198,51 @@ inventory and a common origin need the separately selected
 [FFprobe](https://ffmpeg.org/ffprobe.html). Validate retained origin/PTS against
 independent synthetic fixtures, including negative starts, gaps and codec trim.
 
-No existing FFmpeg/FFprobe executable was found on PATH, in the local test-tool
-inventory or in the installed WSL distribution. Do not turn absent real-runtime
-evidence into a packaged alignment claim. The next implementation must resolve
-that fixture prerequisite while retaining the explicit-tool trust boundary.
+The development fixture prerequisite is now satisfied by the FFmpeg-listed Gyan
+9.0.1 essentials build, verified against its publisher's archive checksum before
+execution. Only FFmpeg, FFprobe and their notices remain under ignored `.grok/tools`;
+the download archive was removed. This is development evidence, not bundled code,
+a publisher signature, or a packaged alignment claim.
+
+The current probe runner limits JSON output to 1 MiB and 256 streams, rejects
+nonregular/empty sources before opening, checks ordinary source changes, and
+uses a 30-second deadline with cancellation and process cleanup. PCM WAV inspection
+needs neither tool and uses an explicitly zero-based sample clock, not BWF time
+references. The picker checks the ordinary file signature before and after
+recognition and discards a changed result. These pathname checks do not establish
+content authenticity or eliminate malicious replacement races; held-source
+binding in the full timed workflow remains separate work.
+
+The real-tool affected regression passes **241 tests, 3 skips** (Windows-only
+symlink permission, POSIX replacement semantics and FIFO cases). The command uses
+both `UTTERLEAF_TEST_FFMPEG` and `UTTERLEAF_TEST_FFPROBE` set only in the test shell:
+
+```powershell
+& $py -m pytest tests/test_file_probe.py tests/test_file_metadata.py tests/test_file_inspection.py tests/test_file_decoder.py tests/test_file_media.py tests/test_file_timeline.py tests/test_file_streaming.py tests/test_file_transcription.py tests/test_audio_batching.py tests/test_transcript.py tests/test_obs_transcription.py tests/test_privacy.py tests/test_config.py tests/test_repo_boundaries.py -o addopts= -q
+```
+
+The added ten-format inspection matrix caught a raw AAC regression: valid
+audio format metadata had no container or stream start. Relative transcription
+now explicitly allows a missing common origin as `None`/`unavailable`; it never
+invents zero or uses a partial set of stream starts. Probe/parser defaults still
+require a common origin for future timed callers. Malformed present timing stays
+invalid in both modes. All ten real format fixtures now pass.
+
+CI `34782542414` at `33729f7` passed four desktop jobs and Linux X11 tests, but
+failed the forced-Wayland repeat on an existing OBS close assertion. Capture
+close is intentionally nonblocking; the test now waits for its actual writer
+before asserting the backing file is closed. The complete OBS transcription
+test file passes locally. A new source CI run is required after this repair;
+the failed run is not described as green.
+
+The UI/CLI regression passes **41 tests**. Independent review covers 19 file
+window cases and six decoder-dialog cases, including queued cancellation,
+duplicate jobs, ordinary source changes, stale queues after close, explicit
+selection/forget and failed worker startup. Seven synthetic captures from
+`tests/capture_file_ui.py` cover default and compact windows. Long executable
+paths remain selectable without expanding the dialog beyond its compact bounds.
+These are source-level Windows Tk checks; no new package, actual OBS instance,
+personal media, microphone or consumer-profile selection was used.
 
 ## Non-goals and stop
 

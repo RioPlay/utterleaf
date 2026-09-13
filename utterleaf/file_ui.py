@@ -6,33 +6,54 @@ from dataclasses import replace
 from pathlib import Path
 import queue
 import threading
+import unicodedata
 
 from utterleaf import theme
 from utterleaf.config import Config
 from utterleaf.file_transcription import transcribe_file
+from utterleaf.file_inspection import current_file_signature, inspect_file
 from utterleaf.transcript import TranscriptionCancelled, export_transcript
 
 
-def _work(path, cfg, audio_track, cancel, events):
-    # Only this bounded queue crosses threads. Workers never touch Tk widgets.
-    def send(kind, value):
-        try:
-            events.put_nowait((kind, value))
-        except queue.Full:
-            try:
-                events.get_nowait()
-            except queue.Empty:
-                pass
-            events.put_nowait((kind, value))
-
+def _send(events, kind, value):
     try:
-        result = transcribe_file(path, cfg, audio_track=audio_track, cancel=cancel,
-                                 progress=lambda phase, amount: send("progress", (phase, amount)))
-        send("cancelled", None) if cancel.is_set() else send("result", result)
+        events.put_nowait((kind, value))
+    except queue.Full:
+        try:
+            events.get_nowait()
+        except queue.Empty:
+            pass
+        events.put_nowait((kind, value))
+
+
+def _inspect_work(path, cancel, events):
+    try:
+        value = inspect_file(path, cancel=cancel)
+        _send(events, "cancelled", None) if cancel.is_set() else _send(events, "inspection", value)
     except TranscriptionCancelled:
-        send("cancelled", None)
+        _send(events, "cancelled", None)
     except Exception as exc:
-        send("cancelled", None) if cancel.is_set() else send("error", str(exc))
+        _send(events, "cancelled", None) if cancel.is_set() else _send(events, "error", str(exc))
+
+
+def _work(path, cfg, audio_track, cancel, events, expected_signature=None):
+    # Only this bounded queue crosses threads. Workers never touch Tk widgets.
+    try:
+        if cancel.is_set():
+            raise TranscriptionCancelled("File recognition cancelled")
+        if expected_signature is not None and current_file_signature(path) != expected_signature:
+            raise ValueError("The selected file changed. Inspect its tracks again.")
+        result = transcribe_file(path, cfg, audio_track=audio_track, cancel=cancel,
+                                 progress=lambda phase, amount: _send(events, "progress", (phase, amount)))
+        if cancel.is_set():
+            raise TranscriptionCancelled("File recognition cancelled")
+        if expected_signature is not None and current_file_signature(path) != expected_signature:
+            raise ValueError("The selected file changed. Inspect its tracks again.")
+        _send(events, "cancelled", None) if cancel.is_set() else _send(events, "result", result)
+    except TranscriptionCancelled:
+        _send(events, "cancelled", None)
+    except Exception as exc:
+        _send(events, "cancelled", None) if cancel.is_set() else _send(events, "error", str(exc))
 
 
 class FileWindow:
@@ -45,8 +66,12 @@ class FileWindow:
         self.cfg = replace(cfg)
         self.closed = False
         self.busy = False
+        self.operation = None
         self.result = None
         self.path = None
+        self.inspected = None
+        self.inspection_signature = None
+        self._track_ordinals = {}
         self.cancel_event = threading.Event()
         self.events = queue.Queue(maxsize=8)
         self.poll_id = None
@@ -69,7 +94,8 @@ class FileWindow:
         self.file_guidance = ttk.Label(
             heading,
             text="No duration limit · Processing stays on this computer · Installed models only\n"
-                 "MP3, M4A and video: choose More formats to set up local decoding.",
+                 "MP3, M4A and video: choose More formats to set up local decoding.\n"
+                 "Subtitle times start at this track’s beginning.",
             style="Hint.TLabel", wraplength=560,
         )
         self.file_guidance.grid(row=2, column=0, sticky="w")
@@ -88,20 +114,13 @@ class FileWindow:
         self.start_button.grid(row=0, column=2)
         self.audio_track_label = ttk.Label(select, text="Audio track", underline=0)
         self.audio_track_label.grid(row=1, column=0, sticky="w", pady=(10, 0))
-        self.audio_track = tk.StringVar(value="1")
-        track_style = ttk.Style(root)
-        track_style.configure("File.TSpinbox", fieldbackground=theme.SURFACE_LOW,
-                              background=theme.SURFACE_LOW, foreground=theme.ON_SURFACE,
-                              arrowcolor=theme.ON_VARIANT, bordercolor=theme.OUTLINE_VARIANT,
-                              lightcolor=theme.OUTLINE_VARIANT, darkcolor=theme.OUTLINE_VARIANT,
-                              padding=4)
-        track_style.map("File.TSpinbox", bordercolor=[("focus", theme.PRIMARY)],
-                        lightcolor=[("focus", theme.PRIMARY)], darkcolor=[("focus", theme.PRIMARY)],
-                        foreground=[("disabled", theme.OUTLINE)])
-        self.audio_track_input = ttk.Spinbox(select, from_=1, to=256, increment=1,
-                                              textvariable=self.audio_track, width=6,
-                                              style="File.TSpinbox")
-        self.audio_track_input.grid(row=1, column=1, sticky="w", padx=12, pady=(10, 0))
+        self.audio_track = tk.StringVar(value="")
+        self.audio_track_input = ttk.Combobox(select, textvariable=self.audio_track,
+                                              state="readonly", width=34, values=())
+        self.audio_track_input.grid(row=1, column=1, sticky="ew", padx=12, pady=(10, 0))
+        self.inspect_button = ttk.Button(select, text="Inspect tracks", command=self.inspect_tracks,
+                                         state="disabled")
+        self.inspect_button.grid(row=1, column=2, sticky="w", padx=(8, 0), pady=(10, 0))
         root.bind("<Alt-a>", lambda _event: self.audio_track_input.focus_set(), add="+")
         self.audio_track_hint = ttk.Label(
             select,
@@ -160,13 +179,14 @@ class FileWindow:
 
     def _controls(self):
         self.choose_button.configure(state="disabled" if self.busy else "normal")
-        self.start_button.configure(state="normal" if self.path and not self.busy else "disabled")
+        self.start_button.configure(state="normal" if self.path and self.inspected and not self.busy else "disabled")
         self.cancel_button.configure(state="normal" if self.busy and not self.cancel_event.is_set() else "disabled")
         self.discard_button.configure(state="normal" if self.result is not None else "disabled")
         self.export_button.configure(state="normal" if self.result is not None and not self.busy else "disabled")
         self.decoder_button.configure(state="disabled" if self.busy else "normal")
         self.model_button.configure(state="disabled" if self.busy else "normal")
-        self.audio_track_input.configure(state="disabled" if self.busy else "normal")
+        self.audio_track_input.configure(state="disabled" if self.busy else "readonly")
+        self.inspect_button.configure(state="disabled" if self.busy or not self.path else "normal")
 
     def decoder_setup(self):
         if self.busy or self.closed:
@@ -184,39 +204,80 @@ class FileWindow:
                                          filetypes=[("Audio and video", "*.wav *.mp3 *.m4a *.m4b *.aac *.flac *.ogg *.opus *.mp4 *.mov *.webm *.mkv"),
                                                     ("All files", "*.*")])
         if path:
-            self.discard()
+            self.result = None
+            self._preview("")
             self.path = Path(path)
+            self.inspected = None
+            self.inspection_signature = None
+            self._track_ordinals = {}
+            self.audio_track_input.configure(values=())
+            self.audio_track.set("")
             self.filename.set(self.path.name)
-            self.status.set("Ready. Recognition uses installed models and stays on this computer.")
+            self.status.set("Inspecting tracks…")
+            self._controls()
+            self._start_inspection()
+
+    def inspect_tracks(self):
+        if self.closed or self.busy or self.path is None:
+            return
+        self._start_inspection()
+
+    def _start_inspection(self):
+        self.busy = True
+        self.operation = "inspection"
+        self.cancel_event = threading.Event()
+        self.events = queue.Queue(maxsize=8)
+        self.status.set("Inspecting tracks…")
+        self._controls()
+        try:
+            threading.Thread(target=_inspect_work, args=(self.path, self.cancel_event, self.events),
+                             name="utterleaf-file-inspect", daemon=True).start()
+        except Exception as exc:
+            self.busy = False
+            self.operation = None
+            self.status.set("Could not start inspection.")
             self._controls()
 
     def start(self):
         if self.closed or self.busy or self.path is None:
             return
+        if self.inspected is None or self.inspection_signature is None:
+            self.status.set("Inspect tracks before starting recognition.")
+            return
         try:
-            audio_track = int(self.audio_track.get())
-        except ValueError:
-            audio_track = 0
-        if not 1 <= audio_track <= 256:
-            self.status.set("Audio track must be a whole number from 1 to 256.")
+            audio_track = self._track_ordinals[self.audio_track.get()]
+        except KeyError:
+            self.status.set("Choose an inspected audio track first.")
             self.audio_track_input.focus_set()
             return
-        self.discard()
+        self.result = None
+        self._preview("")
         self.busy = True
+        self.operation = "recognition"
         self.cancel_event = threading.Event()
         self.events = queue.Queue(maxsize=8)
         self.status.set("Opening the selected file…")
         self._controls()
-        threading.Thread(target=_work, args=(self.path, self.cfg, audio_track - 1,
-                                             self.cancel_event, self.events),
-                         name="utterleaf-file", daemon=True).start()
+        try:
+            threading.Thread(target=_work, args=(self.path, self.cfg, audio_track,
+                                                 self.cancel_event, self.events, self.inspection_signature),
+                             name="utterleaf-file", daemon=True).start()
+        except Exception as exc:
+            self.busy = False
+            self.operation = None
+            self.status.set("Could not start recognition.")
+            self._controls()
 
     def cancel(self):
         if self.busy:
             self.cancel_event.set()
-            self.result = None
-            self._preview("")
-            self.status.set("Cancelling… The current model operation must finish first. Nothing will be saved.")
+            if self.operation == "recognition":
+                self.result = None
+                self._preview("")
+            if self.operation == "inspection":
+                self.status.set("Cancelling track inspection… Existing preview is preserved.")
+            else:
+                self.status.set("Cancelling… The current model operation must finish first. Nothing will be saved.")
             self._controls()
 
     def discard(self):
@@ -252,8 +313,45 @@ class FileWindow:
                     self.progress.start(15)
                 else:
                     self.progress["value"] = amount
+            elif kind == "inspection":
+                if self.cancel_event.is_set():
+                    self.busy = False
+                    self.operation = None
+                    self.progress.stop()
+                    self.status.set("Cancelled. Existing preview preserved.")
+                    self._controls()
+                    continue
+                inspected = value
+                self.inspected = inspected
+                self.inspection_signature = inspected.signature
+                values = []
+                self._track_ordinals = {}
+                for track in inspected.metadata.tracks:
+                    title = " ".join((track.title or "Audio track").split())
+                    title = "".join(" " if unicodedata.category(ch).startswith("C") else ch for ch in title)
+                    title = " ".join(title.split()).strip() or "Audio track"
+                    if len(title) > 24:
+                        title = title[:23].rstrip() + "…"
+                    label = f"{track.ordinal + 1}: {title}"
+                    details = []
+                    if track.sample_rate:
+                        details.append(f"{track.sample_rate / 1000:g} kHz")
+                    if track.channels:
+                        details.append(f"{track.channels} ch")
+                    if details:
+                        label += " (" + ", ".join(details) + ")"
+                    values.append(label)
+                    self._track_ordinals[label] = track.ordinal
+                self.audio_track_input.configure(values=values)
+                if values:
+                    self.audio_track.set(values[0])
+                    self.status.set("Tracks inspected. Choose a track, then transcribe.")
+                self.busy = False
+                self.operation = None
+                self._controls()
             else:
                 self.busy = False
+                self.operation = None
                 self.progress.stop()
                 if self.cancel_event.is_set() or kind == "cancelled":
                     self.status.set("Cancelled. No transcript saved.")

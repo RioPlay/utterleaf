@@ -40,6 +40,16 @@ def _result(tracks, *, clean=True, reason="OBS capture finished.", origin=ORIGIN
                             clean_end=clean, reason=reason)
 
 
+def _assert_audio_files_closed(result):
+    assert result.closed
+    # CaptureStore.close requests cancellation without waiting for in-flight I/O.
+    # Recognition completion is not the capture writer's completion barrier.
+    for track in result.tracks:
+        track.store._worker.join(2)
+        assert not track.store._worker.is_alive()
+        assert track.store._file.closed
+
+
 def _factory(recognize, observed_configs=None):
     def make(config):
         if observed_configs is not None:
@@ -82,7 +92,7 @@ def test_live_windows_are_recognized_before_end_with_per_track_timestamps(monkey
     assert [segment.start for segment in segments] == pytest.approx([0.101, 0.111])
     assert [segment.end for segment in segments] == pytest.approx([0.105, 0.115])
     assert calls == [(calls[0][0], 160, False), (calls[0][0], 160, False)]
-    assert result.closed and store._file.closed
+    _assert_audio_files_closed(result)
     assert coordinator.close(2)
 
 
@@ -118,7 +128,7 @@ def test_six_tracks_share_one_round_robin_recognition_worker(monkeypatch):
     snapshot = coordinator.snapshot()
     assert snapshot.track_count == snapshot.completed_tracks == 6
     assert snapshot.state is live.ObsTranscriptionState.COMPLETE
-    assert result.closed and all(store._file.closed for store in stores)
+    _assert_audio_files_closed(result)
     coordinator.close(2)
 
 
@@ -301,7 +311,7 @@ def test_saved_non_segmented_engine_fails_without_silent_device_override(monkeyp
     assert choices == [None]
     assert coordinator.failed
     assert coordinator.snapshot().state is live.ObsTranscriptionState.FAILED
-    assert result.closed and store._file.closed
+    _assert_audio_files_closed(result)
     coordinator.close(2)
 
 
@@ -362,7 +372,7 @@ def test_cancel_during_journal_write_rolls_back_and_closes_owned_result(monkeypa
     assert coordinator.wait(2)
     assert coordinator.snapshot().state is live.ObsTranscriptionState.CANCELLED
     assert list(coordinator.iter_segments()) == []
-    assert result.closed and store._file.closed
+    _assert_audio_files_closed(result)
     assert coordinator.close(2) and journal.closed
 
 
@@ -388,7 +398,7 @@ def test_journal_write_failure_is_failed_and_result_is_closed(monkeypatch):
     assert snapshot.state is live.ObsTranscriptionState.FAILED
     assert snapshot.preview == ""
     assert coordinator.failed
-    assert result.closed and store._file.closed
+    _assert_audio_files_closed(result)
     coordinator.close(2)
 
 

@@ -8,8 +8,16 @@ cutoff. Audio is decoded and recognized in bounded batches. The file window and
 `--audio-track` CLI option can select an individual audio track for each job.
 Live OBS capture remains separate, unimplemented work.
 
+**Upcoming source update (unreleased):** the file window inspects actual audio
+streams before recognition and replaces the numeric track selector with a list
+of track names, sample rates and channel counts. Other formats require a
+separately selected FFprobe for inspection. The workflow and setup below describe
+that source update; published RC2 retains its numeric selector and FFmpeg-only
+setup. Container timing alignment is not implemented in either workflow yet.
+
 Open **Tools → Transcribe a file** from the tray, or run `utterleaf --files`.
-Choose a file, select **Transcribe**, and review the preview. Choose TXT, SRT, or
+Choose a file, wait for **Inspect tracks** to finish, select an actual audio
+stream, then choose **Transcribe** and review the preview. Choose TXT, SRT, or
 VTT before **Export**. Existing destinations require a replace confirmation;
 the original media file cannot be used as the export destination. **Discard**
 clears the preview and **Close** cancels any work and discards the preview.
@@ -18,7 +26,8 @@ own separate window. No microphone opens merely because this tool is open.
 
 ![0.4.6 RC2 preview local file window with audio-track selection and explicit export controls](assets/screenshots/desktop-file-tracks.png)
 
-Actual RC1 preview application window with a synthetic filename; no personal recording is shown.
+Earlier preview window with a synthetic filename. The upcoming source uses an
+inspected track list; no personal recording is shown.
 
 PCM WAV works immediately: mono or stereo, 8/16/24/32-bit integer samples, and
 8–48 kHz sample rates. **More formats…** connects a separately installed FFmpeg
@@ -31,20 +40,25 @@ you do not need Python or a source installation for these formats.
 
 ![Local decoder setup with download instructions and executable selection](assets/screenshots/desktop-more-formats.png)
 
-Actual Windows setup window, captured with an empty synthetic configuration.
+Earlier Windows setup window, captured with an empty synthetic configuration.
+The upcoming dialog adds a separate FFprobe row.
 
 1. Open **Tools → Transcribe a file → More formats…**.
 2. Install FFmpeg using the instructions for your computer below.
-3. Choose **Choose FFmpeg…**, select its executable, and confirm that you want
+3. In the **FFmpeg** row choose **Choose…**, select its executable, and confirm that you want
    Utterleaf to use that program. Nothing is executed during this selection.
-4. Choose **Done**, select your MP3, M4A, video, or other supported file, and
-   choose **Transcribe**. Track 1 is the default; video is not decoded.
+4. In the **FFprobe** row choose **Choose…** and explicitly select the FFprobe
+   executable from your installation. Confirm its use for track inspection.
+5. Choose **Done**, select your MP3, M4A, video, or other supported file, wait
+   for **Inspect tracks**, choose a reported audio stream, and choose
+   **Transcribe**. Video is inspected for its audio streams but is not decoded.
 
 On **Windows**, choose **Download page…**. On the official FFmpeg page, follow
 **Windows builds from gyan.dev**, then download **release essentials ZIP**.
 Use **Extract All**, keep the extracted folder in a permanent location such as
-`C:\Tools\FFmpeg`, and choose the extracted `bin\ffmpeg.exe`. Select the executable,
-not the ZIP, an installer, or `ffprobe.exe`. The essentials build is sufficient;
+`C:\Tools\FFmpeg`. Select `bin\ffmpeg.exe` in the FFmpeg row and
+`bin\ffprobe.exe` in the FFprobe row. Select the executables, not the archive or
+an installer. The essentials build is sufficient;
 the full build is unnecessary for the common formats above. FFmpeg's own download
 page links to this independent build provider. [FFmpeg downloads](https://ffmpeg.org/download.html),
 [Gyan build descriptions](https://www.gyan.dev/ffmpeg/builds/).
@@ -59,27 +73,37 @@ it is not a separate audit of the program.
 On **macOS**, if you already use Homebrew, run `brew install ffmpeg`. On
 **Ubuntu/Debian**, run `sudo apt install ffmpeg` through your normal package manager.
 For other Linux distributions, use their supported FFmpeg package. Then run
-`command -v ffmpeg` and choose that executable in Utterleaf (often `/usr/bin/ffmpeg`
-on Linux). In the macOS picker, **Command+Shift+G** lets you enter its folder path.
+`command -v ffmpeg ffprobe` and choose each executable in its corresponding row
+(often under `/usr/bin` on Linux). In the macOS picker, **Command+Shift+G** lets you enter its folder path.
 Utterleaf does not run these installation commands for you.
 [Homebrew package](https://formulae.brew.sh/formula/ffmpeg),
 [Ubuntu package](https://packages.ubuntu.com/noble/ffmpeg).
 
 **Download page…** only opens your browser. Utterleaf never downloads, installs,
 or automatically runs a decoder found on PATH. The chosen executable's location
-and SHA-256 are saved in `file-decoder.json` in the app settings folder; these
+and SHA-256 are saved separately in `file-decoder.json` and `file-probe.json` in the app settings folder; these
 machine-specific details are excluded from preference backups. If FFmpeg moves
-or its executable changes during an update, select it again. **Forget selection**
-removes that setting without deleting your FFmpeg installation. Ordinary PCM WAV
+or either executable changes during an update, select it again. **Forget** in
+each row removes that selection without deleting your installation. Ordinary PCM WAV
 continues working even when the optional decoder is missing or changed.
+
+Selecting FFmpeg does not discover or authorize a sibling FFprobe. PCM WAV
+inspection does not require either executable.
 
 ## Processing and limits
 
 The built-in PCM reader uses Python's standard library and the existing NumPy
 resampler in bounded one-second blocks. Source installations with PyAV can also
-read additional media without setup. An explicitly selected FFmpeg installation
-is used in both source and packaged builds. Ordinary PCM WAV track 1 uses the
-built-in reader first; other WAV variants use the selected decoder or source PyAV.
+decode additional media without a selected FFmpeg. An explicitly selected FFmpeg installation
+is used in both source and packaged builds for decoding. Other media also
+requires an explicitly selected FFprobe for bounded stream and timing
+inspection. Ordinary PCM WAV inspection and decoding use the built-in reader
+without either tool; other WAV variants use the selected decoder or source PyAV.
+Files such as raw AAC can lack a common start time and still be transcribed.
+Their missing timing is not converted into a claim of cross-track alignment.
+FFprobe inspection has a 30-second deadline, bounded output and cancellation.
+The file window checks for ordinary source changes before and after recognition
+and discards a changed result. This is not file-content authentication.
 
 Decoding downmixes audio to mono at 16 kHz. Playlists, URLs, capture devices, and
 reference movies are outside the optional decoder's supported input set. No audio is uploaded, downloaded, or written
@@ -127,12 +151,14 @@ There are no speaker labels. Spoken phrases such as “scratch that” remain li
 transcript text; dictation editing, filler removal, dictionary prompting, and
 denoising are not applied to file transcripts.
 
-Choose **Audio track** in the file window, or pass `--audio-track 2` for the second
-audio stream. Track numbers start at 1 and identify container audio streams, not
-left/right stereo channels, OBS mixer numbers, or inferred speakers. Transcribe
-each selected track to a distinct output when a recording actually has isolated
-tracks. A mixed track stays mixed. These exports do not establish synchronization
-between tracks whose original offsets or gaps differ.
+After **Inspect tracks**, choose **Audio track** from the readonly picker. Labels
+show the actual audio-stream ordinal, title when available, and compact rate and
+channel metadata; sparse container stream indexes are preserved. Track numbers
+identify container audio streams, not left/right stereo channels, OBS mixer
+numbers, or inferred speakers. Transcribe each selected track to a distinct
+output when a recording actually has isolated tracks. A mixed track stays mixed.
+Current subtitles are relative to the selected track; these exports do not yet
+establish synchronization between tracks whose original offsets or gaps differ.
 
 ```powershell
 utterleaf --transcribe-file stream.mkv --audio-track 2 --output guests.vtt

@@ -95,10 +95,14 @@ separate synthetic container tracks, not long-speech accuracy or release proof.
 Live OBS remains unavailable. Its [design contract](plans/active/obs-audio-design.md)
 is also the basis for the active [recorded-file timeline work](plans/active/recorded-file-timelines.md).
 The new internal batching and development decoder retain exact presentation
-offsets and flush audio before gaps. They are under review and are not yet used
-by the file-transcription UI or packaged external decoder. Cross-track alignment
-is not a released capability; actual stream selection and export integration
-remain part of that package's acceptance.
+offsets and flush audio before gaps. They have passed independent review but are
+not yet used by recognition or the packaged external decoder. The new source
+picker inspects actual streams in the background; ordinary PCM WAV needs no
+tools, and other media requires explicit FFprobe selection. Both tool selections
+are available in More formats. The real-tool affected regression passes **241
+tests with 3 Windows-specific skips**. Current subtitles remain relative to each
+track. External timing transport, common-clock recognition/export and multi-track
+workflow acceptance remain open. No new desktop package has been published.
 
 The live OBS design
 separates authenticated stream events from actual PCM transport. The first
