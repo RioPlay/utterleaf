@@ -91,8 +91,9 @@ def test_target_restriction_prevents_reusing_a_platform_specific_review(runtime,
         module.copy_license_files(module.SITE / "example.dist-info", package_metadata(), output)
 
 
-def test_platform_review_binds_source_hash_and_packaged_native_inventory(runtime):
+def test_platform_review_binds_source_hash_and_packaged_native_inventory(runtime, monkeypatch):
     module, _, entry, _ = runtime
+    monkeypatch.setattr(module.platform, "machine", lambda: "x86_64")
     source = module.SITE / "example" / "native.so"
     source.parent.mkdir(parents=True)
     source.write_bytes(b"reviewed native input")
@@ -265,3 +266,33 @@ def test_posix_ci_uses_the_reviewed_tokenizers_source_and_targets():
         wheel = provenance["targets"][target]
         assert review["source_files"] == {wheel["native_file"]: wheel["native_sha256"]}
         assert review["packaged_native_files"] == list(review["source_files"])
+
+
+def test_checked_in_onnxruntime_reviews_bind_each_wheel_notice_and_native_payload():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads(
+        (root / "packaging" / "notices" / "runtime-manifest.json").read_text(encoding="utf-8")
+    )
+    variants = manifest["package_variants"]["onnxruntime"]["1.28.0"]
+    assert set(variants) == {"darwin:arm64", "linux:x86_64", "win32:x86_64"}
+    assert "onnxruntime/capi/libonnxruntime.so.1.28.0" in (
+        variants["linux:x86_64"]["payload_review"]["source_files"]
+    )
+
+    for target, entry in variants.items():
+        review = entry["payload_review"]
+        assert set(review["packaged_native_files"]) <= set(review["source_files"])
+        assert review["packaged_roots"] == ["onnxruntime"]
+        provenance_item = next(item for item in entry["files"]
+                               if item["path"] == "runtime/onnxruntime/wheel-provenance.json")
+        provenance_path = root / "packaging" / "notices" / provenance_item["path"]
+        assert hashlib.sha256(provenance_path.read_bytes()).hexdigest() == provenance_item["sha256"]
+        provenance = json.loads(provenance_path.read_text(encoding="utf-8"))["targets"][target]
+        assert review["source_files"] == provenance["native_files"]
+        assert review["packaged_native_files"] == provenance["expected_packaged_native_files"]
+        site_files = {item["path"]: item["sha256"] for item in entry["files"]
+                      if item.get("source_root") == "site"}
+        assert site_files == provenance["notice_files"]
+    assert "onnxruntime/capi/libonnxruntime.so.1.28.0" not in (
+        variants["linux:x86_64"]["payload_review"]["packaged_native_files"]
+    )

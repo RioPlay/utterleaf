@@ -2193,28 +2193,6 @@
           "note": "The crate inherits these license alternatives from the exact wasm-tools workspace; its source file licenses.rs is implementation code and is not a license notice."
         }
       ]
-    },
-    "onnxruntime": {
-      "name": "onnxruntime",
-      "version": "1.28.0",
-      "license": "MIT and third-party terms",
-      "review_status": "complete",
-      "files": [
-        {
-          "source_root": "site",
-          "path": "onnxruntime/LICENSE",
-          "destination": "LICENSE",
-          "sha256": "c250d6278f0b47a6439fb7592b08b58a55eb9f535aa49a1db63211c3f982b674",
-          "source": "onnxruntime 1.28.0 reviewed installed wheel package-level LICENSE"
-        },
-        {
-          "source_root": "site",
-          "path": "onnxruntime/ThirdPartyNotices.txt",
-          "destination": "ThirdPartyNotices.txt",
-          "sha256": "fb0af774b4d7cffc5b9d046f2aaeade2f37df2f80abf8033c95dfffcc77a8866",
-          "source": "onnxruntime 1.28.0 reviewed installed wheel package-level ThirdPartyNotices.txt"
-        }
-      ]
     }
   },
   "windows_runtime": {
@@ -4682,6 +4660,139 @@
             "packaged_native_files": [
               "ctranslate2/_ext.cpython-314-darwin.so",
               "ctranslate2/.dylibs/libctranslate2.4.8.2.dylib"
+            ]
+          }
+        }
+      }
+    },
+    "onnxruntime": {
+      "1.28.0": {
+        "darwin:arm64": {
+          "name": "onnxruntime",
+          "version": "1.28.0",
+          "license": "MIT and third-party terms",
+          "review_status": "complete",
+          "scope": "Exact official onnxruntime-1.28.0-cp314-cp314-macosx_14_0_arm64.whl notice and native payload review.",
+          "files": [
+            {
+              "source_root": "site",
+              "path": "onnxruntime/LICENSE",
+              "destination": "LICENSE",
+              "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c",
+              "source": "Exact official onnxruntime-1.28.0-cp314-cp314-macosx_14_0_arm64.whl package-level notice"
+            },
+            {
+              "source_root": "site",
+              "path": "onnxruntime/ThirdPartyNotices.txt",
+              "destination": "ThirdPartyNotices.txt",
+              "sha256": "0e07b95f3a8d6230037707c5c4a2b554d12c4cb67369669ac255635528ffcee2",
+              "source": "Exact official onnxruntime-1.28.0-cp314-cp314-macosx_14_0_arm64.whl package-level notice"
+            },
+            {
+              "path": "runtime/onnxruntime/wheel-provenance.json",
+              "destination": "wheel-provenance.json",
+              "sha256": "53357df3c412772c1d7086601ded293b44829dd63735f5c5ca78eb53c29f89d4",
+              "source": "Official PyPI exact-wheel URLs, hashes, archive inventories and LLVM native dependency inspection"
+            }
+          ],
+          "payload_review": {
+            "source_files": {
+              "onnxruntime/capi/libonnxruntime.1.28.0.dylib": "37a1fb85f9a2241334137051e5baff63ed9df58fa8fc15157b608e2b19c094ed",
+              "onnxruntime/capi/onnxruntime_pybind11_state.so": "2317907119bac8c1a1419a44a944ac0874e6eb6c0880e2d8ea35db2af6cbda6c"
+            },
+            "packaged_roots": [
+              "onnxruntime"
+            ],
+            "packaged_native_files": [
+              "onnxruntime/capi/libonnxruntime.1.28.0.dylib",
+              "onnxruntime/capi/onnxruntime_pybind11_state.so"
+            ]
+          }
+        },
+        "linux:x86_64": {
+          "name": "onnxruntime",
+          "version": "1.28.0",
+          "license": "MIT and third-party terms",
+          "review_status": "complete",
+          "scope": "Exact official onnxruntime-1.28.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl notice and native payload review.",
+          "files": [
+            {
+              "source_root": "site",
+              "path": "onnxruntime/LICENSE",
+              "destination": "LICENSE",
+              "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c",
+              "source": "Exact official onnxruntime-1.28.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl package-level notice"
+            },
+            {
+              "source_root": "site",
+              "path": "onnxruntime/ThirdPartyNotices.txt",
+              "destination": "ThirdPartyNotices.txt",
+              "sha256": "0e07b95f3a8d6230037707c5c4a2b554d12c4cb67369669ac255635528ffcee2",
+              "source": "Exact official onnxruntime-1.28.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl package-level notice"
+            },
+            {
+              "path": "runtime/onnxruntime/wheel-provenance.json",
+              "destination": "wheel-provenance.json",
+              "sha256": "53357df3c412772c1d7086601ded293b44829dd63735f5c5ca78eb53c29f89d4",
+              "source": "Official PyPI exact-wheel URLs, hashes, archive inventories and LLVM native dependency inspection"
+            }
+          ],
+          "payload_review": {
+            "source_files": {
+              "onnxruntime/capi/libonnxruntime.so.1.28.0": "aa4079d18f4ea7a5f3a94d80cd4bbe0f2740436626622d64d793803a20381083",
+              "onnxruntime/capi/libonnxruntime_providers_shared.so": "086ec1d5388f64153d9c63470d126693db9a182c8ce236d3a1119068471b8a0d",
+              "onnxruntime/capi/onnxruntime_pybind11_state.cpython-312-x86_64-linux-gnu.so": "6a31ea840051445c5176aface4c7474e09f40dd22d3e2d1106a52ef86d55fd83"
+            },
+            "packaged_roots": [
+              "onnxruntime"
+            ],
+            "packaged_native_files": [
+              "onnxruntime/capi/libonnxruntime_providers_shared.so",
+              "onnxruntime/capi/onnxruntime_pybind11_state.cpython-312-x86_64-linux-gnu.so"
+            ]
+          }
+        },
+        "win32:x86_64": {
+          "name": "onnxruntime",
+          "version": "1.28.0",
+          "license": "MIT and third-party terms",
+          "review_status": "complete",
+          "scope": "Exact official onnxruntime-1.28.0-cp314-cp314-win_amd64.whl notice and native payload review.",
+          "files": [
+            {
+              "source_root": "site",
+              "path": "onnxruntime/LICENSE",
+              "destination": "LICENSE",
+              "sha256": "c250d6278f0b47a6439fb7592b08b58a55eb9f535aa49a1db63211c3f982b674",
+              "source": "Exact official onnxruntime-1.28.0-cp314-cp314-win_amd64.whl package-level notice"
+            },
+            {
+              "source_root": "site",
+              "path": "onnxruntime/ThirdPartyNotices.txt",
+              "destination": "ThirdPartyNotices.txt",
+              "sha256": "fb0af774b4d7cffc5b9d046f2aaeade2f37df2f80abf8033c95dfffcc77a8866",
+              "source": "Exact official onnxruntime-1.28.0-cp314-cp314-win_amd64.whl package-level notice"
+            },
+            {
+              "path": "runtime/onnxruntime/wheel-provenance.json",
+              "destination": "wheel-provenance.json",
+              "sha256": "53357df3c412772c1d7086601ded293b44829dd63735f5c5ca78eb53c29f89d4",
+              "source": "Official PyPI exact-wheel URLs, hashes, archive inventories and LLVM native dependency inspection"
+            }
+          ],
+          "payload_review": {
+            "source_files": {
+              "onnxruntime/capi/onnxruntime.dll": "6788050502eeb1317e359c84339a6b7d67635e96e231794f4e608c1c00aae058",
+              "onnxruntime/capi/onnxruntime_providers_shared.dll": "380f1b47bfbc7164742f9c6bedcd76f43768b1062968cc4bd9974f721bca6894",
+              "onnxruntime/capi/onnxruntime_pybind11_state.pyd": "9e063f27008621d195aa034b428a7f27b7e9692cbc438a6e086bd55f553b072b"
+            },
+            "packaged_roots": [
+              "onnxruntime"
+            ],
+            "packaged_native_files": [
+              "onnxruntime/capi/onnxruntime.dll",
+              "onnxruntime/capi/onnxruntime_providers_shared.dll",
+              "onnxruntime/capi/onnxruntime_pybind11_state.pyd"
             ]
           }
         }

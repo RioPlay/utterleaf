@@ -467,7 +467,19 @@ def test_first_combobox_click_does_not_scroll_or_detach_popup(window):
     # Wayland intentionally disables the in-app shortcut combobox; exercise
     # popup anchoring with the enabled microphone combobox in that environment.
     box = window.mic_box if is_wayland() else window.hotkey_box
-    assert window.canvas.yview()[0] == pytest.approx(0)
+    if is_wayland():
+        # Establish visibility through the same focus-reveal path used by the
+        # UI, rather than choosing an arbitrary scroll offset for the control.
+        box.focus_set()
+        window.root.update()
+        canvas_top = window.canvas.winfo_rooty()
+        canvas_bottom = canvas_top + window.canvas.winfo_height()
+        assert box.winfo_rooty() >= canvas_top
+        assert box.winfo_rooty() + box.winfo_height() <= canvas_bottom
+        initial_scroll = window.canvas.yview()[0]
+    else:
+        initial_scroll = 0
+        assert window.canvas.yview()[0] == pytest.approx(initial_scroll)
 
     # Aqua Tk synchronously enters Cocoa menu tracking from TkpPostMenu, so
     # Unpost cannot cancel it. Intercept only the final menu `post` command;
@@ -491,7 +503,7 @@ def test_first_combobox_click_does_not_scroll_or_detach_popup(window):
     try:
         box.event_generate("<Button-1>", x=box.winfo_width() - 5, y=box.winfo_height() // 2)
         window.root.update()
-        assert window.canvas.yview()[0] == pytest.approx(0)
+        assert window.canvas.yview()[0] == pytest.approx(initial_scroll)
         if windowing_system == "aqua":
             assert native_post == [(box.winfo_rootx() + 2, box.winfo_rooty() + box.winfo_height() + 2)]
         else:

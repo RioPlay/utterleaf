@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "name": "onnxruntime",
+  "version": "1.28.0",
+  "inspection": "Official PyPI JSON and exact wheel bytes verified 2026-09-13; native headers inspected with LLVM readobj 22.1.7",
+  "targets": {
+    "darwin:arm64": {
+      "wheel": "onnxruntime-1.28.0-cp314-cp314-macosx_14_0_arm64.whl",
+      "wheel_sha256": "8adff67a3f28257b37cfe945a7e952e4122666aa8c91a0380862e9fd4c2ed19f",
+      "wheel_size": 19143748,
+      "source": "https://files.pythonhosted.org/packages/4e/eb/952314c451d9463e5c9aed9978eec76cf32930d407d9ab8700dd0f4ea1ea/onnxruntime-1.28.0-cp314-cp314-macosx_14_0_arm64.whl",
+      "notice_files": {
+        "onnxruntime/LICENSE": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c",
+        "onnxruntime/ThirdPartyNotices.txt": "0e07b95f3a8d6230037707c5c4a2b554d12c4cb67369669ac255635528ffcee2"
+      },
+      "native_files": {
+        "onnxruntime/capi/libonnxruntime.1.28.0.dylib": "37a1fb85f9a2241334137051e5baff63ed9df58fa8fc15157b608e2b19c094ed",
+        "onnxruntime/capi/onnxruntime_pybind11_state.so": "2317907119bac8c1a1419a44a944ac0874e6eb6c0880e2d8ea35db2af6cbda6c"
+      },
+      "needed_libraries": [
+        "CoreFoundation.framework",
+        "CoreML.framework",
+        "Foundation.framework",
+        "libSystem.B.dylib",
+        "libc++.1.dylib",
+        "libiconv.2.dylib",
+        "libobjc.A.dylib"
+      ],
+      "expected_packaged_native_files": [
+        "onnxruntime/capi/libonnxruntime.1.28.0.dylib",
+        "onnxruntime/capi/onnxruntime_pybind11_state.so"
+      ]
+    },
+    "linux:x86_64": {
+      "wheel": "onnxruntime-1.28.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "wheel_sha256": "0a83bdb70d143cede762b677789bf2a7acca54b3fb82565601d5c30695aa933c",
+      "wheel_size": 19214257,
+      "source": "https://files.pythonhosted.org/packages/95/df/5486ab03e9be288d5268867054c8b04bebcf95bfd12e801c05cc67703dab/onnxruntime-1.28.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "notice_files": {
+        "onnxruntime/LICENSE": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c",
+        "onnxruntime/ThirdPartyNotices.txt": "0e07b95f3a8d6230037707c5c4a2b554d12c4cb67369669ac255635528ffcee2"
+      },
+      "native_files": {
+        "onnxruntime/capi/libonnxruntime.so.1.28.0": "aa4079d18f4ea7a5f3a94d80cd4bbe0f2740436626622d64d793803a20381083",
+        "onnxruntime/capi/libonnxruntime_providers_shared.so": "086ec1d5388f64153d9c63470d126693db9a182c8ce236d3a1119068471b8a0d",
+        "onnxruntime/capi/onnxruntime_pybind11_state.cpython-312-x86_64-linux-gnu.so": "6a31ea840051445c5176aface4c7474e09f40dd22d3e2d1106a52ef86d55fd83"
+      },
+      "needed_libraries": [
+        "ld-linux-x86-64.so.2",
+        "libc.so.6",
+        "libdl.so.2",
+        "libgcc_s.so.1",
+        "libm.so.6",
+        "libpthread.so.0",
+        "librt.so.1",
+        "libstdc++.so.6"
+      ],
+      "expected_packaged_native_files": [
+        "onnxruntime/capi/libonnxruntime_providers_shared.so",
+        "onnxruntime/capi/onnxruntime_pybind11_state.cpython-312-x86_64-linux-gnu.so"
+      ],
+      "packaging_basis": "PyInstaller hooks-contrib 2026.7 hook-onnxruntime uses collect_dynamic_libs default lib*.so, which collects the provider library; PyInstaller separately collects the imported Python extension. The versioned C API library is not a DT_NEEDED dependency of either collected ELF file."
+    },
+    "win32:x86_64": {
+      "wheel": "onnxruntime-1.28.0-cp314-cp314-win_amd64.whl",
+      "wheel_sha256": "f2a3b9e30ce880d4ca54999cb313569e36da4f62eefe25f87be18f43e9a3a4d5",
+      "wheel_size": 14093738,
+      "source": "https://files.pythonhosted.org/packages/bb/e2/6feb3a43517aaf2b1bf7e46897ba5eb81a29717f7d7901420614d5ee4653/onnxruntime-1.28.0-cp314-cp314-win_amd64.whl",
+      "notice_files": {
+        "onnxruntime/LICENSE": "c250d6278f0b47a6439fb7592b08b58a55eb9f535aa49a1db63211c3f982b674",
+        "onnxruntime/ThirdPartyNotices.txt": "fb0af774b4d7cffc5b9d046f2aaeade2f37df2f80abf8033c95dfffcc77a8866"
+      },
+      "native_files": {
+        "onnxruntime/capi/onnxruntime.dll": "6788050502eeb1317e359c84339a6b7d67635e96e231794f4e608c1c00aae058",
+        "onnxruntime/capi/onnxruntime_providers_shared.dll": "380f1b47bfbc7164742f9c6bedcd76f43768b1062968cc4bd9974f721bca6894",
+        "onnxruntime/capi/onnxruntime_pybind11_state.pyd": "9e063f27008621d195aa034b428a7f27b7e9692cbc438a6e086bd55f553b072b"
+      },
+      "needed_libraries": [
+        "Windows system, Python 3.14 and retained MSVC runtime libraries"
+      ],
+      "expected_packaged_native_files": [
+        "onnxruntime/capi/onnxruntime.dll",
+        "onnxruntime/capi/onnxruntime_providers_shared.dll",
+        "onnxruntime/capi/onnxruntime_pybind11_state.pyd"
+      ]
+    }
+  }
+}

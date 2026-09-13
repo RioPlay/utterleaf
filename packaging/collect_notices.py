@@ -41,7 +41,7 @@ PACKAGES: list[tuple[str, str]] = [
     ("faster_whisper", "Includes the Silero VAD model; see the separate Silero entry."),
     ("ctranslate2", "Native dependencies retain their own terms; see the component notices and provenance."),
     ("tokenizers", "Includes retained license texts for the reviewed native Rust dependency closure."),
-    ("onnxruntime", ""),
+    ("onnxruntime", "Includes the exact wheel's retained third-party notices."),
     ("numpy", ""),
     ("pillow", ""),
     ("sounddevice", "The unused Windows ASIO binary is excluded on every host; the retained sounddevice license tree documents bundled code."),
@@ -153,20 +153,8 @@ def copy_license_files(dist_info: Path, meta: email.message.Message, out_dir: Pa
     # A license expression is not a substitute for the actual terms. Older
     # wheels need a version-specific, locally reviewed upstream text.
     name = (meta.get("Name") or "").lower().replace("-", "_")
-    manifest = runtime_notice_manifest()
-    entry = manifest["packages"].get(name)
     version = meta.get("Version")
-    if entry is not None and entry["version"] == version:
-        targets = entry.get("targets")
-        if targets is not None and _notice_target() not in targets:
-            entry = None
-    else:
-        entry = None
-    if entry is None:
-        entry = (manifest.get("package_variants", {})
-                 .get(name, {})
-                 .get(version, {})
-                 .get(_notice_target()))
+    entry = reviewed_package_entry(name, version)
     if entry is None:
         raise SystemExit(f"collect_notices: full license text unavailable for {name} {meta.get('Version')}")
     verify_reviewed_package_payload(entry)
@@ -177,6 +165,20 @@ def runtime_notice_manifest() -> dict:
     """Local reviewed inputs only; packaging never fetches license material."""
     path = ROOT / "packaging" / "notices" / "runtime-manifest.json"
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def reviewed_package_entry(name: str, version: str | None) -> dict | None:
+    """Select only a notice review admitted for this version and native target."""
+    manifest = runtime_notice_manifest()
+    entry = manifest["packages"].get(name)
+    if entry is not None and entry["version"] == version:
+        targets = entry.get("targets")
+        if targets is None or _notice_target() in targets:
+            return entry
+    return (manifest.get("package_variants", {})
+            .get(name, {})
+            .get(version, {})
+            .get(_notice_target()))
 
 
 def _notice_target() -> str:
@@ -309,8 +311,6 @@ def copy_vad_notices(licenses_dir: Path) -> tuple[str, str, str, str]:
         raise SystemExit("collect_notices: bundled Silero identity is unreviewed; review the resource before distributing")
     sources = [
         (ROOT / "packaging" / "notices" / "silero-vad-LICENSE.txt", "silero_vad", "LICENSE.txt"),
-        (SITE / "onnxruntime" / "LICENSE", "onnxruntime", "LICENSE"),
-        (SITE / "onnxruntime" / "ThirdPartyNotices.txt", "onnxruntime", "ThirdPartyNotices.txt"),
     ]
     for source, package, filename in sources:
         if not source.is_file():
@@ -318,6 +318,11 @@ def copy_vad_notices(licenses_dir: Path) -> tuple[str, str, str, str]:
         destination = licenses_dir / package / filename
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
+    runtime_entry = reviewed_package_entry("onnxruntime", "1.28.0")
+    if runtime_entry is None:
+        raise SystemExit("collect_notices: ONNX Runtime target has no completed notice review")
+    verify_reviewed_package_payload(runtime_entry)
+    copy_reviewed_notice_files(runtime_entry, licenses_dir / "onnxruntime")
     note = ("Reviewed faster-whisper 1.2.1 sequence export, 1245151 bytes; SHA-256 " + approved
             + ". Origin: https://github.com/SYSTRAN/faster-whisper/tree/65882eee9f5cdbeeb2d877f1131d48cf241b327d"
             + "; upstream model: https://github.com/snakers4/silero-vad/tree/v6.0"

@@ -162,6 +162,50 @@ and [synchronous native menu handling](https://github.com/tcltk/tk/blob/main/mac
 Local Windows results do not verify Aqua execution or the actual Linux Wayland
 test path; the next canonical run must establish those platform results.
 
+Run [34745147128](https://github.com/RioPlay/utterleaf/actions/runs/34745147128)
+at `7ee303f` selected the constrained dependencies and both POSIX builds passed
+PyInstaller plus frozen CLI smoke. Notice collection then failed on
+`onnxruntime/LICENSE`. The 1.28.0 Windows, Linux CPython 3.12 x86_64 and macOS
+CPython 3.14 ARM64 wheels carry package-level license files with different
+bytes, while the manifest had retained only the Windows hashes.
+
+The three exact official wheels were downloaded from the URLs published in
+PyPI's 1.28.0 release JSON and verified at SHA-256 `f2a3b9e3...e9a3a4d5`,
+`0a83bdb7...aa933c` and `8adff67a...c2ed19f`. Their complete package-level
+LICENSE and ThirdPartyNotices hashes, native member names, native hashes, byte
+sizes and load-library inventories are retained in
+`runtime/onnxruntime/wheel-provenance.json`. Platform-specific manifest records
+now bind both installed native bytes and packaged native membership before the
+reviewed ONNX notice pair is copied. The VAD notice path uses that same selected
+record, so its duplicate runtime notice copy cannot bypass target or payload
+verification. Unknown versions, architectures, native bytes, extra packaged
+native files and changed notice text continue to fail closed.
+
+The macOS test failure in the same run also exposed a fixture error: its
+synthetic Windows payload review set `sys.platform` but did not set the mocked
+machine architecture, so an ARM64 runner correctly found no `win32:arm64`
+review. The fixture now supplies x86_64 explicitly. This changes no production
+target selection. The focused notice, media-policy and repository-boundary
+checks pass **35 tests**. An ignored local exact-wheel harness separately
+verified notice copying and native source/package identities for all three
+targets; its receipt is
+`.grok/release/ci-rc2/onnxruntime-1.28.0-platform-review.json`. Canonical POSIX
+build evidence remains required.
+
+Independent integration review verified each ONNX wheel checksum, full native
+archive inventory, every retained notice hash and the manifest bindings. Direct
+ELF dynamic-table inspection confirms that neither packaged Linux native member
+depends on the omitted standalone C API library. The versioned library remains
+in the source-wheel hash review. The final focused packaging and boundary check
+passed 35 tests. The combined local packaging/settings/backup check passed 78
+tests before the last inventory clarification; the separate
+[compact backup correction](desktop-backup-compact.md) has its own UI contract.
+
+Wayland popup setup now uses actual focus reveal to bring the enabled microphone
+selector into view before establishing its scroll baseline. The click must not
+add any scrolling. Local Windows tests do not exercise that native Linux path;
+the next canonical matrix remains the platform acceptance gate.
+
 ## Non-goals and stop
 
 No application runtime, UI, Android, model, CUDA or release-publication changes.
