@@ -1,2 +1,6 @@
 gradlew text eol=lf
 gradlew.bat text eol=crlf
+# Preserve reviewed resource bytes across Windows and Unix checkouts.
+tools/unicode/* -text
+app/src/main/res/raw/emoji_catalog.txt -text
+app/src/main/assets/unicode-license.txt -text

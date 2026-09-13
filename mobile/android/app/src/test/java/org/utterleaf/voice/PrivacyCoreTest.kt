@@ -14,6 +14,8 @@ class PrivacyCoreTest {
         val second = gate.next()
         assertFalse(gate.accepts(first))
         assertTrue(gate.accepts(second))
+        gate.invalidate()
+        assertFalse(gate.accepts(second))
     }
     @Test fun failedImportPreservesInstalledModelAndRemovesTemporaryBytes() {
         val directory = Files.createTempDirectory("utterleaf-model-test").toFile()

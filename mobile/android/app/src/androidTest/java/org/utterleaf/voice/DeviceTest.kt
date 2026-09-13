@@ -214,6 +214,7 @@ class DeviceTest {
         val wasEnabled = manager.enabledInputMethodList.any { it.id == keyboardId }
         val previousKeyboard = android.provider.Settings.Secure.getString(app.contentResolver,
             android.provider.Settings.Secure.DEFAULT_INPUT_METHOD)
+        val previousOptions = KeyboardOptions.load(app)
         fun shell(value: String): String = android.os.ParcelFileDescriptor.AutoCloseInputStream(
             automation.executeShellCommand(value)).bufferedReader().use { it.readText() }
         fun awaitCondition(message: String, condition: () -> Boolean) {
@@ -246,24 +247,19 @@ class DeviceTest {
                 .filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD }
                 .mapNotNull { it.root?.let(::find) }.firstOrNull()
         }
-        fun findNativeKey(description: String): android.widget.Button? {
-            fun find(view: android.view.View): android.widget.Button? {
-                if (view is android.widget.Button && view.contentDescription?.toString() == description) return view
-                if (view is android.view.ViewGroup) {
-                    for (index in 0 until view.childCount) find(view.getChildAt(index))?.let { return it }
-                }
-                return null
-            }
-            return android.view.inspector.WindowInspector.getGlobalWindowViews().asSequence()
-                .filter { (it.layoutParams as? android.view.WindowManager.LayoutParams)?.type ==
-                    android.view.WindowManager.LayoutParams.TYPE_INPUT_METHOD }
-                .mapNotNull(::find).firstOrNull()
-        }
         fun press(description: String) {
             awaitCondition("Keyboard key unavailable: $description") { findKey(description)?.isEnabled == true }
-            assertTrue("Could not press $description", findKey(description)!!.performAction(
-                android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))
-            instrumentation.waitForIdleSync()
+            val deadline = android.os.SystemClock.elapsedRealtime() + 2000
+            while (android.os.SystemClock.elapsedRealtime() < deadline) {
+                val key = findKey(description)
+                if (key?.isEnabled == true && key.performAction(
+                        android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)) {
+                    instrumentation.waitForIdleSync()
+                    return
+                }
+                Thread.sleep(50)
+            }
+            fail("Could not press $description")
         }
         var activity: KeyboardTestActivity? = null
         var dismissedLauncherAnr = false
@@ -323,10 +319,12 @@ class DeviceTest {
             // Only this debug instrumentation run may expose this synthetic IME
             // window for a screenshot. Production FLAG_SECURE remains unchanged.
             if (android.os.Build.VERSION.SDK_INT >= 29) {
+                fun currentImeRoot(): android.view.View = android.view.inspector.WindowInspector.getGlobalWindowViews().single {
+                    (it.layoutParams as? android.view.WindowManager.LayoutParams)?.type ==
+                        android.view.WindowManager.LayoutParams.TYPE_INPUT_METHOD
+                }
                 val imeRoot = onMain {
-                    android.view.inspector.WindowInspector.getGlobalWindowViews().single {
-                        (it.layoutParams as? android.view.WindowManager.LayoutParams)?.type == android.view.WindowManager.LayoutParams.TYPE_INPUT_METHOD
-                    }
+                    currentImeRoot()
                 }
                 val originalFlags = onMain { (imeRoot.layoutParams as android.view.WindowManager.LayoutParams).flags }
                 assertTrue("Production IME window must be secure", originalFlags and android.view.WindowManager.LayoutParams.FLAG_SECURE != 0)
@@ -349,12 +347,31 @@ class DeviceTest {
                         finally { event.recycle() }
                         instrumentation.waitForIdleSync()
                     }
-                    fun center(label: String): Pair<Float, Float> = onMain {
-                        val key = findNativeKey(label) ?: error("Missing touch key: $label")
+                    fun findNativeKey(root: android.view.View, description: String): android.widget.Button? {
+                        fun find(view: android.view.View): android.widget.Button? {
+                            if (view is android.widget.Button && view.isShown && view.isEnabled &&
+                                view.contentDescription?.toString() == description &&
+                                view.getGlobalVisibleRect(android.graphics.Rect())) return view
+                            if (view is android.view.ViewGroup) {
+                                for (index in 0 until view.childCount) find(view.getChildAt(index))?.let { return it }
+                            }
+                            return null
+                        }
+                        return find(root)
+                    }
+                    fun center(root: android.view.View, label: String): Pair<Float, Float> = onMain {
+                        val key = findNativeKey(root, label) ?: error("Missing touch key: $label")
                         val position = IntArray(2); key.getLocationOnScreen(position)
                         Pair(position[0] + key.width / 2f, position[1] + key.height / 2f)
                     }
-                    val space = center("Space")
+                    fun dispatchButton(button: android.view.View, action: Int, x: Float, y: Float,
+                                       downTime: Long): Boolean = onMain {
+                        val event = android.view.MotionEvent.obtain(downTime,
+                            android.os.SystemClock.uptimeMillis(), action, x, y, 0)
+                        event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                        try { button.dispatchTouchEvent(event) } finally { event.recycle() }
+                    }
+                    val space = center(imeRoot, "Space")
                     val distance = Ui.dp(app, 32).toFloat()
                     for (direction in listOf(-1, 1)) {
                         touch(android.view.MotionEvent.ACTION_DOWN, space.first, space.second)
@@ -365,14 +382,14 @@ class DeviceTest {
                         }
                         assertEquals("Space swipe inserted text", "acd", onMain { screen.editor.text.toString() })
                     }
-                    val backspace = center("Delete")
+                    val backspace = center(imeRoot, "Delete")
                     touch(android.view.MotionEvent.ACTION_DOWN, backspace.first, backspace.second)
                     awaitCondition("Held Backspace did not repeatedly delete in the editor") { onMain { screen.editor.text.isEmpty() } }
                     touch(android.view.MotionEvent.ACTION_UP, backspace.first, backspace.second)
                     awaitCondition("Held Backspace did not repeatedly delete in the editor") { onMain { screen.editor.text.isEmpty() } }
                     onMain { screen.editor.setText("acd"); screen.editor.setSelection(3) }
                     UiAwait.remains("Delete continued after release") { screen.editor.text.toString() == "acd" }
-                    val shiftPosition = center("Shift off")
+                    val shiftPosition = center(imeRoot, "Shift off")
                     fun chord(action: Int, dx: Float = 0f, two: Boolean = true) {
                         val count = if (two) 2 else 1
                         val props = Array(count) { index -> android.view.MotionEvent.PointerProperties().apply {
@@ -403,8 +420,12 @@ class DeviceTest {
                     awaitCondition("Typing did not replace gesture selection") { onMain { screen.editor.text.toString() == "ax" } }
                     onMain { screen.editor.setText("acd"); screen.editor.setSelection(3) }
                     instrumentation.waitForIdleSync()
-                    val imeHeight = onMain { imeRoot.height }
-                    val letter = center("e")
+                    val holdRoot = onMain { currentImeRoot() }
+                    val imeHeight = onMain { holdRoot.height }
+                    val letterButton = onMain {
+                        findNativeKey(holdRoot, "e") ?: error("Missing touch key: e")
+                    }
+                    val letter = center(holdRoot, "e")
                     fun findHoldStrip(view: android.view.View): AlternateStrip? {
                         if (view is AlternateStrip) return view
                         if (view is android.view.ViewGroup) for (i in 0 until view.childCount) {
@@ -412,20 +433,23 @@ class DeviceTest {
                         }
                         return null
                     }
-                    touch(android.view.MotionEvent.ACTION_DOWN, letter.first, letter.second)
+                    val holdDown = android.os.SystemClock.uptimeMillis()
+                    assertTrue("Letter down was not delivered", dispatchButton(letterButton,
+                        android.view.MotionEvent.ACTION_DOWN, letter.first, letter.second, holdDown))
                     // Input delivery and the posted hold callback are asynchronous.
-                    // Await the actual UI condition instead of assuming a 100 ms
-                    // runner scheduling allowance; this still fails if it never opens.
-                    awaitCondition("Live hold strip did not appear") { onMain { findHoldStrip(imeRoot) != null } }
+                    // Await the actual UI condition instead of assuming a fixed runner allowance.
+                    awaitCondition("Live hold strip did not appear") { onMain { findHoldStrip(holdRoot) != null } }
                     val choice = onMain {
-                        val strip = findHoldStrip(imeRoot) ?: error("Live hold strip disappeared")
-                        assertEquals("Hold resized the IME", imeHeight, imeRoot.height)
+                        val strip = findHoldStrip(holdRoot) ?: error("Live hold strip disappeared")
+                        assertEquals("Hold resized the IME", imeHeight, holdRoot.height)
                         val position = IntArray(2); strip.getLocationOnScreen(position)
                         Pair(position[0] + strip.cells[0].centerX(), position[1] + strip.cells[0].centerY())
                     }
-                    touch(android.view.MotionEvent.ACTION_MOVE, choice.first, choice.second)
+                    assertTrue("Letter slide was not delivered", dispatchButton(letterButton,
+                        android.view.MotionEvent.ACTION_MOVE, choice.first, choice.second, holdDown))
                     shell("screencap -p /data/local/tmp/utterleaf-keyboard-hold.png")
-                    touch(android.view.MotionEvent.ACTION_UP, choice.first, choice.second)
+                    assertTrue("Letter release was not delivered", dispatchButton(letterButton,
+                        android.view.MotionEvent.ACTION_UP, choice.first, choice.second, holdDown))
                     awaitCondition("Hold-slide-release did not insert into the editor") {
                         onMain { screen.editor.text.toString() == "acdé" }
                     }
@@ -445,7 +469,7 @@ class DeviceTest {
                     press("Accents and alternate characters")
                     press("e")
                     val detachedAlternate = onMain {
-                        findNativeKey("é") ?: error("Alternate character button unavailable")
+                        findNativeKey(holdRoot, "é") ?: error("Alternate character button unavailable")
                     }
                     show(screen.password)
                     onMain { detachedAlternate.performClick() }
@@ -459,12 +483,12 @@ class DeviceTest {
                     // Exercise toolbar actions through the real IME InputConnection.
                     fun livePress(label: String) {
                         UiAwait.until("Live IME key unavailable: $label") {
-                            val button = findNativeKey(label)
+                            val button = findNativeKey(currentImeRoot(), label)
                             button != null && button.isAttachedToWindow && button.isShown && button.isEnabled && button.performClick()
                         }
                         instrumentation.waitForIdleSync()
                     }
-                    val beforeRestart = onMain { findNativeKey("a") ?: error("Missing live letter") }
+                    val beforeRestart = onMain { findNativeKey(currentImeRoot(), "a") ?: error("Missing live letter") }
                     onMain {
                         screen.editor.setText("cat"); screen.editor.setSelection(3)
                         manager.restartInput(screen.editor)
@@ -482,12 +506,12 @@ class DeviceTest {
                     onMain { screen.editor.setSelection(3) }
                     livePress("Paste")
                     awaitCondition("Live Copy/Paste did not duplicate the selected text") { onMain { screen.editor.text.toString() == "catcat" } }
-                    val leftPanelPaste = onMain { findNativeKey("Paste") ?: error("Missing live Paste") }
+                    val leftPanelPaste = onMain { findNativeKey(currentImeRoot(), "Paste") ?: error("Missing live Paste") }
                     livePress("Return to typing")
                     onMain { leftPanelPaste.performClick() }
                     UiAwait.remains("Old action changed text after leaving Edit") { screen.editor.text.toString() == "catcat" }
                     livePress("Edit actions")
-                    val oldFieldPaste = onMain { findNativeKey("Paste") ?: error("Missing live Paste") }
+                    val oldFieldPaste = onMain { findNativeKey(currentImeRoot(), "Paste") ?: error("Missing live Paste") }
                     show(screen.password)
                     onMain { oldFieldPaste.performClick() }
                     // Paste is allowed for passwords: this must rely on session invalidation,
@@ -509,20 +533,38 @@ class DeviceTest {
                     .any { it.root?.findAccessibilityNodeInfosByText("Utterleaf Voice")?.isNotEmpty() == true }
             }
             show(screen.password)
+            awaitCondition("Password Dictate control did not appear") { findKey("Dictate") != null }
             assertFalse("Password field allowed dictation", findKey("Dictate")!!.isEnabled)
             press("x")
             awaitCondition("Password typing did not work") { onMain { screen.password.text.toString() == "x" } }
             onMain { manager.hideSoftInputFromWindow(screen.password.windowToken, 0) }
             awaitCondition("Keyboard did not hide") { findKey("a") == null }
             show(screen.password)
+            awaitCondition("Reopened password Dictate control did not appear") { findKey("Dictate") != null }
             assertFalse("Reopened password field allowed dictation", findKey("Dictate")!!.isEnabled)
             press("y")
             awaitCondition("Keyboard failed after reopen") { onMain { screen.password.text.toString() == "xy" } }
             assertEquals("Password input changed the previous field", "acd", onMain { screen.editor.text.toString() })
+            press("Keyboard tools")
+            awaitCondition("Terminal controls toggle did not appear") {
+                findKey("Terminal controls off") != null || findKey("Terminal controls on") != null
+            }
+            if (findKey("Terminal controls off") != null) press("Terminal controls off")
+            show(screen.raw)
+            press("l"); press("s")
+            awaitCondition("TYPE_NULL terminal field did not receive raw ASCII key events") {
+                onMain { screen.raw.text.toString() == "ls" }
+            }
+            press("Control off")
+            press("c")
+            awaitCondition("Ctrl+C inserted a letter into the TYPE_NULL terminal field") {
+                onMain { screen.raw.text.toString() == "ls" }
+            }
         } finally {
             (app.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
                 .setPrimaryClip(android.content.ClipData.newPlainText("", ""))
             activity?.let { screen -> onMain { screen.finish() } }
+            previousOptions.save(app)
             try {
                 if (!previousKeyboard.isNullOrBlank()) shell("ime set $previousKeyboard")
             } finally {
@@ -605,7 +647,10 @@ class DeviceTest {
         assertTrue("Known speech was not recognized", text.contains("country"))
         NativeEngine.reset(); NativeEngine.cancel()
         assertNull(NativeEngine.decode(ModelStore.file(app.noBackupFilesDir).absolutePath, audio))
-        audio.fill(0f); result.fill(0)
+        NativeEngine.reset()
+        val recovered = NativeEngine.decode(ModelStore.file(app.noBackupFilesDir).absolutePath, audio)
+        assertNotNull("A new native generation must be able to decode after cancel", recovered)
+        audio.fill(0f); result.fill(0); recovered!!.fill(0)
     }
     @Test fun zCaptureStopsAndReleasesItsLeaseOnCancel() {
         // Last test: granting a runtime permission persists for this emulator install.

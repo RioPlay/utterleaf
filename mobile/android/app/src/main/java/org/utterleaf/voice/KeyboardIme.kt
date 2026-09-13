@@ -8,6 +8,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.view.inputmethod.InputMethodSubtype
 import android.widget.FrameLayout
 import android.widget.ScrollView
 
@@ -15,8 +16,10 @@ import android.widget.ScrollView
 class KeyboardIme : InputMethodService() {
     private var root: FrameLayout? = null
     private var voice: VoicePanel? = null
+    private var draft: PrivateDraftPanel? = null
     private var active = false
-    /** Monotonically identifies the panel and editor session currently on screen. */
+    /** Monotonically identifies the panel and editor session currently on screen.
+     *  Every suggestion, composition, speech or editor callback must capture this token. */
     private var uiGeneration = 0L
 
     private fun invalidateUiSession() {
@@ -33,7 +36,10 @@ class KeyboardIme : InputMethodService() {
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         invalidateUiSession()
-        active = false; voice?.clear()
+        active = false; voice?.clear(); draft?.clear(); draft = null
+        // Clear the old local query/preview at the field boundary, even if the
+        // platform never follows this callback with onStartInputView.
+        root?.removeAllViews()
     }
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
@@ -41,18 +47,27 @@ class KeyboardIme : InputMethodService() {
         showTyping()
         if (!active) requestHideSelf(0)
     }
-    private fun commit(value: String): Boolean {
-        if (!active) return false
+    private fun commit(value: String, generation: Long): Boolean {
+        if (!currentUiSession(generation)) return false
         return TerminalInput.printable(currentInputConnection, value,
             forceKeyEvents = currentInputEditorInfo?.inputType == InputType.TYPE_NULL)
     }
-    private fun keyEvent(code: Int) {
-        if (!active) return
+    private fun keyEvent(code: Int, generation: Long) {
+        if (!currentUiSession(generation)) return
         TerminalInput.send(currentInputConnection, code)
+    }
+    override fun onCurrentInputMethodSubtypeChanged(newSubtype: InputMethodSubtype) {
+        super.onCurrentInputMethodSubtypeChanged(newSubtype)
+        invalidateUiSession()
+        voice?.clear()
+        draft?.clear(); draft = null
+        root?.removeAllViews()
+        if (isInputViewShown && active) showTyping()
     }
     private fun showTyping() {
         invalidateUiSession()
         voice?.clear(); voice = null
+        draft?.clear(); draft = null
         val info = currentInputEditorInfo
         val action = info?.imeOptions?.and(EditorInfo.IME_MASK_ACTION) ?: EditorInfo.IME_ACTION_NONE
         val useAction = info != null && info.imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION == 0 &&
@@ -65,13 +80,13 @@ class KeyboardIme : InputMethodService() {
         } else "Enter"
         val generation = uiGeneration
         val panel = TypingPanel(this, KeyboardOptions.load(this),
-            { value -> if (currentUiSession(generation)) commit(value) else false },
-            { if (currentUiSession(generation)) keyEvent(KeyEvent.KEYCODE_DEL) },
+            { value -> commit(value, generation) },
+            { keyEvent(KeyEvent.KEYCODE_DEL, generation) },
             { if (currentUiSession(generation)) {
                 if (info?.inputType == InputType.TYPE_NULL) TerminalInput.send(currentInputConnection, KeyEvent.KEYCODE_ENTER)
-                else if (useAction) currentInputConnection?.performEditorAction(action) else commit("\n")
+                else if (useAction) currentInputConnection?.performEditorAction(action) else commit("\n", generation)
             }; Unit },
-            { left -> if (currentUiSession(generation)) keyEvent(if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT) },
+            { left -> keyEvent(if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT, generation) },
             { if (currentUiSession(generation)) showVoice() },
             {
                 if (currentUiSession(generation)) {
@@ -91,10 +106,13 @@ class KeyboardIme : InputMethodService() {
                 TerminalInput.printable(currentInputConnection, text, ctrl, alt,
                     forceKeyEvents = currentInputEditorInfo?.inputType == InputType.TYPE_NULL) },
             editorAction = { command -> currentUiSession(generation) &&
-                EditorActions.perform(currentInputConnection, command, currentInputEditorInfo?.inputType) })
+                EditorActions.perform(currentInputConnection, command, currentInputEditorInfo?.inputType) },
+            openDraft = if (active && info != null && VoiceIme.safeField(info.inputType))
+                { { if (currentUiSession(generation)) showDraft() } } else null)
         val cls = (info?.inputType ?: 0) and InputType.TYPE_MASK_CLASS
         panel.reset(active && info != null && VoiceIme.safeField(info.inputType),
-            cls in listOf(InputType.TYPE_CLASS_NUMBER, InputType.TYPE_CLASS_PHONE, InputType.TYPE_CLASS_DATETIME), label)
+            cls in listOf(InputType.TYPE_CLASS_NUMBER, InputType.TYPE_CLASS_PHONE, InputType.TYPE_CLASS_DATETIME), label,
+            allowEmoji = active && info != null && info.inputType != InputType.TYPE_NULL)
         show(panel.view)
     }
     private fun showVoice() {
@@ -102,13 +120,38 @@ class KeyboardIme : InputMethodService() {
         if (!active || !VoiceIme.safeField(info.inputType)) return
         invalidateUiSession()
         val generation = uiGeneration
+        draft?.clear(); draft = null
         voice?.clear()
         voice = VoicePanel(this, { text ->
             val current = currentInputEditorInfo
-            currentUiSession(generation) && current != null && VoiceIme.safeField(current.inputType) && commit(text)
+            current != null && VoiceIme.safeField(current.inputType) && commit(text, generation)
         }, { if (currentUiSession(generation)) showTyping() })
         show(voice!!.view)
         voice?.startFromMicTap()
+    }
+    private fun showDraft() {
+        val info = currentInputEditorInfo ?: return
+        // An unmasked private preview is not suitable for password or raw-key fields.
+        if (!active || !VoiceIme.safeField(info.inputType)) return
+        invalidateUiSession()
+        voice?.clear(); voice = null
+        draft?.clear()
+        val generation = uiGeneration
+        draft = PrivateDraftPanel(this, KeyboardOptions.load(this), { text ->
+            val current = currentInputEditorInfo
+            if (!currentUiSession(generation) || current == null || !VoiceIme.safeField(current.inputType)) {
+                DraftInsertionResult.UNAVAILABLE
+            } else {
+                val connection = currentInputConnection
+                if (connection == null) DraftInsertionResult.UNAVAILABLE
+                else try {
+                    // One direct call only: no per-key, clipboard or editor-action fallback.
+                    if (connection.commitText(text, 1)) DraftInsertionResult.INSERTED
+                    else DraftInsertionResult.UNCONFIRMED
+                } catch (_: Exception) { DraftInsertionResult.UNCONFIRMED }
+            }
+        }, { if (currentUiSession(generation)) showTyping() })
+        show(draft!!.view)
     }
     private fun show(content: View) {
         root?.removeAllViews()
@@ -116,7 +159,7 @@ class KeyboardIme : InputMethodService() {
     }
     private fun clear() {
         invalidateUiSession()
-        active = false; voice?.clear(); voice = null; root?.removeAllViews()
+        active = false; voice?.clear(); voice = null; draft?.clear(); draft = null; root?.removeAllViews()
     }
     override fun onFinishInputView(finishingInput: Boolean) { clear(); super.onFinishInputView(finishingInput) }
     override fun onFinishInput() { clear(); super.onFinishInput() }

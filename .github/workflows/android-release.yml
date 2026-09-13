@@ -123,8 +123,15 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: |
-            if [ -f predecessor/Utterleaf-Android-0.1.0-alpha03.apk ]; then adb install predecessor/Utterleaf-Android-0.1.0-alpha03.apk; fi
+            if [ -f predecessor/Utterleaf-Android-0.1.0-alpha03.apk ]; then
+              adb install predecessor/Utterleaf-Android-0.1.0-alpha03.apk
+              adb shell am start -W -n org.utterleaf.voice/.SetupActivity
+              python3 mobile/android/tools/preserve_upgrade.py seed
+            fi
             adb install -r release/Utterleaf-Android-${{ env.VERSION }}.apk
+            if [ -f predecessor/Utterleaf-Android-0.1.0-alpha03.apk ]; then
+              python3 mobile/android/tools/preserve_upgrade.py verify
+            fi
             adb install -r release/Utterleaf-Android-${{ env.VERSION }}.apk
             adb shell am start -W -n org.utterleaf.voice/.SetupActivity
       - name: Publish Android prerelease independently of desktop

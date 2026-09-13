@@ -11,6 +11,8 @@ import android.view.inputmethod.EditorInfo
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.SeekBar
 import android.widget.ScrollView
 
@@ -91,8 +93,53 @@ class KeyboardSettingsActivity : Activity() {
                 setOnCheckedChangeListener { _, value -> update(value); options.save(this@KeyboardSettingsActivity); updatePreview() }
             })
         }
+        fun holdDelayFromProgress(progress: Int): Int = if (progress == 0) 0 else 250 + ((progress - 1) * 50)
+        fun holdDelayProgress(value: Int): Int =
+            if (value <= 0) 0 else ((value - 250) / 50 + 1).coerceIn(1, 12)
         toggle("Larger keys and labels", options.large) { options = options.copy(large = it) }
         toggle("Light keyboard", options.light) { options = options.copy(light = it) }
+        column.addView(Ui.text(this, "Keyboard alignment", 18f))
+        column.addView(RadioGroup(this).apply {
+            orientation = RadioGroup.VERTICAL
+            listOf(
+                KeyboardAlignment.FULL to "Full width",
+                KeyboardAlignment.LEFT to "Left hand",
+                KeyboardAlignment.RIGHT to "Right hand",
+            ).forEach { (alignment, label) ->
+                addView(RadioButton(this@KeyboardSettingsActivity).apply {
+                    text = label; textSize = 18f; setTextColor(Ui.ink)
+                    minHeight = Ui.dp(context, 48)
+                    isChecked = options.alignment == alignment
+                    setOnClickListener {
+                        if (options.alignment != alignment) {
+                            options = options.copy(alignment = alignment)
+                            options.save(this@KeyboardSettingsActivity)
+                            updatePreview()
+                        }
+                    }
+                })
+            }
+        })
+        column.addView(Ui.text(this, "Left and Right keep every key in a narrower column on wider screens. Full width remains the default and is used automatically on narrow screens."))
+        column.addView(Ui.text(this, "Letter layout", 18f))
+        column.addView(RadioGroup(this).apply {
+            orientation = RadioGroup.VERTICAL
+            LetterLayout.entries.forEach { layout ->
+                addView(RadioButton(this@KeyboardSettingsActivity).apply {
+                    text = layout.label; textSize = 18f; setTextColor(Ui.ink)
+                    minHeight = Ui.dp(context, 48)
+                    isChecked = options.letterLayout == layout
+                    setOnClickListener {
+                        if (options.letterLayout != layout) {
+                            options = options.copy(letterLayout = layout)
+                            options.save(this@KeyboardSettingsActivity)
+                            updatePreview()
+                        }
+                    }
+                })
+            }
+        })
+        column.addView(Ui.text(this, "Changes letter positions only. It does not add spelling or speech support."))
         toggle("Number row", options.numberRow) { options = options.copy(numberRow = it) }
         toggle("Secondary character hints", options.secondaryHints) { options = options.copy(secondaryHints = it) }
         column.addView(Ui.text(this, "Hold a letter, slide to a highlighted accent or symbol, then release. Slide away to cancel. For tap selection, choose Tools → Accents and a letter. Hiding hints keeps both routes available."))
@@ -104,12 +151,16 @@ class KeyboardSettingsActivity : Activity() {
         toggle("Ignore repeated taps on the same key within 250 ms", options.repeatGuard) { options = options.copy(repeatGuard = it) }
         toggle("Hold Backspace or Delete to repeat", options.deleteRepeat) { options = options.copy(deleteRepeat = it) }
         column.addView(Ui.text(this, "Hold a delete key to repeat after the system hold delay; release or slide outside to stop. Repeat filtering disables held deletion and can help with accidental double taps, but slows intentional double letters. It is off by default. All essential actions have tap controls."))
+        tuningSlider(holdDelayProgress(options.holdDelayMs), 12,
+            { progress -> if (progress == 0) "Hold timing: system default" else "Hold timing: ${holdDelayFromProgress(progress)} ms" },
+            { progress -> options = options.copy(holdDelayMs = holdDelayFromProgress(progress)) })
+        column.addView(Ui.text(this, "Hold timing only changes how long you press before accent or punctuation choices appear. A tap still types the key, and Tools → Accents remains available. System default uses the device long-press timeout."))
         column.addView(Ui.button(this, "Reset keyboard preferences") {
             AlertDialog.Builder(this).setTitle("Reset keyboard preferences?")
-                .setMessage("Restore standard key size, dark keys, secondary character hints, no extra rows, no vibration, and no repeat filtering. Your model and microphone permission stay unchanged.")
+                .setMessage("Restore QWERTY, Full width, standard key size, dark keys, secondary character hints, no extra rows, no vibration, default hold timing, and no repeat filtering. Your model and microphone permission stay unchanged.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Reset") { _, _ ->
-                    options = KeyboardOptions(); options.save(this)
-                    getSharedPreferences("keyboard", MODE_PRIVATE).edit().remove("voiceHoldToInsert").apply()
+                    KeyboardOptions.resetPreferences(this)
+                    options = KeyboardOptions.load(this)
                     render()
                 }.show()
         })
