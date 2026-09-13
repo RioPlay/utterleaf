@@ -332,6 +332,9 @@ def test_cancel_before_dispatch_restores_owned_clipboard(monkeypatch):
 def test_cancel_before_dispatch_preserves_new_user_copy(monkeypatch):
     clipboard = ["old"]
     cancelled = [False]
+    # The simulated clipboard belongs to a simulated editor. A real macOS
+    # foreground helper would poll through the patched sleep callback again.
+    monkeypatch.setattr(inject, "foreground_id", lambda: 123)
     monkeypatch.setattr(inject.pyperclip, "paste", lambda: clipboard[-1])
     monkeypatch.setattr(inject.pyperclip, "copy", clipboard.append)
     def user_copy(_seconds):
@@ -339,7 +342,7 @@ def test_cancel_before_dispatch_preserves_new_user_copy(monkeypatch):
         cancelled[0] = True
     monkeypatch.setattr(inject.time, "sleep", user_copy)
     monkeypatch.setattr(inject, "_send_paste", lambda **_kwargs: pytest.fail("cancelled before dispatch"))
-    assert inject.paste("dictation", cancel=lambda: cancelled[0]) == "cancelled"
+    assert inject.paste("dictation", target=123, cancel=lambda: cancelled[0]) == "cancelled"
     assert clipboard == ["old", "dictation", "user copy"]
 
 

@@ -1,6 +1,6 @@
 # Desktop speech detector resource review
 
-[Speech-end plan](plans/active/desktop-speech-endpoint.md) ·
+[Speech-end plan](plans/completed/desktop-speech-endpoint.md) ·
 [Component policy](model-resource-policy.md)
 
 Reviewed September 12, 2026 for the optional desktop speech-end path. This is a

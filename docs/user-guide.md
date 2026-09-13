@@ -58,7 +58,7 @@ dictated clipboard payload so a late paste cannot consume unrelated restored tex
 
 Click the tray icon (or right-click → **Settings…**) to open Settings. First launch opens it automatically. Opening Settings again raises the existing window and preserves unsaved edits, including when using `--settings` directly.
 
-- **Dictation:** choose your shortcut, hold or press mode, microphone, recording feedback, and start at login. A five-second microphone check shows input levels without saving audio.
+- **Dictation:** choose your shortcut, hold or press mode, microphone, recording feedback, and start at login. A five-second microphone check shows input levels without saving audio. The current source layout also groups Output style here; the published Windows RC2 keeps it under Vocabulary.
 - **Vocabulary:** add names and custom terms, choose text cleanup options, and preview the result on a sample before saving.
 - **Voice commands:** browse the built-in editing and punctuation commands.
 - **Speech & privacy:** choose a model, processing device, language, noise reduction, and clipboard behavior. Missing model downloads can be disabled.
@@ -146,9 +146,11 @@ parentheses. It changes the inserted payload, not the surrounding document. Brow
 editors, rich fields, macOS and Linux still use the existing conservative delivery
 path; arbitrary caret-aware joining is not established there.
 
-Explicit lists now end with a structural line break. Choose **Settings → Vocabulary
-→ Output style → Markdown** for Markdown block spacing and explicit headings.
-**Prose** remains the default. Examples:
+Explicit lists now end with a structural line break. In the current source layout,
+choose **Settings → Dictation → Output style → Markdown** for Markdown block
+spacing and explicit headings. In the published Windows RC2, the same choice is
+under **Settings → Vocabulary → Output style**. **Prose** remains the default.
+Examples:
 
 | Say | Markdown output |
 | --- | --- |
@@ -168,7 +170,8 @@ can be included in a selective backup, and Reset to defaults restores Prose with
 deleting vocabulary or models. Closing without saving preserves the old preference.
 Turning **Clean up dictated text** off or using literal/code input bypasses Markdown
 formatting. Markdown does not summarize your speech, answer questions or send it to
-another model. These controls are part of the Windows RC1 preview.
+another model. Markdown formatting is included in the Windows RC2 preview;
+the compact Dictation layout is a later source change.
 
 ### 0.4.6 RC2 preview: bounded delivery cancellation
 
