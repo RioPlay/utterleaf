@@ -2,7 +2,7 @@
 
 [Roadmap hub](roadmap.md) · [Execution plan](execution-plan.md) · [Current mobile preview](mobile.md) · [Ideas](ideas.md)
 
-Updated September 12, 2026. Product direction: a complete, customizable Utterleaf
+Updated September 13, 2026. Product direction: a complete, customizable Utterleaf
 keyboard with integrated offline speech, its own identity, and security first.
 The design uses historical public documentation as research context, not as a
 specification, dependency or source of product identity.
@@ -28,13 +28,16 @@ One-hand reach and visual polish can proceed alongside foundation work.
 
 ## Current status
 
-- **Backspace selection gesture planned after alpha14:** dragging left from
-  Backspace will preview a bounded editor-native selection, allow deterministic
-  reversal, and delete it once only on a valid release. Tap and held-repeat
-  deletion remain separate; cancellation, stale editors, restricted fields and
-  Unicode boundaries fail closed. This is not implemented yet. Current text
-  highlighting requires the tested two-finger Shift+Space chord; tapping Shift
-  and later swiping Space is not claimed. See the
+- **Backspace selection gesture implemented in post-alpha14 unreleased source:**
+  dragging left from Backspace previews a bounded editor-native or private-draft
+  selection, deterministic reversal shrinks it without crossing the origin, and
+  a valid release deletes it once. Tap and held-repeat deletion remain separate;
+  cancellation, stale or unconfirmed editors, restricted fields and private-draft
+  Unicode boundaries fail closed. Ten focused gesture tests and a 47-test API 35
+  emulator regression set pass. Physical-phone, assistive-technology and broader
+  OEM-editor acceptance remain open. Existing text highlighting also retains the
+  tested two-finger Shift+Space chord; tapping Shift and later swiping Space is
+  not claimed. See the
   [implementation contract](plans/active/android-backspace-selection-gesture.md).
 
 - **Long-press hint default implemented in unreleased source:** holding a letter

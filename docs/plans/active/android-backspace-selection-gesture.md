@@ -24,7 +24,7 @@ candidate. It is not implemented by the alpha14 release.
 - The private-draft editor/panel and focused JVM, direct-panel and actual-IME
   instrumentation tests.
 
-## Current behavior
+## Implemented behavior
 
 - A Backspace tap deletes once. Holding it past the system long-press timeout
   repeats deletion every 80 ms when held deletion is enabled. Leaving the key,
@@ -34,8 +34,12 @@ candidate. It is not implemented by the alpha14 release.
   then drag that Space finger horizontally. Tapping Shift and later swiping
   Space as a one-finger sequence is not established behavior and must not be
   claimed.
-- Backspace does not currently preview a selection or defer one deletion until
-  swipe release.
+- A leftward Backspace drag in an ordinary editable host field or private draft
+  now previews a bounded backward selection. Reversing toward the origin shrinks
+  it, and a valid release deletes the confirmed nonempty selection once.
+- Password, raw and terminal fields retain tap/hold Backspace but refuse the
+  selection gesture. Cancellation, multi-touch, stale sessions and uncertain
+  editor results restore or fail closed without deleting.
 
 ## Constraints
 
@@ -132,3 +136,43 @@ acceleration, a selected-text preview, a new settings surface, or change the
 existing Shift+Space chord. Stop when the bounded Backspace gesture has exact
 failure semantics, independent review and focused emulator evidence; retain
 unsupported-field and physical-device limits.
+
+## Implementation notes — September 13, 2026
+
+The implementation keeps pointer ownership in `DeleteRepeater`: a leftward
+move beyond touch slop cancels its pending repeat before an erase, then steps at
+`max(touch slop, 16 dp)` with a 64-step event and 256-step gesture cap. Vertical
+drift, a second pointer, cancellation, detach and layout/session invalidation
+cancel the selection and do not fall back to a tap.
+
+`KeyboardIme` seeds the selection from `EditorInfo` when input starts and then
+records only editor-provided offsets from `onUpdateSelection`; it does not read
+selected or surrounding host text. A host gesture captures the generation and
+`InputConnection`, queues one native Shift+arrow movement at a time, and deletes
+by one empty `commitText` only after the editor confirms the latest backward,
+nonempty range anchored at the original caret. It clamps at a confirmed beginning
+of field and never reverses through the origin into a forward selection. Rejected,
+stale or unconfirmed operations restore only within that captured session and
+otherwise do nothing. Password, raw and the current terminal-mode setting fail
+the gesture gate while their existing Backspace paths remain available.
+
+Private drafts use their bounded model callback and ICU grapheme boundaries;
+they never obtain a host connection or clipboard. `BackspaceSelectionTest`
+covers direct pointer ownership and limits, host confirmation and stale-session
+behavior, private grapheme preview/deletion, generic unavailable feedback,
+restricted fields and the live terminal toggle.
+
+Verified on the dedicated API 35 `UtterleafFoundation35` emulator:
+
+- `BackspaceSelectionTest` passed all 10 tests, including direct gesture state,
+  actual host-IME preview/deletion, private-draft graphemes, cancellation,
+  beginning-of-field overshoot/reversal and restricted-field gates.
+- A combined instrumentation run passed all 47 tests across the new class plus
+  `DeleteRepeaterTest`, `KeyboardGesturesTest`, `KeyboardEditorContractTest`,
+  private editor/panel/IME, held-modifier and letter-layout coverage.
+- Android tooling passed 14 Python tests; Gradle passed 31 JVM tests, debug lint
+  with zero errors, and debug plus Android-test APK assembly.
+
+Physical-phone touch comfort, TalkBack, Switch Access and broader OEM-editor
+coverage remain follow-up acceptance work. Emulator evidence does not establish
+those results.
