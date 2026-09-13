@@ -97,13 +97,13 @@ Record exact commands, source hashes, fixture inputs and independent reviews.
 
 ## Current state
 
-The old file path clears PyAV frame PTS and derives offsets only from decoded
-sample count. The external decoder emits raw PCM without timing. Existing docs
-correctly disclose the lack of cross-track synchronization.
+The compatible relative-time path clears PyAV frame PTS and derives offsets
+only from decoded sample count. Recording-time transcription now uses the timed
+adapters described below; it never silently falls back to relative timing.
 
 A decoder-neutral timed batching layer and a PyAV development adapter are now
-implemented internally and independently reviewed. They are not yet used by file transcription and do not establish
-aligned-file product behavior. The batching/quiet-boundary checks currently pass
+implemented and independently reviewed. File transcription uses them when
+`timing="recording"` is selected. The batching/quiet-boundary checks pass
 29 tests after fixing a review finding: writable output could previously change
 the next batch's timestamp when a consumer resized its array between pulls.
 Installed development PyAV is 18.0.0. Synthetic resampling confirmed delayed
@@ -135,16 +135,16 @@ reviewed. They neither discover nor run an executable. The More formats dialog
 now exposes explicit FFmpeg decoding and FFprobe inspection selections; the
 shared identity helper retains the existing FFmpeg behavior. The external timed
 adapter now connects original-frame journaling, compatible selected builds and
-gap-separated resampling internally. Aligned transcription, shared-clock export
-and the multi-track workflow remain unfinished.
+gap-separated resampling. Single-track recording-time transcription and subtitle
+export are connected; grouped multi-track jobs and release acceptance remain open.
 
 The current file window automatically inspects a newly chosen file in a
 background worker, presents actual audio-stream metadata while retaining global
-container indexes, and passes the selected audio ordinal to the existing
-transcription call. PCM WAV inspection uses the standard-library WAV reader
-without either external tool. This picker does not claim aligned timestamps:
-subtitles remain relative to the selected track until timed decoder and export
-integration are complete.
+container indexes, and passes the selected audio ordinal and timing mode to
+transcription. PCM WAV inspection and recording-time decoding use the packaged
+reader without either external tool. A new file with a known common clock
+defaults to recording timestamps; missing clocks are explicitly limited to
+relative mode. The CLI/API retain relative defaults for compatibility.
 
 Initial committed-core verification: **149 passed, 12 skipped** with the shared Python:
 
@@ -169,8 +169,8 @@ with `-copyts` and without `+genpts`. Timestamp evidence must come from original
 decoded-frame PTS exposed by FFprobe with `-fflags +nofillin`, never a
 best-effort timestamp fallback.
 
-The two-pass adapter is now **implemented internally**, with the verification
-record below. It is not yet used by the end-user transcription path:
+The two-pass adapter is now **implemented and used by recording-time
+transcription**, with the source-level verification record below:
 
 1. Explicitly selected FFprobe records original frame PTS and sample counts in
    a bounded private journal, validating stream time base/rate and frame format,
@@ -209,8 +209,8 @@ and independently reviewed (**36 tests passed**). It requires the selected
 global stream index and validated stream sample rate, bounds each row to 512
 bytes, validates the exact six fields, and rejects missing original PTS with an
 actionable static error. It accepts literal `unknown` channel layout without
-inferring speakers. The external timed adapter now uses it to build the journal;
-recognition/export integration is still required for packaged timestamp alignment.
+inferring speakers. The external timed adapter uses it to build the journal
+feeding recording-time transcription. A new binary release is still required.
 
 The alternative tee approach avoids double decoding but needs two safely drained
 private channels on Windows; mixing timing with arbitrary stderr diagnostics is
@@ -357,9 +357,53 @@ The focused adapter/core/privacy/configuration/boundary command passes
 
 Both real-tool environment variables are explicitly scoped to this test shell.
 Without them the integration module skips; normal CI still exercises the real
-Python child-process failure/cleanup tests. Recognition, timed exports and the
-actual multi-track UI remain the next integration work. Existing file UI/CLI
-behavior and the published RC2 binary are unchanged by this internal adapter.
+Python child-process failure/cleanup tests. This adapter-only checkpoint is
+`babaae6`; [CI 34787584275](https://github.com/RioPlay/utterleaf/actions/runs/34787584275)
+passed all five desktop jobs. The published RC2 binary is unchanged.
+
+### Recording-time transcription and controls
+
+`transcribe_file` now accepts `timing="relative" | "recording"`. Its default
+preserves the old relative decoder and quiet batching. Recording mode uses
+normalized timed windows, with each exact start and sample count captured before
+the model call. The same offline CTranslate engine, CPU retry, segment validation
+and cancellation rules apply to both modes. A late decoder, source, journal or
+context failure prevents returning a transcript or reporting successful completion.
+Ordinary PCM WAV retains the packaged zero-based sample clock without consulting
+tool selections. Other formats use the explicitly selected external pair, or
+the development PyAV adapter when no external decoder is selected. Missing PyAV
+in a package produces an actionable setup error; it never changes timing modes.
+
+The file window adds **Keep recording timestamps**, defaulting on for a newly
+inspected common clock and disabled with an explanation for unavailable clocks.
+It discloses the all-stream-start fallback and PCM sample clock. Track or timing
+changes invalidate the previous preview/export; unchanged reinspection preserves
+the user's choice and preview. The checkbox is locked while a job is running,
+and its value is captured with that job. CLI `--file-timing recording` is explicit;
+the option is rejected outside a file-transcription job. TXT remains plain text.
+
+Independent backend review passes 53 timing/transcription/streaming tests, and
+independent UI/CLI review passes 46 tests. Synthetic Windows captures confirm
+the new control and footer fit the 760×560 minimum window. A real end-to-end
+MKV fixture passes through selected FFmpeg/FFprobe, production transcription
+batching and atomic SRT/VTT export with only the speech engine substituted. Its
+1-second common origin normalizes once: the first track starts at zero and the
+second track keeps cues at 0.2 and 0.4 seconds. Relative mode for that second
+track starts at zero and removes the gap. All four engine calls are offline.
+This establishes source timing/export behavior on synthetic media, not genuine
+speech accuracy or a packaged release. Grouped multi-track jobs/export and the
+remaining recording/release acceptance are still open.
+
+Final local integration verification passes **309 tests with no skips** with
+the retained tools scoped through the same two environment variables:
+
+```powershell
+& $py -m pytest tests/test_file_external.py tests/test_file_external_integration.py tests/test_file_frame_journal.py tests/test_media_process.py tests/test_media_tool_pair.py tests/test_file_frame_metadata.py tests/test_file_timeline.py tests/test_audio_batching.py tests/test_privacy.py tests/test_config.py tests/test_repo_boundaries.py tests/test_file_transcription_timing.py tests/test_file_transcription.py tests/test_file_streaming.py tests/test_file_ui.py tests/test_file_cli.py tests/test_transcript.py -o addopts= -q
+```
+
+This includes eight real selected-tool integration cases. Native CI must run
+again for the recognition/UI/CLI increment; the successful adapter checkpoint
+does not cover changes made after it.
 
 ## Non-goals and stop
 

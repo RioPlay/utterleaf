@@ -13,21 +13,33 @@ streams before recognition and replaces the numeric track selector with a list
 of track names, sample rates and channel counts. Other formats require a
 separately selected FFprobe for inspection. The workflow and setup below describe
 that source update; published RC2 retains its numeric selector and FFmpeg-only
-setup. Container timing alignment is not implemented in either workflow yet.
+setup. The source update also offers **Keep recording timestamps**, preserving
+track offsets and internal pauses through transcription and subtitle export.
+Published RC2 keeps track-relative subtitle times.
 
 Open **Tools → Transcribe a file** from the tray, or run `utterleaf --files`.
 Choose a file, wait for **Inspect tracks** to finish, select an actual audio
-stream, then choose **Transcribe** and review the preview. Choose TXT, SRT, or
+stream and its timing mode, then choose **Transcribe** and review the preview. Choose TXT, SRT, or
 VTT before **Export**. Existing destinations require a replace confirmation;
 the original media file cannot be used as the export destination. **Discard**
 clears the preview and **Close** cancels any work and discards the preview.
 Opening the tool again brings its existing window forward. Settings keeps its
 own separate window. No microphone opens merely because this tool is open.
 
-![0.4.6 RC2 preview local file window with audio-track selection and explicit export controls](assets/screenshots/desktop-file-tracks.png)
+![Source file window with inspected audio tracks, recording timestamps and explicit export controls](assets/screenshots/desktop-file-recording-times.png)
 
-Earlier preview window with a synthetic filename. The upcoming source uses an
-inspected track list; no personal recording is shown.
+Unreleased source window with a synthetic filename and transcript. No personal
+recording is shown.
+
+**Keep recording timestamps** is selected after inspecting a file with a known
+recording clock. It keeps a late track late and preserves gaps in its audio. Clear
+it to start subtitle times at the selected track and remove timestamp gaps.
+When the file has no common clock, the control is disabled and the window
+explains that only track-relative times are available. PCM WAV uses time from
+the beginning of its audio; embedded broadcast timestamps are not interpreted.
+Changing the selected track or timing clears the previous preview so it cannot
+be exported under a different choice. Reinspecting an unchanged file preserves
+the choice and preview.
 
 PCM WAV works immediately: mono or stereo, 8/16/24/32-bit integer samples, and
 8–48 kHz sample rates. **More formats…** connects a separately installed FFmpeg
@@ -38,17 +50,16 @@ you do not need Python or a source installation for these formats.
 
 ## Enable common audio and video files
 
-![Local decoder setup with download instructions and executable selection](assets/screenshots/desktop-more-formats.png)
+![Local decoder setup with separate FFmpeg and FFprobe selections](assets/screenshots/desktop-more-formats-selected.png)
 
-Earlier Windows setup window, captured with an empty synthetic configuration.
-The upcoming dialog adds a separate FFprobe row.
+Unreleased Windows setup window, captured with synthetic executable paths.
 
 1. Open **Tools → Transcribe a file → More formats…**.
 2. Install FFmpeg using the instructions for your computer below.
 3. In the **FFmpeg** row choose **Choose…**, select its executable, and confirm that you want
    Utterleaf to use that program. Nothing is executed during this selection.
 4. In the **FFprobe** row choose **Choose…** and explicitly select the FFprobe
-   executable from your installation. Confirm its use for track inspection.
+   executable from the same installation. Confirm its use for track inspection.
 5. Choose **Done**, select your MP3, M4A, video, or other supported file, wait
    for **Inspect tracks**, choose a reported audio stream, and choose
    **Transcribe**. Video is inspected for its audio streams but is not decoded.
@@ -89,6 +100,9 @@ continues working even when the optional decoder is missing or changed.
 
 Selecting FFmpeg does not discover or authorize a sibling FFprobe. PCM WAV
 inspection does not require either executable.
+Recording timestamps require compatible builds of both tools: Utterleaf checks
+their version, compiler, configuration and library versions before processing.
+If they do not match, select both from the same installation again.
 
 ## Processing and limits
 
@@ -99,8 +113,9 @@ is used in both source and packaged builds for decoding. Other media also
 requires an explicitly selected FFprobe for bounded stream and timing
 inspection. Ordinary PCM WAV inspection and decoding use the built-in reader
 without either tool; other WAV variants use the selected decoder or source PyAV.
-Files such as raw AAC can lack a common start time and still be transcribed.
-Their missing timing is not converted into a claim of cross-track alignment.
+Files such as raw AAC can lack a common start time and still be transcribed with
+track-relative timing. Requesting recording timing for missing or invalid
+timestamps fails visibly; the app never silently substitutes a relative clock.
 FFprobe inspection has a 30-second deadline, bounded output and cancellation.
 The file window checks for ordinary source changes before and after recognition
 and discards a changed result. This is not file-content authentication.
@@ -109,6 +124,11 @@ Decoding downmixes audio to mono at 16 kHz. Playlists, URLs, capture devices, an
 reference movies are outside the optional decoder's supported input set. No audio is uploaded, downloaded, or written
 to temporary storage. File mode never downloads models, even if ordinary dictation
 allows downloads: install the selected model explicitly first.
+Recording timing with the external tools creates a private local journal of
+frame timestamps and sample counts, containing no audio or source filenames.
+It is deleted when processing ends. Timing records are limited to 256 MiB and
+require a further 256 MiB of free disk space; reaching that storage budget
+fails the operation without producing a partial transcript.
 
 The stable v0.4.5 workflow's **256 MiB input and 10-minute** limits are removed from
 the 0.4.6 RC2 preview. Recognition consumes at most 30 seconds of
@@ -141,12 +161,22 @@ does not expose validated timestamps and returns an actionable error; it never
 fabricates subtitle timing. CUDA runtime failures retry on CPU using installed
 weights. Dictation's existing string recognition API is unchanged.
 
-Model segment start/end values are offset by each batch's position in decoded audio.
+Model segment start/end values are offset by each batch's position in the chosen
+timeline. Recording timing uses the common container origin, or the earliest
+start across all audio/video streams when every stream has a valid start; this
+fallback is disclosed in the window. Each audio run is flushed before a gap,
+then later words retain their recording offset. Relative timing instead advances
+only by decoded sample count.
 An end time beyond the batch is clipped to its actual duration while preserving
 the recognized text. A segment starting at or beyond the batch's end, or otherwise
 invalid timing, fails the job instead of silently dropping recognized words.
-They are estimated speech boundaries, not independently verified alignment or
-original container timecodes. Container timestamp gaps/offsets are not preserved.
+Speech boundaries remain model estimates. Missing original frame timestamps,
+overlap/backward timing, audio before the common origin, changing audio formats,
+or gaps too small to survive resampling cause recording timing to fail. Some
+very short compressed runs cannot corroborate their timing and are unsupported;
+uncompressed PCM can contain a single frame. Codec priming/padding behavior
+depends on the selected decoder. Any late decode or timing failure discards the
+entire tentative transcript, including words already recognized.
 There are no speaker labels. Spoken phrases such as “scratch that” remain literal
 transcript text; dictation editing, filler removal, dictionary prompting, and
 denoising are not applied to file transcripts.
@@ -157,11 +187,13 @@ channel metadata; sparse container stream indexes are preserved. Track numbers
 identify container audio streams, not left/right stereo channels, OBS mixer
 numbers, or inferred speakers. Transcribe each selected track to a distinct
 output when a recording actually has isolated tracks. A mixed track stays mixed.
-Current subtitles are relative to the selected track; these exports do not yet
-establish synchronization between tracks whose original offsets or gaps differ.
+Recording timing gives separately transcribed tracks in the same unchanged file
+one common origin. The current window handles one selected track per job;
+simultaneous multi-track jobs and grouped export are still planned. It does not
+align independent recording files.
 
 ```powershell
-utterleaf --transcribe-file stream.mkv --audio-track 2 --output guests.vtt
+utterleaf --transcribe-file stream.mkv --audio-track 2 --file-timing recording --output guests.vtt
 ```
 
 Exports are explicit UTF-8 TXT, SRT, or VTT. Subtitle times round to milliseconds
@@ -172,6 +204,9 @@ internal whitespace. Existing output files require explicit overwrite. Export
 publishes a completed temporary text file atomically; default no-overwrite uses a
 hard link, so a filesystem without hard-link support returns an error safely.
 There is no automatic save on completion, error, or cancellation.
+The CLI and Python API retain relative timing by default for compatibility.
+Use `--file-timing recording` or `timing="recording"` explicitly to preserve the
+recording clock. TXT remains plain text in either mode; it does not add timestamps.
 
 ## Integration API
 
@@ -179,7 +214,8 @@ There is no automatic save on completion, error, or cancellation.
 from utterleaf.file_transcription import transcribe_file
 from utterleaf.transcript import export_transcript, TranscriptionCancelled
 
-result = transcribe_file(selected_path, cfg, audio_track=1, cancel=stop_event, progress=on_progress)
+result = transcribe_file(selected_path, cfg, audio_track=1, timing="recording",
+                         cancel=stop_event, progress=on_progress)
 export_transcript(result, selected_output, format="vtt", overwrite=False)
 ```
 

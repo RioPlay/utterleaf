@@ -26,6 +26,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--app", default="", help="Foreground app name for --polish")
     parser.add_argument("--transcribe-file", metavar="PATH", help="Transcribe a local media file using already installed models")
     parser.add_argument("--audio-track", type=int, metavar="NUMBER", help="File audio track, counted from 1 (default: 1); not a stereo channel")
+    parser.add_argument("--file-timing", choices=("relative", "recording"),
+                        help="Subtitle clock: relative starts at this track (default); recording keeps file offsets and gaps")
     parser.add_argument("--files", action="store_true", help="Open local file transcription and export")
     parser.add_argument("--model-setup-download", metavar="NAME", help=argparse.SUPPRESS)
     parser.add_argument("--model-setup-backend", choices=("ctranslate2", "openvino"), help=argparse.SUPPRESS)
@@ -110,8 +112,8 @@ def main(argv: list[str] | None = None) -> int:
             parser.error("Output already exists; choose another destination or explicitly use --overwrite")
         if args.format is None and destination.suffix.lower() not in (".txt", ".srt", ".vtt"):
             parser.error("Use a .txt, .srt or .vtt output filename, or specify --format")
-    elif args.output or args.format or args.overwrite or args.audio_track is not None:
-        parser.error("--output, --format, --overwrite and --audio-track require --transcribe-file")
+    elif args.output or args.format or args.overwrite or args.audio_track is not None or args.file_timing is not None:
+        parser.error("--output, --format, --overwrite, --audio-track and --file-timing require --transcribe-file")
 
     if args.files:
         if any((args.pill, args.settings, args.paths, args.toggle, args.stop, args.quit_app,
@@ -187,7 +189,8 @@ def main(argv: list[str] | None = None) -> int:
 
         cancelled = threading.Event()
         try:
-            result = transcribe_file(source, cfg, cancel=cancelled, audio_track=(args.audio_track or 1) - 1)
+            result = transcribe_file(source, cfg, cancel=cancelled, audio_track=(args.audio_track or 1) - 1,
+                                     timing=args.file_timing or "relative")
             written = export_transcript(result, destination, format=args.format, overwrite=args.overwrite)
         except KeyboardInterrupt:
             cancelled.set()

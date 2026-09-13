@@ -36,14 +36,14 @@ def _inspect_work(path, cancel, events):
         _send(events, "cancelled", None) if cancel.is_set() else _send(events, "error", str(exc))
 
 
-def _work(path, cfg, audio_track, cancel, events, expected_signature=None):
+def _work(path, cfg, audio_track, cancel, events, expected_signature=None, timing="relative"):
     # Only this bounded queue crosses threads. Workers never touch Tk widgets.
     try:
         if cancel.is_set():
             raise TranscriptionCancelled("File recognition cancelled")
         if expected_signature is not None and current_file_signature(path) != expected_signature:
             raise ValueError("The selected file changed. Inspect its tracks again.")
-        result = transcribe_file(path, cfg, audio_track=audio_track, cancel=cancel,
+        result = transcribe_file(path, cfg, audio_track=audio_track, cancel=cancel, timing=timing,
                                  progress=lambda phase, amount: _send(events, "progress", (phase, amount)))
         if cancel.is_set():
             raise TranscriptionCancelled("File recognition cancelled")
@@ -94,8 +94,7 @@ class FileWindow:
         self.file_guidance = ttk.Label(
             heading,
             text="No duration limit · Processing stays on this computer · Installed models only\n"
-                 "MP3, M4A and video: choose More formats to set up local decoding.\n"
-                 "Subtitle times start at this track’s beginning.",
+                 "MP3, M4A and video: choose More formats to set up local decoding.",
             style="Hint.TLabel", wraplength=560,
         )
         self.file_guidance.grid(row=2, column=0, sticky="w")
@@ -118,6 +117,7 @@ class FileWindow:
         self.audio_track_input = ttk.Combobox(select, textvariable=self.audio_track,
                                               state="readonly", width=34, values=())
         self.audio_track_input.grid(row=1, column=1, sticky="ew", padx=12, pady=(10, 0))
+        self.audio_track_input.bind("<<ComboboxSelected>>", lambda _event: self._job_options_changed())
         self.inspect_button = ttk.Button(select, text="Inspect tracks", command=self.inspect_tracks,
                                          state="disabled")
         self.inspect_button.grid(row=1, column=2, sticky="w", padx=(8, 0), pady=(10, 0))
@@ -130,6 +130,17 @@ class FileWindow:
         )
         self.audio_track_hint.grid(row=2, column=1, columnspan=2, sticky="w",
                                    padx=12, pady=(4, 0))
+        timing_line = ttk.Frame(select)
+        timing_line.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(10, 0))
+        timing_line.columnconfigure(1, weight=1)
+        self.recording_timestamps = tk.BooleanVar(value=False)
+        self.timing_input = ttk.Checkbutton(timing_line, text="Keep recording timestamps",
+                                            variable=self.recording_timestamps,
+                                            command=self._job_options_changed, state="disabled")
+        self.timing_input.grid(row=0, column=0, sticky="w")
+        self.timing_hint = ttk.Label(timing_line, text="Choose a file to inspect its timing.",
+                                     style="Hint.TLabel", wraplength=400)
+        self.timing_hint.grid(row=0, column=1, sticky="w", padx=(12, 0))
         preview_heading = ttk.Frame(page)
         preview_heading.grid(row=4, column=0, sticky="ew", pady=(0, 8))
         preview_heading.columnconfigure(0, weight=1)
@@ -187,6 +198,34 @@ class FileWindow:
         self.model_button.configure(state="disabled" if self.busy else "normal")
         self.audio_track_input.configure(state="disabled" if self.busy else "readonly")
         self.inspect_button.configure(state="disabled" if self.busy or not self.path else "normal")
+        self.timing_input.configure(state="normal" if not self.busy and self.inspected is not None
+                                    and self.inspected.metadata.origin is not None else "disabled")
+        self._timing_hint()
+
+    def _timing_hint(self):
+        metadata = self.inspected.metadata if self.inspected is not None else None
+        if metadata is None:
+            message = "Choose a file to inspect its timing."
+        elif metadata.origin_kind == "pcm-sample-clock":
+            message = "WAV times start at the beginning of the audio."
+        elif metadata.origin is None:
+            message = "Recording clock unavailable; times start at this track."
+        elif not self.recording_timestamps.get():
+            message = "Times start at this track; gaps are removed."
+        elif metadata.origin_kind == "all-stream-starts":
+            message = "Uses the earliest audio/video start; keeps gaps."
+        else:
+            message = "Keeps track offsets and pauses in the recording."
+        self.timing_hint.configure(text=message)
+
+    def _job_options_changed(self):
+        if self.busy or self.closed:
+            return
+        if self.result is not None:
+            self.result = None
+            self._preview("")
+            self.status.set("Transcribe again to use the selected track and timing.")
+        self._controls()
 
     def decoder_setup(self):
         if self.busy or self.closed:
@@ -209,6 +248,7 @@ class FileWindow:
             self.path = Path(path)
             self.inspected = None
             self.inspection_signature = None
+            self.recording_timestamps.set(False)
             self._track_ordinals = {}
             self.audio_track_input.configure(values=())
             self.audio_track.set("")
@@ -250,6 +290,10 @@ class FileWindow:
             self.status.set("Choose an inspected audio track first.")
             self.audio_track_input.focus_set()
             return
+        if self.recording_timestamps.get() and self.inspected.metadata.origin is None:
+            self.status.set("Recording timestamps are unavailable for this file. Use track-relative timing.")
+            return
+        timing = "recording" if self.recording_timestamps.get() else "relative"
         self.result = None
         self._preview("")
         self.busy = True
@@ -260,7 +304,7 @@ class FileWindow:
         self._controls()
         try:
             threading.Thread(target=_work, args=(self.path, self.cfg, audio_track,
-                                                 self.cancel_event, self.events, self.inspection_signature),
+                                                 self.cancel_event, self.events, self.inspection_signature, timing),
                              name="utterleaf-file", daemon=True).start()
         except Exception as exc:
             self.busy = False
@@ -306,6 +350,7 @@ class FileWindow:
                     continue
                 phase, amount = value
                 self.status.set({"decoding": "Reading audio…", "loading": "Loading the installed model…",
+                                 "timing": "Checking recording timestamps…",
                                  "recognizing": "Recognizing speech…", "complete": "Recognition complete."}.get(phase, phase))
                 self.progress.stop()
                 self.progress.configure(mode="indeterminate" if amount is None else "determinate")
@@ -322,6 +367,12 @@ class FileWindow:
                     self._controls()
                     continue
                 inspected = value
+                unchanged = self.inspected is not None and inspected == self.inspected
+                previous_track = self._track_ordinals.get(self.audio_track.get())
+                if not unchanged:
+                    self.result = None
+                    self._preview("")
+                    self.recording_timestamps.set(inspected.metadata.origin is not None)
                 self.inspected = inspected
                 self.inspection_signature = inspected.signature
                 values = []
@@ -344,7 +395,9 @@ class FileWindow:
                     self._track_ordinals[label] = track.ordinal
                 self.audio_track_input.configure(values=values)
                 if values:
-                    self.audio_track.set(values[0])
+                    selected = next((label for label in values if unchanged and
+                                     self._track_ordinals[label] == previous_track), values[0])
+                    self.audio_track.set(selected)
                     self.status.set("Tracks inspected. Choose a track, then transcribe.")
                 self.busy = False
                 self.operation = None

@@ -5,6 +5,7 @@ import threading
 import time
 import tkinter as tk
 import os
+from dataclasses import replace
 from fractions import Fraction
 
 import pytest
@@ -346,3 +347,83 @@ def test_success_preview_stays_unsaved_and_compact_footer_visible(window, monkey
     window.root.geometry("760x560")
     window.root.update()
     assert window.export_button.winfo_rooty() + window.export_button.winfo_height() <= window.root.winfo_rooty() + window.root.winfo_height()
+
+
+def test_new_file_defaults_to_recording_clock_and_choice_reaches_job(window, monkeypatch, tmp_path):
+    monkeypatch.setattr("utterleaf.file_ui.filedialog.askopenfilename", lambda **kwargs: str(tmp_path / "new.mkv"))
+    calls = []
+    monkeypatch.setattr("utterleaf.file_ui.transcribe_file",
+                        lambda *args, **kwargs: calls.append(kwargs["timing"]) or Transcript((Segment(.2, .5, "words"),)))
+    window.choose()
+    pump(window, lambda: not window.busy)
+    assert window.recording_timestamps.get()
+    assert "Keeps track offsets" in window.timing_hint.cget("text")
+    window.start()
+    pump(window, lambda: not window.busy)
+    assert calls == ["recording"]
+    window.timing_input.invoke()
+    assert not window.recording_timestamps.get()
+    assert window.result is None and window.preview.get("1.0", "end").strip() == ""
+    assert str(window.export_button.cget("state")) == "disabled"
+    assert "gaps are removed" in window.timing_hint.cget("text")
+    window.start()
+    pump(window, lambda: not window.busy)
+    assert calls == ["recording", "relative"]
+
+
+def test_missing_clock_is_explicit_and_cannot_request_recording_times(window, monkeypatch, tmp_path):
+    inspected = replace(window.inspected, metadata=replace(window.inspected.metadata,
+                                                          origin=None, origin_kind="unavailable"))
+    monkeypatch.setattr("utterleaf.file_ui.inspect_file", lambda *args, **kwargs: inspected)
+    monkeypatch.setattr("utterleaf.file_ui.filedialog.askopenfilename", lambda **kwargs: str(tmp_path / "raw.aac"))
+    calls = []
+    monkeypatch.setattr("utterleaf.file_ui.transcribe_file",
+                        lambda *args, **kwargs: calls.append(kwargs["timing"]) or Transcript(()))
+    window.choose()
+    pump(window, lambda: not window.busy)
+    assert not window.recording_timestamps.get()
+    assert str(window.timing_input.cget("state")) == "disabled"
+    assert "unavailable" in window.timing_hint.cget("text")
+    window.start()
+    pump(window, lambda: not window.busy)
+    assert calls == ["relative"]
+    window.recording_timestamps.set(True)
+    window.start()
+    assert not window.busy and calls == ["relative"]
+    assert "unavailable" in window.status.get()
+
+
+def test_unchanged_reinspection_preserves_timing_choice_and_preview(window):
+    window.recording_timestamps.set(False)
+    selected = window.audio_track.get()
+    window.result = Transcript((Segment(0, 1, "keep"),))
+    window._preview(window.result.text)
+    window.inspect_tracks()
+    pump(window, lambda: not window.busy)
+    assert not window.recording_timestamps.get()
+    assert window.audio_track.get() == selected
+    assert window.result.text == "keep"
+
+
+def test_track_change_invalidates_previous_export_preview(window):
+    window.result = Transcript((Segment(0, 1, "previous track"),))
+    window._preview(window.result.text)
+    window.audio_track_input.event_generate("<<ComboboxSelected>>")
+    assert window.result is None
+    assert str(window.export_button.cget("state")) == "disabled"
+
+
+def test_recording_control_is_disabled_during_recognition(window, monkeypatch):
+    entered, release = threading.Event(), threading.Event()
+    def recognize(*args, **kwargs):
+        entered.set()
+        release.wait(3)
+        return Transcript(())
+    monkeypatch.setattr("utterleaf.file_ui.transcribe_file", recognize)
+    window.recording_timestamps.set(True)
+    window.start()
+    assert entered.wait(1)
+    assert str(window.timing_input.cget("state")) == "disabled"
+    release.set()
+    pump(window, lambda: not window.busy)
+    assert str(window.timing_input.cget("state")) == "normal"

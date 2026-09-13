@@ -14,8 +14,13 @@ import pytest
 
 av = pytest.importorskip("av")
 from utterleaf import file_external
+from utterleaf.config import Config
 from utterleaf.file_external import open_ffmpeg_timeline
-from utterleaf.transcript import TranscriptionCancelled
+from utterleaf.file_transcription import transcribe_file
+from utterleaf.transcribe import CTranslateEngine
+from utterleaf.transcript import (
+    Segment, Transcript, TranscriptionCancelled, export_transcript,
+)
 
 
 FFMPEG = os.environ.get("UTTERLEAF_TEST_FFMPEG")
@@ -185,6 +190,48 @@ def test_real_mkv_common_origin_late_track_and_internal_gap_are_retained(tmp_pat
         runs[-1][1] = prior_end
     assert runs == [[Fraction(6, 5), Fraction(13, 10)], [Fraction(7, 5), Fraction(3, 2)]]
     assert runs[1][0] - runs[0][1] == Fraction(1, 10)
+
+
+def test_recording_transcription_and_exports_keep_real_track_timeline(tmp_path, monkeypatch):
+    movie = tmp_path / "transcribed-tracks.mkv"
+    timed_pcm_tracks(movie)
+    install_tools(monkeypatch, tmp_path)
+    network_flags = []
+
+    class KnownSegments(CTranslateEngine):
+        def __init__(self):
+            super().__init__(None)
+            self.calls = 0
+
+        def transcribe_segments(self, audio, cfg, **kwargs):
+            network_flags.append(cfg.allow_network)
+            self.calls += 1
+            assert audio.dtype == np.float32 and 0 < audio.size <= 30 * 16000
+            return Transcript((Segment(0, 0.05, f"batch {self.calls}"),), "en")
+
+    def recognize(track, timing):
+        engine = KnownSegments()
+        monkeypatch.setattr("utterleaf.transcribe.load_model", lambda cfg: engine)
+        return transcribe_file(
+            movie, Config(allow_network=True), audio_track=track, timing=timing
+        )
+
+    first = recognize(0, "recording")
+    second = recognize(1, "recording")
+    relative = recognize(1, "relative")
+
+    assert [segment.start for segment in first.segments] == [0]
+    assert [segment.start for segment in second.segments] == pytest.approx([0.2, 0.4])
+    assert [segment.start for segment in relative.segments] == [0]
+    assert [segment.text for segment in second.segments] == ["batch 1", "batch 2"]
+    assert network_flags == [False, False, False, False]
+
+    srt = export_transcript(second, tmp_path / "recording.srt")
+    vtt = export_transcript(second, tmp_path / "recording.vtt")
+    assert "00:00:00,200 --> 00:00:00,250" in srt.read_text(encoding="utf-8")
+    assert "00:00:00,400 --> 00:00:00,450" in srt.read_text(encoding="utf-8")
+    assert "00:00:00.200 --> 00:00:00.250" in vtt.read_text(encoding="utf-8")
+    assert "00:00:00.400 --> 00:00:00.450" in vtt.read_text(encoding="utf-8")
 
 
 def test_real_aac_priming_uses_first_decoded_pts_and_duration(tmp_path, monkeypatch):

@@ -100,3 +100,30 @@ def test_cli_selected_track_reaches_recognizer_as_zero_based(tmp_path, monkeypat
     assert main(["--transcribe-file", str(source), "--audio-track", "3",
                  "--output", str(tmp_path / "third.txt")]) == 0
     assert seen == [2]
+
+
+@pytest.mark.parametrize("option,expected", [(None, "relative"), ("recording", "recording"), ("relative", "relative")])
+def test_cli_clock_choice_reaches_recognizer(tmp_path, monkeypatch, option, expected):
+    from utterleaf import config, hardware, file_transcription
+    from utterleaf.transcript import Transcript
+    source = tmp_path / "recording.mkv"
+    source.write_bytes(b"synthetic")
+    monkeypatch.setattr(config, "config_path", lambda: tmp_path / "config.toml")
+    monkeypatch.setattr(config, "ensure_files", lambda: Config())
+    monkeypatch.setattr(hardware, "enable_cuda_libs", lambda: None)
+    seen = []
+    monkeypatch.setattr(file_transcription, "transcribe_file",
+                        lambda *args, **kwargs: seen.append(kwargs["timing"]) or Transcript(()))
+    args = ["--transcribe-file", str(source), "--output", str(tmp_path / "output.vtt")]
+    if option is not None:
+        args.extend(["--file-timing", option])
+    assert main(args) == 0
+    assert seen == [expected]
+
+
+@pytest.mark.parametrize("args", [["--file-timing", "recording"], ["--files", "--file-timing", "relative"],
+                                  ["--file-timing", "invented"]])
+def test_cli_clock_requires_explicit_file_job(args):
+    with pytest.raises(SystemExit) as failure:
+        main(args)
+    assert failure.value.code == 2
