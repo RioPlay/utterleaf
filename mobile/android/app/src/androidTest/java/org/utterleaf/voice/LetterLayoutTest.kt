@@ -189,14 +189,16 @@ class LetterLayoutTest {
     @Test fun switchingLayoutCancelsPendingTouchRepeatSelectionAlternateAndModifiers() {
         val context = instrumentation.targetContext
         val original = KeyboardOptions.load(context)
+        val options = KeyboardOptions(terminal = true, holdDelayMs = 250)
         val typed = mutableListOf<String>(); val erased = mutableListOf<Unit>()
         val modified = mutableListOf<Triple<String, Boolean, Boolean>>(); val moved = mutableListOf<Boolean>()
         var activity: Activity? = null; lateinit var panel: TypingPanel
         try {
+            options.save(context)
             activity = instrumentation.startActivitySync(Intent(context, KeyboardSettingsActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             instrumentation.runOnMainSync {
-                panel = panel(KeyboardOptions(terminal = true, holdDelayMs = 250), typed, erased, modified, moved)
+                panel = panel(options, typed, erased, modified, moved)
                 panel.reset(false, false, "Enter")
                 activity!!.setContentView(FrameLayout(activity!!).apply { addView(panel.view) })
             }
@@ -229,7 +231,9 @@ class LetterLayoutTest {
                     held.width / 2f, held.height / 2f, 0)
                 try { held.dispatchTouchEvent(event) } finally { event.recycle() }
             }
-            Thread.sleep(350); instrumentation.waitForIdleSync()
+            UiAwait.until("Held letter choices did not appear") {
+                (0 until panel.view.childCount).any { panel.view.getChildAt(it) is AlternateStrip }
+            }
             instrumentation.runOnMainSync {
                 assertTrue((0 until panel.view.childCount).any { panel.view.getChildAt(it) is AlternateStrip })
                 key(panel, "AZERTY letter layout").performClick()
