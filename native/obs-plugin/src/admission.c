@@ -15,6 +15,33 @@
 #define UL_IO_POLL_MS 50u
 #define UL_PIPE_BUFFER_BYTES 4096u
 
+#ifndef UL_ADMISSION_IO_EVENT_CREATE
+#define UL_ADMISSION_IO_EVENT_CREATE() CreateEventW(NULL, TRUE, FALSE, NULL)
+#endif
+
+#ifndef UL_ADMISSION_PEER_EXPECTED
+#define UL_ADMISSION_PEER_EXPECTED(admission) peer_is_expected(admission)
+#endif
+
+#ifndef UL_ADMISSION_READ_PIPE
+#define UL_ADMISSION_READ_PIPE(admission, overlapped, buffer, size, started,  \
+                               timeout_ms, transferred)                     \
+    read_pipe(admission, overlapped, buffer, size, started, timeout_ms,      \
+              transferred)
+#endif
+
+#ifndef UL_ADMISSION_WRITE_PIPE
+#define UL_ADMISSION_WRITE_PIPE(admission, overlapped, buffer, size, started, \
+                                timeout_ms, transferred)                     \
+    write_pipe(admission, overlapped, buffer, size, started, timeout_ms,      \
+               transferred)
+#endif
+
+#ifndef UL_ADMISSION_PEEK_PIPE
+#define UL_ADMISSION_PEEK_PIPE(pipe, available) \
+    PeekNamedPipe(pipe, NULL, 0, NULL, available, NULL)
+#endif
+
 typedef struct ul_identity {
     PSID user_sid;
     DWORD user_sid_size;
@@ -520,6 +547,122 @@ static int operation_to_public(ul_operation_result result)
     return UL_ADMISSION_IO_ERROR;
 }
 
+static int admission_gate_result(const ul_admission *admission)
+{
+    if (admission == NULL || admission->pipe == INVALID_HANDLE_VALUE)
+        return UL_ADMISSION_IO_ERROR;
+    if (InterlockedCompareExchange(
+            (volatile LONG *)&admission->cancelled, 0, 0) != 0)
+        return UL_ADMISSION_CANCELLED;
+    if (InterlockedCompareExchange(
+            (volatile LONG *)&admission->authenticated, 0, 0) == 0)
+        return UL_ADMISSION_REJECTED;
+    return UL_ADMISSION_AUTH_OK;
+}
+
+static int terminal_failure(ul_admission *admission, int result)
+{
+    if (admission != NULL) {
+        ul_admission_cancel(admission);
+        if (admission->pipe != INVALID_HANDLE_VALUE)
+            DisconnectNamedPipe(admission->pipe);
+    }
+    return result;
+}
+
+static int admission_peer_result(ul_admission *admission, ULONGLONG started,
+                                 DWORD timeout_ms)
+{
+    DWORD remaining = 0;
+    BOOL expected;
+    ul_operation_result operation =
+        progress_result(admission, started, timeout_ms, &remaining);
+
+    if (operation != UL_OPERATION_OK)
+        return operation_to_public(operation);
+    expected = UL_ADMISSION_PEER_EXPECTED(admission);
+    operation = progress_result(admission, started, timeout_ms, &remaining);
+    if (operation != UL_OPERATION_OK)
+        return operation_to_public(operation);
+    return expected ? UL_ADMISSION_AUTH_OK : UL_ADMISSION_REJECTED;
+}
+
+static int admission_exact_io(ul_admission *admission, void *buffer,
+                              DWORD size, DWORD timeout_ms, BOOL writing)
+{
+    HANDLE io_event = NULL;
+    OVERLAPPED overlapped;
+    ULONGLONG started;
+    DWORD offset = 0;
+    int result = UL_ADMISSION_IO_ERROR;
+
+    if (buffer == NULL || size == 0u ||
+        size > UL_ADMISSION_MAX_IO_BYTES || timeout_ms == 0u ||
+        timeout_ms > 30000u)
+        goto cleanup;
+    started = GetTickCount64();
+    result = admission_gate_result(admission);
+    if (result != UL_ADMISSION_AUTH_OK)
+        goto cleanup;
+    result = admission_peer_result(admission, started, timeout_ms);
+    if (result != UL_ADMISSION_AUTH_OK)
+        goto cleanup;
+    result = UL_ADMISSION_IO_ERROR;
+    io_event = UL_ADMISSION_IO_EVENT_CREATE();
+    if (io_event == NULL)
+        goto cleanup;
+    SecureZeroMemory(&overlapped, sizeof(overlapped));
+    overlapped.hEvent = io_event;
+
+    while (offset < size) {
+        DWORD transferred = 0;
+        ul_operation_result operation;
+        int peer_result =
+            admission_peer_result(admission, started, timeout_ms);
+
+        if (peer_result != UL_ADMISSION_AUTH_OK) {
+            result = peer_result;
+            goto cleanup;
+        }
+
+        if (writing)
+            operation = UL_ADMISSION_WRITE_PIPE(
+                admission, &overlapped, (const uint8_t *)buffer + offset,
+                size - offset, started, timeout_ms, &transferred);
+        else
+            operation = UL_ADMISSION_READ_PIPE(
+                admission, &overlapped, (uint8_t *)buffer + offset,
+                size - offset, started, timeout_ms, &transferred);
+        if (operation != UL_OPERATION_OK) {
+            result = operation_to_public(operation);
+            goto cleanup;
+        }
+        peer_result = admission_peer_result(admission, started, timeout_ms);
+        if (peer_result != UL_ADMISSION_AUTH_OK) {
+            result = peer_result;
+            goto cleanup;
+        }
+        if (transferred == 0u || transferred > size - offset)
+            goto cleanup;
+        offset += transferred;
+    }
+    result = admission_peer_result(admission, started, timeout_ms);
+    if (result != UL_ADMISSION_AUTH_OK)
+        goto cleanup;
+
+cleanup:
+    SecureZeroMemory(&overlapped, sizeof(overlapped));
+    if (io_event != NULL)
+        CloseHandle(io_event);
+    if (result != UL_ADMISSION_AUTH_OK) {
+        if (!writing && buffer != NULL && size > 0u &&
+            size <= UL_ADMISSION_MAX_IO_BYTES)
+            SecureZeroMemory(buffer, size);
+        return terminal_failure(admission, result);
+    }
+    return result;
+}
+
 ul_admission *ul_admission_create(DWORD expected_pid,
                                   const uint8_t session[16])
 {
@@ -714,6 +857,44 @@ cleanup:
         admission->pipe != INVALID_HANDLE_VALUE)
         DisconnectNamedPipe(admission->pipe);
     return result;
+}
+
+int ul_admission_read_exact(ul_admission *admission, void *buffer, DWORD size,
+                            DWORD timeout_ms)
+{
+    return admission_exact_io(admission, buffer, size, timeout_ms, FALSE);
+}
+
+int ul_admission_write_all(ul_admission *admission, const void *buffer,
+                           DWORD size, DWORD timeout_ms)
+{
+    return admission_exact_io(admission, (void *)buffer, size, timeout_ms,
+                              TRUE);
+}
+
+int ul_admission_probe(ul_admission *admission, DWORD *available)
+{
+    DWORD observed = 0;
+    int result = UL_ADMISSION_IO_ERROR;
+
+    if (available == NULL)
+        return terminal_failure(admission, result);
+    *available = 0;
+    result = admission_gate_result(admission);
+    if (result != UL_ADMISSION_AUTH_OK)
+        return terminal_failure(admission, result);
+    if (!UL_ADMISSION_PEER_EXPECTED(admission))
+        return terminal_failure(admission, UL_ADMISSION_REJECTED);
+    result = UL_ADMISSION_IO_ERROR;
+    if (!UL_ADMISSION_PEEK_PIPE(admission->pipe, &observed))
+        return terminal_failure(admission, result);
+    if (!UL_ADMISSION_PEER_EXPECTED(admission))
+        return terminal_failure(admission, UL_ADMISSION_REJECTED);
+    result = admission_gate_result(admission);
+    if (result != UL_ADMISSION_AUTH_OK)
+        return terminal_failure(admission, result);
+    *available = observed;
+    return UL_ADMISSION_AUTH_OK;
 }
 
 void ul_admission_cancel(ul_admission *admission)

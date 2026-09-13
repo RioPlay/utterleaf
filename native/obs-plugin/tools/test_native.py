@@ -44,6 +44,8 @@ def main() -> None:
     logs = []
     sources = [ROOT / name for name in (
         "src/handshake.c", "src/handshake.h", "src/admission.c", "src/admission.h",
+        "src/session_protocol.c", "src/session_protocol.h", "tests/session_protocol_test.c",
+        "tests/admission_io_test.c", "tests/admission_io_fault_test.c",
         "src/crypto.c", "src/crypto.h",
         "src/authorization.c", "src/authorization.h",
         "src/pairing_store.c", "src/pairing_store.h",
@@ -118,7 +120,23 @@ def main() -> None:
     pairing_dll = output / "utterleaf-pairing-store-test.dll"
     pairing_state = output / "pairing_store_test.exe"
     plugin_state = output / "plugin_state_test.exe"
+    session_protocol = output / "session_protocol_test.exe"
+    admission_io = output / "admission_io_test.exe"
+    admission_io_fault = output / "admission_io_fault_test.exe"
     run("compiler", [compiler, "--version"])
+    run("session-protocol-build", [*flags, ROOT / "src/session_protocol.c",
+                                    ROOT / "tests/session_protocol_test.c", "-o", session_protocol])
+    run("session-protocol-test", [session_protocol])
+    run("admission-io-build", [*flags, "-D_M_X64=100", "-municode", ROOT / "src/admission.c",
+                                ROOT / "src/crypto.c", ROOT / "src/handshake.c",
+                                ROOT / "tests/admission_io_test.c", "-ladvapi32", "-lbcrypt",
+                                "-o", admission_io])
+    run("admission-io-test", [admission_io])
+    run("admission-io-fault-build", [*flags, "-D_M_X64=100", ROOT / "src/crypto.c",
+                                      ROOT / "src/handshake.c",
+                                      ROOT / "tests/admission_io_fault_test.c",
+                                      "-ladvapi32", "-lbcrypt", "-o", admission_io_fault])
+    run("admission-io-fault-test", [admission_io_fault])
     run("handshake-build", [*flags, ROOT / "src/crypto.c", ROOT / "src/handshake.c",
                            ROOT / "tests/handshake_test.c", "-lbcrypt", "-o", fixed])
     run("handshake-test", [fixed])
@@ -129,6 +147,7 @@ def main() -> None:
                                        "-o", authorization_state])
     run("authorization-state-test", [authorization_state])
     run("plugin-state-build", [*flags, "-D_M_X64=100", ROOT / "tests/plugin_state_test.c",
+                                ROOT / "src/session_protocol.c",
                                 "-o", plugin_state])
     run("plugin-state-test", [plugin_state])
     functions = (
@@ -173,7 +192,8 @@ def main() -> None:
     run("pairing-interop-test", [sys._base_executable, ROOT / "tests/test_pairing_interop.py",
                                   pairing_dll, authorization_dll])
     artifacts = [fixed, fault, identity, dll, crypto, authorization_state, authorization_dll,
-                 pairing_state, pairing_dll, plugin_state]
+                 pairing_state, pairing_dll, plugin_state, session_protocol, admission_io,
+                 admission_io_fault]
     if args.build is not None:
         bridge_test = output / "bridge_test.exe"
         run("bridge-wrapper-build", [*flags, "-D_M_X64=100", f"-I{headers / 'libobs'}",
@@ -201,7 +221,7 @@ def main() -> None:
     if any(digest(path) != expected for path, expected in dispatch_inputs.items()):
         raise RuntimeError("Reviewed dispatch inputs changed during verification")
     receipt = {
-        "schema": 2, "scope": "pairing/admission/runtime; optional parsed libobs dispatch; no OBS application, arming or audio",
+        "schema": 2, "scope": "pairing/admission/Arm runtime fixtures; optional parsed libobs dispatch; no OBS application or audio",
         "vendor_dispatch": "passed" if args.build is not None else "not run: supply --build and --headers",
         "native_dialog": "passed" if args.ui else "not run: supply --ui on a Windows desktop",
         "dispatch_inputs": {str(path): expected for path, expected in dispatch_inputs.items()},
