@@ -13,7 +13,7 @@ from utterleaf.file_transcription import transcribe_file
 from utterleaf.transcript import TranscriptionCancelled, export_transcript
 
 
-def _work(path, cfg, cancel, events):
+def _work(path, cfg, audio_track, cancel, events):
     # Only this bounded queue crosses threads. Workers never touch Tk widgets.
     def send(kind, value):
         try:
@@ -26,7 +26,7 @@ def _work(path, cfg, cancel, events):
             events.put_nowait((kind, value))
 
     try:
-        result = transcribe_file(path, cfg, cancel=cancel,
+        result = transcribe_file(path, cfg, audio_track=audio_track, cancel=cancel,
                                  progress=lambda phase, amount: send("progress", (phase, amount)))
         send("cancelled", None) if cancel.is_set() else send("result", result)
     except TranscriptionCancelled:
@@ -66,8 +66,13 @@ class FileWindow:
         heading.columnconfigure(0, weight=1)
         ttk.Label(heading, text="Transcribe a file", style="Section.TLabel").grid(row=0, column=0, sticky="w")
         ttk.Label(heading, text="Choose local audio, review the words, then export when ready.", wraplength=560).grid(row=1, column=0, sticky="w", pady=(8, 4))
-        ttk.Label(heading, text="Up to 10 minutes · 256 MiB · Installed models only\nMP3, M4A and video: choose More formats to set up local decoding.",
-                  style="Hint.TLabel", wraplength=560).grid(row=2, column=0, sticky="w")
+        self.file_guidance = ttk.Label(
+            heading,
+            text="No duration limit · Processing stays on this computer · Installed models only\n"
+                 "MP3, M4A and video: choose More formats to set up local decoding.",
+            style="Hint.TLabel", wraplength=560,
+        )
+        self.file_guidance.grid(row=2, column=0, sticky="w")
         from PIL import ImageTk
         from utterleaf.brand import mascot_image
         self.mascot = ImageTk.PhotoImage(mascot_image("typing", size=80), master=root)
@@ -81,6 +86,31 @@ class FileWindow:
         ttk.Label(select, textvariable=self.filename, wraplength=440).grid(row=0, column=1, sticky="w", padx=12)
         self.start_button = ttk.Button(select, text="Transcribe", style="Primary.TButton", command=self.start, state="disabled")
         self.start_button.grid(row=0, column=2)
+        self.audio_track_label = ttk.Label(select, text="Audio track", underline=0)
+        self.audio_track_label.grid(row=1, column=0, sticky="w", pady=(10, 0))
+        self.audio_track = tk.StringVar(value="1")
+        track_style = ttk.Style(root)
+        track_style.configure("File.TSpinbox", fieldbackground=theme.SURFACE_LOW,
+                              background=theme.SURFACE_LOW, foreground=theme.ON_SURFACE,
+                              arrowcolor=theme.ON_VARIANT, bordercolor=theme.OUTLINE_VARIANT,
+                              lightcolor=theme.OUTLINE_VARIANT, darkcolor=theme.OUTLINE_VARIANT,
+                              padding=4)
+        track_style.map("File.TSpinbox", bordercolor=[("focus", theme.PRIMARY)],
+                        lightcolor=[("focus", theme.PRIMARY)], darkcolor=[("focus", theme.PRIMARY)],
+                        foreground=[("disabled", theme.OUTLINE)])
+        self.audio_track_input = ttk.Spinbox(select, from_=1, to=256, increment=1,
+                                              textvariable=self.audio_track, width=6,
+                                              style="File.TSpinbox")
+        self.audio_track_input.grid(row=1, column=1, sticky="w", padx=12, pady=(10, 0))
+        root.bind("<Alt-a>", lambda _event: self.audio_track_input.focus_set(), add="+")
+        self.audio_track_hint = ttk.Label(
+            select,
+            text="A track is a separate audio stream, not a stereo channel. "
+                 "Utterleaf does not identify speakers.",
+            style="Hint.TLabel", wraplength=440,
+        )
+        self.audio_track_hint.grid(row=2, column=1, columnspan=2, sticky="w",
+                                   padx=12, pady=(4, 0))
         preview_heading = ttk.Frame(page)
         preview_heading.grid(row=4, column=0, sticky="ew", pady=(0, 8))
         preview_heading.columnconfigure(0, weight=1)
@@ -136,6 +166,7 @@ class FileWindow:
         self.export_button.configure(state="normal" if self.result is not None and not self.busy else "disabled")
         self.decoder_button.configure(state="disabled" if self.busy else "normal")
         self.model_button.configure(state="disabled" if self.busy else "normal")
+        self.audio_track_input.configure(state="disabled" if self.busy else "normal")
 
     def decoder_setup(self):
         if self.busy or self.closed:
@@ -162,13 +193,22 @@ class FileWindow:
     def start(self):
         if self.closed or self.busy or self.path is None:
             return
+        try:
+            audio_track = int(self.audio_track.get())
+        except ValueError:
+            audio_track = 0
+        if not 1 <= audio_track <= 256:
+            self.status.set("Audio track must be a whole number from 1 to 256.")
+            self.audio_track_input.focus_set()
+            return
         self.discard()
         self.busy = True
         self.cancel_event = threading.Event()
         self.events = queue.Queue(maxsize=8)
         self.status.set("Opening the selected file…")
         self._controls()
-        threading.Thread(target=_work, args=(self.path, self.cfg, self.cancel_event, self.events),
+        threading.Thread(target=_work, args=(self.path, self.cfg, audio_track - 1,
+                                             self.cancel_event, self.events),
                          name="utterleaf-file", daemon=True).start()
 
     def cancel(self):

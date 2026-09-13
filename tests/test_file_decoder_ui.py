@@ -1,3 +1,4 @@
+import gc
 import tkinter as tk
 
 import pytest
@@ -8,13 +9,19 @@ from utterleaf import theme
 
 @pytest.fixture(scope="module")
 def root():
+    failure = None
     try:
         window = tk.Tk()
     except tk.TclError as exc:
-        pytest.skip(f"Tk needs a working display: {exc}")
+        failure = str(exc)
+    if failure is not None:
+        gc.collect()
+        pytest.skip(f"Tk needs a working display: {failure}")
     window.withdraw()
     yield window
     window.destroy()
+    del window
+    gc.collect()
 
 
 @pytest.fixture

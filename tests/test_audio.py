@@ -19,6 +19,44 @@ def _devices() -> list[dict]:
     ]
 
 
+@pytest.mark.parametrize("rate", [16000, 44100, 48000])
+def test_endpoint_snapshot_is_bounded_sample_clock_and_does_not_open_mic(monkeypatch, rate):
+    recorder = Recorder()
+    monkeypatch.setattr(recorder, "prepare", lambda: pytest.fail("Snapshot opened microphone"))
+    recorder.input_rate = rate
+    empty, count = recorder.endpoint_snapshot()
+    assert not len(empty) and count == 0
+    recorder.recording = True
+    recorder._chunks = [np.full((rate, 1), i / 20, dtype=np.float32) for i in range(20)]
+    recorder._captured_samples = 20 * rate
+    audio, end = recorder.endpoint_snapshot()
+    assert len(audio) == 8 * 16000
+    assert end == 20 * 16000
+    assert audio[100] == pytest.approx(.6)
+    assert audio[-100] == pytest.approx(.95)
+    audio[:] = 0
+    assert recorder._chunks[-1][-1, 0] == pytest.approx(.95)
+    recorder.stop()
+    empty, count = recorder.endpoint_snapshot()
+    assert not len(empty) and count == 0
+
+
+def test_endpoint_snapshot_count_stays_with_selected_chunks(monkeypatch):
+    recorder = Recorder()
+    recorder.recording = True
+    recorder._chunks = [np.ones((16000, 1), dtype=np.float32)]
+    recorder._captured_samples = 16000
+    real_resample = resample_audio
+    def append_during_resample(audio, rate):
+        recorder._on_audio(np.zeros((16000, 1), dtype=np.float32), 16000, None, None)
+        return real_resample(audio, rate)
+    monkeypatch.setattr("utterleaf.audio.resample_audio", append_during_resample)
+    audio, end = recorder.endpoint_snapshot()
+    assert len(audio) == end == 16000
+    assert np.all(audio == 1)
+    assert recorder._captured_samples == 32000
+
+
 def test_list_input_names_skips_outputs(monkeypatch) -> None:
     monkeypatch.setattr("utterleaf.audio.sd.query_devices", _devices)
     assert list_input_names() == ["Headset Mic", "USB Mic"]

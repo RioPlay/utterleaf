@@ -25,6 +25,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--polish", metavar="TEXT", help="Polish text on stdout (no mic)")
     parser.add_argument("--app", default="", help="Foreground app name for --polish")
     parser.add_argument("--transcribe-file", metavar="PATH", help="Transcribe a local media file using already installed models")
+    parser.add_argument("--audio-track", type=int, metavar="NUMBER", help="File audio track, counted from 1 (default: 1); not a stereo channel")
     parser.add_argument("--files", action="store_true", help="Open local file transcription and export")
     parser.add_argument("--model-setup-download", metavar="NAME", help=argparse.SUPPRESS)
     parser.add_argument("--model-setup-backend", choices=("ctranslate2", "openvino"), help=argparse.SUPPRESS)
@@ -59,6 +60,8 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help=argparse.SUPPRESS,
     )
+    parser.add_argument("--speech-review", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--clipboard-worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
 
     if args.model_setup_download:
@@ -72,7 +75,25 @@ def main(argv: list[str] | None = None) -> int:
     if args.model_setup_backend:
         parser.error("A model setup backend requires a selected model")
 
+    if args.clipboard_worker:
+        if any(value not in (None, False, "") for key, value in vars(args).items()
+               if key != "clipboard_worker"):
+            parser.error("Clipboard worker cannot be combined with another app action")
+        from utterleaf.windows_clipboard import run_worker
+
+        return run_worker()
+
+    if args.speech_review:
+        if any(value not in (None, False, "") for key, value in vars(args).items()
+               if key != "speech_review"):
+            parser.error("Speech review cannot be combined with another app action")
+        from utterleaf.review_ui import run_review
+
+        return run_review()
+
     if args.transcribe_file:
+        if args.audio_track is not None and not 1 <= args.audio_track <= 256:
+            parser.error("--audio-track must be between 1 and 256")
         if not args.output:
             parser.error("--transcribe-file requires --output; transcripts are not printed or saved implicitly")
         if any((args.files, args.pill, args.settings, args.paths, args.toggle, args.stop, args.quit_app,
@@ -89,8 +110,8 @@ def main(argv: list[str] | None = None) -> int:
             parser.error("Output already exists; choose another destination or explicitly use --overwrite")
         if args.format is None and destination.suffix.lower() not in (".txt", ".srt", ".vtt"):
             parser.error("Use a .txt, .srt or .vtt output filename, or specify --format")
-    elif args.output or args.format or args.overwrite:
-        parser.error("--output, --format and --overwrite require --transcribe-file")
+    elif args.output or args.format or args.overwrite or args.audio_track is not None:
+        parser.error("--output, --format, --overwrite and --audio-track require --transcribe-file")
 
     if args.files:
         if any((args.pill, args.settings, args.paths, args.toggle, args.stop, args.quit_app,
@@ -166,7 +187,7 @@ def main(argv: list[str] | None = None) -> int:
 
         cancelled = threading.Event()
         try:
-            result = transcribe_file(source, cfg, cancel=cancelled)
+            result = transcribe_file(source, cfg, cancel=cancelled, audio_track=(args.audio_track or 1) - 1)
             written = export_transcript(result, destination, format=args.format, overwrite=args.overwrite)
         except KeyboardInterrupt:
             cancelled.set()

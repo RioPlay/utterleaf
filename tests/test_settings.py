@@ -121,6 +121,22 @@ def test_invalid_settings_do_not_write_any_files(monkeypatch, invalid):
     assert not written
 
 
+def test_speech_end_preferences_validate_and_save(monkeypatch):
+    saved = []
+    monkeypatch.setattr("utterleaf.settings.save", saved.append)
+    monkeypatch.setattr("utterleaf.settings.set_startup", lambda _on: None)
+    values = dict(hotkey="f8", mode="hold", model="small", device="auto", language="en",
+                  denoise="auto", beep=True, indicator=True, start_at_login=False)
+    cfg = apply_form(Config(), **values, speech_end_enabled=True,
+                     speech_end_pause_seconds="1.8", speech_end_insert=True)
+    assert cfg.speech_end_enabled is True
+    assert cfg.speech_end_pause_seconds == 1.8
+    assert cfg.speech_end_insert is True
+    for invalid in ("slow", 0.1, 3.1, float("nan")):
+        with pytest.raises(ValueError):
+            apply_form(Config(), **values, speech_end_pause_seconds=invalid)
+
+
 def test_relaunch_python_on_posix_keeps_module_entrypoint(monkeypatch):
     from pathlib import Path
     from utterleaf.settings import _relaunch

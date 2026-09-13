@@ -9,7 +9,9 @@ from utterleaf.backup_store import apply_import, prepare_import, write_backup
 
 LABELS = {"text_cleanup": "Text cleanup", "remove_fillers": "Remove fillers",
           "fix_corrections": "Fix spoken corrections", "beep": "Sound feedback",
-          "tray": "Tray icon", "indicator": "Floating indicator", "denoise": "Noise reduction"}
+          "tray": "Tray icon", "indicator": "Floating indicator", "denoise": "Noise reduction",
+          "output_format": "Output style", "speech_end_enabled": "Stop after speech",
+          "speech_end_pause_seconds": "Speech-end pause", "speech_end_insert": "Insert after speech end"}
 
 
 class BackupDialog:
@@ -25,12 +27,32 @@ class BackupDialog:
         self.root.minsize(480, 460)
         self.root.transient(parent)
         self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(3, weight=1)
-        self.intro = ttk.Label(self.root, text="Choose portable preferences and vocabulary to include. Network, clipboard, "
-                  "microphone, hotkeys and model settings stay unchanged. Vocabulary may contain personal information.",
+        self.root.rowconfigure(0, weight=1)
+        self.root.rowconfigure(1, weight=1, minsize=64)
+        self.root.bind("<FocusIn>", self._reveal_focus, add="+")
+        overflow = ttk.Frame(self.root)
+        overflow.grid(row=0, column=0, sticky="nsew")
+        overflow.columnconfigure(0, weight=1)
+        overflow.rowconfigure(0, weight=1)
+        self.options_canvas = tk.Canvas(overflow, highlightthickness=0,
+                                        bg=theme.SURFACE_LOW)
+        self.options_canvas.grid(row=0, column=0, sticky="nsew")
+        options_scroll = ttk.Scrollbar(overflow, orient="vertical",
+                                       command=self.options_canvas.yview)
+        options_scroll.grid(row=0, column=1, sticky="ns")
+        self.options_canvas.configure(yscrollcommand=options_scroll.set)
+        options_body = ttk.Frame(self.options_canvas)
+        self.options_body = options_body
+        options_window = self.options_canvas.create_window((0, 0), window=options_body, anchor="nw")
+        options_body.bind("<Configure>", lambda _event: self.options_canvas.configure(
+            scrollregion=self.options_canvas.bbox("all")))
+        self.options_canvas.bind("<Configure>", lambda event: self.options_canvas.itemconfigure(
+            options_window, width=event.width))
+        self.intro = ttk.Label(options_body, text="Choose portable preferences and vocabulary. Vocabulary may contain personal "
+                  "information. Network, clipboard, microphone, hotkeys and model settings stay unchanged.",
                   wraplength=610)
-        self.intro.grid(row=0, column=0, sticky="ew", padx=18, pady=12)
-        choices = ttk.Frame(self.root)
+        self.intro.grid(row=0, column=0, sticky="ew", padx=18, pady=8)
+        choices = ttk.Frame(options_body)
         choices.grid(row=1, column=0, sticky="ew", padx=18)
         available = dict(plan.preferences) if plan is not None else {key: getattr(cfg, key) for key in PORTABLE_PREFERENCES}
         self.selected = {}
@@ -39,8 +61,8 @@ class BackupDialog:
             self.selected[key] = var
             ttk.Checkbutton(choices, text=LABELS[key], variable=var, command=self.refresh).grid(
                 row=index // 2, column=index % 2, sticky="w", padx=(0, 14), pady=3)
-        vocabulary_row = ttk.Frame(self.root)
-        vocabulary_row.grid(row=2, column=0, sticky="ew", padx=18, pady=10)
+        vocabulary_row = ttk.Frame(options_body)
+        vocabulary_row.grid(row=2, column=0, sticky="ew", padx=18, pady=6)
         self.mode = tk.StringVar(self.root, value="keep")
         self.include_vocabulary = tk.BooleanVar(self.root, value=True)
         if plan is None:
@@ -54,10 +76,10 @@ class BackupDialog:
             picker.pack(side="left", padx=8)
             picker.bind("<<ComboboxSelected>>", lambda _event: self.refresh())
         frame = ttk.Frame(self.root)
-        frame.grid(row=3, column=0, sticky="nsew", padx=18)
+        frame.grid(row=1, column=0, sticky="nsew", padx=18)
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(0, weight=1)
-        self.preview = tk.Text(frame, wrap="word", height=12, takefocus=True,
+        self.preview = tk.Text(frame, wrap="word", height=8, takefocus=True,
                                bg=theme.SURFACE_LOW, fg=theme.ON_SURFACE,
                                insertbackground=theme.PRIMARY, selectbackground=theme.PRIMARY_CONTAINER,
                                selectforeground=theme.ON_PRIMARY_CONTAINER, highlightcolor=theme.PRIMARY,
@@ -68,9 +90,9 @@ class BackupDialog:
         self.preview.configure(yscrollcommand=scroll.set)
         self.status = tk.StringVar(self.root)
         self.status_label = ttk.Label(self.root, textvariable=self.status, wraplength=610)
-        self.status_label.grid(row=4, column=0, sticky="ew", padx=18, pady=8)
+        self.status_label.grid(row=2, column=0, sticky="ew", padx=18, pady=5)
         actions = ttk.Frame(self.root)
-        actions.grid(row=5, column=0, sticky="e", padx=18, pady=(0, 14))
+        actions.grid(row=3, column=0, sticky="e", padx=18, pady=(0, 9))
         ttk.Button(actions, text="Cancel", command=self.root.destroy).pack(side="left", padx=8)
         self.confirm = ttk.Button(actions, text="Apply reviewed import…" if plan is not None else "Save new backup…",
                                   command=self.confirm_action, style="Primary.TButton")
@@ -85,6 +107,26 @@ class BackupDialog:
         if event.widget is self.root:
             for label in (self.intro, self.status_label):
                 label.configure(wraplength=max(200, event.width - 36))
+
+    def _reveal_focus(self, event):
+        widget = event.widget
+        if not hasattr(self, "options_canvas") or widget is self.root:
+            return
+        if str(widget).startswith(str(self.options_body)):
+            self.root.update_idletasks()
+            top = self.options_canvas.winfo_rooty()
+            bottom = top + self.options_canvas.winfo_height()
+            widget_top = widget.winfo_rooty()
+            widget_bottom = widget_top + widget.winfo_height()
+            region = self.options_canvas.bbox("all")
+            content_height = max(1, region[3] - region[1]) if region else 1
+            current = self.options_canvas.yview()[0]
+            if widget_top < top:
+                self.options_canvas.yview_moveto(max(0, current - (top - widget_top) / content_height))
+            elif widget_bottom > bottom:
+                self.options_canvas.yview_moveto(min(
+                    1, current + (widget_bottom - bottom) / content_height
+                ))
 
     def refresh(self):
         self.review = self.payload = None

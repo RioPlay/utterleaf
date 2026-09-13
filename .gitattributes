@@ -1,0 +1,2 @@
+# Reviewed upstream notice hashes apply to their verbatim bytes on every host.
+packaging/notices/runtime/** -text

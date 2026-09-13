@@ -48,11 +48,14 @@ def resample_audio(audio: np.ndarray, input_rate: float) -> np.ndarray:
 class Recorder:
     """Capture one take with a short pre-roll; the caller releases the stream."""
 
-    def __init__(self, device: str = "") -> None:
+    def __init__(self, device: str = "", *, continuous: bool = False) -> None:
         self._lock = threading.Lock()
         self._lifecycle_lock = threading.RLock()
         self._owner = None
         self._chunks: list[np.ndarray] = []
+        self._continuous = continuous
+        self._store = None
+        self._tail_samples = 0
         self._ring: deque[np.ndarray] = deque()
         self._ring_samples = 0
         self._stream: sd.InputStream | None = None
@@ -162,9 +165,18 @@ class Recorder:
         if max_seconds is not None and (not np.isfinite(max_seconds) or max_seconds <= 0):
             raise ValueError("Recording limit must be positive and finite")
         self.prepare()
+        from utterleaf.capture_store import CaptureStore
+        store = CaptureStore(self.input_rate) if self._continuous else None
         with self._lock:
+            previous, self._store = self._store, store
+            if previous is not None:
+                previous.close()
             self._chunks = [chunk.copy() for chunk in self._ring]
             self._captured_samples = sum(len(chunk) for chunk in self._chunks)
+            self._tail_samples = self._captured_samples
+            if store is not None:
+                for chunk in self._chunks:
+                    store.append(chunk)
             # The limit measures new speech; keep the small pre-roll as well.
             self._capture_limit = (
                 self._captured_samples + int(max_seconds * self.input_rate)
@@ -201,8 +213,15 @@ class Recorder:
                 remaining = len(copy) if self._capture_limit is None else self._capture_limit - self._captured_samples
                 if remaining > 0:
                     chunk = copy[:remaining].copy() if remaining < len(copy) else copy
+                    if self._store is not None and not self._store.append(chunk):
+                        return
                     self._chunks.append(chunk)
                     self._captured_samples += len(chunk)
+                    self._tail_samples += len(chunk)
+                    if self._store is not None:
+                        # Preview and endpoint detection retain only their useful tail.
+                        while self._chunks and self._tail_samples - len(self._chunks[0]) >= 8 * self.input_rate:
+                            self._tail_samples -= len(self._chunks.pop(0))
                 if self._capture_limit is not None and self._captured_samples >= self._capture_limit:
                     self.limit_reached.set()
 
@@ -219,6 +238,8 @@ class Recorder:
         with self._lock:
             if not self.recording:
                 return None
+            if self._store is not None and self._store.error:
+                return self._store.error
             stream = self._stream
             generation = self._stream_generation
         try:
@@ -262,10 +283,38 @@ class Recorder:
         audio = np.concatenate(chunks, axis=0).reshape(-1)
         return resample_audio(audio if max_seconds is None else audio[-limit:], self.input_rate)
 
+    def endpoint_snapshot(self) -> tuple[np.ndarray, int]:
+        """Return at most eight seconds of audio and its absolute 16 kHz count.
+
+        Select immutable chunk views under the callback lock, then copy and
+        resample outside it. Count and tail describe the same capture instant.
+        Never opens a device, changes state or concatenates the full take.
+        """
+        with self._lock:
+            if not self.recording or not self._chunks:
+                return np.zeros(0, dtype=np.float32), 0
+            rate = self.input_rate
+            end_sample = int(round(self._captured_samples * SAMPLE_RATE / rate))
+            remaining = int(8 * rate)
+            chunks = []
+            for chunk in reversed(self._chunks):
+                part = chunk[-remaining:]
+                chunks.append(part)
+                remaining -= len(part)
+                if not remaining:
+                    break
+        audio = np.concatenate(chunks[::-1], axis=0).reshape(-1)
+        return resample_audio(audio, rate)[-8 * SAMPLE_RATE:], end_sample
+
     def stop(self) -> np.ndarray:
         with self._lock:
             self.recording = False
             self._recording_started_at = None
+            if self._store is not None:
+                store, self._store = self._store, None
+                self._chunks = []
+                self._tail_samples = 0
+                return store.finish()
             if not self._chunks:
                 return np.zeros(0, dtype=np.float32)
             chunks = self._chunks
@@ -291,6 +340,10 @@ class Recorder:
             self._ring.clear()
             self._ring_samples = 0
             self._chunks = []
+            store, self._store = self._store, None
+            self._tail_samples = 0
+        if store is not None:
+            store.close()
         if stream is not None:
             try:
                 stream.stop()

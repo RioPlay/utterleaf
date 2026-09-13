@@ -7,10 +7,12 @@ source checkout stays intact. Use the following workspaces for new work.
 | Branch | Purpose | Next work |
 | --- | --- | --- |
 | `checkpoint/mixed-work-20260912` | Preserved mixed development snapshot; not a release or PR | Recovery/reference only; leave the original source environment intact |
-| `release/desktop-0.4.6rc1` | Windows x64 CPU prerelease from current main | Finish CI artifact verification, publish an explicit preview, then continue desktop development |
-| `feat/android-keyboard-hardening` | Original Android keyboard from current main | Run focused gesture/layout instrumentation, verify long-press defaults and complete physical-device gates |
+| `release/desktop-0.4.6rc2` | Published Windows x64 CPU prerelease with runtime notice corrections | Integrate the reviewed desktop changes through PR #26 |
+| `release/desktop-0.4.6rc1` | Unpublished RC1 candidate retained for audit | Reference only; its immutable tag and downloaded artifact are unchanged |
+| `release/android-alpha14` | Published signed original keyboard snapshot; PR #25 merged | Preserve release evidence; physical-phone testing remains deferred follow-up |
+| `feat/android-keyboard-hardening` | Original Android keyboard development after alpha14 | Integrate and verify the Backspace selection gesture and Private draft test synchronization |
 
-The desktop release uses `desktop-v0.4.6-rc.1`; stable desktop `v*` and Android
+The desktop release uses `desktop-v0.4.6-rc.2`; stable desktop `v*` and Android
 `android-v*` releases remain separate. Read the platform roadmap and active plan
 in the owning checkout. A green test in one checkout does not validate another.
 
@@ -24,12 +26,21 @@ Release checks scope `PYTHONPATH` to the release checkout and do not redirect th
 editable installation. Build outputs, models, test scratch and user data stay out
 of commits. See [development boundaries](development-boundaries.md).
 
-The Android integration at `10ad81e` preserves main's alpha13 version/release
+Historical separation receipts: Android integration `10ad81e` preserved main's alpha13 version/release
 metadata and newer settings/test-helper fixes. It passed 14 tooling tests, 31 JVM
 tests and offline production/test Kotlin compilation; no emulator or physical
-verification follows from that branch separation. The desktop source/package
-checkpoint is `3bf1878`; final exact-tag CI artifact checks and publication remain
-open. Local `main` was fast-forwarded to `566839d`; historical worktrees were retained.
+verification followed from that branch separation. The desktop source/package
+checkpoint was `3bf1878`. Local `main` was then fast-forwarded to `566839d`;
+historical worktrees were retained.
+
+September 13 release status: [Android alpha14](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha14)
+is published from `46893f2`, with exact-revision CI and persistent signing,
+installation and upgrade verification. [Windows RC2](https://github.com/RioPlay/utterleaf/releases/tag/desktop-v0.4.6-rc.2)
+is published from `90d2e14`, after exact-tag CI and independent downloaded-artifact
+verification. Stable desktop v0.4.5 remains the default release. Current main
+`5b9eb93` includes the alpha14 source and release-workflow repair. The separately
+reviewed Backspace gesture is not in alpha14. See the platform roadmaps for
+remaining product work and unverified device behavior.
 
 The mixed checkpoint also preserves repository-wide build routing, prompt-file
 ignore rules and the older combined gauntlet journal. Those are deferred shared

@@ -43,8 +43,9 @@ if ($LASTEXITCODE -ne 0) { exit 1 }
 # after extracting the zip.
 Copy-Item 'README.md' "$exeDir\README.md"
 
-# Distribution policy: no model weights ship in the archive. Weights download
-# at first run into the user's app-data models folder, never beside the exes.
+# Distribution policy: speech-recognition weights are acquired separately into
+# app data. The small, reviewed Silero VAD bundled with faster-whisper is checked
+# and attributed by collect_notices.py above; it is not a transcription model.
 $weights = Get-ChildItem $exeDir -Recurse -File | Where-Object {
     $name = $_.Name.ToLowerInvariant()
     $name -like 'model.bin' -or $name -like '*.safetensors' -or $name -like '*.gguf'
@@ -53,4 +54,4 @@ if ($weights) {
     Write-Error "Model weights must not ship in dist: $($weights.FullName -join ', ')"
     exit 1
 }
-Write-Host 'Weight-free distribution check passed.'
+Write-Host 'No bundled speech-recognition weights found.'

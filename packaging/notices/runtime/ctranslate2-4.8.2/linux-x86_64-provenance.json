@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "ctranslate2_version": "4.8.2",
+  "ctranslate2_commit": "d44d2d069eb88c7b7804da864c10c201501cb4a9",
+  "release_tag": "v4.8.2",
+  "source_compare": "https://github.com/OpenNMT/CTranslate2/compare/v4.8.1...v4.8.2",
+  "source_change_scope": [
+    "CTranslate2 implementation and Python packaging",
+    "cxxopts submodule (excluded because BUILD_CLI=OFF)"
+  ],
+  "target": "linux:x86_64",
+  "wheel": {
+    "filename": "ctranslate2-4.8.2-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+    "sha256": "554a0b2abf098a11c66ef7930c0a05b3de683a455e8ea3f2e6ab6966aaabc136",
+    "url": "https://files.pythonhosted.org/packages/01/23/d72e70cac2b7c5c832a629c380235b53b20fac8c0921856bcf625b08ba44/ctranslate2-4.8.2-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl"
+  },
+  "build_script": {
+    "url": "https://github.com/OpenNMT/CTranslate2/blob/d44d2d069eb88c7b7804da864c10c201501cb4a9/python/tools/prepare_build_environment_linux.sh",
+    "sha256": "e075680b5730c2ebdfe0c0b3eb07cbcd4dfcb5a3ea1a6d31253d30a7291c1ced",
+    "identical_to_v4.8.1": true
+  },
+  "binary_inspection": {
+    "libctranslate2": "libctranslate2-fd146744.so.4.8.2",
+    "bundled_dynamic_dependency": "libgomp-e985bcbb.so.1.0.0",
+    "libgomp_build_id": "2244452c1de4759ccb52adc5352b501d4c2ee9ce",
+    "libgomp_compiler_note": "gcc 8.5.0 20210514",
+    "extension_build_id": "e2d0e6f3ab02587d0282a472b202f623a2dd857e",
+    "libctranslate2_build_id": "ff0d56663e987884e1e42ed5cf138cec1727a768"
+  },
+  "compiled_components": [
+    "cpu_features 8a494eb1e158ec2050e5f699a504fbc9b896a43b",
+    "spdlog 76fb40d95455f249bd70824ecfcae7a8f0930fa3 (bundled fmt)",
+    "BS_thread_pool.hpp e561d3f1e5792719487a6c57032f682d31e55c8f",
+    "SIMD math headers (including modified SIMD_Utils 0.2.5 derivative)",
+    "cutlass bbe579a9e3beb6ea6626d9227ec32d0dae119a49",
+    "thrust b5fe509fd11a925f90d6495176707cc1184eed9d",
+    "oneDNN 3.1.1 static",
+    "Intel oneMKL 2025.3.0 static",
+    "GCC libgomp 8.5 runtime"
+  ],
+  "one_mkl_notice_artifact": {
+    "filename": "onemkl_license-2025.3.0-py2.py3-none-manylinux_2_28_x86_64.whl",
+    "sha256": "a810b25bb24a90db4492d81c71cde13183d8951ce26960d6dc56d4f4e3dc95ff",
+    "url": "https://files.pythonhosted.org/packages/88/11/b43e8cde058c368ce7f8f9b1ca9f812f7397e4309148da7d24cb6b81b513/onemkl_license-2025.3.0-py2.py3-none-manylinux_2_28_x86_64.whl",
+    "relationship": "All retained oneMKL notice file bytes match the separately reviewed 2025.3.0 Windows notice package."
+  },
+  "gcc_notice_source": {
+    "commit": "eafe83f2f20ef0c1e7703c361ba314b44574523c",
+    "tag": "releases/gcc-8.5.0",
+    "mirror": "https://github.com/gcc-mirror/gcc",
+    "mirror_designation": "https://gcc.gnu.org/git.html"
+  }
+}

@@ -325,6 +325,19 @@ def _light_grammar(text: str) -> str:
 
 def _tidy_spacing(text: str) -> str:
     text = _collapse(text)
+    # Whisper can omit the separator before a quoted sentence opening. Treat
+    # curly quotes by direction; infer straight-quote direction from the
+    # balanced quote count so ``"Done."Then`` becomes ``"Done." Then``.
+    def quote_spacing(match: re.Match) -> str:
+        punctuation, quote = match.group(1), match.group(2)
+        if quote in "“‘":
+            return f"{punctuation} {quote}"
+        if quote in "”’":
+            return f"{punctuation}{quote} "
+        opening = text[:match.start()].count(quote) % 2 == 0
+        return f"{punctuation} {quote}" if opening else f"{punctuation}{quote} "
+
+    text = re.sub(r"([.!?])([\"'“‘”’])(?=[A-Za-z])", quote_spacing, text)
     text = re.sub(r"([.!?])([A-Za-z])", r"\1 \2", text)
     text = re.sub(r"\s+([,.;:!?])", r"\1", text)
     return _collapse(text)
@@ -494,6 +507,13 @@ LIST_REQUEST = re.compile(
     re.IGNORECASE,
 )
 
+_HEADING_LEVELS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6}
+HEADING_REQUEST = re.compile(
+    r"^(?:make\s+(?:this\s+)?a\s+|markdown\s+)?heading(?:\s+(?:level\s+)?)?"
+    r"(?P<level>[1-6]|one|two|three|four|five|six)\s*(?:[:,-]\s*|titled\s+|\s+)(?P<text>.+)$",
+    re.IGNORECASE,
+)
+
 
 def _list_request_is_command(text: str, request: re.Match[str]) -> bool:
     """Avoid turning a sentence about making a list into a list command."""
@@ -541,6 +561,24 @@ def _list_payload(text: str) -> tuple[str, str]:
         remainder = text[numbers.end():]
         if not remainder or remainder[0] in " ,.;:!?":
             return numbers.group(0), remainder.lstrip(" ,.;:!?")
+    # A normal sentence boundary is also a safe list boundary when the speaker
+    # continues talking after the requested items. Skip spoken layout markers;
+    # those are consumed by _inline_breaks later in the normal pipeline.
+    for sentence in re.finditer(r"(?<=[.!?])\s+(?=[A-ZÀ-ÖØ-Þ])", text):
+        before = text[:sentence.start()]
+        if re.search(r"\bnew\s+(?:line|paragraph)\.\s*$", before, re.IGNORECASE):
+            continue
+        # Without an explicit separator, sentence-per-item dictation should
+        # stay a list (``cats. dogs.``). Commas or a spoken ``and`` provide
+        # enough evidence that the speaker has finished the items and resumed
+        # ordinary prose (``cats, dogs. Then buy them``).
+        if "," not in before and not re.search(r"\band\b", before, re.IGNORECASE):
+            continue
+        following = text[sentence.end():].lstrip(" ,.;:!?")
+        if re.match(r"(?:new\s+(?:line|paragraph)|next\s+bullet\s+point|end\s+(?:the\s+)?list)\b",
+                    following, re.IGNORECASE):
+            continue
+        return text[:sentence.start() + 1].strip(" ,:;"), following
     return text, ""
 
 
@@ -720,21 +758,41 @@ def polish_local(
     remove_fillers: bool = True,
     fix_corrections: bool = True,
     text_cleanup: bool = True,
+    output_format: str = "prose",
 ) -> PolishResult:
     if not text_cleanup:
         return PolishResult(raw or "")
+    if output_format not in {"prose", "markdown"}:
+        output_format = "prose"
     text = (raw or "").strip()
     if not text:
         return PolishResult("")
 
     style = infer_style(app_name)
+    heading = HEADING_REQUEST.match(text) if output_format == "markdown" and style != "code" else None
+    if heading:
+        raw_level = heading.group("level").lower()
+        level = int(raw_level) if raw_level.isdigit() else _HEADING_LEVELS[raw_level]
+        original_title = heading.group("text").strip()
+        title = _spoken_punct(original_title)
+        title = _fix_pronouns(title)
+        title = _light_grammar(title)
+        title = _apply_vocabulary(title, vocab if vocab is not None else load_vocabulary())
+        title = _tidy_spacing(title)
+        title_before_case = title
+        title = _sentence_case(title, code_mode=False)
+        # A heading has no terminal full stop unless cleanup added one. Preserve
+        # punctuation that the speaker/model supplied, especially ? and !.
+        if title.endswith(".") and not title_before_case.endswith("."):
+            title = title[:-1]
+        return PolishResult("#" * level + " " + title, command="heading")
     request = LIST_REQUEST.search(text) if style != "code" else None
     if request is not None and _list_request_is_command(text, request):
         tail = text[request.end():].lstrip(" ,:;").rstrip(" .!?")
         if tail:
             items, following = _list_payload(tail)
             options = dict(app_name=app_name, vocab=vocab, remove_fillers=remove_fillers,
-                           fix_corrections=fix_corrections)
+                           fix_corrections=fix_corrections, output_format=output_format)
             before = text[:request.start()].rstrip(" ,:;")
             # Each recursive call consumes the command, so the list can sit
             # inside a longer take without applying list formatting to its prose.
@@ -829,6 +887,7 @@ def polish(
     remove_fillers: bool = True,
     fix_corrections: bool = True,
     text_cleanup: bool = True,
+    output_format: str = "prose",
 ) -> PolishResult:
     return polish_local(
         raw,
@@ -837,4 +896,5 @@ def polish(
         remove_fillers=remove_fillers,
         fix_corrections=fix_corrections,
         text_cleanup=text_cleanup,
+        output_format=output_format,
     )

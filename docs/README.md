@@ -34,6 +34,9 @@ features are kept in the roadmap.
 [Interface guidelines](interface.md) · [Brand & assets](branding.md) ·
 [Product principles](consumer-experience.md)
 
+[Model and optional component policy](model-resource-policy.md) records review,
+acquisition, local/remote data and documentation gates for desktop extensions.
+
 [Android keyboard product specification](android-keyboard-product-spec.md) defines
 the independent foundation, community needs and design/UX acceptance gates.
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import math
 from pathlib import Path
 
 from utterleaf.config import Config, save
@@ -95,6 +96,10 @@ def apply_form(
     restore_clipboard: bool | None = None,
     allow_network: bool | None = None,
     text_cleanup: bool | None = None,
+    output_format: str | None = None,
+    speech_end_enabled: bool | None = None,
+    speech_end_pause_seconds: float | str | None = None,
+    speech_end_insert: bool | None = None,
 ) -> Config:
     hotkey = hotkey.strip().lower()
     try:
@@ -111,6 +116,22 @@ def apply_form(
         raise FormValidationError("denoise", "Noise reduction must be auto, on, or off.")
     if not language.strip():
         raise FormValidationError("language", "Enter a language code, such as en, or auto.")
+    if output_format is not None and output_format not in {"prose", "markdown"}:
+        raise FormValidationError("output_format", "Choose prose or Markdown output.")
+    for field, value in (("speech_end_enabled", speech_end_enabled),
+                         ("speech_end_insert", speech_end_insert)):
+        if value is not None and type(value) is not bool:
+            raise FormValidationError(field, "Choose an available speech-end option.")
+    pause = cfg.speech_end_pause_seconds
+    if speech_end_pause_seconds is not None:
+        if isinstance(speech_end_pause_seconds, bool):
+            raise FormValidationError("speech_end_pause_seconds", "Choose a pause from 0.5 to 3 seconds.")
+        try:
+            pause = float(speech_end_pause_seconds)
+        except (TypeError, ValueError):
+            raise FormValidationError("speech_end_pause_seconds", "Choose a pause from 0.5 to 3 seconds.") from None
+        if not math.isfinite(pause) or not 0.5 <= pause <= 3.0:
+            raise FormValidationError("speech_end_pause_seconds", "Choose a pause from 0.5 to 3 seconds.")
     if names is not None:
         for number, line in enumerate(names.splitlines(), 1):
             if not line.strip() or line.lstrip().startswith("#"):
@@ -137,6 +158,10 @@ def apply_form(
         "restore_clipboard": cfg.restore_clipboard if restore_clipboard is None else restore_clipboard,
         "allow_network": cfg.allow_network if allow_network is None else allow_network,
         "text_cleanup": cfg.text_cleanup if text_cleanup is None else text_cleanup,
+        "output_format": cfg.output_format if output_format is None else output_format,
+        "speech_end_enabled": cfg.speech_end_enabled if speech_end_enabled is None else speech_end_enabled,
+        "speech_end_pause_seconds": pause,
+        "speech_end_insert": cfg.speech_end_insert if speech_end_insert is None else speech_end_insert,
     }})
     steps = [("dictation settings", lambda: save(updated))]
     if names is not None:

@@ -13,8 +13,11 @@ MAX_BACKUP_BYTES = 512 * 1024
 MAX_VOCABULARY_BYTES = 256 * 1024
 MAX_VOCABULARY_ENTRIES = 2000
 MAX_TERM_CHARACTERS = 256
-_BOOL_KEYS = frozenset({"text_cleanup", "remove_fillers", "fix_corrections", "beep", "tray", "indicator"})
-PORTABLE_PREFERENCES = tuple(sorted(_BOOL_KEYS | {"denoise"}))
+_BOOL_KEYS = frozenset({"text_cleanup", "remove_fillers", "fix_corrections", "beep", "tray", "indicator",
+                        "speech_end_enabled", "speech_end_insert"})
+_CHOICE_KEYS = frozenset({"denoise", "output_format"})
+_NUMBER_KEYS = frozenset({"speech_end_pause_seconds"})
+PORTABLE_PREFERENCES = tuple(sorted(_BOOL_KEYS | _CHOICE_KEYS | _NUMBER_KEYS))
 _FORMAT = "utterleaf-preferences"
 
 
@@ -24,7 +27,7 @@ class BackupError(ValueError):
 
 @dataclass(frozen=True)
 class BackupPlan:
-    preferences: tuple[tuple[str, bool | str], ...]
+    preferences: tuple[tuple[str, bool | str | float], ...]
     vocabulary: tuple[tuple[str, str], ...] | None
 
 
@@ -46,15 +49,19 @@ def _bounded_text(value: str, limit: int) -> None:
         raise BackupError("Text exceeds the supported byte size")
 
 
-def _preferences(values: object) -> tuple[tuple[str, bool | str], ...]:
+def _preferences(values: object) -> tuple[tuple[str, bool | str | float], ...]:
     if not isinstance(values, dict) or set(values) - set(PORTABLE_PREFERENCES):
         raise BackupError("Unknown or nonportable preference")
     for key, value in values.items():
         if key in _BOOL_KEYS:
             if type(value) is not bool:
                 raise BackupError("Preference requires a Boolean")
-        elif type(value) is not str or value not in {"auto", "on", "off"}:
-            raise BackupError("Invalid noise reduction preference")
+        elif key in _NUMBER_KEYS:
+            if type(value) not in {int, float} or not 0.5 <= float(value) <= 3.0:
+                raise BackupError("Invalid speech-end pause preference")
+        elif type(value) is not str or value not in (
+                {"auto", "on", "off"} if key == "denoise" else {"prose", "markdown"}):
+            raise BackupError("Invalid portable choice preference")
     return tuple(sorted(values.items()))
 
 

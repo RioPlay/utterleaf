@@ -1,0 +1,107 @@
+{
+  "bs_thread_pool": {
+    "commit": "bd4533f1f70c2b975cbd5769a60d8eaaea1d2233",
+    "license": "MIT",
+    "relationship": "identical after ignoring one trailing upstream newline",
+    "version": "5.1.0"
+  },
+  "ctranslate2_commit": "0d8bcd362ac75ef860ef161d6f0efad0ae439ff0",
+  "ctranslate2_tag": "v4.8.1",
+  "onednn": {
+    "commit": "64f6bcbcbab628e96f33a62c3e975f8535a7bde4",
+    "linkage": "static",
+    "notice_at_tag": false,
+    "retained_tag_files": [
+      "LICENSE",
+      "THIRD-PARTY-PROGRAMS"
+    ],
+    "version": "3.1.1"
+  },
+  "onemkl": {
+    "linkage": "static mkl_core.lib+mkl_intel_ilp64.lib+mkl_intel_thread.lib",
+    "mkl_wheel_sha256": "2dbf81b016150c2ce418d80707dcce11d0e3c56f20e1d54813174e7665405561",
+    "onemkl_license_wheel_sha256": "35a179620bcadbcc3d17d74f7f72cab75889f3736b89685f6a68158325b65e91",
+    "onemkl_license_wheel_size": 58961,
+    "onemkl_license_wheel_url": "https://files.pythonhosted.org/packages/0e/8e/98ad8181e4af2ea7a6c7827ef6d24c73b6ee96a2890eacf46103f596195d/onemkl_license-2025.3.0-py2.py3-none-win_amd64.whl",
+    "version": "2025.3.0"
+  },
+  "retained_files": {
+    "BS-thread-pool-v5.1.0-LICENSE.txt": {
+      "bytes": 1076,
+      "sha256": "712a867cc12ebfcdecf6cea097f5aa7ec5acaa435a8f818c9f370960df35acbf"
+    },
+    "BS-thread-pool-v5.1.0-upstream.hpp": {
+      "bytes": 123347,
+      "sha256": "50e9f4ebd7b479417e34361e411f7973f3b23274f09a988e8ca287df878f707b"
+    },
+    "CT2-v4.8.1-BS_thread_pool.hpp": {
+      "bytes": 123346,
+      "sha256": "ae01783f6373f78aceb0b1bd9bfa40ba8af728e48afdf3ff77b88380ba717143"
+    },
+    "CT2-v4.8.1-avx512_mathfun.h": {
+      "bytes": 15681,
+      "sha256": "e765a3997b0eb5bb3e332d2cba4b6a08e20caf163aac23a86ee735cdbe762afb"
+    },
+    "intel-oneMKL-2025.3.0-LICENSE.txt": {
+      "bytes": 4105,
+      "sha256": "7721633d0ddff43fae25ebfd405f8166a0ce730cbcec44f2f3ad9d5eb8ac9a6f"
+    },
+    "intel-oneMKL-2025.3.0-third-party-programs-IntelMPI.txt": {
+      "bytes": 77510,
+      "sha256": "82fa46762c37662a52ab9df58781813c1dc6c268ae2b6f9cf2d83183e706aa09"
+    },
+    "intel-oneMKL-2025.3.0-third-party-programs-benchmarks.txt": {
+      "bytes": 5234,
+      "sha256": "1f1224af12a7d3e51150ce6f762e32472076a31f6e44db41d3b651a7fa20f2f5"
+    },
+    "intel-oneMKL-2025.3.0-third-party-programs-level-zero.txt": {
+      "bytes": 1124,
+      "sha256": "cfe7d2ba4b4cd53271c7f91937e906256c0f14ea62ba33ffb556664b8d39aa59"
+    },
+    "intel-oneMKL-2025.3.0-third-party-programs-oneMath.txt": {
+      "bytes": 6777,
+      "sha256": "2ba4e9858c253331691370f4e8e3899ca6a5baa20907f189f5970635870b860d"
+    },
+    "intel-oneMKL-2025.3.0-third-party-programs-oneTBB.txt": {
+      "bytes": 19504,
+      "sha256": "d507da4fffae647ebc1bbb7e12cc5cca8087d36b0d78cc75caa96cae37688cb1"
+    },
+    "intel-oneMKL-2025.3.0-third-party-programs-openmp.txt": {
+      "bytes": 31028,
+      "sha256": "8fdfbbdfed13bca3641da35182e7ee1bb92a99f302ce8b0deb981ac1f18adee2"
+    },
+    "intel-oneMKL-2025.3.0-third-party-programs-safestring.txt": {
+      "bytes": 2448,
+      "sha256": "415000d1887939ffc6826e0ed3f099cebcab6aaeda2da0acb017110a456b3d42"
+    },
+    "intel-oneMKL-2025.3.0-third-party-programs.txt": {
+      "bytes": 65770,
+      "sha256": "6fb57367c2107b8b3347e0e9db10d368c7b9ea898a08132b2f841b24b86f076f"
+    },
+    "oneDNN-v3.1.1-LICENSE.txt": {
+      "bytes": 11521,
+      "sha256": "dd12452e1ae11e3282271aa5895d8175296b83e936a027209f9399d26a407d0f"
+    },
+    "oneDNN-v3.1.1-THIRD-PARTY-PROGRAMS.txt": {
+      "bytes": 29825,
+      "sha256": "9117585dfc6b5cd0fafc063312f28a86ec82eb97bf68316dcefcaaa7fc11428e"
+    },
+    "simd-utils-0.2.5-BSD-2-LICENSE.txt": {
+      "bytes": 1322,
+      "sha256": "dfaa54b4188ffa0e6298ce7ea27c865d12edcf73d742e2200ce9812db6268c0f"
+    },
+    "simd-utils-0.2.5-avx512_mathfun-upstream.h": {
+      "bytes": 12570,
+      "sha256": "263cfae9be49e62fba41ae6387f448b7b3e319e6c95714b2f56cf87a6dfbbcb3"
+    }
+  },
+  "reviewed_utc": "2026-09-13T04:52:29Z",
+  "schema_version": 1,
+  "simd_utils": {
+    "baseline_commit": "77cc4a0bdb997a2855f2632e8f03ef7b7cf6c321",
+    "ctranslate2_import_commit": "0137dbdf2df7cf42b5a452864fcfe4b5d11557ff",
+    "declared_version": "0.2.5",
+    "license": "BSD-2-Clause",
+    "relationship": "modified derivative; not byte-identical"
+  }
+}

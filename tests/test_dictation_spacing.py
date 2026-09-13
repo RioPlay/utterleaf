@@ -70,3 +70,82 @@ def test_multiline_prose_keeps_internal_breaks_and_both_take_boundaries():
     delivery = prepare_delivery("Cats.\nDogs.", previous_delivered="Before.")
     assert delivery.payload == " Cats.\nDogs. "
     assert delivery.text == "Cats.\nDogs."
+
+
+@pytest.mark.parametrize("command, text", [
+    ("bullets", "- Apples\n- Pears"),
+    ("numbered", "1. Apples\n2. Pears"),
+])
+def test_completed_explicit_list_ends_before_following_text(command, text):
+    delivery = prepare_delivery(text, command=command)
+    # Model the caret between existing words. The separator belongs to this
+    # verified payload, so both a later take and text right of the caret stay
+    # outside the final list item without reading the destination editor.
+    next_take = prepare_delivery("Next sentence.", previous_delivered=delivery.payload)
+    assert delivery.payload + next_take.payload == text + "\nNext sentence. "
+    assert "Before " + delivery.payload + "after" == "Before " + text + "\nafter"
+
+
+@pytest.mark.parametrize("first, second", [
+    ('Hello.', '"Next sentence."'),
+    ('He said "yes."', "Then left."),
+])
+def test_completed_prose_takes_keep_one_separator_at_caret(first, second):
+    first_delivery = prepare_delivery(first)
+    second_delivery = prepare_delivery(second, previous_delivered=first_delivery.payload)
+    assert first_delivery.payload + second_delivery.payload == first + " " + second + " "
+    assert "Before " + first_delivery.payload + "after" == "Before " + first + " after"
+
+
+def test_native_neighbors_add_only_required_word_boundaries():
+    assert prepare_delivery("Hello.", neighbors=("e", "a")).payload == " Hello. "
+    assert prepare_delivery("Hello.", neighbors=(" ", ",")).payload == "Hello"
+    assert prepare_delivery("- One", command="bullets", neighbors=("e", "a")).payload == "\n- One\n"
+    assert prepare_delivery("- One", command="bullets", neighbors=(" ", "a")).payload == "\n- One\n"
+
+
+def test_native_neighbors_do_not_change_literal_or_code_delivery():
+    assert prepare_delivery("x.y", text_cleanup=False, neighbors=("e", "a")).payload == "x.y"
+    assert prepare_delivery("x.y", code_mode=True, neighbors=("e", "a")).payload == "x.y"
+
+
+def test_empty_native_field_keeps_a_separator_for_an_expired_next_take():
+    first = prepare_delivery("Hello.", neighbors=("", ""))
+    second = prepare_delivery("Next.", neighbors=(".", ""))
+    assert first.payload + second.payload == "Hello. Next. "
+
+
+@pytest.mark.parametrize("after", ["", " ", ","])
+def test_list_block_delimiter_survives_native_right_context(after):
+    delivery = prepare_delivery("- Apples\n- Pears", command="bullets", neighbors=("e", after))
+    assert delivery.payload == "\n- Apples\n- Pears\n"
+
+
+def test_markdown_heading_and_list_have_commonmark_take_boundaries():
+    heading = prepare_delivery("## Project notes", command="heading", markdown=True)
+    follow = prepare_delivery("Next sentence.", previous_delivered=heading.payload)
+    assert heading.payload + follow.payload == "## Project notes\n\nNext sentence. "
+    listing = prepare_delivery("- Apples\n- Pears", command="bullets", markdown=True)
+    assert listing.payload == "- Apples\n- Pears\n\n"
+
+
+def test_markdown_blocks_do_not_accumulate_extra_breaks_between_takes():
+    heading = prepare_delivery("## Project notes", command="heading", markdown=True)
+    listing = prepare_delivery("- Apples", previous_delivered=heading.payload,
+                               command="bullets", markdown=True)
+    next_listing = prepare_delivery("- Pears", previous_delivered=listing.payload,
+                                    command="bullets", markdown=True)
+    prose = prepare_delivery("Next sentence.", previous_delivered=next_listing.payload)
+    assert heading.payload + listing.payload + next_listing.payload + prose.payload == (
+        "## Project notes\n\n- Apples\n\n- Pears\n\nNext sentence. "
+    )
+
+
+def test_native_right_delimiters_do_not_duplicate_inferred_full_stop():
+    assert "Hello" + prepare_delivery("World.", neighbors=("o", ".")).payload + "." == "Hello World."
+    assert "Hello" + prepare_delivery("Hello.", neighbors=("o", ",")).payload + "," == "Hello Hello,"
+
+
+@pytest.mark.parametrize(("after", "expected"), [(")", "Hello."), ('"', "Hello. "), ("!", "Hello.")])
+def test_native_right_quotes_parentheses_and_exclamation_keep_punctuation(after, expected):
+    assert prepare_delivery("Hello.", neighbors=("(", after)).payload == expected

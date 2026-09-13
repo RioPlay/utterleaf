@@ -27,6 +27,55 @@ def _units(text: str) -> int:
     return len(text.encode("utf-16-le")) // 2
 
 
+def _scalar_before(raw: bytes, offset: int) -> str | None:
+    if offset == 0:
+        return ""
+    unit = int.from_bytes(raw[(offset - 1) * 2:offset * 2], "little")
+    if 0xDC00 <= unit <= 0xDFFF:
+        if offset < 2:
+            return None
+        previous = int.from_bytes(raw[(offset - 2) * 2:(offset - 1) * 2], "little")
+        if not 0xD800 <= previous <= 0xDBFF:
+            return None
+        return raw[(offset - 2) * 2:offset * 2].decode("utf-16-le")
+    if 0xD800 <= unit <= 0xDBFF:
+        return None
+    return raw[(offset - 1) * 2:offset * 2].decode("utf-16-le")
+
+
+def _scalar_after(raw: bytes, offset: int) -> str | None:
+    length = len(raw) // 2
+    if offset == length:
+        return ""
+    unit = int.from_bytes(raw[offset * 2:(offset + 1) * 2], "little")
+    if 0xD800 <= unit <= 0xDBFF:
+        if offset + 1 >= length:
+            return None
+        following = int.from_bytes(raw[(offset + 1) * 2:(offset + 2) * 2], "little")
+        if not 0xDC00 <= following <= 0xDFFF:
+            return None
+        return raw[offset * 2:(offset + 2) * 2].decode("utf-16-le")
+    if 0xDC00 <= unit <= 0xDFFF:
+        return None
+    return raw[offset * 2:(offset + 1) * 2].decode("utf-16-le")
+
+
+def insertion_neighbors(field: Field | None) -> tuple[str, str] | None:
+    """Return only the Unicode scalars touching a verified native selection."""
+    if field is None or field.start < 0 or field.end < field.start:
+        return None
+    try:
+        raw = field.text.encode("utf-16-le")
+        length = len(raw) // 2
+        if field.end > length:
+            return None
+        before = _scalar_before(raw, field.start)
+        after = _scalar_after(raw, field.end)
+        return None if before is None or after is None else (before, after)
+    except UnicodeError:
+        return None
+
+
 def _splice(text: str, start: int, end: int, replacement: str) -> str:
     raw = text.encode("utf-16-le")
     return (raw[:start * 2] + replacement.encode("utf-16-le") + raw[end * 2:]).decode("utf-16-le")

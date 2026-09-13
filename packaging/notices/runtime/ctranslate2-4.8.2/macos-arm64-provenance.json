@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "ctranslate2_version": "4.8.2",
+  "ctranslate2_commit": "d44d2d069eb88c7b7804da864c10c201501cb4a9",
+  "release_tag": "v4.8.2",
+  "source_compare": "https://github.com/OpenNMT/CTranslate2/compare/v4.8.1...v4.8.2",
+  "source_change_scope": [
+    "CTranslate2 implementation and Python packaging",
+    "cxxopts submodule (excluded because BUILD_CLI=OFF)"
+  ],
+  "target": "darwin:arm64",
+  "wheel": {
+    "filename": "ctranslate2-4.8.2-cp314-cp314-macosx_11_0_arm64.whl",
+    "sha256": "e32ae5e625a8999749745de43c2de5c12ceebb6d0d9cc9a3a956e8912bd68edb",
+    "url": "https://files.pythonhosted.org/packages/72/b4/28111e86927b2490388d8e0b79ec83db38f2a81bf452318f24563b42e205/ctranslate2-4.8.2-cp314-cp314-macosx_11_0_arm64.whl"
+  },
+  "build_script": {
+    "url": "https://github.com/OpenNMT/CTranslate2/blob/d44d2d069eb88c7b7804da864c10c201501cb4a9/python/tools/prepare_build_environment_macos.sh",
+    "sha256": "6cf508f17152302469fbb7b426e663f6e85740293f67309a4e4608fc1f631146",
+    "configuration": "WITH_ACCELERATE=ON, WITH_MKL=OFF, OPENMP_RUNTIME=NONE, WITH_RUY=ON"
+  },
+  "binary_inspection": {
+    "libctranslate2": "libctranslate2.4.8.2.dylib",
+    "dynamic_dependencies": [
+      "Accelerate.framework",
+      "/usr/lib/libc++.1.dylib",
+      "/usr/lib/libSystem.B.dylib"
+    ],
+    "bundled_third_party_dylibs": []
+  },
+  "compiled_components": [
+    "ruy 363f252289fb7a1fba1703d99196524698cb884d",
+    "ruy cpuinfo 082deffc80ce517f81dc2f3aebe6ba671fcd09c9",
+    "spdlog 76fb40d95455f249bd70824ecfcae7a8f0930fa3 (bundled fmt)",
+    "BS_thread_pool.hpp e561d3f1e5792719487a6c57032f682d31e55c8f",
+    "neon_mathfun.h f12a66eb172bd27f294ae43639f39fe1b5d18e36"
+  ]
+}

@@ -11,6 +11,9 @@ packaging/stubs/av replaces it and no FFmpeg code is distributed.
 from __future__ import annotations
 
 import email
+import hashlib
+import json
+import platform
 import shutil
 import sys
 from pathlib import Path
@@ -35,18 +38,19 @@ SITE = site_packages()
 # dist-info names for everything the frozen app ships. The notice column adds
 # context the license files themselves don't have (LGPL source offers, bundles).
 PACKAGES: list[tuple[str, str]] = [
-    ("faster_whisper", ""),
-    ("ctranslate2", ""),
-    ("tokenizers", ""),
-    ("onnxruntime", ""),
+    ("faster_whisper", "Includes the Silero VAD model; see the separate Silero entry."),
+    ("ctranslate2", "Native dependencies retain their own terms; see the component notices and provenance."),
+    ("tokenizers", "Includes retained license texts for the reviewed native Rust dependency closure."),
+    ("onnxruntime", "Includes the exact wheel's retained third-party notices."),
     ("numpy", ""),
     ("pillow", ""),
-    ("sounddevice", "Bundles PortAudio; the PortAudio license ships under _sounddevice_data."),
+    ("sounddevice", "The unused Windows ASIO binary is excluded on every host; the retained sounddevice license tree documents bundled code."),
     ("cffi", ""),
     ("pycparser", ""),
     ("pynput", "LGPLv3. Corresponding source: https://github.com/moses-palmer/pynput"),
     ("pystray", "LGPLv3. Corresponding source: https://github.com/moses-palmer/pystray"),
     ("pyperclip", ""),
+    ("websockets", "Local OBS control transport; BSD-3-Clause."),
     ("pywin32_ctypes", ""),
     ("six", ""),
     ("huggingface_hub", ""),
@@ -84,9 +88,9 @@ Utterleaf is licensed under the Apache License, Version 2.0 (see LICENSE and
 NOTICE). It bundles the packages below; each entry's license text ships next
 to this file under licenses/<package>/.
 
-Python itself is PSF-licensed (https://www.python.org/psf/license/) and the
-bundled Tcl/Tk runtime uses the Tcl license
-(https://www.tcl.tk/software/tcltk/license.html).
+Windows runtime license texts and reviewed component provenance ship under
+licenses/ alongside the package notices. The bundled Tcl/Tk runtime includes
+its full license.terms under _internal/_tk_data/.
 
 PyAV/FFmpeg: not bundled. PyAV's official wheel carries a GPL build of FFmpeg
 (libx264/libx265). Distributing it would put the combined work under GPL
@@ -95,8 +99,8 @@ accept those terms — a distribution policy, not a claim that permissive
 licenses cannot be combined with GPL. Utterleaf feeds microphone audio to
 faster-whisper as raw PCM. Packaged file transcription decodes integer PCM WAV
 using Python's standard library and the existing NumPy resampler. Other media
-formats require a source installation. The frozen build replaces PyAV
-it with an import-only stub (packaging/stubs/av). No FFmpeg code is
+formats use an explicitly selected external FFmpeg executable. The frozen build
+replaces PyAV with an import-only stub (packaging/stubs/av). No FFmpeg code is
 distributed.
 
 """
@@ -146,12 +150,123 @@ def copy_license_files(dist_info: Path, meta: email.message.Message, out_dir: Pa
             raise SystemExit(f"collect_notices: {dist_info.name} lists missing license file {entry}")
     if copied:
         return
-    # Old-style wheels carry no License-File; keep the declared expression on record.
-    declared = meta.get("License-Expression") or meta.get("License") or "(see package metadata)"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "LICENSE-DECLARED.txt").write_text(
-        f"{meta.get('Name')} {meta.get('Version')}: {declared}\n", encoding="utf-8"
+    # A license expression is not a substitute for the actual terms. Older
+    # wheels need a version-specific, locally reviewed upstream text.
+    name = (meta.get("Name") or "").lower().replace("-", "_")
+    version = meta.get("Version")
+    entry = reviewed_package_entry(name, version)
+    if entry is None:
+        raise SystemExit(f"collect_notices: full license text unavailable for {name} {meta.get('Version')}")
+    verify_reviewed_package_payload(entry)
+    copy_reviewed_notice_files(entry, out_dir)
+
+
+def runtime_notice_manifest() -> dict:
+    """Local reviewed inputs only; packaging never fetches license material."""
+    path = ROOT / "packaging" / "notices" / "runtime-manifest.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def reviewed_package_entry(name: str, version: str | None) -> dict | None:
+    """Select only a notice review admitted for this version and native target."""
+    manifest = runtime_notice_manifest()
+    entry = manifest["packages"].get(name)
+    if entry is not None and entry["version"] == version:
+        targets = entry.get("targets")
+        if targets is None or _notice_target() in targets:
+            return entry
+    return (manifest.get("package_variants", {})
+            .get(name, {})
+            .get(version, {})
+            .get(_notice_target()))
+
+
+def _notice_target() -> str:
+    """Return the reviewed native-wheel target, rejecting unknown architectures."""
+    machine = platform.machine().lower()
+    if machine in {"amd64", "x86_64"}:
+        machine = "x86_64"
+    elif machine in {"aarch64", "arm64"}:
+        machine = "arm64"
+    return f"{sys.platform}:{machine}"
+
+
+def verify_reviewed_package_payload(entry: dict) -> None:
+    """Bind a platform notice review to its installed and packaged native files."""
+    target_reviews = entry.get("payload_reviews")
+    review = target_reviews.get(_notice_target()) if target_reviews is not None else entry.get("payload_review")
+    if review is None:
+        if target_reviews is not None:
+            raise SystemExit("collect_notices: native payload target has no completed review")
+        return
+    if SITE is None:
+        raise SystemExit("collect_notices: site-packages unavailable for native payload review")
+    for relative, expected in review.get("source_files", {}).items():
+        source = SITE / relative
+        if not source.is_file() or hashlib.sha256(source.read_bytes()).hexdigest() != expected:
+            raise SystemExit(f"collect_notices: unreviewed package native payload: {relative}")
+
+    expected = set(review.get("packaged_native_files", []))
+    actual = set()
+    for relative_root in review.get("packaged_roots", []):
+        root = DIST / "_internal" / relative_root
+        if not root.is_dir():
+            continue
+        for path in root.rglob("*"):
+            if path.is_file() and _is_native_library(path.name):
+                actual.add(path.relative_to(DIST / "_internal").as_posix())
+    if actual != expected:
+        raise SystemExit("collect_notices: packaged native payload does not match its reviewed inventory")
+
+
+def _is_native_library(name: str) -> bool:
+    lower = name.lower()
+    return (lower.endswith((".dll", ".dylib", ".pyd", ".so"))
+            or ".so." in lower)
+
+
+def copy_reviewed_notice_files(entry: dict, out_dir: Path) -> None:
+    """Keep complete texts and their upstream provenance together."""
+    if entry.get("review_status") != "complete":
+        raise SystemExit("collect_notices: component notice review is incomplete")
+    if not entry["files"]:
+        raise SystemExit("collect_notices: reviewed component has no notice files")
+    for item in entry["files"]:
+        source_root = item.get("source_root", "notices")
+        if source_root not in {"notices", "site"}:
+            raise SystemExit("collect_notices: unknown reviewed notice source")
+        base = SITE if source_root == "site" else ROOT / "packaging" / "notices"
+        source = base / item["path"]
+        if not source.is_file() or hashlib.sha256(source.read_bytes()).hexdigest() != item["sha256"]:
+            raise SystemExit(f"collect_notices: missing or changed reviewed notice: {item['path']}")
+        destination = out_dir / item["destination"]
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+    (out_dir / "PROVENANCE.json").write_text(
+        json.dumps(entry, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
+
+
+def copy_windows_runtime_notices(licenses_dir: Path) -> list[tuple[str, str, str, str]]:
+    """Bind supplemental notices to the inspected Windows native payloads."""
+    if sys.platform != "win32":
+        return []
+    manifest = runtime_notice_manifest()
+    if manifest.get("windows_review_status") != "complete":
+        raise SystemExit("collect_notices: Windows native notice review is incomplete")
+    actual_python = ".".join(str(part) for part in sys.version_info[:3])
+    if actual_python != manifest["python_version"]:
+        raise SystemExit("collect_notices: Windows Python runtime version requires a new notice review")
+    rows = []
+    for key, entry in manifest["windows_runtime"].items():
+        for relative, expected in entry["payloads"].items():
+            payload = DIST / "_internal" / relative
+            if not payload.is_file() or hashlib.sha256(payload.read_bytes()).hexdigest() != expected:
+                raise SystemExit(f"collect_notices: unreviewed Windows runtime payload: {relative}")
+        copy_reviewed_notice_files(entry, licenses_dir / key)
+        rows.append((entry["name"], entry["version"], entry["license"],
+                     f"Reviewed native component; full texts and provenance: licenses/{key}/."))
+    return rows
 
 
 def license_expression(meta: email.message.Message) -> str:
@@ -170,8 +285,49 @@ def verify_media_policy(directory: Path) -> None:
         if not path.is_file():
             continue
         name = path.name.lower().removeprefix("lib")
+        if name.startswith("portaudio") and name.endswith("-asio.dll"):
+            raise SystemExit(f"Excluded ASIO library found in packaged output: {path}")
         if name.startswith(prefixes) and any(part in name for part in (".dll", ".so", ".dylib", ".exe")):
             raise SystemExit(f"Excluded media library found in packaged output: {path}")
+
+
+def copy_vad_notices(licenses_dir: Path) -> tuple[str, str, str, str]:
+    """Verify the actual bundled VAD and retain upstream/model/runtime notices.
+
+    Wheel metadata alone omits the Silero copyright and ONNX Runtime's bundled
+    third-party notices in the inspected versions. Unknown model bytes need a
+    fresh resource review before a new binary is distributed.
+    """
+    for package, expected in (("faster_whisper", "1.2.1"), ("onnxruntime", "1.28.0")):
+        source_info = find_dist_info(package)
+        bundled = list((DIST / "_internal").glob(f"{package}-*.dist-info"))
+        if (source_info is None or metadata(source_info).get("Version") != expected
+                or len(bundled) != 1 or metadata(bundled[0]).get("Version") != expected):
+            raise SystemExit(f"collect_notices: unreviewed {package} version; review the VAD wrapper/runtime before distributing")
+    model = DIST / "_internal" / "faster_whisper" / "assets" / "silero_vad_v6.onnx"
+    approved = "4cbf549b8326f60f80f2536d9eefeb450a9abe83365a098031c89719f1be17d2"
+    if (not model.is_file() or model.stat().st_size != 1245151
+            or hashlib.sha256(model.read_bytes()).hexdigest() != approved):
+        raise SystemExit("collect_notices: bundled Silero identity is unreviewed; review the resource before distributing")
+    sources = [
+        (ROOT / "packaging" / "notices" / "silero-vad-LICENSE.txt", "silero_vad", "LICENSE.txt"),
+    ]
+    for source, package, filename in sources:
+        if not source.is_file():
+            raise SystemExit(f"collect_notices: required VAD/runtime notice missing: {source.name}")
+        destination = licenses_dir / package / filename
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+    runtime_entry = reviewed_package_entry("onnxruntime", "1.28.0")
+    if runtime_entry is None:
+        raise SystemExit("collect_notices: ONNX Runtime target has no completed notice review")
+    verify_reviewed_package_payload(runtime_entry)
+    copy_reviewed_notice_files(runtime_entry, licenses_dir / "onnxruntime")
+    note = ("Reviewed faster-whisper 1.2.1 sequence export, 1245151 bytes; SHA-256 " + approved
+            + ". Origin: https://github.com/SYSTRAN/faster-whisper/tree/65882eee9f5cdbeeb2d877f1131d48cf241b327d"
+            + "; upstream model: https://github.com/snakers4/silero-vad/tree/v6.0"
+            + ". Full Silero notice: licenses/silero_vad/LICENSE.txt.")
+    return ("Silero VAD", "6.0 (faster-whisper export)", "MIT", note)
 
 
 def main() -> int:
@@ -200,6 +356,8 @@ def main() -> int:
         expression = license_expression(meta)
         copy_license_files(dist_info, meta, licenses_dir / name)
         rows.append((meta.get("Name") or name, meta.get("Version") or "?", expression, notes[name]))
+    rows.append(copy_vad_notices(licenses_dir))
+    rows.extend(copy_windows_runtime_notices(licenses_dir))
     lines = [HEADER]
     for pkg, version, expression, note in sorted(rows, key=lambda r: r[0].lower()):
         lines.append(f"* {pkg} {version} — {expression}")

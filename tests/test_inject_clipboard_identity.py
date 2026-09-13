@@ -9,6 +9,7 @@ from utterleaf import inject
 
 @pytest.fixture
 def clipboard(monkeypatch):
+    monkeypatch.setattr(inject, "_use_windows_clipboard", lambda: False)
     state = SimpleNamespace(text="original", sequence=10, copies=[], sends=0)
 
     def copy(text):

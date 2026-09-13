@@ -73,3 +73,30 @@ def test_file_window_rejects_conflicting_actions(flag):
     with pytest.raises(SystemExit) as failure:
         main(["--files", flag])
     assert failure.value.code == 2
+
+
+@pytest.mark.parametrize("args", [["--audio-track", "1"], ["--files", "--audio-track", "2"],
+                                  ["--transcribe-file", "x.wav", "--audio-track", "0"],
+                                  ["--transcribe-file", "x.wav", "--audio-track", "257"]])
+def test_track_choice_requires_file_job_and_valid_ordinal(args):
+    with pytest.raises(SystemExit) as error:
+        main(args)
+    assert error.value.code == 2
+
+
+def test_cli_selected_track_reaches_recognizer_as_zero_based(tmp_path, monkeypatch):
+    from utterleaf import config, hardware, file_transcription
+    from utterleaf.transcript import Transcript
+    source = tmp_path / "stream.mkv"
+    source.write_bytes(b"synthetic")
+    monkeypatch.setattr(config, "config_path", lambda: tmp_path / "config.toml")
+    monkeypatch.setattr(config, "ensure_files", lambda: Config())
+    monkeypatch.setattr(hardware, "enable_cuda_libs", lambda: None)
+    seen = []
+    def recognize(path, cfg, **kwargs):
+        seen.append(kwargs["audio_track"])
+        return Transcript(())
+    monkeypatch.setattr(file_transcription, "transcribe_file", recognize)
+    assert main(["--transcribe-file", str(source), "--audio-track", "3",
+                 "--output", str(tmp_path / "third.txt")]) == 0
+    assert seen == [2]
