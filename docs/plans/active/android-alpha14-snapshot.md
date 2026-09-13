@@ -23,9 +23,10 @@ roadmap continues independently.
 - Keep no-network, no-ambient-capture, no-clipboard-history, secure-field and
   model-import boundaries unchanged. No permission bypass or unsigned APK is
   acceptable.
-- This preparation does not tag, publish, sign, build, install, download or run
-  an emulator. A successful emulator run remains evidence for tested paths,
-  not physical-device or accessibility certification.
+- This preparation does not tag, publish, sign or download release inputs. Local
+  verification may build debug/test artifacts and install them only on the
+  dedicated emulator. A successful emulator run remains evidence for tested
+  paths, not physical-device or accessibility certification.
 
 ## Snapshot scope
 
@@ -51,6 +52,21 @@ Before publication, run the canonical Android checks from `mobile/android`:
 - The Android build workflow must pass for the exact commit SHA and preserve
   its `Android-release-input` artifact.
 
+Local snapshot verification at `78da52b`, followed by the test-only fixture fix
+at `fcaf110`, completed the bounded pre-publication checks available without
+release signing:
+
+- `python -m unittest discover -s mobile/android/tools -p test_*.py` passed 14
+  tests.
+- `gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+  :app:assembleDebugAndroidTest --offline --no-daemon` passed 31 JVM tests and
+  lint with 0 errors and 51 warnings, and built the debug and test APKs.
+- After installing those APKs on the dedicated `UtterleafFoundation35` API 35
+  emulator, the explicit `KeyboardGesturesTest,LetterLayoutTest` instrumentation
+  run passed all 16 tests in 31.105 seconds. The synchronization fix waits for
+  the displayed alternate strip and keeps the layout-switch cancellation,
+  stale-release and modifier assertions intact. Independent test review passed.
+
 The signed path is the main-only `.github/workflows/android-release.yml`
 workflow: dispatch with the existing `android-v0.1.0-alpha14` tag and exact
 successful Android build run, use the protected `android-release` environment,
@@ -60,10 +76,12 @@ reinstall before publishing the prerelease assets.
 
 ## Pending gates
 
-The focused long-press API 35 gesture/layout execution is pending. Physical
-phones, TalkBack, Switch Access, landscape and broad editor compatibility, and
-real Obtainium import/update behavior remain unverified. These limits must stay
-in the release notes and publication description.
+The full Android CI workflow for the final exact SHA, `assembleRelease`, protected
+release signing, certificate/version checks, signed install/upgrade/reinstall and
+artifact publication remain pending. Physical phones, TalkBack, Switch Access,
+landscape and broad editor compatibility, and real Obtainium import/update
+behavior remain unverified. These limits must stay in the release notes and
+publication description.
 
 ## Stop
 

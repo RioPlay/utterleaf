@@ -8,10 +8,11 @@
   two-thumb rollover, QWERTY/QWERTZ/AZERTY layouts, one-hand alignment,
   local emoji browsing, Latin compose, private drafts, and the visible-hint
   default for long-press alternate selection.
-- The long-press hint behavior has source and review evidence, but its focused
-  API 35 gesture/layout run is still pending for this snapshot. Physical-phone,
-  TalkBack, Switch Access, landscape, broad editor and real Obtainium update
-  acceptance remain open.
+- The long-press hint behavior has source and independent review evidence, and
+  its focused API 35 gesture/layout run passes all 16 tests. Full exact-SHA CI,
+  protected signing, signed upgrade/reinstall, physical-phone, TalkBack, Switch
+  Access, landscape, broad editor and real Obtainium update acceptance remain
+  open.
 - This release does not include the separate experimental foundation package
   (`org.utterleaf.keyboard.experimental`) or any code from `mobile/latinime`.
 
@@ -161,8 +162,9 @@ Dictation is explicit and remains disabled in password fields.
 
 ## Install and updates
 
-Use **Utterleaf-Android-0.1.0-alpha07.apk**, version code 7. It uses the persistent
-alpha03–alpha06 signing identity and supports installing over those releases.
+Use **Utterleaf-Android-0.1.0-alpha14.apk**, version code 14. It uses the
+persistent alpha03-and-later signing identity and supports installing over
+those releases.
 Do not uninstall first: Android removes app settings and the model on uninstall.
 Alpha01/alpha02 used disposable debug keys and require a one-time uninstall.
 
