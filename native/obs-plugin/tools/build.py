@@ -15,7 +15,7 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = (
     "bridge", "plugin_state", "pairing_ui", "vendor_dispatch", "pairing_store",
-    "authorization", "admission", "handshake", "crypto",
+    "authorization", "admission", "handshake", "crypto", "session_protocol",
 )
 ISC_HEADERS = (
     "callback/calldata.h", "callback/proc.h", "callback/signal.h",
