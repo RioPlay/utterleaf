@@ -31,10 +31,12 @@ class KeyboardTuningTest {
         try {
             instrumentation.runOnMainSync {
                 val currentSliders = sliders()
-                assertEquals(listOf("Key height: 64 dp", "Bottom space: 12 dp"), currentSliders.map { it.contentDescription.toString() })
-                currentSliders[0].progress = 13; currentSliders[1].progress = 28
-                assertEquals(listOf("Key height: 60 dp", "Bottom space: 28 dp"), currentSliders.map { it.contentDescription.toString() })
-                for ((slider, value) in currentSliders.zip(listOf(14f, 29f))) {
+                assertEquals(listOf("Hold timing: system default", "Key height: 64 dp", "Bottom space: 12 dp"),
+                    currentSliders.map { it.contentDescription.toString() })
+                currentSliders[1].progress = 13; currentSliders[2].progress = 28
+                assertEquals(listOf("Hold timing: system default", "Key height: 60 dp", "Bottom space: 28 dp"),
+                    currentSliders.map { it.contentDescription.toString() })
+                for ((slider, value) in currentSliders.drop(1).zip(listOf(14f, 29f))) {
                     val arguments = android.os.Bundle().apply {
                         putFloat(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE, value)
                     }
@@ -50,7 +52,8 @@ class KeyboardTuningTest {
             UiAwait.until("Cancelled reset dialog did not close") { dialogButtons(android.R.id.button2).isEmpty() }
             instrumentation.runOnMainSync {
                 assertEquals(changed, KeyboardOptions.load(context))
-                assertEquals(listOf("Key height: 61 dp", "Bottom space: 29 dp"), sliders().map { it.contentDescription.toString() })
+                assertEquals(listOf("Hold timing: system default", "Key height: 61 dp", "Bottom space: 29 dp"),
+                    sliders().map { it.contentDescription.toString() })
                 reset()
             }
             UiAwait.until("Reset confirmation did not appear") { dialogButtons(android.R.id.button1).size == 1 }
@@ -58,8 +61,9 @@ class KeyboardTuningTest {
             UiAwait.until("Confirmed reset dialog did not close") { dialogButtons(android.R.id.button1).isEmpty() }
             instrumentation.runOnMainSync {
                 assertEquals(KeyboardOptions(), KeyboardOptions.load(context))
-                assertEquals(listOf(0, 0), sliders().map { it.progress })
-                assertEquals(listOf("Key height: default", "Bottom space: 0 dp"), sliders().map { it.contentDescription.toString() })
+                assertEquals(listOf(0, 0, 0), sliders().map { it.progress })
+                assertEquals(listOf("Hold timing: system default", "Key height: default", "Bottom space: 0 dp"),
+                    sliders().map { it.contentDescription.toString() })
             }
         } finally {
             instrumentation.runOnMainSync { activity.finish() }
@@ -79,6 +83,7 @@ class KeyboardTuningTest {
                 saved.save(context)
                 fun key(label: String) = descendants(panel.view).filterIsInstance<android.widget.Button>()
                     .single { it.contentDescription == label }
+                key("Keyboard tools").performClick()
                 key("Number row off").performClick()
                 assertEquals(saved.copy(numberRow = true), KeyboardOptions.load(context))
                 assertTrue(key("a").isHapticFeedbackEnabled)

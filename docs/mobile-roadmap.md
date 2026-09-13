@@ -46,10 +46,10 @@ One-hand reach and visual polish can proceed alongside foundation work.
   touch slop selects another displayed alternate. Ordinary taps, Shift/Caps,
   period punctuation and Tools → Accents retain their separate behavior. Outside,
   cancellation, multi-touch, geometry and lifecycle guards remain fail closed.
-  Eight focused JVM catalog/layout tests pass and the debug plus Android test
-  Kotlin sources compile. API 35 gesture/layout execution and independent review
-  remain pending in the
-  [acceptance record](plans/active/android-long-press-default.md); physical-phone
+  Eight focused JVM catalog/layout tests and 16 focused API 35 gesture/layout
+  tests pass. The debug and Android test APKs build, and independent test review
+  is complete; exact local evidence is recorded in the
+  [alpha14 snapshot record](plans/active/android-alpha14-snapshot.md); physical-phone
   and assistive-technology acceptance remain open.
 
 - **Accent composition implemented in unreleased source:** **Tools → Compose**
@@ -162,6 +162,21 @@ One-hand reach and visual polish can proceed alongside foundation work.
   [android-keyboard-hardening](plans/active/android-keyboard-hardening.md).
   LatinIME is not imported or scheduled for adoption. Physical-device, TalkBack and
   preference/model upgrade-preservation checks remain open.
+
+- **Alpha14 snapshot preparation:** the current release checkout stages the
+  integrated hardening, rollover, QWERTY/QWERTZ/AZERTY layouts, one-hand
+  alignment, local emoji, Latin compose, private drafts and visible-hint
+  long-press default as an experimental update to the original keyboard.
+  Version code 14 must preserve the alpha03+ signing identity and
+  `org.utterleaf.voice` package. Local snapshot checks pass 14 tooling tests, 31
+  JVM tests, lint with 0 errors and 51 warnings, debug/test APK builds, and the
+  16-test focused API 35 long-press/layout run. The first 135-test PR run exposed
+  four stale instrumentation fixtures after its build/JVM/lint/tooling steps
+  passed; the bounded corrections await a complete exact-SHA rerun. Release build,
+  protected signing and signed update/reinstall remain required. Physical-phone
+  testing is deferred to follow-up user feedback for alpha14 and is not claimed;
+  assistive-technology, landscape, broad-editor and real Obtainium update checks
+  remain open.
 
 - **New core, first native N1 slice:** the user requested a smaller,
   Kotlin-owned keyboard/voice system after reviewing LatinIME's integration cost.
