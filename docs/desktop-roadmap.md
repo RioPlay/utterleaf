@@ -32,13 +32,26 @@ passes 1,445 tests with 14 explicit skips; frozen diagnostics and an offline
 passed **1,446 tests with 13 skips**. Independent verification of the downloaded
 artifact passed archive, executable, dependency and retained-notice checks,
 frozen diagnostics and offline 88-second transcription. See the
-[runtime notice record](plans/active/desktop-runtime-notices.md).
+[runtime notice record](plans/active/desktop-runtime-notices.md), the
+[completed CI integration plan](plans/completed/desktop-ci-platform-integration.md),
+and the [completed backup compact-layout plan](plans/completed/desktop-backup-compact.md).
 
 Historical source receipts below describe their original verification stage;
 references to unreleased source or pending packaging describe those earlier
 checks. The preview plan records final artifact and publication evidence.
 Live-microphone endurance, broad editor and accessibility acceptance, other
 desktop binaries and live OBS remain unverified or unavailable as documented.
+
+Final RC2 integration evidence is recorded in receipt
+`.grok/release/ci-rc2/release-review-34746938663.json`: exact-head CI run
+[34746938663](https://github.com/RioPlay/utterleaf/actions/runs/34746938663)
+from `3f1bd6c5c3200d01ee0d4121ffb34d636b6530d8` passed Windows **1,459 passed,
+13 skipped**, macOS **1,440 passed, 32 skipped**, and both Linux X11 and forced
+Wayland suites at **1,440 passed, 32 skipped**. All three platform builds,
+notice collection, frozen smoke checks and independent native-payload inventory
+verification passed. RC2 remains the published immutable tag; this evidence
+does not extend to stable desktop release status or unverified physical/editor
+acceptance. PR #26 merged into main at `bf4dfda`.
 
 ### Active: continuous recording, long files and OBS
 

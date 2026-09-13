@@ -35,6 +35,13 @@ The final combined local packaging, boundary, backup and settings check passed
 78 tests in 20.31 seconds. Native macOS CI remains required; these local Windows
 checks do not establish Aqua rendering or assistive-technology usability.
 
+The completed implementation passed the native macOS test job, including all
+backup tests, in [CI 34746938663](https://github.com/RioPlay/utterleaf/actions/runs/34746938663)
+at tested HEAD `3f1bd6c`. All five matrix jobs passed. This satisfies the native
+CI gate above; assistive-technology usability remains unverified. Desktop PR #26
+merged into main at `bf4dfda`. The published RC2 tag remains separately recorded
+as `90d2e147c6c84af2639317b427a2f5135b3ff997` and does not contain this later fix.
+
 ## Stop
 
 Stop after the compact layout and its focused checks are reviewable. Do not

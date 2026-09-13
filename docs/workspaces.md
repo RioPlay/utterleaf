@@ -7,10 +7,11 @@ source checkout stays intact. Use the following workspaces for new work.
 | Branch | Purpose | Next work |
 | --- | --- | --- |
 | `checkpoint/mixed-work-20260912` | Preserved mixed development snapshot; not a release or PR | Recovery/reference only; leave the original source environment intact |
-| `release/desktop-0.4.6rc2` | Published Windows x64 CPU prerelease with runtime notice corrections | Integrate the reviewed desktop changes through PR #26 |
+| `release/desktop-0.4.6rc2` | Published Windows x64 CPU prerelease with runtime notice corrections; PR #26 merged | Preserve the immutable RC2 tag and release evidence; continue desktop work from main |
+| `feat/desktop-dictation-layout` | Partial Dictation settings layout work at `e05a2cf`, with local uncommitted edits | Frozen for Android priority; compact-window acceptance is incomplete and this work is not released |
 | `release/desktop-0.4.6rc1` | Unpublished RC1 candidate retained for audit | Reference only; its immutable tag and downloaded artifact are unchanged |
-| `release/android-alpha14` | Published signed original keyboard snapshot; PR #25 merged | Preserve release evidence; physical-phone testing remains deferred follow-up |
-| `feat/android-keyboard-hardening` | Original Android keyboard development after alpha14 | Integrate and verify the Backspace selection gesture and Private draft test synchronization |
+| `release/android-alpha14` | Published signed original keyboard snapshot; PR #25 merged | Preserve alpha14 evidence; physical-phone testing remains deferred follow-up |
+| `release/android-alpha15` | Compact keyboard and Utterleaf naming release candidate in PR #29 | CI 34747169547 is running; no alpha15 tag or APK exists yet |
 
 The desktop release uses `desktop-v0.4.6-rc.2`; stable desktop `v*` and Android
 `android-v*` releases remain separate. Read the platform roadmap and active plan
@@ -38,8 +39,10 @@ is published from `46893f2`, with exact-revision CI and persistent signing,
 installation and upgrade verification. [Windows RC2](https://github.com/RioPlay/utterleaf/releases/tag/desktop-v0.4.6-rc.2)
 is published from `90d2e14`, after exact-tag CI and independent downloaded-artifact
 verification. Stable desktop v0.4.5 remains the default release. Current main
-`5b9eb93` includes the alpha14 source and release-workflow repair. The separately
-reviewed Backspace gesture is not in alpha14. See the platform roadmaps for
+`bf4dfda` includes desktop PR #26 and the earlier Android release-workflow
+repair. The separately reviewed Backspace gesture is not in alpha14. Android alpha15 preparation is
+tracked separately on `release/android-alpha15` at `52b0e6a`; CI
+34747169547 is still running and no alpha15 tag or APK exists. See the platform roadmaps for
 remaining product work and unverified device behavior.
 
 The mixed checkpoint also preserves repository-wide build routing, prompt-file
