@@ -267,6 +267,15 @@ bool ul_audio_capture_inspect_frontend(uint8_t additional_mask,
     return valid;
 }
 
+bool ul_audio_capture_matches_frontend(const ul_audio_capture_spec *expected)
+{
+    ul_audio_capture_spec current;
+    if (expected == NULL ||
+        !ul_audio_capture_inspect_frontend(expected->mix_mask, &current))
+        return false;
+    return same_spec(expected, &current);
+}
+
 ul_audio_capture *ul_audio_capture_create_worker(
     const ul_audio_capture_spec *spec)
 {

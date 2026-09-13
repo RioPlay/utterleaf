@@ -11,7 +11,7 @@ import pytest
 
 from utterleaf import obs_controller as module
 from utterleaf.obs_control import ObsControlCancelled, ObsControlDisconnected, ObsControlError
-from utterleaf.obs_control import StreamEvent, StreamSnapshot
+from utterleaf.obs_control import ObsPluginStatus, StreamEvent, StreamSnapshot
 from utterleaf.obs_audio_pipe import ObsAudioPipeCancelled
 from utterleaf.obs_protocol import AudioFrame, EndFrame, EndReason, StartFrame
 from utterleaf.obs_session import ObsCaptureSession
@@ -120,6 +120,7 @@ class Control:
 
     def plugin_status(self):
         self.calls.append("status")
+        return ObsPluginStatus(1, 1, 1, 63)
 
     def stream_status(self):
         self.calls.append("idle")

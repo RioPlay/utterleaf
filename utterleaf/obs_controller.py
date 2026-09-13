@@ -13,7 +13,7 @@ import time
 from typing import Protocol
 
 from utterleaf import obs_audio_pipe, obs_control
-from utterleaf.obs_protocol import AudioFrame, EndFrame, StartFrame
+from utterleaf.obs_protocol import AudioFrame, EndFrame, RoutingFrame, StartFrame, VERSION, PROVENANCE_VERSION
 from utterleaf.obs_session import ObsCaptureSession, ObsSessionError
 
 
@@ -26,6 +26,7 @@ class TranscriptionSink(Protocol):
     def failed(self) -> bool: ...
     def add_track(self, track, *, origin_ns: int, sample_rate: int,
                   primary_bus: int) -> None: ...
+    def attach_routing_history(self, history) -> None: ...
     def finish_capture(self, result) -> None: ...
     def cancel(self) -> None: ...
     def wait(self, timeout: float | None = None) -> bool: ...
@@ -40,6 +41,7 @@ class ObsControllerSnapshot:
     primary_bus: int | None = None
     buses: tuple[int, ...] = ()
     captured_seconds: float = 0.0
+    routing: RoutingFrame | None = field(default=None, repr=False)
 
 
 @dataclass
@@ -97,6 +99,9 @@ class ObsSessionController:
         self._primary: int | None = None
         self._buses: tuple[int, ...] = ()
         self._seconds = 0.0
+        self._routing: RoutingFrame | None = None
+        self._audio_version = VERSION
+        self._cleanup_failed = False
         self._pipe = None
 
     def snapshot(self) -> ObsControllerSnapshot:
@@ -104,6 +109,7 @@ class ObsSessionController:
             state, message = self._state, self._message
             degraded, primary, buses, seconds = (
                 self._degraded, self._primary, self._buses, self._seconds)
+            routing, cleanup_failed = self._routing, self._cleanup_failed
         if state == "finalizing":
             recognition = self._sink.snapshot()
             terminal = recognition.state.value
@@ -112,11 +118,13 @@ class ObsSessionController:
                 message = recognition.message
         if state == "cancelling" and self.wait(0):
             recognition = self._sink.snapshot()
-            if recognition.state.value == "failed":
+            if cleanup_failed:
+                state, message = "error", "Private OBS capture storage could not close cleanly."
+            elif recognition.state.value == "failed":
                 state, message = "error", recognition.message
             else:
                 state, message = "cancelled", "OBS transcription discarded."
-        return ObsControllerSnapshot(state, message, degraded, primary, buses, seconds)
+        return ObsControllerSnapshot(state, message, degraded, primary, buses, seconds, routing)
 
     def connect(self, host: str, port: int, password: str, *,
                 expected_executable: str) -> bool:
@@ -171,6 +179,7 @@ class ObsSessionController:
         self._abort.set()
         with self._condition:
             self._state, self._message = "cancelling", "Discarding OBS transcription…"
+            self._routing = None
             self._condition.notify_all()
         self._sink.cancel()
 
@@ -232,7 +241,11 @@ class ObsSessionController:
                 # credential there immediately after the handshake, not on exit.
                 request.password = ""
             self._check()
-            control.plugin_status()
+            compatibility = control.plugin_status()
+            audio_version = compatibility.audio_version
+            if type(audio_version) is not int or audio_version not in (VERSION, PROVENANCE_VERSION):
+                raise _SessionFailure()
+            self._audio_version = audio_version
             self._check()
             refresh_idle = not self._idle_snapshot(control, publish=True)
             while not self._audio_ended.is_set():
@@ -311,7 +324,8 @@ class ObsSessionController:
             self._check()
             owned_lease, lease = lease, None
             pipe = self._pipe_factory(session_id, owned_lease, cancelled=self._audio_cancelled,
-                                      deadline=time.monotonic() + obs_control.REQUEST_TIMEOUT)
+                                      deadline=time.monotonic() + obs_control.REQUEST_TIMEOUT,
+                                      protocol_version=self._audio_version)
             pipe.arm(additional_mix_mask=self._mask,
                      deadline=time.monotonic() + obs_control.REQUEST_TIMEOUT)
             self._check()
@@ -320,7 +334,8 @@ class ObsSessionController:
                 self._pipe = pipe
                 self._armed = True
                 self._state, self._message = "armed", "Waiting for the next OBS stream to start…"
-            worker = threading.Thread(target=self._audio_worker, args=(session_id, pipe, self._mask),
+            worker = threading.Thread(target=self._audio_worker,
+                                      args=(session_id, pipe, self._mask, self._audio_version),
                                       name="utterleaf-obs-audio", daemon=True)
             worker.start()
             self._audio_started = True
@@ -331,14 +346,15 @@ class ObsSessionController:
             if lease is not None:
                 lease.close()
 
-    def _audio_worker(self, session_id: bytes, pipe, mask: int) -> None:
+    def _audio_worker(self, session_id: bytes, pipe, mask: int, protocol_version: int) -> None:
         receiver = result = None
         registered: set[int] = set()
         origin_ns = sample_rate = 0
+        routing_attached = False
         try:
             receiver = self._receiver_factory(
                 session_id, buses=tuple(bus for bus in range(6) if mask & (1 << bus)),
-                stream_active=False)
+                stream_active=False, protocol_version=protocol_version)
             while receiver.state in {"armed", "active"}:
                 self._check()
                 frames = pipe.read_frames()
@@ -352,6 +368,13 @@ class ObsSessionController:
                         receiver.notify_stream_started(frame.session_id)
                         origin_ns, sample_rate = frame.origin_ns, frame.sample_rate
                     receiver.accept(frame)
+                    if isinstance(frame, RoutingFrame):
+                        if not routing_attached:
+                            self._sink.attach_routing_history(receiver.routing_history)
+                            routing_attached = True
+                        with self._condition:
+                            self._check()
+                            self._routing = receiver.current_routing
                     if isinstance(frame, AudioFrame):
                         tracks = receiver.live_tracks()
                         for track in tracks:
@@ -410,12 +433,31 @@ class ObsSessionController:
                 self._sink.cancel()
                 self._publish("error", "OBS transcription could not finish. No complete transcript was produced.")
             finally:
+                cleanup_failed = False
                 try:
                     if result is not None:
-                        result.close()
+                        try:
+                            result.close()
+                        finally:
+                            result.wait_closed()
+                            if result.routing_history is not None:
+                                cleanup_failed |= result.routing_history.cleanup_failed
+                except BaseException:
+                    cleanup_failed = True
                 finally:
                     try:
                         if receiver is not None:
-                            receiver.close()
+                            try:
+                                receiver.close()
+                            finally:
+                                receiver.wait_closed()
+                                if receiver.routing_history is not None:
+                                    cleanup_failed |= receiver.routing_history.cleanup_failed
+                    except BaseException:
+                        cleanup_failed = True
                     finally:
+                        if cleanup_failed:
+                            with self._condition:
+                                self._cleanup_failed = True
+                            self._publish("error", "Private OBS capture storage could not close cleanly.")
                         self._audio_done.set()

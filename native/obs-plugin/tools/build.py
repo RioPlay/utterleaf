@@ -17,12 +17,12 @@ SOURCES = (
     "bridge", "plugin_state", "pairing_ui", "vendor_dispatch", "pairing_store",
     "authorization", "admission", "handshake", "crypto", "session_protocol",
     "audio_protocol", "audio_queue", "audio_convert", "audio_capture",
-    "audio_stream", "frontend_dispatch",
+    "audio_stream", "audio_metadata", "frontend_dispatch",
 )
 ISC_HEADERS = (
     "callback/calldata.h", "callback/proc.h", "callback/signal.h",
     "util/base.h", "util/bmem.h", "util/c99defs.h", "util/darray.h",
-    "util/text-lookup.h", "util/util_uint64.h",
+    "util/text-lookup.h", "util/util_uint64.h", "util/platform.h",
 )
 
 

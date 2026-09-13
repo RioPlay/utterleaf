@@ -51,6 +51,8 @@ def main() -> None:
         "tests/audio_convert_test.c", "tests/audio_convert.def", "tests/test_audio_convert.py",
         "src/audio_capture.c", "src/audio_capture.h", "tests/audio_capture_test.c",
         "src/audio_stream.c", "src/audio_stream.h", "tests/audio_stream_test.c",
+        "tests/audio_stream_routing_test.c",
+        "src/audio_metadata.c", "src/audio_metadata.h", "tests/audio_metadata_test.c",
         "src/frontend_dispatch.c", "src/frontend_dispatch.h", "tests/frontend_dispatch_test.c",
         "tests/frontend_dispatch_fault_test.c",
         "tests/admission_io_test.c", "tests/admission_io_fault_test.c",
@@ -74,6 +76,10 @@ def main() -> None:
     desktop_tests = (
         "tests/test_obs_audio_pipe.py", "tests/test_obs_audio_arm.py",
         "tests/test_obs_audio_disarm.py", "tests/test_obs_protocol.py", "tests/test_obs_session.py",
+        "tests/test_obs_mix.py", "tests/test_obs_routing_protocol.py",
+        "tests/test_obs_routing_session.py", "tests/test_obs_routing_store.py",
+        "tests/test_obs_transcription_routing.py", "tests/test_obs_routing_pipe.py",
+        "tests/test_obs_controller_routing.py",
         "tests/test_windows_pipe.py", "tests/test_obs_control_status.py",
         "tests/test_obs_control.py", "tests/test_obs_control_enrollment.py",
         "tests/test_obs_websocket.py", "tests/test_obs_websocket_disconnect.py",
@@ -148,6 +154,7 @@ def main() -> None:
     audio_protocol = output / "audio_protocol_test.exe"
     audio_queue = output / "audio_queue_test.exe"
     audio_stream = output / "audio_stream_test.exe"
+    audio_stream_routing = output / "audio_stream_routing_test.exe"
     frontend_dispatch = output / "frontend_dispatch_test.exe"
     frontend_fault = output / "frontend_dispatch_fault_test.exe"
     admission_io = output / "admission_io_test.exe"
@@ -164,6 +171,7 @@ def main() -> None:
                                "-o", audio_queue])
     run("audio-queue-test", [audio_queue])
     run("audio-stream-build", [*flags, "-D_M_X64=100",
+                                 "-DUL_AUDIO_RUNTIME_VERSION=1",
                                  "-DUL_AUDIO_STREAM_FIRST_TIMEOUT_MS=60",
                                  "-DUL_AUDIO_STREAM_IDLE_TIMEOUT_MS=60",
                                  "-DUL_AUDIO_STREAM_WRITE_TIMEOUT_MS=40",
@@ -174,6 +182,19 @@ def main() -> None:
                                  ROOT / "src/session_protocol.c", ROOT / "tests/audio_stream_test.c",
                                  "-o", audio_stream])
     run("audio-stream-test", [audio_stream])
+    run("audio-stream-routing-build", [*flags, "-D_M_X64=100", "-DUL_AUDIO_RUNTIME_VERSION=2",
+                                         "-DUL_AUDIO_STREAM_FIRST_TIMEOUT_MS=60",
+                                         "-DUL_AUDIO_STREAM_IDLE_TIMEOUT_MS=60",
+                                         "-DUL_AUDIO_STREAM_WRITE_TIMEOUT_MS=40",
+                                         "-DUL_AUDIO_STREAM_ACK_TIMEOUT_MS=40",
+                                         "-DUL_AUDIO_STREAM_POLL_MS=1",
+                                         "-DUL_AUDIO_STREAM_DRAIN_TIMEOUT_MS=100",
+                                         "-DUL_AUDIO_STREAM_METADATA_POLL_MS=1",
+                                         ROOT / "src/audio_stream.c", ROOT / "src/audio_protocol.c",
+                                         ROOT / "src/session_protocol.c",
+                                         ROOT / "tests/audio_stream_routing_test.c",
+                                         "-o", audio_stream_routing])
+    run("audio-stream-routing-test", [audio_stream_routing])
     run("frontend-dispatch-build", [*flags, "-D_M_X64=100",
                                      ROOT / "src/frontend_dispatch.c",
                                      ROOT / "tests/frontend_dispatch_test.c", "-luser32",
@@ -253,7 +274,7 @@ def main() -> None:
                                   pairing_dll, authorization_dll])
     artifacts = [fixed, fault, identity, dll, crypto, authorization_state, authorization_dll,
                  pairing_state, pairing_dll, plugin_state, session_protocol, admission_io,
-                 admission_io_fault, audio_protocol, audio_queue, audio_stream,
+                 admission_io_fault, audio_protocol, audio_queue, audio_stream, audio_stream_routing,
                  frontend_dispatch, frontend_fault]
     if args.build is not None:
         convert_stub = output / "audio_convert_stub_test.exe"
@@ -278,6 +299,11 @@ def main() -> None:
                                      "-o", capture_test])
         run("audio-capture-test", [capture_test])
         artifacts.append(capture_test)
+        metadata_test = output / "audio_metadata_test.exe"
+        run("audio-metadata-build", [*capture_flags, ROOT / "tests/audio_metadata_test.c",
+                                      "-o", metadata_test])
+        run("audio-metadata-test", [metadata_test])
+        artifacts.append(metadata_test)
         bridge_test = output / "bridge_test.exe"
         run("bridge-wrapper-build", [*flags, "-D_M_X64=100", f"-I{headers / 'libobs'}",
                                      f"-I{headers / 'frontend/api'}", f"-I{headers / 'obs-websocket'}",
@@ -307,6 +333,7 @@ def main() -> None:
         "schema": 2, "scope": "pairing/admission/Arm/Disarm, read-only compatibility, desktop controller and live local recognition fixtures; optional libobs dispatch and synthetic capture/conversion; no OBS application, model loading or audio devices",
         "desktop_audio_pipe": "passed: Windows pipe, controller, transport, receiver, committed-window recognition, bounded model output and cancellation fixtures",
         "audio_stream": "passed: synthetic bounded transport fixture",
+        "audio_metadata": "passed: bounded observation and lifecycle fixture" if args.build is not None else "not run: supply --build and --headers",
         "frontend_dispatch": "passed: real Windows message-only window fixture",
         "audio_capture": "passed: pinned public OBS SDK synthetic fixture" if args.build is not None else "not run: supply --build and --headers",
         "vendor_dispatch": "passed" if args.build is not None else "not run: supply --build and --headers",

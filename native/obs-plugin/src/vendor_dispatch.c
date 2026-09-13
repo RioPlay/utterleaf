@@ -93,7 +93,7 @@ void ul_vendor_status(obs_data_t *request, obs_data_t *response, void *private_d
         return;
     obs_data_set_int(response, "protocolVersion", 1);
     obs_data_set_int(response, "commandVersion", 1);
-    obs_data_set_int(response, "audioVersion", 1);
+    obs_data_set_int(response, "audioVersion", 2);
     obs_data_set_int(response, "maxBusMask", 63);
     obs_data_set_bool(response, "ok", true);
 }

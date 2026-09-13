@@ -13,6 +13,8 @@ from tkinter import filedialog, ttk
 
 from utterleaf import theme
 from utterleaf.host import ui_font
+from utterleaf.obs_mix import MixRelationship
+from utterleaf.obs_protocol import RoutingFrame
 
 
 POLL_MS = 100
@@ -143,6 +145,11 @@ class ObsSessionWindow:
                         padding=(9, 4))
         style.configure("Obs.Error.TLabel", background=theme.SURFACE_CONTAINER,
                         foreground=theme.ERROR, font=(family, 9))
+        style.configure("Obs.TNotebook", background=theme.SURFACE_CONTAINER, borderwidth=0)
+        style.configure("Obs.TNotebook.Tab", background=theme.SURFACE_CONTAINER,
+                        foreground=theme.ON_VARIANT, font=(family, 10), padding=(12, 6))
+        style.map("Obs.TNotebook.Tab", background=[("selected", theme.SURFACE_LOW)],
+                  foreground=[("selected", theme.PRIMARY), ("disabled", theme.OUTLINE)])
         style.configure("Obs.Danger.TButton", background=theme.PRIMARY_CONTAINER,
                         foreground=theme.ON_PRIMARY_CONTAINER, padding=(16, 8))
         style.map("Obs.Danger.TButton", background=[("active", theme.OUTLINE_VARIANT)],
@@ -289,15 +296,15 @@ class ObsSessionWindow:
         card.grid(row=6, column=0, sticky="nsew", pady=(0, 11))
         card.columnconfigure(0, weight=1)
         card.rowconfigure(2, weight=1)
-        ttk.Label(card, text="Transcript preview", style="Obs.CardTitle.TLabel").grid(
-            row=0, column=0, sticky="w"
-        )
         self.progress_text = tk.StringVar(self.root, "Waiting for selected OBS audio.")
         ttk.Label(card, textvariable=self.progress_text, style="Obs.CardHint.TLabel").grid(
-            row=1, column=0, sticky="ew", pady=(3, 8)
+            row=0, column=0, sticky="ew", pady=(0, 8)
         )
-        text_frame = tk.Frame(card, bg=theme.OUTLINE_VARIANT, padx=1, pady=1)
-        text_frame.grid(row=2, column=0, sticky="nsew")
+        self.preview_tabs = ttk.Notebook(card, style="Obs.TNotebook")
+        self.preview_tabs.grid(row=2, column=0, sticky="nsew")
+        self.preview_tabs.enable_traversal()
+        text_frame = tk.Frame(self.preview_tabs, bg=theme.OUTLINE_VARIANT, padx=1, pady=1)
+        self.preview_tabs.add(text_frame, text="Transcript", underline=0)
         text_frame.columnconfigure(0, weight=1)
         text_frame.rowconfigure(0, weight=1)
         self.preview = tk.Text(
@@ -310,6 +317,24 @@ class ObsSessionWindow:
         scroll = ttk.Scrollbar(text_frame, orient="vertical", command=self.preview.yview)
         scroll.grid(row=0, column=1, sticky="ns")
         self.preview.configure(yscrollcommand=scroll.set, state="disabled")
+
+        mixes_frame = tk.Frame(self.preview_tabs, bg=theme.OUTLINE_VARIANT, padx=1, pady=1)
+        mixes_frame.columnconfigure(0, weight=1)
+        mixes_frame.rowconfigure(0, weight=1)
+        self.preview_tabs.add(mixes_frame, text="Mix details", underline=0, state="disabled")
+        self.mix_details = tk.Text(
+            mixes_frame, wrap="word", undo=False, height=8, borderwidth=0,
+            padx=12, pady=10, bg=theme.SURFACE_LOW, fg=theme.ON_SURFACE,
+            selectbackground=theme.PRIMARY_CONTAINER, selectforeground=theme.ON_SURFACE,
+            exportselection=False, font=(ui_font(), 10),
+        )
+        self.mix_details.grid(row=0, column=0, sticky="nsew")
+        mix_scroll = ttk.Scrollbar(mixes_frame, orient="vertical", command=self.mix_details.yview)
+        mix_scroll.grid(row=0, column=1, sticky="ns")
+        self.mix_details.configure(yscrollcommand=mix_scroll.set, state="disabled")
+        self.mix_details.tag_configure("heading", foreground=theme.PRIMARY,
+                                       font=(ui_font(), 10, "bold"))
+        self._last_routing = None
 
         export_row = ttk.Frame(card, style="Card.TFrame")
         self.export_row = export_row
@@ -586,6 +611,8 @@ class ObsSessionWindow:
         self.capture_meta.set(
             f"{primary_text} · {selected_text or 'complete stream mix'} · {self._duration(seconds)}"
         )
+        routing = getattr(session, "routing", None)
+        self._update_mix_details(routing if state not in {"cancelling", "cancelled"} else None)
 
         preview = preview_value if isinstance(preview_value, str) else ""
         self.preview.configure(state="normal")
@@ -621,6 +648,47 @@ class ObsSessionWindow:
         self._retained_output = retained and bool(labels)
         self._update_export_row()
         self._update_compact_sections()
+
+    def _update_mix_details(self, routing) -> None:
+        """Render only the latest accepted observation; never rewrite transcript text."""
+        if type(routing) is not RoutingFrame:
+            routing = None
+        if routing is self._last_routing:
+            return
+        self._last_routing = routing
+        self.mix_details.configure(state="normal")
+        self.mix_details.delete("1.0", "end")
+        if routing is None:
+            self.preview_tabs.select(0)
+            self.preview_tabs.tab(1, state="disabled")
+        else:
+            self.preview_tabs.tab(1, state="normal")
+            self.mix_details.insert("end", f"Observed assignments · update {routing.revision}\n", "heading")
+            self.mix_details.insert(
+                "end", "Configured inputs · change timing is approximate\n\n",
+            )
+            descriptions = {
+                MixRelationship.PRIMARY: "Complete streaming mix",
+                MixRelationship.SAME_INPUTS: "Same assigned inputs as the primary mix; audio may differ",
+                MixRelationship.DIFFERENT_INPUTS: "Different assigned inputs; may contain several speakers",
+                MixRelationship.UNASSIGNED: "No observed assigned inputs",
+            }
+            for label in routing.snapshot.labels:
+                title = f"Mix {label.bus + 1}"
+                if label.label != title:
+                    title += f" · {label.label}"
+                self.mix_details.insert("end", title + "\n", "heading")
+                self.mix_details.insert("end", descriptions[routing.snapshot.relationship(label.bus)] + "\n")
+                for source in routing.snapshot.inputs_for_bus(label.bus):
+                    self.mix_details.insert("end", "  • " + source.name + "\n")
+                self.mix_details.insert("end", "\n")
+            self.mix_details.insert(
+                "end", "These are configured inputs, not identified speakers or proof of audible sound. "
+                "Changes may reach the audio before or after this observation. Earlier observations "
+                "remain in this session's private history.",
+            )
+            self.mix_details.yview_moveto(0)
+        self.mix_details.configure(state="disabled")
 
     def _update_export_row(self) -> None:
         if not hasattr(self, "export_row"):
@@ -704,6 +772,7 @@ class ObsSessionWindow:
         if self.closed:
             return
         self.closed = True
+        self._last_routing = None
         self.password_var.set("")
         if self._poll_id is not None:
             try:
@@ -722,6 +791,7 @@ class ObsSessionWindow:
         if event.widget is not self.root or self.closed:
             return
         self.closed = True
+        self._last_routing = None
         self.password_var.set("")
         self._poll_id = None
         try:

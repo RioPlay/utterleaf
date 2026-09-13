@@ -11,6 +11,7 @@ import sys
 import numpy as np
 
 from utterleaf import obs_protocol as protocol
+from utterleaf.obs_mix import BusLabel, MixSnapshot, SourceAssignment
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,14 +51,15 @@ def main() -> None:
         output.mkdir(parents=True, exist_ok=True)
         executable = output / "audio_protocol_test.exe"
         compile_result = run([
-            args.compiler.resolve(), "-std=c11", "-Wall", "-Wextra", "-Werror",
+            args.compiler.resolve(), "-std=c11",
+            "-Wall", "-Wextra", "-Werror",
             ROOT / "src/audio_protocol.c", ROOT / "tests/audio_protocol_test.c",
             "-o", executable,
         ])
         if compile_result.stdout or compile_result.stderr:
             raise AssertionError("strict native compilation produced output")
     native = run([executable])
-    if native.stdout.strip() != "native ULAP encoder vectors and bounds passed" or native.stderr:
+    if native.stdout.strip() != "native ULAP encoder and routing vectors and bounds passed" or native.stderr:
         raise AssertionError("unexpected native fixture output")
 
     emitted = run([executable, "--emit"], binary=True)
@@ -79,6 +81,39 @@ def main() -> None:
     ]
     if frames != expected:
         raise AssertionError("Python decoder disagrees with native wire bytes")
+
+    emitted_v2 = run([executable, "--emit-v2"], binary=True)
+    if emitted_v2.stderr:
+        raise AssertionError("native version-2 emitter wrote diagnostics")
+    decoder_v2 = protocol.FrameDecoder(version=protocol.PROVENANCE_VERSION)
+    frames_v2 = decoder_v2.feed(emitted_v2.stdout)
+    decoder_v2.finish()
+    if frames_v2 != expected:
+        raise AssertionError("Python version-2 decoder disagrees with native wire bytes")
+
+    emitted_routing = run([executable, "--emit-routing"], binary=True)
+    if emitted_routing.stderr:
+        raise AssertionError("native routing emitter wrote diagnostics")
+    routing = protocol.RoutingFrame(
+        SESSION, 1, 0x0102030405060708, ((1, 7), (2, protocol.UINT64_MAX)),
+        MixSnapshot(
+            1, 6,
+            (
+                SourceAssignment(bytes(15) + b"\x01", "A", 2),
+                SourceAssignment(bytes(15) + b"\x02", "B", 4),
+            ),
+            (BusLabel(1, "Main"), BusLabel(2, "Aux")),
+        ),
+    )
+    routing_decoder = protocol.FrameDecoder(version=protocol.PROVENANCE_VERSION)
+    routing_frames = routing_decoder.feed(emitted_routing.stdout)
+    routing_decoder.finish()
+    if routing_frames != [routing]:
+        raise AssertionError("Python decoder disagrees with native routing bytes")
+    if emitted_routing.stdout != protocol.encode_frame(
+        routing, version=protocol.PROVENANCE_VERSION
+    ):
+        raise AssertionError("Python encoder disagrees with native routing bytes")
     print("native/Python ULAP interoperability passed")
 
 
