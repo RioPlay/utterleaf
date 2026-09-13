@@ -136,3 +136,70 @@ def test_dialog_actions_and_preview_fit_compact_window_and_tab_order(context):
         visited.add(str(current))
     assert str(dialog.preview) in visited
     assert str(dialog.confirm) in visited
+
+
+@pytest.mark.parametrize("scaling", (1.0, 1.5, 2.0))
+def test_dialog_compact_preview_and_actions_survive_large_tk_metrics(context, scaling):
+    root = context[0]
+    previous_scaling = root.tk.call("tk", "scaling")
+    dialog = None
+    try:
+        root.deiconify()
+        root.update()
+        root.tk.call("tk", "scaling", scaling)
+        dialog = imported_dialog(context)
+        dialog.root.geometry("480x460")
+        dialog.root.deiconify()
+        dialog.root.update()
+        assert dialog.options_canvas.winfo_ismapped()
+        assert dialog.preview.winfo_ismapped()
+        assert dialog.preview.winfo_width() >= 64
+        assert dialog.preview.winfo_height() >= 64
+        assert dialog.confirm.winfo_ismapped()
+        assert dialog.confirm.winfo_width() > 20
+        assert dialog.confirm.winfo_rooty() + dialog.confirm.winfo_height() <= (
+            dialog.root.winfo_rooty() + dialog.root.winfo_height()
+        )
+    finally:
+        if dialog is not None:
+            dialog.root.destroy()
+        root.tk.call("tk", "scaling", previous_scaling)
+
+
+def test_dialog_focus_reveals_scrollable_options_without_moving_footer(context):
+    root = context[0]
+    previous_scaling = root.tk.call("tk", "scaling")
+    dialog = None
+    try:
+        root.deiconify()
+        root.update()
+        root.tk.call("tk", "scaling", 2.0)
+        dialog = imported_dialog(context)
+        dialog.root.geometry("480x460")
+        dialog.root.deiconify()
+        dialog.root.update()
+        preview_geometry = dialog.preview.winfo_geometry()
+        confirm_geometry = dialog.confirm.winfo_geometry()
+        controls = []
+
+        def collect(widget):
+            if widget.winfo_class() in {"TCheckbutton", "TCombobox"}:
+                controls.append(widget)
+            for child in widget.winfo_children():
+                collect(child)
+
+        collect(dialog.options_body)
+        assert controls
+        for control in controls:
+            control.focus_set()
+            dialog.root.update()
+            canvas_top = dialog.options_canvas.winfo_rooty()
+            canvas_bottom = canvas_top + dialog.options_canvas.winfo_height()
+            assert control.winfo_rooty() >= canvas_top
+            assert control.winfo_rooty() + control.winfo_height() <= canvas_bottom
+            assert dialog.preview.winfo_geometry() == preview_geometry
+            assert dialog.confirm.winfo_geometry() == confirm_geometry
+    finally:
+        if dialog is not None:
+            dialog.root.destroy()
+        root.tk.call("tk", "scaling", previous_scaling)
