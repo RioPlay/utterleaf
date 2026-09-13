@@ -39,31 +39,39 @@ def _settings_path() -> Path:
 
 
 def _identity(path: Path) -> str:
-    if not path.is_absolute() or path.name.lower() not in {"ffmpeg", "ffmpeg.exe"}:
-        raise DecoderSetupError("Choose the installed ffmpeg executable, not an archive or installer")
+    return executable_identity(path, program="ffmpeg")
+
+
+def executable_identity(path: Path, *, program: str) -> str:
+    """Hash one explicitly selected media tool; never discover or execute it."""
+    if program not in {"ffmpeg", "ffprobe"}:
+        raise ValueError("Unsupported media tool")
+    label = "FFmpeg" if program == "ffmpeg" else "FFprobe"
+    if not path.is_absolute() or path.name.lower() not in {program, program + ".exe"}:
+        raise DecoderSetupError(f"Choose the installed {program} executable, not an archive or installer")
     # Never choose an executable from a network share implicitly.
     if str(path).startswith(("\\\\", "//")):
-        raise DecoderSetupError("Choose FFmpeg installed on this computer, not a network share")
+        raise DecoderSetupError(f"Choose {label} installed on this computer, not a network share")
     try:
         if str(path.resolve()).startswith(("\\\\", "//")) or not stat.S_ISREG(path.stat().st_mode):
-            raise DecoderSetupError("Choose a regular local FFmpeg executable")
+            raise DecoderSetupError(f"Choose a regular local {label} executable")
         with path.open("rb") as stream:
             info = os.fstat(stream.fileno())
             if not stat.S_ISREG(info.st_mode) or not 0 < info.st_size <= MAX_EXECUTABLE_BYTES:
-                raise DecoderSetupError("The selected FFmpeg executable is invalid or too large")
+                raise DecoderSetupError(f"The selected {label} executable is invalid or too large")
             if sys.platform == "win32" and stream.read(2) != b"MZ":
-                raise DecoderSetupError("Choose ffmpeg.exe, not a script or installer archive")
+                raise DecoderSetupError(f"Choose {program}.exe, not a script or installer archive")
             stream.seek(0)
             digest = hashlib.sha256()
             count = 0
             while block := stream.read(1024 * 1024):
                 count += len(block)
                 if count > MAX_EXECUTABLE_BYTES:
-                    raise DecoderSetupError("The selected FFmpeg executable is too large")
+                    raise DecoderSetupError(f"The selected {label} executable is too large")
                 digest.update(block)
             return digest.hexdigest()
     except OSError as exc:
-        raise DecoderSetupError("FFmpeg could not be read. Choose its installed executable again.") from exc
+        raise DecoderSetupError(f"{label} could not be read. Choose its installed executable again.") from exc
 
 
 def select_decoder(path: str | Path) -> Path:

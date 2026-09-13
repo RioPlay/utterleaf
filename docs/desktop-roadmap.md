@@ -93,6 +93,14 @@ streaming/CLI bundle passed **71 tests, 11 explicit codec-fixture skips**; indep
 review and 13 file-UI tests pass, with the compact view inspected. This includes a real 601-second PCM file and
 separate synthetic container tracks, not long-speech accuracy or release proof.
 Live OBS remains unavailable. Its [design contract](plans/active/obs-audio-design.md)
+is also the basis for the active [recorded-file timeline work](plans/active/recorded-file-timelines.md).
+The new internal batching and development decoder retain exact presentation
+offsets and flush audio before gaps. They are under review and are not yet used
+by the file-transcription UI or packaged external decoder. Cross-track alignment
+is not a released capability; actual stream selection and export integration
+remain part of that package's acceptance.
+
+The live OBS design
 separates authenticated stream events from actual PCM transport. The first
 [protocol and receiver components](plans/active/obs-audio-implementation.md) now
 cover consent/order guards, separate-bus temporary storage, timing, cancellation
