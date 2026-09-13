@@ -3,17 +3,16 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha14 is released as a signed development preview.** It adds the
-original engine's two-thumb rollover, letter layouts, one-hand alignment, local
-emoji, Latin composition, private drafts and the visible long-press hint default.
-See the [alpha14 release and verification record](../../docs/plans/active/android-alpha14-snapshot.md).
+**0.1.0-alpha15 is released as a signed development preview.** It adds the
+reviewed Backspace selection gesture, sliding Tools strip, replacement
+settings/navigation layers, comma-hold Settings access and the installed name
+**Utterleaf**. See the [alpha15 release and verification record](../../docs/plans/completed/android-alpha15-snapshot.md).
 
-The next snapshot is being prepared with a sliding Tools strip, replacement
-settings/navigation layers, comma-hold Settings access and the shorter installed
-name **Utterleaf**. Those changes and the Backspace selection gesture are
-**unreleased**; see the [compact-layer acceptance plan](../../docs/plans/active/android-compact-layers.md).
+Alpha15 preserves alpha14's two-thumb rollover, letter layouts, one-hand
+alignment, local emoji, Latin composition, private drafts and visible
+long-press hint default. See the [completed compact-layer contract](../../docs/plans/completed/android-compact-layers.md).
 
-Alpha12 introduced **Edit** opens Undo, Redo, Select all, Cut, Copy, Paste and
+Alpha12 introduced **Edit**, which opens Undo, Redo, Select all, Cut, Copy, Paste and
 navigation in a panel that replaces the letters. **ABC** returns to typing.
 [Validation and editor limits](../../docs/android-quick-actions.md).
 
@@ -87,20 +86,19 @@ prediction, accessibility and device coverage remain on the
 
 ## Try it
 
-1. [Download and install Utterleaf Android alpha14](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha14/Utterleaf-Android-0.1.0-alpha14.apk)
+1. [Download and install Utterleaf Android alpha15](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha15/Utterleaf-Android-0.1.0-alpha15.apk)
    on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Use `Utterleaf-Android-0.1.0-alpha14.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha14).
+   Use `Utterleaf-Android-0.1.0-alpha15.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha15).
    If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
-   then install alpha14. Uninstalling removes the imported model and other app data.
+   then install alpha15. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
    the same release identity and should be updated in place rather than uninstalled.
-2. In alpha14, open **Utterleaf Voice**. Under **Your keyboard**, enable **Utterleaf Keyboard**
+2. Open **Utterleaf**. Under **Your keyboard**, enable **Utterleaf**
    in Android settings, then choose it. Setup reports which step is still needed.
-   You do not need to enable the separate **Utterleaf Voice** input method to use
+   You do not need to enable the separate **Utterleaf dictation** input method to use
    the typing keyboard's dictation button.
-   The next snapshot shortens the installed app and typing input method names to
-   **Utterleaf** and labels the optional voice provider **Utterleaf dictation**,
-   without changing the installed package or update identity.
+   Alpha15 keeps the installed package and update identity unchanged while using
+   the shorter **Utterleaf** labels and **Utterleaf dictation** for the optional voice provider.
 3. Open a text field and type. Use **Keyboard preferences and preview** in setup to
    change sizing, theme, number row, terminal controls, vibration or repeat filtering. Reopen the keyboard to apply
    saved preferences. The private practice field lets you try the layout without

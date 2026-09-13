@@ -28,7 +28,7 @@ One-hand reach and visual polish can proceed alongside foundation work.
 
 ## Current status
 
-- **Backspace selection gesture implemented in post-alpha14 unreleased source:**
+- **Backspace selection gesture released in alpha15:**
   dragging left from Backspace previews a bounded editor-native or private-draft
   selection, deterministic reversal shrinks it without crossing the origin, and
   a valid release deletes it once. Tap and held-repeat deletion remain separate;
@@ -95,7 +95,7 @@ One-hand reach and visual polish can proceed alongside foundation work.
   See the [private draft guide](android-private-draft.md). Physical, assistive-tech,
   landscape and broad-editor gates remain open.
 
-- **Compact keyboard layers implemented in unreleased source:** Tools now replaces
+- **Compact keyboard layers released in alpha15:** Tools now replaces
   the top action strip without adding rows, keeps a fixed typing exit, and exposes
   Select all, Cut, Copy and Paste through a horizontally revealed 48dp strip.
   Settings, Edit and Terminal Fn/Nav use bounded replacement layers; comma hold
@@ -103,8 +103,19 @@ One-hand reach and visual polish can proceed alongside foundation work.
   360dp and 412dp-equivalent owned-view review, JVM/lint/build checks and exact
   installed/local APK identity pass. The app and primary IME are named Utterleaf;
   the voice-only IME remains distinguishable as Utterleaf dictation. This work is
-  not part of published alpha14; physical-phone and assistive-technology checks
-  remain open. See the [compact-layer contract](plans/active/android-compact-layers.md).
+  included in alpha15; physical-phone and assistive-technology checks remain open.
+  See the [completed compact-layer contract](plans/completed/android-compact-layers.md).
+
+- **Alpha15 signed publication:** the reviewed source at `52b0e6a` passed
+  canonical CI with 148 API 35 tests, 31 JVM tests, 14 tooling tests and lint
+  with 0 errors/55 warnings. The protected signing run published the
+  [alpha15 release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha15),
+  verified package `org.utterleaf.voice`, versionCode 15, unchanged certificate
+  `a7987d44a70eed90500b5d77a555df0e18e80e79dd7cf882e1a066dbc2214be6`, install/
+  upgrade/reinstall and preference preservation. The APK SHA-256 is
+  `442302ab60ef5c81ed7af6eb0e035ca8d35b17824584377f2c65c438cb067c12`.
+  Physical-phone, TalkBack/Switch Access, landscape, broad-editor and real
+  Obtainium acceptance remain open.
 - **Touch preview remains planned:** a compact banner and explicit local
   touch-density preview are specified in
   [the active plan](plans/active/android-editing-strip-and-touch-preview.md).
@@ -196,10 +207,10 @@ One-hand reach and visual polish can proceed alongside foundation work.
   [verification and remaining gates](../mobile/next-keyboard/EXECUTION-EVIDENCE.md)
   are recorded separately. Its interaction mockup and performance budgets remain
   proposals. N1 composition, live decoding and physical acceptance are incomplete. Preserve
-  alpha14 and the LatinIME comparison build until measured parity and migration
+  the released alpha15 channel and historical comparison builds until measured parity and migration
   gates pass; neither is replaced by these documents.
 - **Foundation preview01, experimental:** a [signed test download](https://github.com/RioPlay/utterleaf/releases/tag/android-foundation-v0.1.0-preview01)
-  is available separately from alpha14. A pinned AOSP LatinIME fork has been
+  is a separate historical package outside the alpha15 update channel. A pinned AOSP LatinIME fork has been
   built and exercised locally with real IME touch input, restricted capabilities
   and comfort preferences. The [execution evidence](../mobile/latinime/EXECUTION-EVIDENCE.md)
   records 12 JVM and 121 API 35 emulator tests, lint limitations, native compilation
@@ -213,7 +224,7 @@ One-hand reach and visual polish can proceed alongside foundation work.
   verified locally; cached layouts retain immutable keyboard-only editor metadata.
   Remaining lifecycle/cache, native hardening and framework recovery
   checks continue. It is not yet integrated
-  into the shipping keyboard; alpha14 remains the released implementation.
+  into the shipping keyboard; alpha15 remains the released implementation.
 
 - **Released alpha12:** compact [quick editing actions](android-quick-actions.md).
   Revision `aec275b` passed [Android CI 34498263015](https://github.com/RioPlay/utterleaf/actions/runs/34498263015):
@@ -375,10 +386,10 @@ and primary platform references are in [the mobile guide](mobile.md).
 
 ## Before each mobile release
 
-The current released baseline is Android alpha13, revision `45da18a`: 76 emulator
-tests, 8 JVM tests, lint, builds and 3 release contracts passed in
-[CI 34516072857](https://github.com/RioPlay/utterleaf/actions/runs/34516072857).
-See [signed publication and APK checksum](android-keyboard-design.md#released-in-alpha13).
+The current released baseline is Android alpha15, revision `52b0e6a`: 148 API 35
+tests, 31 JVM tests, 14 tooling tests, lint and builds passed in
+[CI 34747169547](https://github.com/RioPlay/utterleaf/actions/runs/34747169547).
+See [signed publication and APK checksum](plans/completed/android-alpha15-snapshot.md).
 Earlier alpha entries retain their historical validation scope.
 
 Track the [Android responsiveness and acceleration pass](android-performance.md)
