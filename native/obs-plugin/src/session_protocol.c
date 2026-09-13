@@ -53,3 +53,13 @@ bool ul_session_end_ack(const uint8_t *data, size_t size,
            memcmp(data + 8u, session, 16u) == 0 &&
            data[24] == 0u && data[25] == 0u && data[26] == 0u && data[27] == 0u;
 }
+
+bool ul_session_disarm_request(const uint8_t *data, size_t size,
+                               const uint8_t session[16])
+{
+    return data != NULL && size == UL_SESSION_COMMAND_BYTES &&
+           valid_session(session) && memcmp(data, "ULAC", 4u) == 0 &&
+           data[4] == 1u && data[5] == 4u && data[6] == 0u && data[7] == 0u &&
+           memcmp(data + 8u, session, 16u) == 0 &&
+           data[24] == 0u && data[25] == 0u && data[26] == 0u && data[27] == 0u;
+}

@@ -89,6 +89,9 @@ class Pipe:
         del self.pending[:len(result)]
         return result
 
+    def available_bytes(self, *, deadline):
+        return len(self.pending)
+
     def wait_for_disconnect(self, *, deadline):
         assert self.writes[-1] == b"ULAC\x01\x03\x00\x00" + SESSION + b"\x00" * 4
         if self.pending:

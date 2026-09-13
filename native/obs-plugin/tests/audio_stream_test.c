@@ -42,16 +42,25 @@ struct ul_audio_capture {
 struct ul_admission {
     uint8_t writes[MAX_WRITES][WRITE_PREFIX_BYTES];
     DWORD sizes[MAX_WRITES];
-    unsigned write_count, audio_count, fail_write_at, stop_after_audio;
+    unsigned write_count, audio_count, fail_write_at, stop_after_audio,
+             disarm_after_audio;
     int probe_result, read_result;
     DWORD available, slow_audio_ms, ack_delay_ms, last_read_timeout;
-    bool bad_ack, wrong_ack_session, wrong_ack_kind, wrong_ack_version;
+    bool bad_ack, wrong_ack_session, wrong_ack_kind, wrong_ack_version,
+         tail_after_ack, read_completed;
+    uint8_t read_kinds[4];
+    unsigned read_count, read_next;
+    DWORD read_delays[4];
     uint8_t *largest_write;
     DWORD largest_write_size;
     HANDLE stop_event;
 };
 
 static HANDLE signal_stop_on_stopped_status;
+static HANDLE fake_cleanup_complete;
+static ul_audio_disarm_action fake_disarm_action = UL_AUDIO_DISARM_ACCEPTED;
+static volatile LONG fake_disarm_calls;
+static bool fake_signal_cleanup = true;
 
 static const uint8_t session[16] = {
     1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16
@@ -222,6 +231,8 @@ int ul_admission_write_all(ul_admission *opaque, const void *buffer,
             Sleep(admission->slow_audio_ms);
         if (admission->audio_count == admission->stop_after_audio)
             SetEvent(admission->stop_event);
+        if (admission->audio_count == admission->disarm_after_audio)
+            admission->available = UL_SESSION_COMMAND_BYTES;
     }
     return UL_ADMISSION_AUTH_OK;
 }
@@ -232,15 +243,21 @@ int ul_admission_read_exact(ul_admission *opaque, void *buffer, DWORD size,
     struct ul_admission *admission = opaque;
     uint8_t *ack = buffer;
     admission->last_read_timeout = timeout;
-    if (admission->ack_delay_ms != 0u)
-        Sleep(admission->ack_delay_ms);
+    uint8_t kind = admission->read_next < admission->read_count
+                       ? admission->read_kinds[admission->read_next] : 3u;
+    DWORD delay = admission->read_next < admission->read_count
+                      ? admission->read_delays[admission->read_next]
+                      : admission->ack_delay_ms;
+    admission->read_next++;
+    if (delay != 0u)
+        Sleep(delay);
     if (admission->read_result != UL_ADMISSION_AUTH_OK)
         return admission->read_result;
     assert(size == UL_SESSION_COMMAND_BYTES);
     memset(ack, 0, size);
     memcpy(ack, "ULAC", 4u);
     ack[4] = 1u;
-    ack[5] = 3u;
+    ack[5] = kind;
     memcpy(ack + 8u, session, 16u);
     if (admission->wrong_ack_version)
         ack[4] = 2u;
@@ -250,7 +267,18 @@ int ul_admission_read_exact(ul_admission *opaque, void *buffer, DWORD size,
         ack[8] ^= 0xffu;
     if (admission->bad_ack)
         ack[27] = 1u;
+    admission->available = kind == 3u && admission->tail_after_ack ? 1u : 0u;
+    admission->read_completed = true;
     return UL_ADMISSION_AUTH_OK;
+}
+
+static ul_audio_disarm_action fake_disarm(void *context)
+{
+    (void)context;
+    InterlockedIncrement(&fake_disarm_calls);
+    if (fake_signal_cleanup && fake_cleanup_complete != NULL)
+        SetEvent(fake_cleanup_complete);
+    return fake_disarm_action;
 }
 
 static void clear_admission(struct ul_admission *admission)
@@ -283,11 +311,32 @@ static int run_stream(struct ul_audio_capture *capture,
                       struct ul_admission *admission, HANDLE stop)
 {
     uint8_t bus;
+    int result;
     admission->stop_event = stop;
     for (bus = 0u; bus < UL_AUDIO_CAPTURE_MIXES; ++bus)
         if (capture->queues[bus].status == 0)
             capture->queues[bus].status = UL_AUDIO_QUEUE_OK;
-    return ul_audio_stream_run(capture, spec, admission, session, stop);
+    fake_cleanup_complete = CreateEventW(NULL, TRUE, FALSE, NULL);
+    assert(fake_cleanup_complete != NULL);
+    result = ul_audio_stream_run(capture, spec, admission, session, stop,
+                                 fake_cleanup_complete, fake_disarm, NULL);
+    CloseHandle(fake_cleanup_complete);
+    fake_cleanup_complete = NULL;
+    return result;
+}
+
+static int run_precommitted_disarm(struct ul_audio_capture *capture,
+                                   ul_audio_capture_spec *spec,
+                                   struct ul_admission *admission,
+                                   HANDLE cleanup_complete)
+{
+    HANDLE stop = CreateEventW(NULL, TRUE, FALSE, NULL);
+    int result;
+    assert(stop != NULL);
+    result = ul_audio_stream_run_disarmed(capture, spec, admission, session,
+                                          stop, cleanup_complete);
+    CloseHandle(stop);
+    return result;
 }
 
 static int run_single_block_stop(struct ul_audio_capture *capture,
@@ -498,10 +547,9 @@ static void test_end_write_and_ack_paths(void)
     memset(&capture, 0, sizeof(capture));
     memset(&admission, 0, sizeof(admission));
     admission.ack_delay_ms = 10u;
-    ULONGLONG before = GetTickCount64();
     assert(run_single_block_stop(&capture, &admission) == UL_AUDIO_STREAM_OK);
-    assert(GetTickCount64() - before >= 5u);
-    assert(admission.last_read_timeout >= 1u);
+    assert(admission.read_completed && admission.read_next == 1u &&
+           admission.last_read_timeout >= 1u);
 }
 
 static void test_stopped_queue_precedes_stop_event(void)
@@ -551,11 +599,17 @@ static void test_metadata_and_argument_failures(void)
     memset(&capture, 0, sizeof(capture));
     stop = CreateEventW(NULL, TRUE, FALSE, NULL);
     spec.channels = 0u;
-    assert(ul_audio_stream_run(&capture, &spec, &admission, session, stop) ==
+    fake_cleanup_complete = CreateEventW(NULL, TRUE, FALSE, NULL);
+    assert(fake_cleanup_complete != NULL);
+    assert(ul_audio_stream_run(&capture, &spec, &admission, session, stop,
+                               fake_cleanup_complete, fake_disarm, NULL) ==
            UL_AUDIO_STREAM_INCOMPLETE);
     assert(capture.deactivate_calls == 1u);
-    assert(ul_audio_stream_run(NULL, &spec, &admission, session, stop) ==
+    assert(ul_audio_stream_run(NULL, &spec, &admission, session, stop,
+                               fake_cleanup_complete, fake_disarm, NULL) ==
            UL_AUDIO_STREAM_INCOMPLETE);
+    CloseHandle(fake_cleanup_complete);
+    fake_cleanup_complete = NULL;
     CloseHandle(stop);
 }
 
@@ -707,6 +761,229 @@ static void test_total_drain_deadline(void)
     free(capture);
 }
 
+static void reset_disarm_fixture(void)
+{
+    InterlockedExchange(&fake_disarm_calls, 0);
+    fake_disarm_action = UL_AUDIO_DISARM_ACCEPTED;
+    fake_signal_cleanup = true;
+}
+
+static void test_disarm_before_start_and_active_tail(void)
+{
+    struct ul_audio_capture capture = {0};
+    struct ul_admission admission = {0};
+    ul_audio_capture_spec spec = spec_for(1u);
+    HANDLE stop = CreateEventW(NULL, TRUE, FALSE, NULL);
+    assert(stop != NULL);
+    reset_disarm_fixture();
+    capture.origin_ready = true;
+    admission.available = UL_SESSION_COMMAND_BYTES;
+    admission.read_kinds[0] = 4u;
+    admission.read_kinds[1] = 3u;
+    admission.read_count = 2u;
+    assert(run_stream(&capture, &spec, &admission, stop) == UL_AUDIO_STREAM_OK);
+    assert(fake_disarm_calls == 1 && capture.deactivate_calls == 1u);
+    assert(admission.write_count == 1u && admission.writes[0][5] == 4u &&
+           admission.writes[0][28] == UL_AUDIO_END_DISARMED &&
+           admission.writes[0][29] == 0u);
+    CloseHandle(stop);
+
+    memset(&capture, 0, sizeof(capture));
+    memset(&admission, 0, sizeof(admission));
+    spec = spec_for(3u);
+    stop = CreateEventW(NULL, TRUE, FALSE, NULL);
+    assert(stop != NULL);
+    reset_disarm_fixture();
+    capture.origin_ready = true;
+    capture.origin = 10u;
+    enqueue(&capture, 0u, 0u, 10u, (ul_audio_gap){0}, 1.0f);
+    enqueue(&capture, 1u, 0u, 10u, (ul_audio_gap){0}, 2.0f);
+    admission.available = UL_SESSION_COMMAND_BYTES;
+    admission.read_kinds[0] = 4u;
+    admission.read_kinds[1] = 3u;
+    admission.read_count = 2u;
+    assert(run_stream(&capture, &spec, &admission, stop) == UL_AUDIO_STREAM_OK);
+    assert(admission.write_count == 4u && admission.writes[0][5] == 1u &&
+           admission.writes[3][5] == 4u &&
+           admission.writes[3][28] == UL_AUDIO_END_DISARMED &&
+           admission.writes[3][29] == 2u);
+    CloseHandle(stop);
+
+    memset(&capture, 0, sizeof(capture));
+    memset(&admission, 0, sizeof(admission));
+    stop = CreateEventW(NULL, TRUE, FALSE, NULL);
+    assert(stop != NULL);
+    reset_disarm_fixture();
+    capture.origin_ready = true;
+    capture.origin = 10u;
+    enqueue(&capture, 0u, 0u, 10u, (ul_audio_gap){0}, 1.0f);
+    admission.available = UL_SESSION_COMMAND_BYTES;
+    admission.read_kinds[0] = 4u;
+    admission.read_count = 1u;
+    assert(run_stream(&capture, &spec, &admission, stop) ==
+           UL_AUDIO_STREAM_INCOMPLETE);
+    assert(admission.write_count == 0u);
+    CloseHandle(stop);
+
+    memset(&capture, 0, sizeof(capture));
+    memset(&admission, 0, sizeof(admission));
+    spec = spec_for(1u);
+    stop = CreateEventW(NULL, TRUE, FALSE, NULL);
+    assert(stop != NULL);
+    reset_disarm_fixture();
+    capture.origin_ready = true;
+    enqueue(&capture, 0u, 0u, 0u, (ul_audio_gap){0}, 1.0f);
+    enqueue(&capture, 0u, 1u, 20833u, (ul_audio_gap){0}, 2.0f);
+    admission.disarm_after_audio = 1u;
+    admission.read_kinds[0] = 4u;
+    admission.read_kinds[1] = 3u;
+    admission.read_count = 2u;
+    assert(run_stream(&capture, &spec, &admission, stop) == UL_AUDIO_STREAM_OK);
+    assert(fake_disarm_calls == 1 && admission.audio_count == 2u &&
+           capture.deactivate_calls == 1u);
+    assert(admission.write_count == 4u && admission.writes[3][5] == 4u &&
+           admission.writes[3][28] == UL_AUDIO_END_DISARMED &&
+           admission.writes[3][29] == 1u &&
+           get_u64(admission.writes[3] + 31u) == 1u);
+    CloseHandle(stop);
+}
+
+static void test_disarm_cleanup_and_terminal_receipt_bounds(void)
+{
+    struct ul_audio_capture capture = {0};
+    struct ul_admission admission = {0};
+    ul_audio_capture_spec spec = spec_for(1u);
+    HANDLE stop = CreateEventW(NULL, TRUE, FALSE, NULL);
+    ULONGLONG before;
+    assert(stop != NULL);
+    reset_disarm_fixture();
+    fake_signal_cleanup = false;
+    capture.origin_ready = true;
+    enqueue(&capture, 0u, 0u, 0u, (ul_audio_gap){0}, 1.0f);
+    admission.disarm_after_audio = 1u;
+    admission.read_kinds[0] = 4u;
+    admission.read_count = 1u;
+    before = GetTickCount64();
+    assert(run_stream(&capture, &spec, &admission, stop) ==
+           UL_AUDIO_STREAM_INCOMPLETE);
+    assert(GetTickCount64() - before >= 50u &&
+           GetTickCount64() - before < 1000u && admission.write_count == 2u);
+    fake_signal_cleanup = true;
+    CloseHandle(stop);
+
+    memset(&capture, 0, sizeof(capture));
+    memset(&admission, 0, sizeof(admission));
+    capture.origin_ready = true;
+    enqueue(&capture, 0u, 0u, 0u, (ul_audio_gap){0}, 1.0f);
+    admission.stop_after_audio = 1u;
+    admission.read_kinds[0] = 4u;
+    admission.read_kinds[1] = 3u;
+    admission.read_delays[0] = 25u;
+    admission.read_delays[1] = 25u;
+    admission.read_count = 2u;
+    stop = CreateEventW(NULL, TRUE, FALSE, NULL);
+    before = GetTickCount64();
+    assert(run_stream(&capture, &spec, &admission, stop) ==
+           UL_AUDIO_STREAM_TRANSPORT_ERROR);
+    assert(GetTickCount64() - before >= 40u &&
+           GetTickCount64() - before < 500u && admission.read_next == 2u &&
+           admission.last_read_timeout > 0u &&
+           admission.last_read_timeout < UL_AUDIO_STREAM_ACK_TIMEOUT_MS);
+    CloseHandle(stop);
+
+    memset(&capture, 0, sizeof(capture));
+    memset(&admission, 0, sizeof(admission));
+    capture.origin_ready = true;
+    enqueue(&capture, 0u, 0u, 0u, (ul_audio_gap){0}, 1.0f);
+    admission.stop_after_audio = 1u;
+    admission.read_kinds[0] = 4u;
+    admission.read_kinds[1] = 3u;
+    admission.read_count = 2u;
+    stop = CreateEventW(NULL, TRUE, FALSE, NULL);
+    assert(run_stream(&capture, &spec, &admission, stop) == UL_AUDIO_STREAM_OK);
+    assert(admission.writes[2][28] == UL_AUDIO_END_STREAM_STOPPED &&
+           admission.read_next == 2u && fake_disarm_calls == 1);
+    CloseHandle(stop);
+
+    memset(&capture, 0, sizeof(capture));
+    memset(&admission, 0, sizeof(admission));
+    capture.origin_ready = true;
+    enqueue(&capture, 0u, 0u, 0u, (ul_audio_gap){0}, 1.0f);
+    admission.stop_after_audio = 1u;
+    admission.tail_after_ack = true;
+    stop = CreateEventW(NULL, TRUE, FALSE, NULL);
+    assert(run_stream(&capture, &spec, &admission, stop) ==
+           UL_AUDIO_STREAM_TRANSPORT_ERROR);
+    CloseHandle(stop);
+}
+
+static void test_precommitted_disarm_stopped_queues(void)
+{
+    struct ul_audio_capture capture = {0};
+    struct ul_admission admission = {0};
+    ul_audio_capture_spec spec = spec_for(3u);
+    HANDLE cleanup = CreateEventW(NULL, TRUE, TRUE, NULL);
+    assert(cleanup != NULL);
+    capture.queues[0].status = UL_AUDIO_QUEUE_STOPPED;
+    capture.queues[1].status = UL_AUDIO_QUEUE_STOPPED;
+    assert(run_precommitted_disarm(&capture, &spec, &admission, cleanup) ==
+           UL_AUDIO_STREAM_OK);
+    assert(admission.write_count == 1u && admission.writes[0][5] == 4u &&
+           admission.writes[0][28] == UL_AUDIO_END_DISARMED &&
+           admission.writes[0][29] == 0u);
+
+    memset(&capture, 0, sizeof(capture));
+    memset(&admission, 0, sizeof(admission));
+    capture.origin_ready = true;
+    capture.origin = 10u;
+    capture.queues[0].status = UL_AUDIO_QUEUE_STOPPED;
+    capture.queues[1].status = UL_AUDIO_QUEUE_STOPPED;
+    enqueue(&capture, 0u, 0u, 10u, (ul_audio_gap){0}, 1.0f);
+    assert(run_precommitted_disarm(&capture, &spec, &admission, cleanup) ==
+           UL_AUDIO_STREAM_INCOMPLETE);
+    assert(admission.write_count == 0u);
+
+    memset(&capture, 0, sizeof(capture));
+    memset(&admission, 0, sizeof(admission));
+    capture.origin_ready = true;
+    capture.origin = 10u;
+    capture.queues[0].status = UL_AUDIO_QUEUE_STOPPED;
+    capture.queues[1].status = UL_AUDIO_QUEUE_STOPPED;
+    enqueue(&capture, 0u, 0u, 10u, (ul_audio_gap){0}, 1.0f);
+    enqueue(&capture, 1u, 0u, 10u, (ul_audio_gap){0}, 2.0f);
+    enqueue(&capture, 1u, 1u, 20843u, (ul_audio_gap){0}, 3.0f);
+    assert(run_precommitted_disarm(&capture, &spec, &admission, cleanup) ==
+           UL_AUDIO_STREAM_OK);
+    assert(admission.write_count == 5u && admission.writes[0][5] == 1u &&
+           admission.writes[4][5] == 4u &&
+           admission.writes[4][28] == UL_AUDIO_END_DISARMED &&
+           admission.writes[4][29] == 2u);
+    assert(ul_audio_stream_finish_empty_disarm(&admission, session,
+                                               INVALID_HANDLE_VALUE) ==
+           UL_AUDIO_STREAM_INCOMPLETE);
+    CloseHandle(cleanup);
+}
+
+static void test_normal_stop_wins_before_start(void)
+{
+    struct ul_audio_capture capture = {0};
+    struct ul_admission admission = {0};
+    ul_audio_capture_spec spec = spec_for(1u);
+    HANDLE stop = CreateEventW(NULL, TRUE, FALSE, NULL);
+    assert(stop != NULL);
+    reset_disarm_fixture();
+    fake_disarm_action = UL_AUDIO_DISARM_ALREADY_STOPPING;
+    capture.origin_ready = true;
+    admission.available = UL_SESSION_COMMAND_BYTES;
+    admission.read_kinds[0] = 4u;
+    admission.read_count = 1u;
+    assert(run_stream(&capture, &spec, &admission, stop) ==
+           UL_AUDIO_STREAM_INCOMPLETE);
+    assert(fake_disarm_calls == 1 && admission.write_count == 0u);
+    fake_disarm_action = UL_AUDIO_DISARM_ACCEPTED;
+    CloseHandle(stop);
+}
+
 int main(void)
 {
     test_clean_fair_drain_and_ack();
@@ -720,6 +997,10 @@ int main(void)
     test_clean_stop_drains_tail_and_final_gap();
     test_max_blocks_six_full_tails();
     test_total_drain_deadline();
-    puts("audio stream staging, transport, gaps and clean End ACK passed");
+    test_disarm_before_start_and_active_tail();
+    test_disarm_cleanup_and_terminal_receipt_bounds();
+    test_precommitted_disarm_stopped_queues();
+    test_normal_stop_wins_before_start();
+    puts("audio stream staging, Disarm, transport, gaps and clean End ACK passed");
     return 0;
 }

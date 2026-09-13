@@ -145,8 +145,10 @@ size_t ul_audio_encode_end(uint8_t *out, size_t capacity,
 {
     size_t body_size, packet_size, index;
     uint8_t *body;
-    if (sequence_count < 1u || sequence_count > 6u ||
-        last_sequences == NULL || reason < UL_AUDIO_END_STREAM_STOPPED ||
+    if (sequence_count > 6u ||
+        (sequence_count == 0u && reason != UL_AUDIO_END_DISARMED) ||
+        (sequence_count != 0u && last_sequences == NULL) ||
+        reason < UL_AUDIO_END_STREAM_STOPPED ||
         reason > UL_AUDIO_END_TRANSPORT_ERROR)
         return 0u;
     body_size = 18u + sequence_count * 9u;

@@ -51,7 +51,7 @@ if int(h) == INVALID:
 
 listener = None
 port = 0
-if mode == "audio":
+if mode in {"audio", "audio_disarm"}:
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     listener.bind(("127.0.0.1", 0))
@@ -108,7 +108,7 @@ if mode == "exchange":
     read_exact(1)
 elif mode == "stall":
     time.sleep(3)
-elif mode == "audio":
+elif mode in {"audio", "audio_disarm"}:
     hello = read_exact(56)
     header, secret = hello[:24], hello[24:]
     magic, version, kind, reserved, returned_session = struct.unpack("<4sBBH16s", header)
@@ -125,6 +125,10 @@ elif mode == "audio":
     ) or arm_mask > 63:
         raise SystemExit(17)
     write_all(struct.pack("<4sBBH16sBBH", b"ULAC", 1, 2, 0, session_id, arm_mask, 1, 0))
+    if mode == "audio_disarm":
+        command = read_exact(28)
+        if command != b"ULAC\x01\x04\x00\x00" + session_id + b"\0" * 4:
+            raise SystemExit(19)
     write_all(payload)
     receipt = read_exact(28)
     if receipt != b"ULAC\x01\x03\x00\x00" + session_id + b"\x00" * 4:
@@ -153,7 +157,7 @@ def start_native_pipe_server(
     session_id: bytes | None = None,
 ) -> NativePipeServer:
     """Start a self-expiring native fixture and wait for bounded readiness."""
-    if mode not in {"exchange", "stall", "audio", "observe"}:
+    if mode not in {"exchange", "stall", "audio", "audio_disarm", "observe"}:
         raise ValueError("unsupported fixture mode")
     if type(payload) is not bytes or len(payload) > 8_192:
         raise ValueError("invalid fixture payload")

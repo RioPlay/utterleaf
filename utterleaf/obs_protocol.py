@@ -148,7 +148,8 @@ class EndFrame:
             not _session(self.session_id)
             or type(self.reason) is not EndReason
             or type(self.last_sequences) is not tuple
-            or not 1 <= len(self.last_sequences) <= 6
+            or not 0 <= len(self.last_sequences) <= 6
+            or (not self.last_sequences and self.reason is not EndReason.DISARMED)
         ):
             raise ProtocolError(_INVALID_FRAME)
         previous_bus = -1
@@ -210,7 +211,7 @@ def _valid_body_length(kind: int, length: int) -> bool:
         return length == _GAP.size
     if kind == KIND_END:
         sequence_bytes = length - _END_PREFIX.size
-        return _END_SEQUENCE.size <= sequence_bytes <= 6 * _END_SEQUENCE.size and sequence_bytes % 9 == 0
+        return 0 <= sequence_bytes <= 6 * _END_SEQUENCE.size and sequence_bytes % 9 == 0
     return False
 
 
@@ -246,6 +247,11 @@ class FrameDecoder:
     def __init__(self) -> None:
         self._buffer = bytearray()
         self._closed = False
+
+    @property
+    def has_partial_frame(self) -> bool:
+        """Whether the transport must finish a packet under its current deadline."""
+        return bool(self._buffer)
 
     def _fail(self, message: str = _INVALID_STREAM) -> None:
         self._buffer.clear()

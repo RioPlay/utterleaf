@@ -112,6 +112,7 @@ static void dispatch_frontend(unsigned command, uintptr_t generation)
         } else if (command == 3u && queued_cleanup == generation) {
             queued_cleanup = 0u;
             ul_audio_capture_disconnect_frontend(generation, false);
+            ul_plugin_capture_cleanup_complete(generation);
         }
     }
     ReleaseSRWLockExclusive(&frontend_gate);

@@ -128,6 +128,11 @@ class _Native:
         self._server_pid = kernel32.GetNamedPipeServerProcessId
         self._server_pid.argtypes = [_HANDLE, ctypes.POINTER(_DWORD)]
         self._server_pid.restype = _BOOL
+        self._peek_named_pipe = kernel32.PeekNamedPipe
+        self._peek_named_pipe.argtypes = [_HANDLE, ctypes.c_void_p, _DWORD,
+                                          ctypes.POINTER(_DWORD), ctypes.POINTER(_DWORD),
+                                          ctypes.POINTER(_DWORD)]
+        self._peek_named_pipe.restype = _BOOL
         self._close = kernel32.CloseHandle
         self._close.argtypes = [_HANDLE]
         self._close.restype = _BOOL
@@ -189,6 +194,13 @@ class _Native:
             raise _NativeFailure(self.last_error())
         return int(pid.value)
 
+    def available_bytes(self, handle: int) -> int:
+        available = _DWORD()
+        if not self._peek_named_pipe(handle, None, 0, None,
+                                     ctypes.byref(available), None):
+            raise _NativeFailure(self.last_error())
+        return int(available.value)
+
     def close(self, handle: int) -> None:
         self._close(handle)
 
@@ -241,6 +253,28 @@ class WindowsPipe:
                 if not isinstance(exc, Exception):
                     raise
                 raise WindowsPipeError("OBS audio pipe server verification failed") from None
+
+    def available_bytes(self, *, deadline: float) -> int:
+        """Return queued bytes without consuming them or starting an I/O."""
+        _validate_controls(self._cancelled, deadline)
+        with self._lock:
+            handle = self._require_handle_locked()
+            try:
+                _check_progress(self._cancel_requested, float(deadline))
+                available = self._native.available_bytes(handle)
+                if type(available) is not int or not 0 <= available <= 0xFFFFFFFF:
+                    raise _NativeFailure()
+                _check_progress(self._cancel_requested, float(deadline))
+                return available
+            except BaseException as exc:
+                self._closing.set()
+                self._close_locked()
+                if not isinstance(exc, Exception):
+                    raise
+                if isinstance(exc, (WindowsPipeCancelled, WindowsPipeTimeout,
+                                    WindowsPipeError)):
+                    raise
+                raise WindowsPipeError("OBS audio pipe availability query failed") from None
 
     def _cancel_requested(self) -> bool:
         if self._closing.is_set():

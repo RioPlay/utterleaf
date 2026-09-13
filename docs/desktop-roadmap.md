@@ -207,6 +207,21 @@ commands (including 84 Python pipe tests) and headless smoke pass. Independent
 final review is clear. Visible control, local
 recognition and real OBS frontend/audio acceptance remain open. The 42-command
 receipt above belongs to the preceding component checkpoint, not this integration.
+The integrated PCM source is preserved in draft PR #38 at `c3c4fe5`; all five
+desktop jobs passed in [CI 34768051105](https://github.com/RioPlay/utterleaf/actions/runs/34768051105).
+
+The separate [manual Disarm increment](plans/active/obs-session-disarm.md) on
+`feat/obs-session-disarm` adds an explicit pipe stop without changing the OBS
+stream. Armed waiting has no duration cutoff; active/partial-message stalls and
+stop completion remain bounded. A stop before accepted PCM produces no audio
+stores. If attachment wins the stop race, aligned queued audio is preserved;
+partial first-bus data remains incomplete. The native worker waits for frontend
+detach before a clean Disarmed End. All 249 focused desktop tests, 51 native
+verification commands, the 24-command linked build and headless refusal pass.
+Independent final review is clear, and 383 recorded hash comparisons match the
+final inputs and outputs. This remains development source, with no live-capture
+app entry point or new release; visible control, local recognition and real OBS
+acceptance remain open.
 
 Current integrated desktop regression: **1,432 passed, 13 skipped in 39.47 seconds**,
 including the reviewed OBS control, native identity, pipe and audio handshake.

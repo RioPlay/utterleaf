@@ -27,6 +27,7 @@ static bool allow_dispatch, allow_post, allow_capture_schedulers;
 static bool inspect_requested, allow_inspect, allow_connect, capture_available;
 static unsigned inspect_calls, inspected_calls, connect_calls, attached_calls;
 static unsigned capture_releases, stop_calls, disconnect_calls, abandon_calls;
+static unsigned cleanup_completed_calls;
 static uintptr_t capture_generation, disconnected_generation;
 static bool inspected_ok, attached_ok, disconnected_all;
 static ul_audio_capture *test_capture = (ul_audio_capture *)(uintptr_t)55;
@@ -116,6 +117,12 @@ void ul_audio_capture_release(ul_audio_capture *capture)
 void ul_plugin_capture_stop_frontend(void) { assert(!after_exit); ++stop_calls; }
 void ul_audio_capture_disconnect_frontend(uintptr_t generation, bool all)
 { assert(!after_exit); ++disconnect_calls; disconnected_generation = generation; disconnected_all = all; }
+void ul_plugin_capture_cleanup_complete(uintptr_t generation)
+{
+    assert(!after_exit && disconnect_calls != 0 && !disconnected_all);
+    assert(disconnected_generation == generation);
+    ++cleanup_completed_calls;
+}
 void ul_audio_capture_abandon_after_shutdown(void) { ++abandon_calls; }
 ul_plugin_snapshot ul_plugin_get_status(void) { return snapshot; }
 void ul_plugin_stop_accepting(void) { assert(!enabled); snapshot.status = UL_PLUGIN_CLOSED; record('S'); }
@@ -167,6 +174,7 @@ static void reset(void)
     capture_generation = 40; disconnected_generation = 0;
     inspect_calls = inspected_calls = connect_calls = attached_calls = 0;
     capture_releases = stop_calls = disconnect_calls = abandon_calls = 0;
+    cleanup_completed_calls = 0;
     checked_generation = 0;
     allow_scheduler = has_output = true;
     current_active = current_output_active = checked_idle = false;
@@ -339,11 +347,12 @@ int main(void)
 
     assert(cleanup_scheduler(40) && !cleanup_scheduler(41));
     dispatch_frontend(3, 39);
-    assert(queued_cleanup == 40 && disconnect_calls == 0);
+    assert(queued_cleanup == 40 && disconnect_calls == 0 && cleanup_completed_calls == 0);
     queued_task(queued_command, queued_parameter);
-    assert(disconnect_calls == 1 && disconnected_generation == 40 && !disconnected_all);
+    assert(disconnect_calls == 1 && disconnected_generation == 40 && !disconnected_all
+           && cleanup_completed_calls == 1);
     queued_task(queued_command, queued_parameter);
-    assert(disconnect_calls == 1);
+    assert(disconnect_calls == 1 && cleanup_completed_calls == 1);
     frontend_event(OBS_FRONTEND_EVENT_STREAMING_STOPPING, NULL);
     assert(stop_calls == 1 && disconnect_calls == 2 && disconnected_all);
     frontend_event(OBS_FRONTEND_EVENT_STREAMING_STOPPED, NULL);
@@ -351,7 +360,8 @@ int main(void)
     assert(capture_scheduler(40) && cleanup_scheduler(40));
     frontend_event(OBS_FRONTEND_EVENT_EXIT, NULL); after_exit = true;
     dispatch_frontend(2, 40); dispatch_frontend(3, 40);
-    assert(stop_calls == 3 && disconnect_calls == 4 && connect_calls == 2);
+    assert(stop_calls == 3 && disconnect_calls == 4 && connect_calls == 2
+           && cleanup_completed_calls == 1);
     assert(!capture_scheduler(40) && !cleanup_scheduler(40));
     obs_module_unload();
     assert(abandon_calls == 1 && disconnect_calls == 4);

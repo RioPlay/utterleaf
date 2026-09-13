@@ -24,6 +24,7 @@ class FakeNative:
         self.pid = 99
         self.next_handle = 50
         self.result_count = 0
+        self.available = 0
 
     def open_pipe(self, name):
         self.opened.append(name)
@@ -57,6 +58,9 @@ class FakeNative:
 
     def server_pid(self, handle):
         return self.pid
+
+    def available_bytes(self, handle):
+        return self.available
 
     def close(self, handle):
         self.closed.append(handle)
@@ -126,6 +130,8 @@ def test_create_file_uses_local_overlapped_identification_flags(monkeypatch):
             self.result = result
         def __call__(self, *args):
             calls.append(args)
+            if self.result == 17:
+                ctypes.cast(args[4], ctypes.POINTER(pipe_mod._DWORD))[0] = 17
             return self.result
     class Kernel:
         CreateFileW = Function(7)
@@ -136,12 +142,14 @@ def test_create_file_uses_local_overlapped_identification_flags(monkeypatch):
         CancelIoEx = Function()
         GetOverlappedResult = Function()
         GetNamedPipeServerProcessId = Function()
+        PeekNamedPipe = Function(17)
         CloseHandle = Function()
     monkeypatch.setattr(pipe_mod.sys, "platform", "win32")
     # ctypes doesn't expose WinDLL on POSIX, where this ABI test also runs.
     monkeypatch.setattr(pipe_mod.ctypes, "WinDLL", lambda *args, **kwargs: Kernel(), raising=False)
     native = pipe_mod._Native()
     assert native.open_pipe(NAME) == 7
+    assert native.available_bytes(7) == 17
     name, access, share, security, disposition, flags, template = calls[0]
     assert name == NAME
     assert access == pipe_mod._GENERIC_READ | pipe_mod._GENERIC_WRITE
@@ -152,6 +160,15 @@ def test_create_file_uses_local_overlapped_identification_flags(monkeypatch):
         | pipe_mod._SECURITY_IDENTIFICATION
     )
     assert template is None
+    peek_args = calls[1]
+    assert peek_args[0] == 7 and peek_args[1] is None and peek_args[2] == 0
+    assert peek_args[3] is None and peek_args[5] is None
+    assert native._peek_named_pipe.argtypes == [
+        pipe_mod._HANDLE, ctypes.c_void_p, pipe_mod._DWORD,
+        ctypes.POINTER(pipe_mod._DWORD), ctypes.POINTER(pipe_mod._DWORD),
+        ctypes.POINTER(pipe_mod._DWORD),
+    ]
+    assert native._peek_named_pipe.restype is pipe_mod._BOOL
 
 
 @pytest.mark.parametrize("code", [109, 232, 233])
@@ -199,6 +216,101 @@ def test_partial_write_and_read_preserve_bytes():
     assert native.written == b"abcdef"
     assert pipe.read(8, deadline=deadline) == b"abc"
     pipe.close()
+
+
+def test_available_bytes_is_non_consuming_and_bounded():
+    native = FakeNative(reads=[b"abc"])
+    native.available = 3
+    pipe = pipe_mod.WindowsPipe(native, 7, lambda: False)
+    assert pipe.available_bytes(deadline=time.monotonic() + 1) == 3
+    assert native.reads == [b"abc"]
+    pipe.close()
+
+
+def test_available_bytes_accepts_zero_then_positive_without_consuming():
+    native = FakeNative(reads=[b"payload"])
+    pipe = pipe_mod.WindowsPipe(native, 7, lambda: False)
+    assert pipe.available_bytes(deadline=time.monotonic() + 1) == 0
+    native.available = 7
+    assert pipe.available_bytes(deadline=time.monotonic() + 1) == 7
+    assert native.reads == [b"payload"]
+    pipe.close()
+
+
+@pytest.mark.parametrize("cancelled,expired", [(lambda: True, False),
+                                                 (lambda: False, True)])
+def test_available_bytes_checks_controls_before_native(cancelled, expired):
+    native = FakeNative()
+    native.available_bytes = lambda _: pytest.fail("native call before control check")
+    pipe = pipe_mod.WindowsPipe(native, 7, cancelled)
+    deadline = time.monotonic() - 1 if expired else time.monotonic() + 1
+    expected = pipe_mod.WindowsPipeTimeout if expired else pipe_mod.WindowsPipeCancelled
+    with pytest.raises(expected):
+        pipe.available_bytes(deadline=deadline)
+    assert native.closed == [7]
+
+
+def test_available_bytes_checks_cancellation_after_native_query():
+    stopped = False
+
+    def cancelled():
+        return stopped
+
+    native = FakeNative()
+
+    def query(handle):
+        nonlocal stopped
+        stopped = True
+        return 4
+
+    native.available_bytes = query
+    pipe = pipe_mod.WindowsPipe(native, 7, cancelled)
+    with pytest.raises(pipe_mod.WindowsPipeCancelled):
+        pipe.available_bytes(deadline=time.monotonic() + 1)
+    assert native.closed == [7]
+
+
+def test_available_bytes_checks_timeout_after_native_query(monkeypatch):
+    native = FakeNative()
+    pipe = pipe_mod.WindowsPipe(native, 7, lambda: False)
+    ticks = iter([0.0, 2.0])
+    monkeypatch.setattr(pipe_mod.time, "monotonic", lambda: next(ticks))
+    with pytest.raises(pipe_mod.WindowsPipeTimeout):
+        pipe.available_bytes(deadline=1.0)
+    assert native.closed == [7]
+
+
+def test_available_bytes_native_failure_is_terminal():
+    native = FakeNative()
+    native.available_bytes = lambda handle: (_ for _ in ()).throw(pipe_mod._NativeFailure(5))
+    pipe = pipe_mod.WindowsPipe(native, 7, lambda: False)
+    with pytest.raises(pipe_mod.WindowsPipeError):
+        pipe.available_bytes(deadline=time.monotonic() + 1)
+    assert native.closed == [7]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows native pipe integration")
+def test_native_available_bytes_peeks_exchange_payload_without_consuming():
+    server = start_native_pipe_server("exchange", b"abcdef")
+    pipe = None
+    try:
+        pipe = pipe_mod.connect(server.pipe_name, cancelled=lambda: False,
+                                deadline=time.monotonic() + 3)
+        deadline = time.monotonic() + 3
+        # Scheduling may let either or both server writes finish before our
+        # first query. Verify the stable full payload without assuming timing.
+        while pipe.available_bytes(deadline=deadline) != 6:
+            time.sleep(0.01)
+        assert pipe.available_bytes(deadline=deadline) == 6
+        assert pipe.read(6, deadline=deadline) == b"abcdef"
+        pipe.write_all(b"x", deadline=deadline)
+        server.process.wait(timeout=4)
+        assert server.process.returncode == 0
+    finally:
+        if pipe is not None:
+            pipe.close()
+        if server.process.poll() is None:
+            server.process.wait(timeout=10)
 
 
 @pytest.mark.parametrize("operation", ["read", "write"])

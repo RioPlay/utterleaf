@@ -29,6 +29,12 @@
 #ifndef UL_AUDIO_STREAM_DRAIN_TIMEOUT_MS
 #define UL_AUDIO_STREAM_DRAIN_TIMEOUT_MS 5000u
 #endif
+#ifndef UL_AUDIO_STREAM_COMMAND_TIMEOUT_MS
+#define UL_AUDIO_STREAM_COMMAND_TIMEOUT_MS 1000u
+#endif
+
+#define UL_AUDIO_STREAM_DISARMED_CONTROL 100
+#define UL_AUDIO_STREAM_STOPPING_CONTROL 101
 
 typedef struct stream_state {
     ul_audio_capture *capture;
@@ -36,6 +42,9 @@ typedef struct stream_state {
     ul_admission *admission;
     const uint8_t *session;
     HANDLE stop_event;
+    HANDLE cleanup_complete;
+    ul_audio_disarm_callback disarm;
+    void *disarm_context;
     uint8_t packet[UL_AUDIO_MAX_PACKET_BYTES];
     float stereo[UL_AUDIO_CAPTURE_STEREO_SAMPLES];
     float staged_stereo[UL_AUDIO_CAPTURE_MIXES]
@@ -48,8 +57,12 @@ typedef struct stream_state {
     bool started;
     bool deactivated;
     bool draining;
+    bool disarm_consumed;
+    bool disarm_accepted;
     ULONGLONG drain_started_at;
 } stream_state;
+
+static DWORD io_timeout(const stream_state *state, DWORD requested);
 
 static bool valid_rate(uint32_t rate)
 {
@@ -63,6 +76,9 @@ static bool valid_arguments(const stream_state *state)
     return state->capture != NULL && spec != NULL && state->admission != NULL &&
            state->session != NULL && state->stop_event != NULL &&
            state->stop_event != INVALID_HANDLE_VALUE && valid_rate(spec->sample_rate) &&
+           state->cleanup_complete != NULL &&
+           state->cleanup_complete != INVALID_HANDLE_VALUE &&
+           (state->disarm != NULL || state->disarm_consumed) &&
            spec->channels >= 1u && spec->channels <= 8u &&
            spec->primary_bus < UL_AUDIO_CAPTURE_MIXES && spec->mix_mask != 0u &&
            (spec->mix_mask & ~0x3fu) == 0u &&
@@ -85,6 +101,38 @@ static int probe_transport(stream_state *state)
         available != 0u)
         return UL_AUDIO_STREAM_TRANSPORT_ERROR;
     return UL_AUDIO_STREAM_OK;
+}
+
+static int poll_control(stream_state *state)
+{
+    uint8_t command[UL_SESSION_COMMAND_BYTES];
+    DWORD available = 0u;
+    DWORD timeout;
+    ul_audio_disarm_action action;
+    if (ul_admission_probe(state->admission, &available) != UL_ADMISSION_AUTH_OK)
+        return UL_AUDIO_STREAM_TRANSPORT_ERROR;
+    if (available == 0u)
+        return UL_AUDIO_STREAM_OK;
+    if (state->disarm_consumed || state->disarm == NULL)
+        return UL_AUDIO_STREAM_TRANSPORT_ERROR;
+    timeout = io_timeout(state, UL_AUDIO_STREAM_COMMAND_TIMEOUT_MS);
+    if (timeout == 0u ||
+        ul_admission_read_exact(state->admission, command, sizeof(command),
+                                timeout) != UL_ADMISSION_AUTH_OK ||
+        !ul_session_disarm_request(command, sizeof(command), state->session))
+        return UL_AUDIO_STREAM_TRANSPORT_ERROR;
+    state->disarm_consumed = true;
+    deactivate(state);
+    action = state->disarm(state->disarm_context);
+    if (action == UL_AUDIO_DISARM_REJECTED)
+        return UL_AUDIO_STREAM_TRANSPORT_ERROR;
+    if (!state->draining) {
+        state->draining = true;
+        state->drain_started_at = GetTickCount64();
+    }
+    state->disarm_accepted = action == UL_AUDIO_DISARM_ACCEPTED;
+    return state->disarm_accepted ? UL_AUDIO_STREAM_DISARMED_CONTROL
+                                  : UL_AUDIO_STREAM_STOPPING_CONTROL;
 }
 
 /* One total budget for the accepted tail and End receipt. Per-packet deadlines
@@ -191,12 +239,44 @@ static int send_audio(stream_state *state, uint8_t bus,
     return send_converted_audio(state, bus, block, state->stereo);
 }
 
-static bool send_end(stream_state *state, uint8_t reason)
+static bool receive_end_ack(stream_state *state, bool allow_disarm)
+{
+    uint8_t acknowledgement[UL_SESSION_COMMAND_BYTES];
+    bool saw_disarm = false;
+    ULONGLONG receipt_started = GetTickCount64();
+    for (;;) {
+        ULONGLONG elapsed = GetTickCount64() - receipt_started;
+        DWORD timeout;
+        DWORD available = 0u;
+        if (elapsed >= UL_AUDIO_STREAM_ACK_TIMEOUT_MS)
+            return false;
+        timeout = io_timeout(state,
+            UL_AUDIO_STREAM_ACK_TIMEOUT_MS - (DWORD)elapsed);
+        if (timeout == 0u ||
+            ul_admission_read_exact(state->admission, acknowledgement,
+                                    sizeof(acknowledgement), timeout) !=
+                UL_ADMISSION_AUTH_OK)
+            return false;
+        if (GetTickCount64() - receipt_started >=
+            UL_AUDIO_STREAM_ACK_TIMEOUT_MS)
+            return false;
+        if (ul_session_end_ack(acknowledgement, sizeof(acknowledgement),
+                               state->session)) {
+            return ul_admission_probe(state->admission, &available) ==
+                       UL_ADMISSION_AUTH_OK && available == 0u;
+        }
+        if (!allow_disarm || saw_disarm ||
+            !ul_session_disarm_request(acknowledgement,
+                                       sizeof(acknowledgement), state->session))
+            return false;
+        saw_disarm = true;
+    }
+}
+
+static bool send_end(stream_state *state, uint8_t reason, bool allow_disarm)
 {
     ul_audio_end_sequence entries[UL_AUDIO_CAPTURE_MIXES];
-    uint8_t acknowledgement[UL_SESSION_COMMAND_BYTES];
     size_t count = 0u, size;
-    DWORD timeout;
     uint8_t bus;
     for (bus = 0u; bus < UL_AUDIO_CAPTURE_MIXES; ++bus) {
         if ((state->spec->mix_mask & (1u << bus)) == 0u)
@@ -210,21 +290,14 @@ static bool send_end(stream_state *state, uint8_t reason)
                                state->session, reason, entries, count);
     if (!write_packet(state, size))
         return false;
-    timeout = io_timeout(state, UL_AUDIO_STREAM_ACK_TIMEOUT_MS);
-    if (timeout == 0u || ul_admission_read_exact(state->admission, acknowledgement,
-                                sizeof(acknowledgement),
-                                timeout) !=
-            UL_ADMISSION_AUTH_OK)
-        return false;
-    return ul_session_end_ack(acknowledgement, sizeof(acknowledgement),
-                              state->session);
+    return receive_end_ack(state, allow_disarm);
 }
 
 static int source_failure(stream_state *state, uint8_t reason)
 {
     deactivate(state);
     if (state->started)
-        (void)send_end(state, reason);
+        (void)send_end(state, reason, false);
     return UL_AUDIO_STREAM_SOURCE_CHANGED;
 }
 
@@ -232,14 +305,19 @@ static int stage_first_blocks(stream_state *state,
                               ul_audio_block staged[UL_AUDIO_CAPTURE_MIXES])
 {
     bool ready[UL_AUDIO_CAPTURE_MIXES] = {false};
-    uint8_t remaining = 0u, bus;
+    uint8_t remaining = 0u, ready_count = 0u, bus;
     ULONGLONG started_at = GetTickCount64();
     for (bus = 0u; bus < UL_AUDIO_CAPTURE_MIXES; ++bus)
         if ((state->spec->mix_mask & (1u << bus)) != 0u)
             remaining++;
     while (remaining != 0u) {
+        bool all_stopped = true;
         DWORD wait_result;
-        if (probe_transport(state) != UL_AUDIO_STREAM_OK)
+        int control = poll_control(state);
+        if (control == UL_AUDIO_STREAM_STOPPING_CONTROL)
+            return UL_AUDIO_STREAM_INCOMPLETE;
+        if (control != UL_AUDIO_STREAM_OK &&
+            control != UL_AUDIO_STREAM_DISARMED_CONTROL)
             return UL_AUDIO_STREAM_TRANSPORT_ERROR;
         if (ul_audio_capture_failed(state->capture))
             return UL_AUDIO_STREAM_SOURCE_CHANGED;
@@ -260,13 +338,22 @@ static int stage_first_blocks(stream_state *state,
                     staged[bus].info.gap.count != 0u)
                     return UL_AUDIO_STREAM_SOURCE_CHANGED;
                 ready[bus] = true;
+                ready_count++;
                 remaining--;
-            } else if (ul_audio_queue_status(queue) != UL_AUDIO_QUEUE_OK) {
-                return UL_AUDIO_STREAM_SOURCE_CHANGED;
+            } else {
+                ul_audio_queue_result status = ul_audio_queue_status(queue);
+                if (status == UL_AUDIO_QUEUE_OK)
+                    all_stopped = false;
+                else if (!state->disarm_accepted ||
+                         status != UL_AUDIO_QUEUE_STOPPED)
+                    return UL_AUDIO_STREAM_SOURCE_CHANGED;
             }
         }
         if (remaining == 0u)
             break;
+        if (state->disarm_accepted && all_stopped)
+            return ready_count == 0u ? UL_AUDIO_STREAM_DISARMED_CONTROL
+                                     : UL_AUDIO_STREAM_INCOMPLETE;
         if (GetTickCount64() - started_at >= UL_AUDIO_STREAM_FIRST_TIMEOUT_MS)
             return UL_AUDIO_STREAM_SOURCE_CHANGED;
         wait_result = WaitForSingleObject(state->stop_event,
@@ -286,6 +373,34 @@ static int stage_first_blocks(stream_state *state,
     return UL_AUDIO_STREAM_OK;
 }
 
+static bool wait_cleanup(stream_state *state)
+{
+    if (!state->disarm_accepted)
+        return true;
+    for (;;) {
+        DWORD waited = WaitForSingleObject(state->cleanup_complete,
+                                           UL_AUDIO_STREAM_POLL_MS);
+        if (waited == WAIT_OBJECT_0)
+            return true;
+        if (waited == WAIT_FAILED || io_timeout(state, 1u) == 0u)
+            return false;
+        if (probe_transport(state) != UL_AUDIO_STREAM_OK)
+            return false;
+    }
+}
+
+static int finish_empty_disarm(stream_state *state)
+{
+    size_t size;
+    if (!wait_cleanup(state))
+        return UL_AUDIO_STREAM_INCOMPLETE;
+    size = ul_audio_encode_end(state->packet, sizeof(state->packet),
+                               state->session, UL_AUDIO_END_DISARMED, NULL, 0u);
+    if (!write_packet(state, size) || !receive_end_ack(state, false))
+        return UL_AUDIO_STREAM_TRANSPORT_ERROR;
+    return UL_AUDIO_STREAM_OK;
+}
+
 static int send_gap_failure(stream_state *state, uint8_t bus,
                             const ul_audio_block *block)
 {
@@ -302,7 +417,7 @@ static int send_gap_failure(stream_state *state, uint8_t bus,
         return UL_AUDIO_STREAM_TRANSPORT_ERROR;
     }
     deactivate(state);
-    (void)send_end(state, UL_AUDIO_END_TRANSPORT_ERROR);
+    (void)send_end(state, UL_AUDIO_END_TRANSPORT_ERROR, false);
     return UL_AUDIO_STREAM_SOURCE_CHANGED;
 }
 
@@ -310,15 +425,19 @@ static int drain_stream(stream_state *state)
 {
     ULONGLONG last_activity = GetTickCount64();
     uint8_t cursor = 0u;
-    bool stopping = false;
+    bool stopping = state->draining;
     for (;;) {
         bool popped = false;
         uint8_t offset;
         DWORD wait_result;
-        if (probe_transport(state) != UL_AUDIO_STREAM_OK) {
+        int control = poll_control(state);
+        if (control == UL_AUDIO_STREAM_TRANSPORT_ERROR) {
             deactivate(state);
             return UL_AUDIO_STREAM_TRANSPORT_ERROR;
         }
+        if (control == UL_AUDIO_STREAM_DISARMED_CONTROL ||
+            control == UL_AUDIO_STREAM_STOPPING_CONTROL)
+            stopping = true;
         if (ul_audio_capture_failed(state->capture))
             return source_failure(state, UL_AUDIO_END_SOURCE_CHANGED);
         if (!stopping) {
@@ -374,6 +493,16 @@ static int drain_stream(stream_state *state)
             continue;
         if (stopping) {
             uint8_t bus;
+            if (state->disarm_accepted &&
+                WaitForSingleObject(state->cleanup_complete, 0u) !=
+                    WAIT_OBJECT_0) {
+                if (io_timeout(state, 1u) == 0u)
+                    return UL_AUDIO_STREAM_INCOMPLETE;
+                if (WaitForSingleObject(state->cleanup_complete,
+                                        UL_AUDIO_STREAM_POLL_MS) == WAIT_FAILED)
+                    return UL_AUDIO_STREAM_INCOMPLETE;
+                continue;
+            }
             for (bus = 0u; bus < UL_AUDIO_CAPTURE_MIXES; ++bus) {
                 ul_audio_gap gap;
                 if ((state->spec->mix_mask & (1u << bus)) == 0u)
@@ -385,7 +514,7 @@ static int drain_stream(stream_state *state)
                         gap.first_sequence > UL_AUDIO_MAX_SEQUENCE ||
                         gap.count > UINT64_MAX - gap.first_sequence ||
                         !timestamp_expected(state, bus, gap.timestamp_ns)) {
-                        (void)send_end(state, UL_AUDIO_END_SOURCE_CHANGED);
+                        (void)send_end(state, UL_AUDIO_END_SOURCE_CHANGED, false);
                         return UL_AUDIO_STREAM_SOURCE_CHANGED;
                     }
                     size_t size = ul_audio_encode_gap(
@@ -393,11 +522,14 @@ static int drain_stream(stream_state *state)
                         bus, gap.first_sequence, gap.count, gap.timestamp_ns);
                     if (!write_packet(state, size))
                         return UL_AUDIO_STREAM_TRANSPORT_ERROR;
-                    (void)send_end(state, UL_AUDIO_END_TRANSPORT_ERROR);
+                    (void)send_end(state, UL_AUDIO_END_TRANSPORT_ERROR, false);
                     return UL_AUDIO_STREAM_SOURCE_CHANGED;
                 }
             }
-            return send_end(state, UL_AUDIO_END_STREAM_STOPPED)
+            return send_end(state,
+                            state->disarm_accepted ? UL_AUDIO_END_DISARMED
+                                                   : UL_AUDIO_END_STREAM_STOPPED,
+                            !state->disarm_consumed)
                        ? UL_AUDIO_STREAM_OK
                        : UL_AUDIO_STREAM_TRANSPORT_ERROR;
         }
@@ -410,63 +542,115 @@ static int drain_stream(stream_state *state)
     }
 }
 
-int ul_audio_stream_run(ul_audio_capture *capture,
-                        const ul_audio_capture_spec *spec,
-                        ul_admission *admission,
-                        const uint8_t session[16], HANDLE stop_event)
+static int run_initialized(stream_state *state)
 {
     ul_audio_block staged[UL_AUDIO_CAPTURE_MIXES];
-    stream_state state = {0};
     size_t size;
     uint8_t bus;
     int result;
+    if (!valid_arguments(state)) {
+        deactivate(state);
+        return UL_AUDIO_STREAM_INCOMPLETE;
+    }
+    result = stage_first_blocks(state, staged);
+    if (result == UL_AUDIO_STREAM_DISARMED_CONTROL)
+        return finish_empty_disarm(state);
+    if (result != UL_AUDIO_STREAM_OK) {
+        deactivate(state);
+        return result;
+    }
+    for (bus = 0u; bus < UL_AUDIO_CAPTURE_MIXES; ++bus) {
+        if ((state->spec->mix_mask & (1u << bus)) == 0u)
+            continue;
+        if (!valid_block(state, bus, &staged[bus], false) ||
+            !ul_audio_capture_convert(state->capture, bus, &staged[bus],
+                                      state->staged_stereo[bus]) ||
+            !finite_stereo(state->staged_stereo[bus],
+                            staged[bus].info.frames)) {
+            deactivate(state);
+            return UL_AUDIO_STREAM_SOURCE_CHANGED;
+        }
+    }
+    size = ul_audio_encode_start(state->packet, sizeof(state->packet),
+                                 state->session, state->spec->sample_rate,
+                                 state->spec->primary_bus,
+                                 state->spec->mix_mask, state->origin_ns);
+    if (!write_packet(state, size)) {
+        deactivate(state);
+        return UL_AUDIO_STREAM_TRANSPORT_ERROR;
+    }
+    state->started = true;
+    for (bus = 0u; bus < UL_AUDIO_CAPTURE_MIXES; ++bus) {
+        if ((state->spec->mix_mask & (1u << bus)) == 0u)
+            continue;
+        result = send_converted_audio(state, bus, &staged[bus],
+                                      state->staged_stereo[bus]);
+        if (result != UL_AUDIO_STREAM_OK) {
+            deactivate(state);
+            return UL_AUDIO_STREAM_TRANSPORT_ERROR;
+        }
+    }
+    result = drain_stream(state);
+    if (result != UL_AUDIO_STREAM_OK && state->draining &&
+        io_timeout(state, 1u) == 0u)
+        return UL_AUDIO_STREAM_INCOMPLETE;
+    return result;
+}
+
+int ul_audio_stream_run(ul_audio_capture *capture,
+                        const ul_audio_capture_spec *spec,
+                        ul_admission *admission,
+                        const uint8_t session[16], HANDLE stop_event,
+                        HANDLE cleanup_complete,
+                        ul_audio_disarm_callback disarm,
+                        void *disarm_context)
+{
+    stream_state state = {0};
     state.capture = capture;
     state.spec = spec;
     state.admission = admission;
     state.session = session;
     state.stop_event = stop_event;
-    if (!valid_arguments(&state)) {
-        deactivate(&state);
+    state.cleanup_complete = cleanup_complete;
+    state.disarm = disarm;
+    state.disarm_context = disarm_context;
+    return run_initialized(&state);
+}
+
+int ul_audio_stream_run_disarmed(ul_audio_capture *capture,
+                                 const ul_audio_capture_spec *spec,
+                                 ul_admission *admission,
+                                 const uint8_t session[16], HANDLE stop_event,
+                                 HANDLE cleanup_complete)
+{
+    stream_state state = {0};
+    state.capture = capture;
+    state.spec = spec;
+    state.admission = admission;
+    state.session = session;
+    state.stop_event = stop_event;
+    state.cleanup_complete = cleanup_complete;
+    state.disarm_consumed = true;
+    state.disarm_accepted = true;
+    state.draining = true;
+    state.drain_started_at = GetTickCount64();
+    return run_initialized(&state);
+}
+
+int ul_audio_stream_finish_empty_disarm(ul_admission *admission,
+                                        const uint8_t session[16],
+                                        HANDLE cleanup_complete)
+{
+    stream_state state = {0};
+    state.admission = admission;
+    state.session = session;
+    state.cleanup_complete = cleanup_complete;
+    state.disarm_accepted = cleanup_complete != NULL &&
+                            cleanup_complete != INVALID_HANDLE_VALUE;
+    state.draining = true;
+    state.drain_started_at = GetTickCount64();
+    if (admission == NULL || session == NULL ||
+        cleanup_complete == INVALID_HANDLE_VALUE)
         return UL_AUDIO_STREAM_INCOMPLETE;
-    }
-    result = stage_first_blocks(&state, staged);
-    if (result != UL_AUDIO_STREAM_OK) {
-        deactivate(&state);
-        return result;
-    }
-    for (bus = 0u; bus < UL_AUDIO_CAPTURE_MIXES; ++bus) {
-        if ((spec->mix_mask & (1u << bus)) == 0u)
-            continue;
-        if (!valid_block(&state, bus, &staged[bus], false) ||
-            !ul_audio_capture_convert(capture, bus, &staged[bus],
-                                      state.staged_stereo[bus]) ||
-            !finite_stereo(state.staged_stereo[bus],
-                           staged[bus].info.frames)) {
-            deactivate(&state);
-            return UL_AUDIO_STREAM_SOURCE_CHANGED;
-        }
-    }
-    size = ul_audio_encode_start(state.packet, sizeof(state.packet), session,
-                                 spec->sample_rate, spec->primary_bus,
-                                 spec->mix_mask, state.origin_ns);
-    if (!write_packet(&state, size)) {
-        deactivate(&state);
-        return UL_AUDIO_STREAM_TRANSPORT_ERROR;
-    }
-    state.started = true;
-    for (bus = 0u; bus < UL_AUDIO_CAPTURE_MIXES; ++bus) {
-        if ((spec->mix_mask & (1u << bus)) == 0u)
-            continue;
-        result = send_converted_audio(&state, bus, &staged[bus],
-                                      state.staged_stereo[bus]);
-        if (result != UL_AUDIO_STREAM_OK) {
-            deactivate(&state);
-            return UL_AUDIO_STREAM_TRANSPORT_ERROR;
-        }
-    }
-    result = drain_stream(&state);
-    if (result != UL_AUDIO_STREAM_OK && state.draining &&
-        io_timeout(&state, 1u) == 0u)
-        return UL_AUDIO_STREAM_INCOMPLETE;
-    return result;
+    return finish_empty_disarm(&state);
 }
