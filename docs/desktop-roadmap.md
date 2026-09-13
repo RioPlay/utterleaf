@@ -104,7 +104,7 @@ audio delivery after TCP loss and wrong-process rejection with zero secret bytes
 received. This checks the originally attributed process and current path/file
 identity; it is not historical loaded-image attestation.
 
-There is no app entry point. Actual OBS enrollment, the original server plugin's
+There is no live-capture app entry point. Actual OBS enrollment, the original server plugin's
 restrictive DACL/client authentication, atomic arming/start coordination,
 controller/UI, live recognition and streaming-load acceptance remain open.
 The original C-only [development module](../native/obs-plugin/README.md) first
@@ -151,8 +151,8 @@ binary is included in desktop or Android releases. The
 library, reviewed full license and development-wheel provenance.
 
 Continue on `feat/obs-enrollment-flow` with frontend acceptance and the desktop
-setup/controller after the linked pairing/vendor increment. Arm/PCM and live
-recognition remain later gates. No desktop app entry point, audio endpoint, plugin binary
+connection/controller after the pairing setup increment. Arm/PCM and live
+recognition remain later gates. No live-capture app entry point, audio endpoint, plugin binary
 publication or OBS capture integration exists yet.
 
 The linked native pairing Tools flow, exclusive per-user owner and strict
@@ -169,6 +169,18 @@ loopback exchange. Independent source review is clear; native identity is stubbe
 in that new exchange fixture. This prepares a session ID and does not connect
 the audio pipe or arm capture. Native owner/UI/vendor integration remains
 unverified for real OBS/device acceptance.
+
+The [desktop pairing dialog](plans/active/obs-desktop-pairing-ui.md) now opens from
+Speech & privacy on Windows, with explicit import/replace/forget, a separate
+per-user store owner and asynchronous cancellation/teardown. Saved status never
+claims an OBS connection. The related bundle passes 204 tests; all 23 UI cases
+pass after the final status-card adjustment. Native TaskDialog activation,
+Escape, modal cleanup and zero-mutation checks also pass in an isolated fixture;
+all 29 native driver commands pass with `--ui`. Normal/compact/enlarged desktop
+renders were inspected. Independent final desktop setup review is clear, with
+29 focused and 187 related tests rerun on the final source. Its own CI remains
+pending; no existing release changes. Earlier linked checkpoint `15e1c77` passed
+all five desktop CI jobs in [34758907354](https://github.com/RioPlay/utterleaf/actions/runs/34758907354).
 
 Current integrated desktop regression: **1,432 passed, 13 skipped in 39.47 seconds**,
 including the reviewed OBS control, native identity, pipe and audio handshake.

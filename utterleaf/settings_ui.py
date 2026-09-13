@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import queue
+import sys
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -33,6 +34,7 @@ class SettingsWindow:
         self._mascot_heading_labels = set()
         self._column_labels = set()
         self.appearance_guide = None
+        self.obs_pairing_dialog = None
         self.report = ""
         self.vars = {}
         self.fields = {}
@@ -446,6 +448,19 @@ class SettingsWindow:
         self._check(p, "Allow missing model downloads", "allow_network",
                     "Only model files are downloaded. Turn off to require an already installed model.")
         self._check(p, "Restore my clipboard after pasting", "restore_clipboard")
+        if sys.platform == "win32":
+            p = self._section(page, "OBS pairing", "Manage the private pairing saved for this Windows user. Live OBS transcription is still in development.")
+            ttk.Button(p, text="Manage OBS pairing…", command=self.show_obs_pairing).pack(anchor="w")
+
+    def show_obs_pairing(self):
+        if sys.platform != "win32" or self.closed:
+            return
+        if self.obs_pairing_dialog is not None and not self.obs_pairing_dialog.closed:
+            self.obs_pairing_dialog.root.lift()
+            self.obs_pairing_dialog.close_button.focus_set()
+            return
+        from utterleaf.obs_pairing_ui import ObsPairingDialog
+        self.obs_pairing_dialog = ObsPairingDialog(self.root)
 
     def _selected_model(self):
         from dataclasses import replace
@@ -932,6 +947,10 @@ class SettingsWindow:
     def close(self):
         if self.saving:
             self.status.set("Finishing your save…")
+            return
+        if self.obs_pairing_dialog is not None and not self.obs_pairing_dialog.closed:
+            self.status.set("Finishing OBS pairing before closing Settings…")
+            self.obs_pairing_dialog.close(on_closed=self.close)
             return
         if self._reset_pending or self._snapshot() != self.baseline:
             if not messagebox.askyesno("Discard unsaved changes?", "Close without saving your changes?", parent=self.root):

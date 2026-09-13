@@ -77,7 +77,9 @@ Desktop Settings imports this user-selected package into its own private store.
 Neither UI displays or copies the key. Removal of the transfer file is best-effort
 and visible; a copied package remains usable by its Windows user until plugin
 revocation. Forget pairing is separate from Reset defaults. The storage component
-below implements persistence; the app pairing flow is not exposed yet.
+below implements persistence; the desktop import/replace/forget flow is now
+exposed in the development source through the separate
+[pairing setup dialog](obs-desktop-pairing-ui.md).
 
 The capability proves possession, not executable identity. It does not protect
 against a compromised process under the same Windows user. DPAPI normally binds
@@ -108,7 +110,8 @@ canonical challenge. The client must validate every fixed field and match its
 own PID, session ID and requested mix mask before signing. Its existing native
 OBS server identity and password-authentication checks remain prerequisites.
 Vendor JSON will carry only strict fixed-length public encodings, never a key
-or the pipe Hello secret. The JSON adapter remains to be implemented.
+or the pipe Hello secret. The typed client adapter and strict native dispatch
+are implemented in the linked increment below; actual OBS acceptance remains open.
 
 A challenge lasts 15,000 milliseconds on the server's monotonic clock. A matching
 repeated issue request may retrieve it; a different request cannot replace it
@@ -352,8 +355,12 @@ fixture results, not successful frontend initialization or live OBS acceptance.
 Final independent source/test/documentation and receipt review is clear. The
 reviewer rehashed build inputs/outputs, both OBS runtimes, invoked tools, smoke
 inputs, native/client sources, dispatch inputs and all test artifacts/logs against
-the current files. Exact-source CI for this linked increment remains pending;
-the draft PR does not establish frontend/UI or live OBS acceptance.
+the current files. All five desktop CI jobs passed for the linked native checkpoint `15e1c77` in
+[34758907354](https://github.com/RioPlay/utterleaf/actions/runs/34758907354).
+The draft PR does not establish actual OBS frontend or live-audio acceptance.
+The [desktop pairing setup follow-up](obs-desktop-pairing-ui.md) records its own
+new source, owner/UI checks and isolated native TaskDialog acceptance; that later
+work is not covered by the earlier CI run.
 
 ### Private pairing stores: contract
 
