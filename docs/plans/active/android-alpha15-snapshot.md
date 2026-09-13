@@ -78,3 +78,24 @@ passed (3 tasks, 9 seconds). The generated release manifest reports package
 `org.utterleaf.voice`, versionCode 15 and versionName `0.1.0-alpha15`.
 `git diff --check` is clean. These metadata checks do not replace canonical CI
 or protected signing.
+
+The first canonical run,
+[34746232693](https://github.com/RioPlay/utterleaf/actions/runs/34746232693) at
+`3e44046851640cbc716b2103b777f3bff3fb5753`, passed build, JVM, lint, tooling and
+pinned-fixture preparation. It completed 148 API 35 tests: 147 passed, no skips,
+and one failed setup assertion still expected the old Utterleaf Keyboard label.
+No release-input artifact was produced and no signing was attempted. The setup
+test is being corrected to the new explicit readiness labels and independently
+checks the primary and voice-only IME labels. A fresh exact-revision canonical
+run remains required after that correction.
+
+The corrected setup test passed locally on API 35 (1/1, 2.083 seconds) after
+`gradlew assembleDebug assembleDebugAndroidTest --offline --no-daemon` rebuilt
+both APKs. Its exact instrumentation target was
+`org.utterleaf.voice.ModelCatalogTest#setupSeparatesTypingVoiceAndSelectableModelLinks`.
+Independent diff review confirms the headings, model-choice, link, selection
+and privacy assertions are retained. No old Utterleaf Voice/Utterleaf Keyboard
+assertions remain in the Android test sources. The durable local command log is
+`.grok/android-alpha15-ci/model-catalog-local-fix.log` (SHA-256
+`04c812ed4fc6f18487990553f70bc85baaed1f2539dfc522b583762f325522fc`).
+This is a test-only naming correction; production source is unchanged.
