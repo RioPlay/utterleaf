@@ -143,6 +143,15 @@ One-hand reach and visual polish can proceed alongside foundation work.
   LatinIME is not imported or scheduled for adoption. Physical-device, TalkBack and
   preference/model upgrade-preservation checks remain open.
 
+- **Alpha14 snapshot preparation:** the current release checkout stages the
+  integrated hardening, rollover, QWERTY/QWERTZ/AZERTY layouts, one-hand
+  alignment, local emoji, Latin compose, private drafts and visible-hint
+  long-press default as an experimental update to the original keyboard.
+  Version code 14 must preserve the alpha03+ signing identity and
+  `org.utterleaf.voice` package. The focused API 35 long-press/layout run and
+  physical, assistive-technology, landscape, broad-editor and real Obtainium
+  update checks remain open; this preparation does not make those claims.
+
 - **New core, first native N1 slice:** the user requested a smaller,
   Kotlin-owned keyboard/voice system after reviewing LatinIME's integration cost.
   [The next-system design](android-next/README.md) defines Daily/Edit/Terminal/Voice,
