@@ -47,17 +47,34 @@ class ComposePanelTest {
         privateEditing = privateEditing, openDraft = openDraft).apply { reset(false, false, "Enter") }
 
     private fun openCompose(panel: TypingPanel, mark: String = "Acute compose mark") {
-        if (maybeKey(panel, "Latin compose") == null) key(panel, "Keyboard tools").performClick()
-        key(panel, "Latin compose").performClick()
+        revealTool(panel, "Latin compose").performClick()
         assertEquals("Compose: choose a mark", status(panel))
         key(panel, mark).performClick()
+    }
+
+    private fun revealTool(panel: TypingPanel, description: String, widthDp: Int = 360): Button {
+        if (maybeKey(panel, description) == null) key(panel, "Keyboard tools").performClick()
+        val width = Ui.dp(app, widthDp)
+        fun layout() {
+            panel.view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+            panel.view.layout(0, 0, width, panel.view.measuredHeight)
+        }
+        layout(); layout()
+        repeat(12) {
+            val target = key(panel, description)
+            val bounds = Rect(0, 0, target.width, target.height)
+            panel.view.offsetDescendantRectToMyCoords(target, bounds)
+            if (bounds.left >= 0 && bounds.right <= width) return target
+            key(panel, "More keyboard tools").performClick(); layout()
+        }
+        error("$description was not reachable through More keyboard tools")
     }
 
     @Test fun tapRouteCommitsOnlyOneCompletedPairAndUnsupportedPairIsAtomic() = instrumentation.runOnMainSync {
         val attempts = mutableListOf<String>()
         val panel = panel(attempts)
-        key(panel, "Keyboard tools").performClick()
-        key(panel, "Latin compose").performClick()
+        revealTool(panel, "Latin compose").performClick()
         assertTrue(attempts.isEmpty())
         assertNotNull(key(panel, "Acute compose mark"))
         assertNotNull(key(panel, "Dot above compose mark"))
@@ -90,8 +107,8 @@ class ComposePanelTest {
         val capsAttempts = mutableListOf<String>()
         val caps = panel(capsAttempts)
         key(caps, "Keyboard tools").performClick()
-        key(caps, "Caps lock off").performClick()
-        key(caps, "Latin compose").performClick()
+        revealTool(caps, "Caps lock off").performClick()
+        revealTool(caps, "Latin compose").performClick()
         key(caps, "Acute compose mark").performClick()
         key(caps, "E").performClick()
         key(caps, "E").performClick()
@@ -131,14 +148,18 @@ class ComposePanelTest {
             staleReset.performClick()
             openCompose(fixture)
             val staleLayout = key(fixture, "e")
-            key(fixture, "Keyboard tools").performClick()
+            key(fixture, "Return to typing").performClick()
+            key(fixture, ",").performLongClick()
             key(fixture, "QWERTZ letter layout").performClick()
             staleLayout.performClick()
+            key(fixture, "Close keyboard settings").performClick()
             openCompose(fixture)
             val staleAlignment = key(fixture, "e")
-            key(fixture, "Keyboard tools").performClick()
+            key(fixture, "Return to typing").performClick()
+            key(fixture, ",").performLongClick()
             key(fixture, "Left hand layout").performClick()
             staleAlignment.performClick()
+            key(fixture, "Close keyboard settings").performClick()
             openCompose(fixture)
             val staleDispose = key(fixture, "e")
             fixture.dispose()
@@ -177,12 +198,25 @@ class ComposePanelTest {
             val width = Ui.dp(app, 412)
             val state = "compose-${if (light) "light" else "dark"}-${alignment.stored}"
             fun validateAndCapture(stage: String) {
-                panel.view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
-                panel.view.layout(0, 0, width, panel.view.measuredHeight)
+                repeat(4) {
+                    panel.view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+                    panel.view.layout(0, 0, width, panel.view.measuredHeight)
+                }
                 val visibleButtons = descendants(panel.view).filterIsInstance<Button>()
-                    .filter { it.visibility == View.VISIBLE }
-                assertTrue("$state $stage rendered no visible buttons", visibleButtons.isNotEmpty())
+                    .filter { button ->
+                        val inToolScroller = generateSequence(button.parent) { (it as? View)?.parent }
+                            .any { it is android.widget.HorizontalScrollView }
+                        if (button.visibility != View.VISIBLE || button.width <= 0 || button.height <= 0 ||
+                            stage == "tools" && inToolScroller) false else {
+                            val bounds = Rect(0, 0, button.width, button.height)
+                            panel.view.offsetDescendantRectToMyCoords(button, bounds)
+                            stage != "tools" || bounds.left >= 0 && bounds.right <= width
+                        }
+                    }
+                assertTrue("$state $stage rendered no visible buttons; " +
+                    descendants(panel.view).filterIsInstance<Button>().joinToString { "${it.contentDescription}:${it.width}x${it.height}" },
+                    visibleButtons.isNotEmpty())
                 visibleButtons.forEach { button ->
                     val bounds = Rect(0, 0, button.width, button.height)
                     panel.view.offsetDescendantRectToMyCoords(button, bounds)
@@ -205,9 +239,8 @@ class ComposePanelTest {
                 }
             }
             key(panel, "Keyboard tools").performClick()
-            assertNotNull(key(panel, "Private draft"))
-            validateAndCapture("tools")
-            key(panel, "Latin compose").performClick()
+            assertNotNull(revealTool(panel, "Private draft", 412))
+            revealTool(panel, "Latin compose", 412).performClick()
             validateAndCapture("marks")
             key(panel, "Acute compose mark").performClick()
             validateAndCapture("letters")

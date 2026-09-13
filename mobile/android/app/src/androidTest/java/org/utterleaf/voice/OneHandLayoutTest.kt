@@ -58,7 +58,10 @@ class OneHandLayoutTest {
         assertEquals(expected, content.width)
         assertEquals(if (alignment == KeyboardAlignment.RIGHT && available > minimum) available - expected else 0,
             content.left)
-        buttons(root).filter { it.visibility == View.VISIBLE }.forEach { key ->
+        buttons(root).filter { key ->
+            key.visibility == View.VISIBLE && generateSequence(key.parent) { (it as? View)?.parent }
+                .none { it is android.widget.HorizontalScrollView }
+        }.forEach { key ->
             val bounds = Rect(0, 0, key.width, key.height)
             root.offsetDescendantRectToMyCoords(key, bounds)
             assertTrue("${key.contentDescription} starts outside the aligned column", bounds.left >= content.left)
@@ -93,13 +96,15 @@ class OneHandLayoutTest {
                 key("Switch letters and symbols").performClick()
                 key("Function keys").performClick()
                 assertColumn(panel, 600, KeyboardAlignment.RIGHT)
-                key("Return to letters").performClick()
+                key("Return to terminal letters").performClick()
                 key("Keyboard tools").performClick()
                 assertColumn(panel, 600, KeyboardAlignment.RIGHT)
+                key("Keyboard layout").performClick()
                 assertTrue(key("Right hand layout").isSelected)
+                key("Close keyboard settings").performClick()
                 key("Edit actions").performClick()
                 assertColumn(panel, 600, KeyboardAlignment.RIGHT)
-                assertTrue(buttons(panel.view).any { it.contentDescription == "Return to typing" })
+                assertTrue(buttons(panel.view).any { it.contentDescription == "Close edit actions" })
             }
         }
     }
@@ -190,8 +195,10 @@ class OneHandLayoutTest {
                 val q = key("q"); val qDown = SystemClock.uptimeMillis()
                 assertTrue(q.width > 0 && q.height > 0)
                 send(q, MotionEvent.ACTION_DOWN, qDown)
+                key("Keyboard layout").performClick()
                 key("Right hand layout").performClick()
                 send(q, MotionEvent.ACTION_UP, qDown)
+                key("Close keyboard settings").performClick()
             }
             instrumentation.waitForIdleSync()
 
@@ -200,8 +207,10 @@ class OneHandLayoutTest {
                 val e = key("e"); val eDown = SystemClock.uptimeMillis()
                 assertTrue(e.width > 0 && e.height > 0)
                 send(e, MotionEvent.ACTION_DOWN, eDown)
+                key(",").performLongClick()
                 key("Left hand layout").performClick()
                 send(e, MotionEvent.ACTION_UP, eDown)
+                key("Close keyboard settings").performClick()
             }
             instrumentation.waitForIdleSync()
 
@@ -242,7 +251,9 @@ class OneHandLayoutTest {
                 fun key(description: String) = buttons(f.panel.view).single { it.contentDescription == description }
                 key("Control off").performClick()
                 assertTrue(key("Control on").isSelected)
+                key(",").performLongClick()
                 key("Right hand layout").performClick()
+                key("Close keyboard settings").performClick()
                 key("Tab").performClick()
             }
             assertTrue(f.typed.isEmpty())

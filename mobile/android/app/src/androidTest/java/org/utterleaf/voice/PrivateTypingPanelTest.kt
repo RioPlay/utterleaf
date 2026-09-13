@@ -89,10 +89,11 @@ class PrivateTypingPanelTest {
             key(panel, "Accents and alternate characters").performClick()
             key(panel, "a").performClick()
             key(panel, alternate).performClick()
+            key(panel, "Keyboard tools").performClick()
             key(panel, "Select text").performClick()
             key(panel, "Move cursor left").performClick()
 
-            key(panel, "Keyboard tools").performClick()
+            key(panel, "Return to typing").performClick()
             key(panel, "Edit actions").performClick()
             assertFalse(descriptions(panel).any { it in setOf("Cut", "Copy", "Paste") })
             val undo = key(panel, "Undo")

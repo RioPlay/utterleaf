@@ -34,8 +34,10 @@ One-hand reach and visual polish can proceed alongside foundation work.
   a valid release deletes it once. Tap and held-repeat deletion remain separate;
   cancellation, stale or unconfirmed editors, restricted fields and private-draft
   Unicode boundaries fail closed. Ten focused gesture tests and a 47-test API 35
-  emulator regression set pass. Physical-phone, assistive-technology and broader
-  OEM-editor acceptance remain open. Existing text highlighting also retains the
+  emulator regression set pass. PR #28 merged as `9e389083`; canonical Android CI
+  run 34742852950 completed all 145 API 35 tests with zero failures or skips and a
+  successful build. Physical-phone, assistive-technology and broader OEM-editor
+  acceptance remain open. Existing text highlighting also retains the
   tested two-finger Shift+Space chord; tapping Shift and later swiping Space is
   not claimed. See the
   [implementation contract](plans/active/android-backspace-selection-gesture.md).
@@ -93,8 +95,17 @@ One-hand reach and visual polish can proceed alongside foundation work.
   See the [private draft guide](android-private-draft.md). Physical, assistive-tech,
   landscape and broad-editor gates remain open.
 
-- **Editing strip and touch preview planned:** Select all, Cut, Copy and Paste
-  already exist in the full Edit panel; a compact banner and explicit local
+- **Compact keyboard layers implemented in unreleased source:** Tools now replaces
+  the top action strip without adding rows, keeps a fixed typing exit, and exposes
+  Select all, Cut, Copy and Paste through a horizontally revealed 48dp strip.
+  Settings, Edit and Terminal Fn/Nav use bounded replacement layers; comma hold
+  opens settings without inserting punctuation. API 35 touch/lifecycle coverage,
+  360dp and 412dp-equivalent owned-view review, JVM/lint/build checks and exact
+  installed/local APK identity pass. The app and primary IME are named Utterleaf;
+  the voice-only IME remains distinguishable as Utterleaf dictation. This work is
+  not part of published alpha14; physical-phone and assistive-technology checks
+  remain open. See the [compact-layer contract](plans/active/android-compact-layers.md).
+- **Touch preview remains planned:** a compact banner and explicit local
   touch-density preview are specified in
   [the active plan](plans/active/android-editing-strip-and-touch-preview.md).
   The original keyboard does not yet implement Incognito or a touch preview.

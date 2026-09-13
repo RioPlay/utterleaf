@@ -62,7 +62,7 @@ class EditorActionsTest {
                 editor.setText("cat"); editor.setSelection(3)
                 key("s").performClick()
                 assertEquals("cats", editor.text.toString())
-                key("Keyboard tools").performClick(); key("Edit actions").performClick()
+                key("Edit actions").performClick()
                 assertFalse(views().filterIsInstance<Button>().any { it.contentDescription == "a" })
                 key("Undo").performClick(); assertEquals("cat", editor.text.toString())
                 key("Redo").performClick(); assertEquals("cats", editor.text.toString())
@@ -72,7 +72,7 @@ class EditorActionsTest {
                 assertEquals("", editor.text.toString())
                 key("Paste").performClick(); assertEquals("cats", editor.text.toString())
                 val stale = key("Cut")
-                key("Return to typing").performClick()
+                key("Close edit actions").performClick()
                 editor.selectAll(); stale.performClick()
                 assertEquals("cats", editor.text.toString())
                 key("Edit actions").performClick()
@@ -108,7 +108,7 @@ class EditorActionsTest {
                 return panel.view.measuredHeight
             }
             panel.reset(false, false, "Enter"); val typingHeight = height()
-            key("Keyboard tools").performClick(); key("Edit actions").performClick()
+            key("Edit actions").performClick()
             assertTrue(height() <= typingHeight)
             val actionHeight = height()
             key("Undo").performClick()
