@@ -95,14 +95,20 @@ separate synthetic container tracks, not long-speech accuracy or release proof.
 Live OBS remains unavailable. Its [design contract](plans/active/obs-audio-design.md)
 is also the basis for the active [recorded-file timeline work](plans/active/recorded-file-timelines.md).
 The new internal batching and development decoder retain exact presentation
-offsets and flush audio before gaps. They have passed independent review but are
-not yet used by recognition or the packaged external decoder. The new source
+offsets and flush audio before gaps. A separately selected compatible FFmpeg/
+FFprobe pair now provides the same internal timed-decoder interface through a
+bounded private timing journal and per-run resampling. Independent review and
+focused failure/cleanup checks pass; recognition still uses the relative path.
+The final adapter/core/privacy/configuration/boundary bundle passes **198 tests
+with no skips**, including seven real selected-tool cases for resampling,
+unequal starts, an internal gap, AAC priming and cancellation/early-close cleanup.
+The new source
 picker inspects actual streams in the background; ordinary PCM WAV needs no
 tools, and other media requires explicit FFprobe selection. Both tool selections
 are available in More formats. The real-tool affected regression passes **241
 tests with 3 Windows-specific skips**. Current subtitles remain relative to each
-track. External timing transport, common-clock recognition/export and multi-track
-workflow acceptance remain open. No new desktop package has been published.
+track. Common-clock recognition/export and multi-track workflow acceptance remain
+open. No new desktop package has been published.
 
 The live OBS design
 separates authenticated stream events from actual PCM transport. The first

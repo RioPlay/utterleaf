@@ -133,9 +133,10 @@ synthetic fixtures are the behavioral evidence. Separate explicit FFprobe
 selection/forget and hash revalidation APIs are implemented and independently
 reviewed. They neither discover nor run an executable. The More formats dialog
 now exposes explicit FFmpeg decoding and FFprobe inspection selections; the
-shared identity helper retains the existing FFmpeg behavior. Timed decoder
-transport, gap-aware resampling/build pairing, original-frame journaling,
-aligned transcription and shared-clock export remain unfinished.
+shared identity helper retains the existing FFmpeg behavior. The external timed
+adapter now connects original-frame journaling, compatible selected builds and
+gap-separated resampling internally. Aligned transcription, shared-clock export
+and the multi-track workflow remain unfinished.
 
 The current file window automatically inspects a newly chosen file in a
 background worker, presents actual audio-stream metadata while retaining global
@@ -168,7 +169,8 @@ with `-copyts` and without `+genpts`. Timestamp evidence must come from original
 decoded-frame PTS exposed by FFprobe with `-fflags +nofillin`, never a
 best-effort timestamp fallback.
 
-The current two-pass candidate is **not implemented or accepted**:
+The two-pass adapter is now **implemented internally**, with the verification
+record below. It is not yet used by the end-user transcription path:
 
 1. Explicitly selected FFprobe records original frame PTS and sample counts in
    a bounded private journal, validating stream time base/rate and frame format,
@@ -183,10 +185,12 @@ The current two-pass candidate is **not implemented or accepted**:
 Real 48→44.1 kHz and mono→stereo ADTS changes fail under that command, but emit
 a partial 22,528-byte prefix before failure. All output must therefore remain
 provisional until final validation. Default reinitialization silently converts
-the rate change. Single-frame or very short runs may not corroborate first-frame
-rate metadata; their rejection/unsupported policy remains to be finalized.
-Build compatibility, frame-journal limits, per-run resampling, cleanup and
-decoder determinism remain implementation/review gates. Exact sample counts
+the rate change. Uncompressed PCM codecs in an explicit whitelist use their
+container-declared rate and may contain one frame. Compressed runs require at
+least two contiguous frames with observable original PTS progression; a single
+compressed frame cannot corroborate the first-frame rate. Each run must satisfy
+this policy. This is conservative compatibility evidence, not per-frame rate
+exposure from FFprobe. Exact sample counts
 are not a cryptographic binding between the two decoder passes.
 
 Real FFprobe 9 fixtures establish the next frame transport:
@@ -205,8 +209,8 @@ and independently reviewed (**36 tests passed**). It requires the selected
 global stream index and validated stream sample rate, bounds each row to 512
 bytes, validates the exact six fields, and rejects missing original PTS with an
 actionable static error. It accepts literal `unknown` channel layout without
-inferring speakers. No process, journal, resampler or recognition call uses it
-yet; this component does not establish packaged timestamp alignment.
+inferring speakers. The external timed adapter now uses it to build the journal;
+recognition/export integration is still required for packaged timestamp alignment.
 
 The alternative tee approach avoids double decoding but needs two safely drained
 private channels on Windows; mixing timing with arbitrary stderr diagnostics is
@@ -279,6 +283,83 @@ scrolling text area that absorbs the available height; tool choices and footer
 actions stay outside it. Eleven local dialog tests pass, including long guidance
 that scrolls to the end without moving the controls. Native CI is still required
 for this structural layout correction.
+
+The final inspection/parser baseline at `9bbdef5` passed all five desktop jobs
+in [CI 34785428256](https://github.com/RioPlay/utterleaf/actions/runs/34785428256),
+including the native compact-dialog checks. That evidence applies to the
+baseline, not the subsequent external-adapter changes.
+
+### External adapter implementation
+
+`file_external.open_ffmpeg_timeline` holds the selected regular source across
+metadata, original-frame inspection and decoding. It captures the two explicitly
+selected tool identities, checks their bounded version/compiler/configuration
+and seven library fingerprints, and uses that captured probe for metadata as
+well as frames. Source and tool checks bracket launches and final exhaustion.
+These detect ordinary changes, not malicious pathname restoration or identical
+decoding through cryptographic content binding.
+
+`FrameTimingJournal` stores only 17-byte timing records in a verified local
+temporary file. Its memory buffer is at most 65,535 bytes; total serialized
+records are capped at 256 MiB while preserving a separate 256 MiB disk reserve.
+This is a metadata storage budget, not a recording countdown. The journal
+contains no audio or source filenames and is closed with its owning context.
+A SHA-256 frozen at seal detects ordinary same-size corruption during replay;
+the digest is checked only at EOF, so yielded entries remain provisional.
+
+The process transport bounds each stdout queue to four 64 KiB chunks and each
+stdin chunk to 64 KiB. It drains diagnostics without retaining or displaying
+their contents, strips `FFREPORT`, launches without a shell or visible Windows
+console, and checks selected executable identity immediately before launch.
+User cancellation is distinct from a sibling failure. Inactivity excludes time
+the consumer spends recognizing a yielded block; bounded metadata/version
+operations have separate wall deadlines. Early exit aborts linked work before
+killing, reaping and joining its workers.
+
+Original-rate mono PCM is partitioned by the journal with one record and at most
+one raw chunk of lookahead. A distinct raw-input resampler is EOF-flushed for
+each presentation run. Native 16 kHz PCM needs no extra resampling process.
+No whole-file PCM copy or gap-filling silence is created. Exact original sample
+counts, complete final bytes, successful child exits, journal integrity and
+resampled duration within one target sample are required. Late failures must
+discard the entire tentative recognition/export result. Safe local timing
+errors are restored after the stdin worker joins, preserving actionable errors
+without exposing decoder diagnostics.
+
+Independent review covers the process transport, journal and adapter. Review
+found and fixed a missing total journal budget, insufficient direct fingerprint
+validation, and a generic error hiding the original timing failure across the
+stdin-worker boundary. Journal cleanup remains explicitly parent/context-owned.
+The adapter's 28 focused tests include actual harmless Python stdin workers for
+short compressed runs and raw byte-count failures, plus a late tool-identity
+failure that closes the source and journal. The journal passes 43 focused tests,
+the process helper 24 and the tool-pair parser 15. Real selected-tool codec
+verification is recorded with the final increment receipt.
+
+Seven opt-in real-tool cases use isolated selection records and the retained
+verified Gyan 9.0.1 pair. They cover native PCM, 44.1/48 kHz resampling, two MKV
+tracks sharing a 1-second origin with a late second track and an exact 100 ms
+internal gap, AAC priming, single-frame compressed refusal, and cancellation/
+early-close cleanup. The latter checks that no new media worker is alive and
+that the source can be renamed immediately. The AAC fixture has a negative
+encoded priming packet and first decoded PTS zero. This external build produces
+the 0.5-second presentation duration; the installed PyAV decoder exposes 0.512
+seconds including final padding. This observed difference is not a universal
+codec-trimming guarantee. The fixture and tool identities are retained locally;
+no personal media or model is used.
+
+The focused adapter/core/privacy/configuration/boundary command passes
+**198 tests with no skips** using the real selected test tools:
+
+```powershell
+& $py -m pytest tests/test_file_external.py tests/test_file_external_integration.py tests/test_file_frame_journal.py tests/test_media_process.py tests/test_media_tool_pair.py tests/test_file_frame_metadata.py tests/test_file_timeline.py tests/test_audio_batching.py tests/test_privacy.py tests/test_config.py tests/test_repo_boundaries.py -o addopts= -q
+```
+
+Both real-tool environment variables are explicitly scoped to this test shell.
+Without them the integration module skips; normal CI still exercises the real
+Python child-process failure/cleanup tests. Recognition, timed exports and the
+actual multi-track UI remain the next integration work. Existing file UI/CLI
+behavior and the published RC2 binary are unchanged by this internal adapter.
 
 ## Non-goals and stop
 
