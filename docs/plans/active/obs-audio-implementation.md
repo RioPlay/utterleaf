@@ -13,8 +13,11 @@ in source; its physical microphone and release gates remain separate.
 
 The bounded audio protocol, consent/session receiver and read-only loopback
 WebSocket control client are reviewed. The Windows TCP peer identity gate is now
-implemented and integrated, as recorded below. Continue with the original native
-plugin/server and its authenticated audio endpoint. Root owns the integrated source,
+implemented and integrated, as recorded below. The separate original C module now
+has a verified inert build and `libobs` load/unload prerequisite; this does not
+establish the native server, vendor registration, PCM callback, Arm, or real OBS
+application workflow. Continue with the original native plugin/server and its
+authenticated audio endpoint. Root owns the integrated source,
 tests and this plan after delegated handoff; assign each next component one writer
 and a separate reviewer under the repository's ownership rules.
 No runtime/UI entry is exposed until the authenticated transport can satisfy the

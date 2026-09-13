@@ -53,17 +53,20 @@ verification passed. RC2 remains the published immutable tag; this evidence
 does not extend to stable desktop release status or unverified physical/editor
 acceptance. PR #26 merged into main at `bf4dfda`.
 
-### Active: compact Dictation settings
+### Integrated source: compact Dictation settings
 
 The [compact Dictation plan](plans/active/desktop-dictation-layout.md) groups
 shortcut, activation and microphone controls near the top, moves Output style
 to Dictation, and places speech-end stopping before secondary recording options.
 The two input groups stack when text needs more width. This is a source follow-up
-to RC2; the published preview keeps Output style under Vocabulary. All **49**
+to RC2; the published preview keeps Output style under Vocabulary. All **50**
 focused settings/configuration tests pass with no skips, including resize, focus,
 validation, microphone Test/Stop/retry, and save/discard/reset checks. Default and
-compact captures and controlled larger-font checks pass. Independent review is clear;
-CI remains the integration gate. Physical display-scaling and assistive-technology
+compact captures and controlled larger-font checks pass. Independent review is clear.
+[Exact-source CI](https://github.com/RioPlay/utterleaf/actions/runs/34750749369)
+passed all five desktop jobs at `76f448c`; PR #31 merged at `03a1c9b`. The macOS
+layout loop and a native-foreground dependency in a simulated clipboard test
+were corrected before integration. Physical display-scaling and assistive-technology
 behavior remain separate.
 
 ### Active: continuous recording, long files and OBS
@@ -104,10 +107,15 @@ identity; it is not historical loaded-image attestation.
 There is no app entry point. Actual OBS enrollment, the original server plugin's
 restrictive DACL/client authentication, atomic arming/start coordination,
 controller/UI, live recognition and streaming-load acceptance remain open.
-Installed OBS is
-32.2.2; its development headers/import libraries are not prepared. An existing
-LLVM-MinGW compiler provides a proposed original C-only plugin build route, with
-compile/load proof still required in the [build plan](plans/active/obs-plugin-build.md). The
+The original C-only [development module](../native/obs-plugin/README.md) now
+builds against 39 verified OBS 32.2.2 public resources. It opens, initializes and
+unloads through the installed libobs runtime in an isolated fixture without
+starting the OBS application or creating audio sources. This establishes only
+the inert build/load prerequisite: frontend/vendor registration, authenticated
+pipe server, arming and PCM capture remain unimplemented. The installed toolchain
+is not fully pinned and native redistribution review remains open; no plugin
+binary is included in desktop or Android releases. The
+[build plan](plans/active/obs-plugin-build.md) retains the complete native gates. The
 [control dependency record](desktop-obs-control-resource.md) records the pinned
 library, reviewed full license and development-wheel provenance.
 

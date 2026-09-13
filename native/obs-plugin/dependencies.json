@@ -1,0 +1,240 @@
+{
+  "obs_revision": "ba2f32bdf791005443988a4955e963663e16b1ed",
+  "resources": {
+    "libobs/obs-module.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs-module.h",
+      "sha256": "e177a961500bab34b907b6bbf9261f0071fdaf97727a43095927365963a000c3",
+      "git_blob_sha1": "c7b9efce15817c5119095d0322211b22ca243e72",
+      "bytes": 8403
+    },
+    "libobs/obsconfig.h.in": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obsconfig.h.in",
+      "sha256": "5b2bb343ddc6c1f8ca0c683a3d87a99029f7d82c7df13da0bda00aca0ec32f44",
+      "git_blob_sha1": "2a7c87df8bad7f9ca568043162262f65bb371ece",
+      "bytes": 366
+    },
+    "COPYING": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/COPYING",
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "git_blob_sha1": "d159169d1050894d3ea3b98e1c965c4058208fe1",
+      "bytes": 18092
+    },
+    "libobs/obs.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs.h",
+      "sha256": "2a05f9a113045cebc22c0934f1fac5dbfda3e54487e88c0d9779e311d6692981",
+      "git_blob_sha1": "4e51eb4488a0ca972f773191b028f5d46f5e36af",
+      "bytes": 107444
+    },
+    "libobs/util/darray.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/util/darray.h",
+      "sha256": "47cda306b0a6109cfa804b950cf9c3e739aaa63260016f90eace20455cfe08c9",
+      "git_blob_sha1": "f21fb5f4ff490ebf5778ca082781cf3e997c7cfa",
+      "bytes": 17531
+    },
+    "libobs/util/c99defs.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/util/c99defs.h",
+      "sha256": "7254b872882dda6ac3bdabad1981aba3f34548d5f7c46e43ec67b4c7fee6fca7",
+      "git_blob_sha1": "a55a7ead52e5be02daa3d39d6560db1a7c4dadca",
+      "bytes": 2732
+    },
+    "libobs/util/bmem.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/util/bmem.h",
+      "sha256": "a6a98b93ef6bdabe9bf880d389397846ac2952fcd17a6f9afa332748cff9d52e",
+      "git_blob_sha1": "d1b206768a0bcd28e3f09cd6dcfc45e81dc5cb5f",
+      "bytes": 2020
+    },
+    "libobs/util/profiler.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/util/profiler.h",
+      "sha256": "79173e705ac288dccc2ac28d7b03e33dfb73c011cddfdb464843d91f330b27b1",
+      "git_blob_sha1": "f944ee3357410bfd7ba70707034d8f11da9ce2af",
+      "bytes": 3734
+    },
+    "libobs/util/text-lookup.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/util/text-lookup.h",
+      "sha256": "8919f3a9ff55cc4fc523a711795a820a469a6769c70a4bac687ad274715696ca",
+      "git_blob_sha1": "4ac474d65b51b0e835d775dddb35e6e772cdbf61",
+      "bytes": 1479
+    },
+    "libobs/graphics/graphics.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/graphics/graphics.h",
+      "sha256": "e98b3078aed401725875a37d4e6a5a47264661720042d326faf0f14f03acaaa1",
+      "git_blob_sha1": "2b6c515119188cef912d783919d9d578558f4927",
+      "bytes": 34538
+    },
+    "libobs/graphics/vec2.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/graphics/vec2.h",
+      "sha256": "69f617416e4d7667c78faccd8e3754c18e2b644bb5cca6cbd280e37ebd47f845",
+      "git_blob_sha1": "44f5e84d980e673d52cf64e34a52de6bcef98b82",
+      "bytes": 3927
+    },
+    "libobs/graphics/vec3.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/graphics/vec3.h",
+      "sha256": "4cfba62815fc307bca44cd02dd165856d7e353963afbe9314cfa7cbbb9d15131",
+      "git_blob_sha1": "cf119f9992b2df4f52ea0b676cdcbf31840a6d54",
+      "bytes": 5974
+    },
+    "libobs/media-io/audio-io.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/media-io/audio-io.h",
+      "sha256": "b088b6a2bdd5b50b2aa51a110ad4a6311b1d2d8fc94abf9d7e0a63c13bc095a1",
+      "git_blob_sha1": "6f2d9274528395484f10c52bf6b613d07e7ac9e5",
+      "bytes": 6346
+    },
+    "libobs/media-io/video-io.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/media-io/video-io.h",
+      "sha256": "1eadbb41dae53b0bd0b01b7fa6a9cfe528efc4b6da8b528bc34bb58d6f6f385a",
+      "git_blob_sha1": "fde6ca7c593c673128fb2891ec787afac44bfefd",
+      "bytes": 8913
+    },
+    "libobs/callback/signal.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/callback/signal.h",
+      "sha256": "9de0e2eb85261321efde9a18933c0a77e3cd96113f344b49963fdfc34bef3e6e",
+      "git_blob_sha1": "8b37a226953ba61d54a76c0a11cbf0e79b5b6903",
+      "bytes": 2564
+    },
+    "libobs/callback/proc.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/callback/proc.h",
+      "sha256": "177ce8106f79f15ed3f645fdefc4c4d3bf0dd69553462ed20d2f08fc39fc10ec",
+      "git_blob_sha1": "7379d17d819bbe552e70c464eda804b59efbeab8",
+      "bytes": 1708
+    },
+    "libobs/obs-config.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs-config.h",
+      "sha256": "99827b188a7437c9e1f5c90ba6b09a810797f2009ebe87c4335b2f06ea261516",
+      "git_blob_sha1": "49b6ad7adce2e63ed8b0ca04be4121ddc8ef42c6",
+      "bytes": 1681
+    },
+    "libobs/obs-defs.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs-defs.h",
+      "sha256": "1d26324fc42e8472856069cdccac4c1140498245a79ef80d79c71f166749861f",
+      "git_blob_sha1": "a0291a7b913d69a3050ac18ad54f61418eb6ac15",
+      "bytes": 1929
+    },
+    "libobs/obs-data.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs-data.h",
+      "sha256": "2d9e4831b2b81050f6e881b0da7401a50526d29c12f271089c227e3f4a216253",
+      "git_blob_sha1": "9eb1a05cd10e90fb404ff28b171b7b9e19559480",
+      "bytes": 16973
+    },
+    "libobs/obs-properties.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs-properties.h",
+      "sha256": "629aeda79448cc7b093a705e6f3f36e99a630f799c932b43a7014fb04fe1e491",
+      "git_blob_sha1": "bd23f37792dd7a38029152a1e6872d8ac92e591c",
+      "bytes": 15476
+    },
+    "libobs/obs-interaction.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs-interaction.h",
+      "sha256": "f48a34d5eea2118124dd727538885d09095368f2fbeb5f373ca834a03c7d87f5",
+      "git_blob_sha1": "d0438ed922e707c2277141d0f3b5b249cc8332ca",
+      "bytes": 1587
+    },
+    "libobs/obs-missing-files.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs-missing-files.h",
+      "sha256": "7d171310061c1c8914a390532255f47a79021c35a9edfc8b2fece2dc58efc749",
+      "git_blob_sha1": "a082525e342c8306c293aa9cd02943c2487bb918",
+      "bytes": 2290
+    },
+    "libobs/obs-source.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs-source.h",
+      "sha256": "e7ded7d04e7137c99797f115820b41665e8fb4cc200bf72416e80f2033b5c5d3",
+      "git_blob_sha1": "fcfdc1bc2b32d3aa551467dc8469512f10e9c65c",
+      "bytes": 17655
+    },
+    "libobs/obs-encoder.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs-encoder.h",
+      "sha256": "54e9e2544b1c8566b66f8cae5654a9ed8ba7ef05f42f7aeb9076f28bd44202e4",
+      "git_blob_sha1": "73b139c79ed70343b1a9d0c397fc26e22f1adaca",
+      "bytes": 11723
+    },
+    "libobs/obs-output.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs-output.h",
+      "sha256": "ed4680df934a89b5a3210a14e02994acd84561441b46bf1da3a5b38da72ca753",
+      "git_blob_sha1": "8bfa07a9f3fd1eaec0266dcf9400f8a1d8fc74e0",
+      "bytes": 2970
+    },
+    "libobs/obs-service.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs-service.h",
+      "sha256": "49ebb2257380e9f1ff912b6f0c6d9fd3d0ca078fd22cf2621d383214b123c738",
+      "git_blob_sha1": "57aaa7e3ebe24686727add294fb9687523e2c50a",
+      "bytes": 3629
+    },
+    "libobs/obs-audio-controls.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs-audio-controls.h",
+      "sha256": "5f76c947228a37bb32d8b7f41d1e8702e27967f88d97fc89e28f513109f15566",
+      "git_blob_sha1": "64abcc23bd41a4283fc420c00dcd612cdf4b0207",
+      "bytes": 7826
+    },
+    "libobs/obs-hotkey.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs-hotkey.h",
+      "sha256": "54243d601a109732038238158742f5cb66a8c3af6b3d0eb3c002e7d1b596505d",
+      "git_blob_sha1": "0fa6ccc45dd8d20ac12c5d4d154c334cb024d926",
+      "bytes": 10499
+    },
+    "libobs/util/base.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/util/base.h",
+      "sha256": "ac7518e37fbd34ab6e4a95d27b200ef01d8a894214ee273fa948fcc5a783cf49",
+      "git_blob_sha1": "cdead5f69ff70c738ecd2a7008b3acbe7fc45eee",
+      "bytes": 2579
+    },
+    "libobs/graphics/input.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/graphics/input.h",
+      "sha256": "e1d0ac2ed6848e6dc60afdacd60e96b489810bc14bf46baac9d0be05baf1207a",
+      "git_blob_sha1": "fecde6a953f1741faa9461564550097d9ea1e93f",
+      "bytes": 1165
+    },
+    "libobs/graphics/math-defs.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/graphics/math-defs.h",
+      "sha256": "b7fb2e0615a1746a2e0136aad29496c7ad041b43074d55be5c57c4926a8a2621",
+      "git_blob_sha1": "f49189a0c0483c6195830a2f3da1e9f1f1684318",
+      "bytes": 1412
+    },
+    "libobs/graphics/vec4.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/graphics/vec4.h",
+      "sha256": "891d7f540eadda01a721d41a001b9719aa3756cfb7e8b18ce8d98242f896735c",
+      "git_blob_sha1": "0794db051d1a12b9757e630803fd7dd5a70cc6c1",
+      "bytes": 5854
+    },
+    "libobs/util/sse-intrin.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/util/sse-intrin.h",
+      "sha256": "2e9def7ff81f9045b523cef2e1b6b4f0928e17e58f8cabb7bacb737104575d76",
+      "git_blob_sha1": "eff964e7af14080da1d272db7eb115b831f93a25",
+      "bytes": 1346
+    },
+    "libobs/media-io/media-io-defs.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/media-io/media-io-defs.h",
+      "sha256": "c473c0635b89090b707653420af1213f36c14f1a5365eb6f49cedc4ce4a1af97",
+      "git_blob_sha1": "fcf90d31f872de8b8dccf673ab79fbda44850a09",
+      "bytes": 912
+    },
+    "libobs/util/util_uint64.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/util/util_uint64.h",
+      "sha256": "31d623b6a25705883addd86b11a8da309aab3770f0376f3d7e6cd77b52427823",
+      "git_blob_sha1": "19a9a07a7ea3313ee5f2f000131e5d01b5992412",
+      "bytes": 1264
+    },
+    "libobs/callback/calldata.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/callback/calldata.h",
+      "sha256": "ff17692b20cd9bcfd0e40bb01befaa868471434c19ec0d04f08ce86a4e0edec4",
+      "git_blob_sha1": "833fd1c63be0f46562ea9eb4406e53a42e091dcc",
+      "bytes": 5269
+    },
+    "libobs/media-io/frame-rate.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/media-io/frame-rate.h",
+      "sha256": "c719ce2f3f3121b3ce3fd20c1748bc7764b162c8d2425e5a113ebb124b8d2487",
+      "git_blob_sha1": "4f362c2f6677719e27d09689e940c7fd5d0e89b9",
+      "bytes": 593
+    },
+    "libobs/obs-hotkeys.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs-hotkeys.h",
+      "sha256": "5f9049d289e2a50596218d297734bfd704169d64d1195105a8f82f26ba7b1ac7",
+      "git_blob_sha1": "69d39c82d8c6428ded3e2e36b0f97bf8dc387381",
+      "bytes": 18208
+    },
+    "libobs/graphics/srgb.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/graphics/srgb.h",
+      "sha256": "9db1900bd8dfeb20db2ee432217a9bdaf4605f42f90e43de7df715b44b2973d1",
+      "git_blob_sha1": "06651594d2e46ab8ce32e19d9913e4c2dacfb5a4",
+      "bytes": 4536
+    }
+  },
+  "scope": "Public OBS headers and full license for an x64 C-only build; no OBS implementation source."
+}
