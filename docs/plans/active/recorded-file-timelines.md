@@ -410,9 +410,10 @@ the retained tools scoped through the same two environment variables:
 & $py -m pytest tests/test_file_tracks.py tests/test_file_external.py tests/test_file_external_integration.py tests/test_file_frame_journal.py tests/test_media_process.py tests/test_media_tool_pair.py tests/test_file_frame_metadata.py tests/test_file_timeline.py tests/test_audio_batching.py tests/test_privacy.py tests/test_config.py tests/test_repo_boundaries.py tests/test_file_transcription_timing.py tests/test_file_transcription.py tests/test_file_streaming.py tests/test_file_ui.py tests/test_file_cli.py tests/test_transcript.py -o addopts= -q
 ```
 
-This includes nine real selected-tool integration cases. Native CI must run
-again for the grouped-job increment; earlier green checkpoints do not cover
-these changes.
+This includes nine real selected-tool integration cases.
+[CI 34806643987](https://github.com/RioPlay/utterleaf/actions/runs/34806643987)
+at `f47aab0` passed all five desktop jobs. Earlier checkpoints do not cover
+these changes. No new package was published.
 
 ## Non-goals and stop
 
