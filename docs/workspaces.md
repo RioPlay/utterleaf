@@ -14,6 +14,8 @@ source checkout stays intact. Use the following workspaces for new work.
 | `feat/obs-native-enrollment` | Capability proof and native admission ownership merged through PR #34 at `9260e6b` | Preserve reviewed source/native/CI evidence; stores and UI remain separate |
 | `feat/obs-pairing-store` | CurrentUser DPAPI pairing package and separate native/desktop private stores, merged through PR #35 at `3bd072d` | Preserve reviewed store evidence |
 | `feat/obs-enrollment-flow` | Active desktop preparation adapter and native pairing workflow integration | Verify typed vendor requests; implement visible native pairing Tools/per-user owner and vendor/controller flow, then Arm/PCM integration |
+| `feat/obs-mix-provenance` | Reviewed native/desktop routing provenance at `813cce7`, draft PR #41; all five source CI jobs passed | Preserve the source and native receipts; live OBS, app entry and distribution acceptance remain open |
+| `feat/recorded-file-timelines` | Active recorded-file clock, decoding and aligned-track workflow, based on `813cce7` | Follow [the timeline plan](plans/active/recorded-file-timelines.md); the physical OBS development checkout now carries this branch |
 | `release/desktop-0.4.6rc1` | Unpublished RC1 candidate retained for audit | Reference only; its immutable tag and downloaded artifact are unchanged |
 | `release/android-alpha14` | Published signed original keyboard snapshot; PR #25 merged | Preserve alpha14 evidence; physical-phone testing remains deferred follow-up |
 | `release/android-alpha15` | Published signed alpha15 compact keyboard and Utterleaf naming snapshot; PR #29 merged | Preserve alpha15 release evidence; physical-phone testing remains deferred follow-up |

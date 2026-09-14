@@ -25,7 +25,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--polish", metavar="TEXT", help="Polish text on stdout (no mic)")
     parser.add_argument("--app", default="", help="Foreground app name for --polish")
     parser.add_argument("--transcribe-file", metavar="PATH", help="Transcribe a local media file using already installed models")
-    parser.add_argument("--audio-track", type=int, metavar="NUMBER", help="File audio track, counted from 1 (default: 1); not a stereo channel")
+    parser.add_argument("--audio-track", type=int, action="append", metavar="NUMBER",
+                        help="File audio track, counted from 1 (default: 1); repeat for a grouped job")
+    parser.add_argument("--file-timing", choices=("relative", "recording"),
+                        help="Subtitle clock: relative starts at this track (default); recording keeps file offsets and gaps")
     parser.add_argument("--files", action="store_true", help="Open local file transcription and export")
     parser.add_argument("--model-setup-download", metavar="NAME", help=argparse.SUPPRESS)
     parser.add_argument("--model-setup-backend", choices=("ctranslate2", "openvino"), help=argparse.SUPPRESS)
@@ -92,8 +95,11 @@ def main(argv: list[str] | None = None) -> int:
         return run_review()
 
     if args.transcribe_file:
-        if args.audio_track is not None and not 1 <= args.audio_track <= 256:
+        tracks = args.audio_track or [1]
+        if any(type(number) is not int or not 1 <= number <= 256 for number in tracks):
             parser.error("--audio-track must be between 1 and 256")
+        if len(set(tracks)) != len(tracks):
+            parser.error("Each --audio-track can be selected only once")
         if not args.output:
             parser.error("--transcribe-file requires --output; transcripts are not printed or saved implicitly")
         if any((args.files, args.pill, args.settings, args.paths, args.toggle, args.stop, args.quit_app,
@@ -101,17 +107,23 @@ def main(argv: list[str] | None = None) -> int:
                 args.install_startup, args.uninstall_startup, args.polish is not None, args.no_tray, args.app)):
             parser.error("--transcribe-file cannot be combined with another app action")
         from pathlib import Path
+        from utterleaf.file_tracks import export_destinations
         source, destination = Path(args.transcribe_file).expanduser(), Path(args.output).expanduser()
         if not source.is_file():
             parser.error("The selected input file does not exist or is not a file")
-        if source.resolve() == destination.resolve() or (destination.exists() and source.samefile(destination)):
-            parser.error("The output must not replace the source media file")
-        if destination.exists() and not args.overwrite:
-            parser.error("Output already exists; choose another destination or explicitly use --overwrite")
+        try:
+            destinations = export_destinations(destination, tracks)
+        except ValueError as exc:
+            parser.error(str(exc))
+        for path in destinations:
+            if source.resolve() == path.resolve() or (path.exists() and source.exists() and source.samefile(path)):
+                parser.error("The output must not replace the source media file")
+            if path.exists() and not args.overwrite:
+                parser.error("Output already exists; choose another destination or explicitly use --overwrite")
         if args.format is None and destination.suffix.lower() not in (".txt", ".srt", ".vtt"):
             parser.error("Use a .txt, .srt or .vtt output filename, or specify --format")
-    elif args.output or args.format or args.overwrite or args.audio_track is not None:
-        parser.error("--output, --format, --overwrite and --audio-track require --transcribe-file")
+    elif args.output or args.format or args.overwrite or args.audio_track is not None or args.file_timing is not None:
+        parser.error("--output, --format, --overwrite, --audio-track and --file-timing require --transcribe-file")
 
     if args.files:
         if any((args.pill, args.settings, args.paths, args.toggle, args.stop, args.quit_app,
@@ -182,13 +194,23 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.transcribe_file:
         import threading
+        from utterleaf.file_tracks import export_transcripts, transcribe_tracks
         from utterleaf.file_transcription import transcribe_file
         from utterleaf.transcript import export_transcript
 
         cancelled = threading.Event()
+        tracks = tuple(args.audio_track or [1])
         try:
-            result = transcribe_file(source, cfg, cancel=cancelled, audio_track=(args.audio_track or 1) - 1)
-            written = export_transcript(result, destination, format=args.format, overwrite=args.overwrite)
+            if len(tracks) == 1:
+                result = transcribe_file(source, cfg, cancel=cancelled, audio_track=tracks[0] - 1,
+                                         timing=args.file_timing or "relative")
+                written = (export_transcript(result, destination, format=args.format,
+                                             overwrite=args.overwrite),)
+            else:
+                result = transcribe_tracks(source, cfg, audio_tracks=tracks, cancel=cancelled,
+                                           timing=args.file_timing or "relative")
+                written = export_transcripts(result, destination, format=args.format,
+                                             overwrite=args.overwrite)
         except KeyboardInterrupt:
             cancelled.set()
             print("File transcription cancelled. No new output was requested after cancellation.", file=sys.stderr)
@@ -196,7 +218,7 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, ValueError, RuntimeError) as exc:
             print(f"File transcription failed: {exc}", file=sys.stderr)
             return 1
-        print(f"Saved transcription to {written}")
+        print("Saved transcription to " + ", ".join(str(path) for path in written))
         return 0
 
     from utterleaf.app import Utterleaf, run_doctor, run_once, setup_logging

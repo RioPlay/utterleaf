@@ -8,57 +8,88 @@ import webbrowser
 
 from utterleaf import theme
 from utterleaf.file_decoder import DOWNLOAD_URL, decoder_selection, forget_decoder, select_decoder
+from utterleaf.file_probe import forget_probe, probe_selection, select_probe
 
 
 class DecoderDialog:
     def __init__(self, parent):
         self.root = tk.Toplevel(parent)
         self.root.title("More file formats — Utterleaf")
-        self.root.geometry("680x530")
+        self.root.geometry("680x560")
         self.root.minsize(560, 500)
         self.root.transient(parent)
         theme.apply(self.root)
-        page = ttk.Frame(self.root, padding=24)
+        page = ttk.Frame(self.root, padding=12)
         page.pack(fill="both", expand=True)
         page.columnconfigure(0, weight=1)
-        page.rowconfigure(5, weight=1)
-        ttk.Label(page, text="MP3, M4A and video files", style="Section.TLabel").grid(row=0, column=0, sticky="w")
+        page.rowconfigure(2, weight=1)
+        ttk.Label(page, text="More file formats", style="Section.TLabel").grid(row=0, column=0, sticky="w")
         self.labels = []
         def label(text, row):
             widget = ttk.Label(page, text=text, wraplength=625, justify="left")
-            widget.grid(row=row, column=0, sticky="ew", pady=(12, 0))
+            widget.grid(row=row, column=0, sticky="ew", pady=(6, 0))
             self.labels.append(widget)
-        label("Connect FFmpeg once to decode common audio and video locally. PCM WAV already works without it. No audio is uploaded.", 1)
+        label("Choose FFmpeg to decode audio and video, and FFprobe to inspect tracks. PCM WAV works without either tool.", 1)
         if sys.platform == "win32":
             instructions = ("1. Open the download page below. Under Windows, choose gyan.dev.\n"
                             "2. Download the release essentials ZIP, then use Extract All.\n"
-                            "3. Keep that folder in a permanent location. Choose its bin → ffmpeg.exe below.")
+                            "3. Keep that folder. Choose bin → ffmpeg.exe and bin → ffprobe.exe below.")
         elif sys.platform == "darwin":
-            instructions = ("1. Install FFmpeg using your trusted package manager (Homebrew: brew install ffmpeg).\n"
-                            "2. Find its path with: command -v ffmpeg\n"
-                            "3. Choose that ffmpeg executable below. In the picker, Command+Shift+G opens a path.")
+            instructions = ("1. Install with Homebrew: brew install ffmpeg\n"
+                            "2. Find both paths: command -v ffmpeg ffprobe\n"
+                            "3. Choose each below. Command+Shift+G opens a path.")
         else:
-            instructions = ("1. Install FFmpeg from your distribution's package manager. On Ubuntu/Debian: sudo apt install ffmpeg\n"
-                            "2. Find its path with: command -v ffmpeg\n"
-                            "3. Choose that ffmpeg executable below (usually /usr/bin/ffmpeg).")
-        label(instructions, 2)
-        label("Choose a current FFmpeg build you trust and verify its publisher checksum. Selecting it permits Utterleaf to run that program for your files. Setup does not run installers.", 3)
+            instructions = ("1. Install FFmpeg from your distribution's package manager.\n"
+                            "2. Find both paths: command -v ffmpeg ffprobe\n"
+                            "3. Choose each executable below (usually in /usr/bin).")
+        guide = ttk.Frame(page)
+        guide.grid(row=2, column=0, sticky="nsew", pady=(8, 0))
+        self.instructions = tk.Text(
+            guide, height=4, width=1, wrap="word", relief="flat", borderwidth=0,
+            highlightthickness=0, background=theme.SURFACE, foreground=theme.ON_SURFACE,
+            selectbackground=theme.PRIMARY_CONTAINER, selectforeground=theme.ON_SURFACE,
+            exportselection=False,
+        )
+        guide_scroll = ttk.Scrollbar(guide, command=self.instructions.yview)
+        guide_scroll.pack(side="right", fill="y")
+        self.instructions.configure(yscrollcommand=guide_scroll.set)
+        self.instructions.pack(side="left", fill="both", expand=True)
+        self.instructions.insert("1.0", instructions)
+        self.instructions.configure(state="disabled")
+        tools = ttk.Frame(page)
+        tools.grid(row=3, column=0, sticky="ew", pady=(8, 0))
+        tools.columnconfigure(0, weight=1)
+        self.ffmpeg_status = tk.StringVar()
+        self.ffprobe_status = tk.StringVar()
+        self._tool_row(tools, 0, "FFmpeg", "Decodes selected audio and video files.", self.ffmpeg_status,
+                       self.choose, self.forget)
+        self._tool_row(tools, 1, "FFprobe", "Inspects selected tracks and their timing.", self.ffprobe_status,
+                       self.choose_probe, self.forget_probe)
+        label("Use trusted programs. Selections are checked before use; choose again after an update.", 4)
         self.status = tk.StringVar()
-        current = ttk.Label(page, textvariable=self.status, wraplength=625)
-        current.grid(row=4, column=0, sticky="ew", pady=(16, 0))
-        self.labels.append(current)
+        self.status_label = ttk.Label(page, textvariable=self.status, wraplength=625)
+        self.status_label.grid(row=5, column=0, sticky="ew", pady=(8, 0))
+        self.labels.append(self.status_label)
         self.refresh()
         actions = ttk.Frame(page)
-        actions.grid(row=6, column=0, sticky="ew", pady=(16, 0))
+        actions.grid(row=6, column=0, sticky="ew", pady=(6, 0))
         ttk.Button(actions, text="Download page…", command=self.download_page).pack(side="left")
-        ttk.Button(actions, text="Choose FFmpeg…", style="Primary.TButton", command=self.choose).pack(side="left", padx=8)
-        secondary = ttk.Frame(page)
-        secondary.grid(row=7, column=0, sticky="ew", pady=(10, 0))
-        ttk.Button(secondary, text="Forget selection", command=self.forget).pack(side="left")
-        ttk.Button(secondary, text="Done", command=self.root.destroy).pack(side="right")
+        ttk.Button(actions, text="Done", command=self.root.destroy).pack(side="right")
         self.root.bind("<Configure>", self.resize)
         self.root.bind("<Escape>", lambda _event: self.root.destroy())
         self.root.grab_set()
+
+    def _tool_row(self, parent, row, name, description, status, choose, forget):
+        group = ttk.LabelFrame(parent, text=name, padding=(8, 3))
+        group.grid(row=row, column=0, sticky="ew", pady=(0 if row == 0 else 4, 0))
+        group.columnconfigure(0, weight=1)
+        ttk.Label(group, text=description, wraplength=480, justify="left").grid(row=0, column=0, columnspan=2, sticky="ew")
+        # Keep long paths selectable without growing the dialog off-screen.
+        ttk.Entry(group, textvariable=status, state="readonly", width=24).grid(row=1, column=0, sticky="ew", pady=(3, 0))
+        actions = ttk.Frame(group)
+        actions.grid(row=1, column=1, padx=(10, 0), pady=(3, 0))
+        ttk.Button(actions, text="Choose…", command=choose, style="Primary.TButton").pack(side="left")
+        ttk.Button(actions, text="Forget", command=forget).pack(side="left", padx=(5, 0))
 
     def resize(self, event):
         if event.widget is self.root:
@@ -68,10 +99,16 @@ class DecoderDialog:
     def refresh(self):
         try:
             selected = decoder_selection()
-            self.status.set("Selected: " + Path(selected["path"]).name + ". Choose again after updating it."
-                            if selected else "No FFmpeg selected. WAV remains available.")
+            self.ffmpeg_status.set(selected["path"]
+                                   if selected else "Not selected. WAV remains available.")
         except Exception as exc:
-            self.status.set(str(exc))
+            self.ffmpeg_status.set(str(exc))
+        try:
+            selected = probe_selection()
+            self.ffprobe_status.set(selected["path"]
+                                    if selected else "Not selected. PCM WAV inspection works.")
+        except Exception as exc:
+            self.ffprobe_status.set(str(exc))
 
     def download_page(self):
         try:
@@ -102,3 +139,26 @@ class DecoderDialog:
             self.refresh()
         except OSError:
             self.status.set("Could not forget the selection. Check access to the app's settings folder.")
+
+    def choose_probe(self):
+        name = filedialog.askopenfilename(parent=self.root, title="Choose the installed ffprobe executable",
+                                         filetypes=[("FFprobe executable", "ffprobe.exe" if sys.platform == "win32" else "ffprobe"),
+                                                    ("All files", "*.*")])
+        if not name:
+            return
+        if not messagebox.askyesno("Use this FFprobe installation?",
+                                   f"Use {Path(name)} to inspect tracks and timing for files you select?\n\nOnly choose a program you installed from a trusted source. Utterleaf will remember this choice.",
+                                   parent=self.root):
+            return
+        try:
+            select_probe(name)
+            self.refresh()
+        except Exception as exc:
+            self.ffprobe_status.set(str(exc))
+
+    def forget_probe(self):
+        try:
+            forget_probe()
+            self.refresh()
+        except OSError:
+            self.ffprobe_status.set("Could not forget the FFprobe selection. Check access to the app's settings folder.")

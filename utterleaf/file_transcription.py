@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from contextlib import closing
+from contextlib import closing, contextmanager, ExitStack
+from fractions import Fraction
 import io
 from pathlib import Path
 import stat
@@ -246,8 +247,138 @@ def audio_windows(blocks, *, cancel=None):
     yield from batch_audio(blocks, cancel=cancel.is_set if cancel is not None else None)
 
 
+def _relative_windows(path, *, audio_track, cancel, progress):
+    """Give the legacy relative decoder the same timestamped window shape."""
+    position = 0
+    with closing(iter_local_audio(path, audio_track=audio_track, cancel=cancel,
+                                  progress=progress)) as blocks:
+        for samples in audio_windows(blocks, cancel=cancel):
+            size = samples.size
+            yield _timeline_block(Fraction(position, SAMPLE_RATE), samples)
+            position += size
+
+
+def _timeline_block(start, samples):
+    from utterleaf.file_timeline import TimelineAudioBlock
+
+    return TimelineAudioBlock(start, samples)
+
+
+def _pcm_timeline_blocks(first, blocks):
+    """Attach an exact zero-based sample clock to the packaged PCM reader."""
+    position = 0
+    current = first
+    while current is not None:
+        size = current.size
+        yield _timeline_block(Fraction(position, SAMPLE_RATE), current)
+        position += size
+        current = next(blocks, None)
+
+
+_RECORDING_CLOCKS = {"container", "all-stream-starts", "pcm-sample-clock"}
+
+
+def _check_expected_clock(origin, origin_kind, expected):
+    if expected is None:
+        return
+    if (
+        type(expected) is not tuple
+        or len(expected) != 2
+        or type(expected[0]) is not Fraction
+        or expected[1] not in _RECORDING_CLOCKS
+        or type(origin) is not Fraction
+        or origin_kind not in _RECORDING_CLOCKS
+        or origin != expected[0]
+    ):
+        raise ValueError("The recording clock changed after track inspection")
+
+
+@contextmanager
+def _recording_windows(path, *, audio_track, cancel, progress, expected_clock=None):
+    """Own one strict presentation-aware decoder and its normalized windows."""
+    from utterleaf.file_decoder import decoder_selection
+    from utterleaf.file_external import _HeldSource, open_ffmpeg_timeline
+    from utterleaf.file_media import open_pyav_timeline
+    from utterleaf.file_timeline import timeline_audio_windows
+
+    path = require_local_filesystem(path)
+    if type(audio_track) is not int or not 0 <= audio_track <= 255:
+        raise ValueError("Choose an audio track from 1 to 256")
+    if not path.is_file() or path.stat().st_size <= 0:
+        raise ValueError("Select a nonempty regular local file")
+
+    pcm_started = False
+    if path.suffix.lower() == ".wav" and audio_track == 0:
+        try:
+            with _HeldSource(path) as source:
+                _check_expected_clock(Fraction(0), "pcm-sample-clock", expected_clock)
+                with closing(_iter_pcm_wav(path, cancel=cancel, progress=progress)) as blocks:
+                    first = next(blocks)
+                    pcm_started = True
+                    timed = _pcm_timeline_blocks(first, blocks)
+                    windows = timeline_audio_windows(
+                        timed, origin=Fraction(0),
+                        cancel=cancel.is_set if cancel is not None else None,
+                    )
+                    with closing(timed), closing(windows):
+                        yield windows
+                    source.check()
+            return
+        except StopIteration:
+            raise ValueError("The selected file contains no decodable audio") from None
+        except WavFormatUnsupported:
+            if pcm_started:
+                raise ValueError("The WAV audio became malformed while decoding") from None
+
+    selected_external = decoder_selection() is not None
+    if selected_external:
+        media_context = open_ffmpeg_timeline(
+            path, audio_track=audio_track, cancel=cancel, progress=progress
+        )
+    else:
+        media_context = open_pyav_timeline(
+            path, audio_track=audio_track, cancel=cancel, progress=progress
+        )
+    with ExitStack() as stack:
+        try:
+            media = stack.enter_context(media_context)
+        except Exception as exc:
+            from utterleaf.file_decoder import DecoderSetupError
+            if not selected_external and isinstance(exc, DecoderSetupError):
+                raise DecoderSetupError(
+                    "Recording timing needs FFmpeg and FFprobe. Select both in More formats."
+                ) from None
+            raise
+        windows = timeline_audio_windows(
+            media.blocks, origin=media.origin,
+            cancel=cancel.is_set if cancel is not None else None,
+        )
+        _check_expected_clock(media.origin, media.origin_kind, expected_clock)
+        stack.enter_context(closing(windows))
+        yield windows
+
+
+@contextmanager
+def _file_windows(path, *, timing, audio_track, cancel, progress, expected_clock=None):
+    """Own either legacy relative windows or strict recording-time windows."""
+    if type(timing) is not str or timing not in {"relative", "recording"}:
+        raise ValueError("File timing must be 'relative' or 'recording'")
+    if timing == "recording":
+        with _recording_windows(path, audio_track=audio_track, cancel=cancel,
+                                progress=progress, expected_clock=expected_clock) as windows:
+            yield windows
+        return
+    if expected_clock is not None:
+        raise ValueError("An expected recording clock requires recording timing")
+    windows = _relative_windows(path, audio_track=audio_track, cancel=cancel,
+                                progress=progress)
+    with closing(windows):
+        yield windows
+
+
 def transcribe_file(path: str | Path, cfg: Config, *, cancel=None, progress=None,
-                    audio_track: int = 0) -> Transcript:
+                    audio_track: int = 0, timing: str = "relative",
+                    _expected_clock=None) -> Transcript:
     """Return unsaved model segments. Offline even when dictation permits downloads.
 
     Progress receives (phase, fraction_or_none). Cancellation is cooperative between
@@ -259,21 +390,33 @@ def transcribe_file(path: str | Path, cfg: Config, *, cancel=None, progress=None
     )
 
     _check_cancel(cancel)
-    if progress is not None:
-        progress("loading", None)
-    offline_cfg = replace(cfg, allow_network=False)
-    engine = load_model(offline_cfg)
-    _check_cancel(cancel)
-    if not isinstance(engine, CTranslateEngine):
-        raise RuntimeError("Timestamped file transcription requires the CPU or CUDA engine; select CPU in Settings")
-    segments = []
-    samples = 0
-    language = None
-    mixed_languages = False
-    # A per-window percentage would incorrectly reach 100% on every batch.
-    model_progress = (lambda phase, amount: progress(phase, None)) if progress is not None else None
-    with closing(iter_local_audio(path, audio_track=audio_track, cancel=cancel, progress=progress)) as blocks:
-        for audio in audio_windows(blocks, cancel=cancel):
+    if _expected_clock is not None and (
+        type(_expected_clock) is not tuple
+        or len(_expected_clock) != 2
+        or type(_expected_clock[0]) is not Fraction
+        or type(_expected_clock[1]) is not str
+    ):
+        raise ValueError("Invalid expected recording clock")
+    with _file_windows(path, timing=timing, audio_track=audio_track, cancel=cancel,
+                       progress=progress, expected_clock=_expected_clock) as windows:
+        if progress is not None:
+            progress("loading", None)
+        offline_cfg = replace(cfg, allow_network=False)
+        engine = load_model(offline_cfg)
+        _check_cancel(cancel)
+        if not isinstance(engine, CTranslateEngine):
+            raise RuntimeError("Timestamped file transcription requires the CPU or CUDA engine; select CPU in Settings")
+        segments = []
+        language = None
+        have_language = False
+        mixed_languages = False
+        # A per-window percentage would incorrectly reach 100% on every batch.
+        model_progress = (lambda phase, amount: progress(phase, None)) if progress is not None else None
+        for window in windows:
+            audio = window.samples
+            sample_count = audio.size
+            offset = float(window.start)
+            duration = sample_count / SAMPLE_RATE
             try:
                 result = engine.transcribe_segments(audio, offline_cfg, cancel=cancel, progress=model_progress)
             except RuntimeError as exc:
@@ -285,8 +428,6 @@ def transcribe_file(path: str | Path, cfg: Config, *, cancel=None, progress=None
                 engine = load_model(offline_cfg, CPU)
                 result = engine.transcribe_segments(audio, offline_cfg, cancel=cancel, progress=model_progress)
             _check_cancel(cancel)
-            offset = samples / SAMPLE_RATE
-            duration = len(audio) / SAMPLE_RATE
             for segment in result.segments:
                 # A model's padded tail can estimate an end beyond real audio.
                 # Keep words anchored inside this batch and clip only that end;
@@ -295,11 +436,11 @@ def transcribe_file(path: str | Path, cfg: Config, *, cancel=None, progress=None
                     raise ValueError("The model returned timestamps outside the audio batch")
                 segments.append(Segment(offset + segment.start,
                                         offset + min(segment.end, duration), segment.text))
-            if samples == 0:
+            if not have_language:
                 language = result.language
+                have_language = True
             elif result.language != language:
                 mixed_languages = True
-            samples += len(audio)
     _check_cancel(cancel)
     if progress is not None:
         progress("complete", 1.0)

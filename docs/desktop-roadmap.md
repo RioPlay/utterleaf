@@ -93,6 +93,30 @@ streaming/CLI bundle passed **71 tests, 11 explicit codec-fixture skips**; indep
 review and 13 file-UI tests pass, with the compact view inspected. This includes a real 601-second PCM file and
 separate synthetic container tracks, not long-speech accuracy or release proof.
 Live OBS remains unavailable. Its [design contract](plans/active/obs-audio-design.md)
+is also the basis for the active [recorded-file timeline work](plans/active/recorded-file-timelines.md).
+The new internal batching and development decoder retain exact presentation
+offsets and flush audio before gaps. A separately selected compatible FFmpeg/
+FFprobe pair now provides the same internal timed-decoder interface through a
+bounded private timing journal and per-run resampling. Recording-time recognition
+and SRT/VTT export now use those timed windows; relative mode remains explicit.
+The final adapter/core/privacy/configuration/boundary bundle passes **198 tests
+with no skips**, including seven real selected-tool cases for resampling,
+unequal starts, an internal gap, AAC priming and cancellation/early-close cleanup.
+The new source
+picker inspects actual streams in the background; ordinary PCM WAV needs no
+tools, and other media requires explicit FFprobe selection. Both tool selections
+are available in More formats. The real-tool affected regression passes **241
+tests with 3 Windows-specific skips** at the prior inspection checkpoint. The
+window defaults to **Keep recording timestamps** for a known clock and explicitly
+disables it when unavailable; CLI/API callers opt in. Independent backend and
+UI/CLI reviews pass, and a real two-track synthetic file retains its offsets and
+gap through production transcription and SRT/VTT export with a substituted
+speech engine. Grouped multi-track jobs now recognize selected tracks
+sequentially against one inspected clock and export sibling SRT/VTT files
+together; a later no-overwrite failure publishes nothing. Release acceptance and a new
+desktop package remain open. No new desktop package has been published.
+
+The live OBS design
 separates authenticated stream events from actual PCM transport. The first
 [protocol and receiver components](plans/active/obs-audio-implementation.md) now
 cover consent/order guards, separate-bus temporary storage, timing, cancellation
