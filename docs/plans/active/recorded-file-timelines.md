@@ -400,17 +400,19 @@ second track keeps cues at 0.2 and 0.4 seconds. Relative mode for that second
 track starts at zero and removes the gap. All four engine calls are offline.
 This establishes source timing/export behavior on synthetic media, not genuine
 speech accuracy or a packaged release. Grouped multi-track jobs and sibling
-export are now connected in source; remaining recording/release acceptance is
-still open.
+export are now connected in source. Negative container origins normalize once
+through recording recognition and nonnegative SRT/VTT; a real Matroska mux that
+drops forced-negative timestamps keeps the clock unavailable instead of
+inventing zero. Remaining recording/release acceptance is still open.
 
-Final local integration verification passes **328 tests with no skips** with
+Final local integration verification passes **331 tests with no skips** with
 the retained tools scoped through the same two environment variables:
 
 ```powershell
 & $py -m pytest tests/test_file_tracks.py tests/test_file_external.py tests/test_file_external_integration.py tests/test_file_frame_journal.py tests/test_media_process.py tests/test_media_tool_pair.py tests/test_file_frame_metadata.py tests/test_file_timeline.py tests/test_audio_batching.py tests/test_privacy.py tests/test_config.py tests/test_repo_boundaries.py tests/test_file_transcription_timing.py tests/test_file_transcription.py tests/test_file_streaming.py tests/test_file_ui.py tests/test_file_cli.py tests/test_transcript.py -o addopts= -q
 ```
 
-This includes nine real selected-tool integration cases.
+This includes ten real selected-tool integration cases.
 [CI 34806643987](https://github.com/RioPlay/utterleaf/actions/runs/34806643987)
 at `f47aab0` passed all five desktop jobs. Earlier checkpoints do not cover
 these changes. No new package was published.

@@ -15,6 +15,14 @@ def block(start, count, value=0.25):
     return TimelineAudioBlock(F(start), np.full(count, value, dtype=np.float32))
 
 
+def test_negative_origin_normalizes_raw_pts_to_nonnegative_windows():
+    first = list(timeline_audio_windows([block(F(-1), RATE)], origin=F(-1)))
+    late = list(timeline_audio_windows([block(F(-4, 5), RATE)], origin=F(-1)))
+    assert [item.start for item in first] == [F(0)]
+    assert [item.start for item in late] == [F(1, 5)]
+    assert sum(item.samples.size for item in first) == RATE
+
+
 def test_late_absolute_start_is_normalized_once():
     result = list(timeline_audio_windows([block(F(3, 2), RATE)], origin=F(1)))
     assert [item.start for item in result] == [F(1, 2)]

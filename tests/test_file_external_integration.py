@@ -133,6 +133,15 @@ def aac_with_priming(path: Path) -> tuple[Fraction, Fraction]:
     return presentation_duration, decoded_duration
 
 
+def muxer_dropped_negative_timestamps(path: Path) -> None:
+    wav = path.with_suffix(".wav")
+    pcm(wav, 48_000, 4800)
+    run_ffmpeg([
+        "-y", "-itsoffset", "-1", "-i", str(wav), "-c:a", "copy",
+        "-avoid_negative_ts", "disabled", str(path),
+    ])
+
+
 def single_frame_flac(path: Path) -> None:
     rate = 48_000
     with av.open(str(path), "w", format="matroska") as output:
@@ -266,6 +275,24 @@ def test_grouped_recording_job_exports_aligned_sibling_tracks(tmp_path, monkeypa
     assert "00:00:00.200 --> 00:00:00.250" in written[1].read_text(encoding="utf-8")
     assert "00:00:00.400 --> 00:00:00.450" in written[1].read_text(encoding="utf-8")
     assert network_flags and all(flag is False for flag in network_flags)
+
+
+def test_real_dropped_negative_timestamps_stay_unavailable_instead_of_zero(tmp_path, monkeypatch):
+    from utterleaf.file_inspection import inspect_file
+    from utterleaf.file_transcription import transcribe_file
+
+    source = tmp_path / "dropped-negative.mkv"
+    muxer_dropped_negative_timestamps(source)
+    install_tools(monkeypatch, tmp_path)
+    inspected = inspect_file(source)
+    assert inspected.metadata.origin is None
+    assert inspected.metadata.origin_kind == "unavailable"
+    assert inspected.metadata.tracks[0].start is None
+    with pytest.raises(ValueError, match="missing or invalid A/V stream timing"):
+        with open_ffmpeg_timeline(source) as media:
+            list(media.blocks)
+    with pytest.raises(ValueError, match="missing or invalid A/V stream timing"):
+        transcribe_file(source, Config(allow_network=True), timing="recording")
 
 
 def test_real_aac_priming_uses_first_decoded_pts_and_duration(tmp_path, monkeypatch):

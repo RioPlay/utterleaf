@@ -173,7 +173,11 @@ the recognized text. A segment starting at or beyond the batch's end, or otherwi
 invalid timing, fails the job instead of silently dropping recognized words.
 Speech boundaries remain model estimates. Missing original frame timestamps,
 overlap/backward timing, audio before the common origin, changing audio formats,
-or gaps too small to survive resampling cause recording timing to fail. Some
+or gaps too small to survive resampling cause recording timing to fail.
+A negative common origin is subtracted once so subtitle cues stay nonnegative;
+a late track stays late. Available Matroska muxers often drop those negative
+timestamps instead of storing them. Inspection then reports an unavailable
+clock, and recording timing fails rather than inventing zero. Some
 very short compressed runs cannot corroborate their timing and are unsupported;
 uncompressed PCM can contain a single frame. Codec priming/padding behavior
 depends on the selected decoder. Any late decode or timing failure discards the

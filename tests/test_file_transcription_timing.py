@@ -80,6 +80,30 @@ def test_expected_clock_mismatch_fails_before_model(tmp_path, monkeypatch):
                         _expected_clock=(Fraction(0), "container"))
 
 
+def test_negative_origin_normalizes_once_and_exports_nonnegative_cues(tmp_path, monkeypatch):
+    @contextmanager
+    def opened(selected, **kwargs):
+        start = Fraction(-1) if kwargs.get("audio_track", 0) == 0 else Fraction(-4, 5)
+        yield media([block(start)], origin=-1)
+
+    path = tmp_path / "timed.mkv"
+    path.write_bytes(b"synthetic local media")
+    monkeypatch.setattr("utterleaf.file_decoder.decoder_selection", lambda: {"selected": True})
+    monkeypatch.setattr("utterleaf.file_external.open_ffmpeg_timeline", opened)
+    monkeypatch.setattr(
+        "utterleaf.file_media.open_pyav_timeline",
+        lambda *a, **k: pytest.fail("an explicit decoder must use the external timeline"),
+    )
+    install_engine(monkeypatch, lambda *a, **k: Transcript((Segment(0.25, 0.75, "word"),), "en"))
+    first = transcribe_file(path, Config(), timing="recording", audio_track=0)
+    second = transcribe_file(path, Config(), timing="recording", audio_track=1)
+    assert first.segments == (Segment(0.25, 0.75, "word"),)
+    assert second.segments == (Segment(0.45, 0.95, "word"),)
+    assert "00:00:00,250 --> 00:00:00,750" in render_transcript(first, "srt")
+    assert "00:00:00,450 --> 00:00:00,950" in render_transcript(second, "srt")
+    assert "00:00:00.450 --> 00:00:00.950" in render_transcript(second, "vtt")
+
+
 def test_expected_clock_accepts_same_origin_from_another_recording_kind(tmp_path, monkeypatch):
     path = install_external(monkeypatch, tmp_path, media([block(12)]))
     install_engine(monkeypatch, lambda *a, **k: Transcript((Segment(0, 0.25, "ok"),), "en"))
