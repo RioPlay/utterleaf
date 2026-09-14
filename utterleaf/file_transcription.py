@@ -275,8 +275,26 @@ def _pcm_timeline_blocks(first, blocks):
         current = next(blocks, None)
 
 
+_RECORDING_CLOCKS = {"container", "all-stream-starts", "pcm-sample-clock"}
+
+
+def _check_expected_clock(origin, origin_kind, expected):
+    if expected is None:
+        return
+    if (
+        type(expected) is not tuple
+        or len(expected) != 2
+        or type(expected[0]) is not Fraction
+        or expected[1] not in _RECORDING_CLOCKS
+        or type(origin) is not Fraction
+        or origin_kind not in _RECORDING_CLOCKS
+        or origin != expected[0]
+    ):
+        raise ValueError("The recording clock changed after track inspection")
+
+
 @contextmanager
-def _recording_windows(path, *, audio_track, cancel, progress):
+def _recording_windows(path, *, audio_track, cancel, progress, expected_clock=None):
     """Own one strict presentation-aware decoder and its normalized windows."""
     from utterleaf.file_decoder import decoder_selection
     from utterleaf.file_external import _HeldSource, open_ffmpeg_timeline
@@ -293,6 +311,7 @@ def _recording_windows(path, *, audio_track, cancel, progress):
     if path.suffix.lower() == ".wav" and audio_track == 0:
         try:
             with _HeldSource(path) as source:
+                _check_expected_clock(Fraction(0), "pcm-sample-clock", expected_clock)
                 with closing(_iter_pcm_wav(path, cancel=cancel, progress=progress)) as blocks:
                     first = next(blocks)
                     pcm_started = True
@@ -334,20 +353,23 @@ def _recording_windows(path, *, audio_track, cancel, progress):
             media.blocks, origin=media.origin,
             cancel=cancel.is_set if cancel is not None else None,
         )
+        _check_expected_clock(media.origin, media.origin_kind, expected_clock)
         stack.enter_context(closing(windows))
         yield windows
 
 
 @contextmanager
-def _file_windows(path, *, timing, audio_track, cancel, progress):
+def _file_windows(path, *, timing, audio_track, cancel, progress, expected_clock=None):
     """Own either legacy relative windows or strict recording-time windows."""
     if type(timing) is not str or timing not in {"relative", "recording"}:
         raise ValueError("File timing must be 'relative' or 'recording'")
     if timing == "recording":
         with _recording_windows(path, audio_track=audio_track, cancel=cancel,
-                                progress=progress) as windows:
+                                progress=progress, expected_clock=expected_clock) as windows:
             yield windows
         return
+    if expected_clock is not None:
+        raise ValueError("An expected recording clock requires recording timing")
     windows = _relative_windows(path, audio_track=audio_track, cancel=cancel,
                                 progress=progress)
     with closing(windows):
@@ -355,7 +377,8 @@ def _file_windows(path, *, timing, audio_track, cancel, progress):
 
 
 def transcribe_file(path: str | Path, cfg: Config, *, cancel=None, progress=None,
-                    audio_track: int = 0, timing: str = "relative") -> Transcript:
+                    audio_track: int = 0, timing: str = "relative",
+                    _expected_clock=None) -> Transcript:
     """Return unsaved model segments. Offline even when dictation permits downloads.
 
     Progress receives (phase, fraction_or_none). Cancellation is cooperative between
@@ -367,8 +390,15 @@ def transcribe_file(path: str | Path, cfg: Config, *, cancel=None, progress=None
     )
 
     _check_cancel(cancel)
+    if _expected_clock is not None and (
+        type(_expected_clock) is not tuple
+        or len(_expected_clock) != 2
+        or type(_expected_clock[0]) is not Fraction
+        or type(_expected_clock[1]) is not str
+    ):
+        raise ValueError("Invalid expected recording clock")
     with _file_windows(path, timing=timing, audio_track=audio_track, cancel=cancel,
-                       progress=progress) as windows:
+                       progress=progress, expected_clock=_expected_clock) as windows:
         if progress is not None:
             progress("loading", None)
         offline_cfg = replace(cfg, allow_network=False)

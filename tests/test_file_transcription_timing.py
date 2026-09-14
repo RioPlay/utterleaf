@@ -72,6 +72,24 @@ def test_recording_timing_normalizes_origin_once_and_preserves_gaps(tmp_path, mo
     assert "00:00:05.250 --> 00:00:05.750" in render_transcript(result, "vtt")
 
 
+def test_expected_clock_mismatch_fails_before_model(tmp_path, monkeypatch):
+    path = install_external(monkeypatch, tmp_path, media([block(12)]))
+    install_engine(monkeypatch, lambda *a, **k: pytest.fail("model must not run"))
+    with pytest.raises(ValueError, match="recording clock changed"):
+        transcribe_file(path, Config(), timing="recording",
+                        _expected_clock=(Fraction(0), "container"))
+
+
+def test_expected_clock_accepts_same_origin_from_another_recording_kind(tmp_path, monkeypatch):
+    path = install_external(monkeypatch, tmp_path, media([block(12)]))
+    install_engine(monkeypatch, lambda *a, **k: Transcript((Segment(0, 0.25, "ok"),), "en"))
+    result = transcribe_file(
+        path, Config(), timing="recording",
+        _expected_clock=(Fraction(10), "all-stream-starts"),
+    )
+    assert result.segments == (Segment(2, 2.25, "ok"),)
+
+
 def test_window_size_and_start_are_captured_before_model_mutation(tmp_path, monkeypatch):
     path = install_external(monkeypatch, tmp_path, media([block(12), block(15)]))
     calls = 0

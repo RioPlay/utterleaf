@@ -15,6 +15,7 @@ from utterleaf.config import Config
 from utterleaf.file_decoder_ui import DecoderDialog
 from utterleaf.file_inspection import InspectedFile
 from utterleaf.file_metadata import MediaAudioTrack, MediaMetadata
+from utterleaf.file_tracks import FileTranscripts, TrackTranscript
 from utterleaf.file_ui import FileWindow
 from utterleaf.settings_ui import enable_dpi_awareness
 from utterleaf.transcript import Segment, Transcript
@@ -59,7 +60,12 @@ def capture(output):
         window.events.put_nowait(("inspection", inspected))
         root.after_cancel(window.poll_id)
         window.poll()
-        window.result = Transcript((Segment(0, 5, "Welcome back. Today we’re looking at the ideas shared by our community."),))
+        window.result = FileTranscripts(
+            "recording", Fraction(0), "container",
+            (TrackTranscript(tracks[0], Transcript((Segment(
+                0, 5, "Welcome back. Today we’re looking at the ideas shared by our community.",
+            ),))),),
+        )
         window._preview(window.result.text)
         window.status.set("Review the transcript, then choose an export format.")
         window._controls()

@@ -5,7 +5,8 @@ local file. It does not record system audio or create transcript history.
 
 **0.4.6 RC2 Windows preview:** imported recordings have no total-duration or file-size
 cutoff. Audio is decoded and recognized in bounded batches. The file window and
-`--audio-track` CLI option can select an individual audio track for each job.
+`--audio-track` CLI option can select an individual audio track for each job,
+or repeat the option to transcribe several tracks together.
 Live OBS capture remains separate, unimplemented work.
 
 **Upcoming source update (unreleased):** the file window inspects actual audio
@@ -18,8 +19,8 @@ track offsets and internal pauses through transcription and subtitle export.
 Published RC2 keeps track-relative subtitle times.
 
 Open **Tools → Transcribe a file** from the tray, or run `utterleaf --files`.
-Choose a file, wait for **Inspect tracks** to finish, select an actual audio
-stream and its timing mode, then choose **Transcribe** and review the preview. Choose TXT, SRT, or
+Choose a file, wait for **Inspect tracks** to finish, select one or more actual
+audio streams and a timing mode, then choose **Transcribe** and review the preview. Choose TXT, SRT, or
 VTT before **Export**. Existing destinations require a replace confirmation;
 the original media file cannot be used as the export destination. **Discard**
 clears the preview and **Close** cancels any work and discards the preview.
@@ -28,8 +29,8 @@ own separate window. No microphone opens merely because this tool is open.
 
 ![Source file window with inspected audio tracks, recording timestamps and explicit export controls](assets/screenshots/desktop-file-recording-times.png)
 
-Unreleased source window with a synthetic filename and transcript. No personal
-recording is shown.
+Unreleased source window with inspected streams, a multi-select track list, and
+a synthetic filename and transcript. No personal recording is shown.
 
 **Keep recording timestamps** is selected after inspecting a file with a known
 recording clock. It keeps a late track late and preserves gaps in its audio. Clear
@@ -61,7 +62,7 @@ Unreleased Windows setup window, captured with synthetic executable paths.
 4. In the **FFprobe** row choose **Choose…** and explicitly select the FFprobe
    executable from the same installation. Confirm its use for track inspection.
 5. Choose **Done**, select your MP3, M4A, video, or other supported file, wait
-   for **Inspect tracks**, choose a reported audio stream, and choose
+   for **Inspect tracks**, choose one or more reported audio streams, and choose
    **Transcribe**. Video is inspected for its audio streams but is not decoded.
 
 On **Windows**, choose **Download page…**. On the official FFmpeg page, follow
@@ -181,20 +182,24 @@ There are no speaker labels. Spoken phrases such as “scratch that” remain li
 transcript text; dictation editing, filler removal, dictionary prompting, and
 denoising are not applied to file transcripts.
 
-After **Inspect tracks**, choose **Audio track** from the readonly picker. Labels
-show the actual audio-stream ordinal, title when available, and compact rate and
-channel metadata; sparse container stream indexes are preserved. Track numbers
-identify container audio streams, not left/right stereo channels, OBS mixer
-numbers, or inferred speakers. Transcribe each selected track to a distinct
-output when a recording actually has isolated tracks. A mixed track stays mixed.
-Recording timing gives separately transcribed tracks in the same unchanged file
-one common origin. The current window handles one selected track per job;
-simultaneous multi-track jobs and grouped export are still planned. It does not
-align independent recording files.
+After **Inspect tracks**, choose one or more **Audio tracks**. Labels show the
+actual audio-stream ordinal, title when available, and compact rate and channel
+metadata; sparse container stream indexes are preserved. Track numbers identify
+container audio streams, not left/right stereo channels, OBS mixer numbers, or
+inferred speakers. A mixed track stays mixed. Recording timing gives every
+selected track in the same unchanged file one common origin. Selecting several
+tracks runs one all-or-none job: a later track failure discards the whole
+preview, and export writes distinct sibling files together. A single selected
+track still uses the exact destination name. It does not align independent
+recording files.
 
 ```powershell
-utterleaf --transcribe-file stream.mkv --audio-track 2 --file-timing recording --output guests.vtt
+utterleaf --transcribe-file stream.mkv --audio-track 1 --audio-track 2 --file-timing recording --output show.vtt
 ```
+
+That grouped command writes `show-track1.vtt` and `show-track2.vtt`. Repeat
+`--audio-track` only with `--transcribe-file`. A single `--audio-track 2` still
+writes the exact `--output` path.
 
 Exports are explicit UTF-8 TXT, SRT, or VTT. Subtitle times round to milliseconds
 with correct carry into minutes/hours. A cue that rounds to zero duration causes
@@ -211,21 +216,22 @@ recording clock. TXT remains plain text in either mode; it does not add timestam
 ## Integration API
 
 ```python
-from utterleaf.file_transcription import transcribe_file
-from utterleaf.transcript import export_transcript, TranscriptionCancelled
+from utterleaf.file_tracks import transcribe_tracks, export_transcripts
+from utterleaf.transcript import TranscriptionCancelled
 
-result = transcribe_file(selected_path, cfg, audio_track=1, timing="recording",
-                         cancel=stop_event, progress=on_progress)
-export_transcript(result, selected_output, format="vtt", overwrite=False)
+result = transcribe_tracks(selected_path, cfg, audio_tracks=(1, 2), timing="recording",
+                           cancel=stop_event, progress=on_progress)
+export_transcripts(result, selected_output, format="vtt", overwrite=False)
 ```
 
-The API uses zero-based `audio_track` ordinals (the example selects the second
-track); the UI and CLI use numbers starting at 1. The legacy `decode_local_file`
+The grouped API, UI and CLI use numbers starting at 1. `transcribe_file` still
+uses zero-based `audio_track` ordinals for a single track. The legacy `decode_local_file`
 array-returning helper retains its old bounds; the app uses `iter_local_audio`
 and `audio_windows` instead. Close an audio iterator when abandoning it early.
 
-`cancel` is an optional `threading.Event`. `progress(phase, fraction)` receives
-`decoding`, `loading`, `recognizing`, or `complete`; unknown fractions are `None`.
+`cancel` is an optional `threading.Event`. Single-track `progress(phase, fraction)`
+receives `decoding`, `loading`, `recognizing`, or `complete`; unknown fractions are
+`None`. Grouped jobs report `progress(current, total, phase, fraction)`.
 Cancellation is checked between decoded frames and generated segments and while
 waiting for the recognition lock. Model loading and active native calls must
 return before cancellation can finish. Cancellation raises

@@ -136,7 +136,8 @@ now exposes explicit FFmpeg decoding and FFprobe inspection selections; the
 shared identity helper retains the existing FFmpeg behavior. The external timed
 adapter now connects original-frame journaling, compatible selected builds and
 gap-separated resampling. Single-track recording-time transcription and subtitle
-export are connected; grouped multi-track jobs and release acceptance remain open.
+export are connected. Grouped multi-track jobs and sibling export are now in
+source; remaining recording/release acceptance is still open.
 
 The current file window automatically inspects a newly chosen file in a
 background worker, presents actual audio-stream metadata while retaining global
@@ -369,6 +370,13 @@ normalized timed windows, with each exact start and sample count captured before
 the model call. The same offline CTranslate engine, CPU retry, segment validation
 and cancellation rules apply to both modes. A late decoder, source, journal or
 context failure prevents returning a transcript or reporting successful completion.
+`transcribe_tracks` recognizes an explicit 1-based selection sequentially under one
+held source and one inspected clock. Relative grouped jobs keep independent
+track-relative clocks; recording jobs refuse a missing common origin and fail if a
+later decoder clock does not match inspection. `export_transcripts` writes one file
+for a single track and `-trackN` siblings for a group, rolling back unpublished
+no-overwrite destinations if a later file cannot be published. The file window
+list selects several streams; the CLI repeats `--audio-track`.
 Ordinary PCM WAV retains the packaged zero-based sample clock without consulting
 tool selections. Other formats use the explicitly selected external pair, or
 the development PyAV adapter when no external decoder is selected. Missing PyAV
@@ -391,19 +399,20 @@ batching and atomic SRT/VTT export with only the speech engine substituted. Its
 second track keeps cues at 0.2 and 0.4 seconds. Relative mode for that second
 track starts at zero and removes the gap. All four engine calls are offline.
 This establishes source timing/export behavior on synthetic media, not genuine
-speech accuracy or a packaged release. Grouped multi-track jobs/export and the
-remaining recording/release acceptance are still open.
+speech accuracy or a packaged release. Grouped multi-track jobs and sibling
+export are now connected in source; remaining recording/release acceptance is
+still open.
 
-Final local integration verification passes **309 tests with no skips** with
+Final local integration verification passes **328 tests with no skips** with
 the retained tools scoped through the same two environment variables:
 
 ```powershell
-& $py -m pytest tests/test_file_external.py tests/test_file_external_integration.py tests/test_file_frame_journal.py tests/test_media_process.py tests/test_media_tool_pair.py tests/test_file_frame_metadata.py tests/test_file_timeline.py tests/test_audio_batching.py tests/test_privacy.py tests/test_config.py tests/test_repo_boundaries.py tests/test_file_transcription_timing.py tests/test_file_transcription.py tests/test_file_streaming.py tests/test_file_ui.py tests/test_file_cli.py tests/test_transcript.py -o addopts= -q
+& $py -m pytest tests/test_file_tracks.py tests/test_file_external.py tests/test_file_external_integration.py tests/test_file_frame_journal.py tests/test_media_process.py tests/test_media_tool_pair.py tests/test_file_frame_metadata.py tests/test_file_timeline.py tests/test_audio_batching.py tests/test_privacy.py tests/test_config.py tests/test_repo_boundaries.py tests/test_file_transcription_timing.py tests/test_file_transcription.py tests/test_file_streaming.py tests/test_file_ui.py tests/test_file_cli.py tests/test_transcript.py -o addopts= -q
 ```
 
-This includes eight real selected-tool integration cases. Native CI must run
-again for the recognition/UI/CLI increment; the successful adapter checkpoint
-does not cover changes made after it.
+This includes nine real selected-tool integration cases. Native CI must run
+again for the grouped-job increment; earlier green checkpoints do not cover
+these changes.
 
 ## Non-goals and stop
 

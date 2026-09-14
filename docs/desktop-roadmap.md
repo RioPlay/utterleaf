@@ -111,10 +111,10 @@ window defaults to **Keep recording timestamps** for a known clock and explicitl
 disables it when unavailable; CLI/API callers opt in. Independent backend and
 UI/CLI reviews pass, and a real two-track synthetic file retains its offsets and
 gap through production transcription and SRT/VTT export with a substituted
-speech engine. Grouped multi-track jobs/export and release acceptance remain
-open. Final local integration passes **309 tests with no skips**, including
-eight real selected-tool cases; the new recognition/UI source still needs native
-CI after the green adapter checkpoint. No new desktop package has been published.
+speech engine. Grouped multi-track jobs now recognize selected tracks
+sequentially against one inspected clock and export sibling SRT/VTT files
+together; a later no-overwrite failure publishes nothing. Release acceptance and a new
+desktop package remain open. No new desktop package has been published.
 
 The live OBS design
 separates authenticated stream events from actual PCM transport. The first

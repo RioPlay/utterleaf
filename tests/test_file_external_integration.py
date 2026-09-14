@@ -234,6 +234,40 @@ def test_recording_transcription_and_exports_keep_real_track_timeline(tmp_path, 
     assert "00:00:00.400 --> 00:00:00.450" in vtt.read_text(encoding="utf-8")
 
 
+def test_grouped_recording_job_exports_aligned_sibling_tracks(tmp_path, monkeypatch):
+    from utterleaf.file_tracks import export_transcripts, transcribe_tracks
+
+    movie = tmp_path / "grouped-tracks.mkv"
+    timed_pcm_tracks(movie)
+    install_tools(monkeypatch, tmp_path)
+    network_flags = []
+
+    class KnownSegments(CTranslateEngine):
+        def __init__(self):
+            super().__init__(None)
+            self.calls = 0
+
+        def transcribe_segments(self, audio, cfg, **kwargs):
+            network_flags.append(cfg.allow_network)
+            self.calls += 1
+            assert audio.dtype == np.float32 and 0 < audio.size <= 30 * 16000
+            return Transcript((Segment(0, 0.05, f"batch {self.calls}"),), "en")
+
+    monkeypatch.setattr("utterleaf.transcribe.load_model", lambda cfg: KnownSegments())
+    result = transcribe_tracks(
+        movie, Config(allow_network=True), audio_tracks=(1, 2), timing="recording"
+    )
+    written = export_transcripts(result, tmp_path / "show.vtt")
+    assert result.origin == 1 and result.origin_kind == "container"
+    assert [item.track.ordinal for item in result.tracks] == [0, 1]
+    assert [segment.start for segment in result.tracks[0].transcript.segments] == [0]
+    assert [segment.start for segment in result.tracks[1].transcript.segments] == pytest.approx([0.2, 0.4])
+    assert "00:00:00.000 --> 00:00:00.050" in written[0].read_text(encoding="utf-8")
+    assert "00:00:00.200 --> 00:00:00.250" in written[1].read_text(encoding="utf-8")
+    assert "00:00:00.400 --> 00:00:00.450" in written[1].read_text(encoding="utf-8")
+    assert network_flags and all(flag is False for flag in network_flags)
+
+
 def test_real_aac_priming_uses_first_decoded_pts_and_duration(tmp_path, monkeypatch):
     source = tmp_path / "priming.m4a"
     presentation_duration, decoded_duration = aac_with_priming(source)
