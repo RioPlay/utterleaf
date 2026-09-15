@@ -222,7 +222,7 @@ class TerminalInputTest {
             val modified = mutableListOf<Triple<String, Boolean, Boolean>>()
             val special = mutableListOf<List<Any>>()
             var accepted = true
-            val panel = TypingPanel(instrumentation.targetContext, KeyboardOptions(terminal=true, numberRow=true),
+            val panel = TypingPanel(instrumentation.targetContext, KeyboardOptions(numberRow = true, autoCapitalize = false),
                 { plain.add(it); accepted }, {}, {}, {}, {}, {}, {},
                 { code, ctrl, alt, shift -> special.add(listOf(code, ctrl, alt, shift)); accepted },
                 { text, ctrl, alt -> modified.add(Triple(text, ctrl, alt)); accepted })
@@ -231,35 +231,48 @@ class TerminalInputTest {
                 is android.view.ViewGroup -> (0 until view.childCount).flatMap { buttons(view.getChildAt(it)) }
                 else -> emptyList()
             }
-            fun key(label: String) = buttons(panel.view).single { it.contentDescription == label }
+            fun key(label: String): android.widget.Button {
+                val matches = buttons(panel.view).filter { it.contentDescription == label }
+                check(matches.isNotEmpty()) { "Missing key $label; present=${buttons(panel.view).map { it.contentDescription }}" }
+                return matches.single()
+            }
+            fun shiftKey(): android.widget.Button {
+                val matches = buttons(panel.view).filter {
+                    it.contentDescription == "Shift off" || it.contentDescription == "Shift on"
+                }
+                check(matches.isNotEmpty()) { "Missing shift key" }
+                return matches.first()
+            }
             panel.reset(true, false, "Enter")
+            key("Extra keys").performClick()
             key("Control off").performClick(); key("c").performClick(); key("c").performClick()
             assertEquals(listOf(Triple("c", true, false), Triple("c", true, false)), modified)
             assertTrue(key("Control on").isSelected)
             key("Control on").performClick()
             key("c").performClick()
             assertEquals(listOf("c"), plain)
-            key("Shift off").performClick(); key("!").performClick(); key("1").performClick()
+            shiftKey().performClick(); key("!").performClick(); key("1").performClick()
             assertEquals(listOf("!", "1"), plain.takeLast(2))
-            assertFalse("Letter/digit Shift remains one-shot", key("Shift off").isSelected)
-            key("Control off").performClick(); key("Shift off").performClick()
+            assertFalse("Letter/digit Shift remains one-shot", shiftKey().isSelected)
+            key("Control off").performClick(); shiftKey().performClick()
             key("Left arrow").performClick(); key("Left arrow").performClick()
             assertEquals(listOf(
                 listOf(KeyEvent.KEYCODE_DPAD_LEFT, true, false, true),
                 listOf(KeyEvent.KEYCODE_DPAD_LEFT, true, false, true)), special)
             assertTrue(key("Control on").isSelected)
-            assertTrue(key("Shift on").isSelected)
-            key("Control on").performClick(); key("Shift on").performClick()
-            key("Keyboard tools").performClick(); key("Caps lock off").performClick()
+            assertTrue(shiftKey().isSelected)
+            key("Control on").performClick(); shiftKey().performClick()
+            key("Emoji").performLongClick(); key("Caps lock off").performClick()
             key("1").performClick()
             assertEquals("Caps lock must not alter digits", "1", plain.last())
-            key("Keyboard tools").performClick(); key("Caps lock on").performClick()
+            key("Emoji").performLongClick(); key("Caps lock on").performClick()
+            key("Extra keys").performClick()
             key("Control off").performClick(); key("Alt off").performClick()
-            key("Shift off").performClick(); key("X").performClick()
+            shiftKey().performClick(); key("X").performClick()
             assertEquals(Triple("X", true, true), modified.last())
             assertTrue(key("Control on").isSelected)
             assertTrue(key("Alt on").isSelected)
-            assertFalse("Letter Shift remains one-shot", key("Shift off").isSelected)
+            assertFalse("Letter Shift remains one-shot", shiftKey().isSelected)
             key("Escape").performClick(); key("Tab").performClick()
             assertEquals(listOf(KeyEvent.KEYCODE_ESCAPE, true, true, false), special[2])
             assertEquals(listOf(KeyEvent.KEYCODE_TAB, true, true, false), special[3])
@@ -271,11 +284,13 @@ class TerminalInputTest {
             assertTrue(buttons(panel.view).any { it.contentDescription == "F1" })
             panel.reset(false, true, "Next")
             assertFalse(key("Dictate").isEnabled)
+            assertFalse(buttons(panel.view).any { it.contentDescription == "F1" })
+            assertFalse(buttons(panel.view).any { it.contentDescription == "Escape" })
+            key("Extra keys").performClick()
             assertFalse(key("Control off").isSelected)
             assertFalse(key("Alt off").isSelected)
-            assertFalse(buttons(panel.view).any { it.contentDescription == "F1" })
             key("Switch letters and symbols").performClick()
-            assertFalse(key("Shift off").isSelected)
+            assertFalse(buttons(panel.view).first { it.contentDescription == "Shift off" }.isSelected)
             key("a").performClick()
             assertEquals("a", plain.last())
         }
@@ -292,26 +307,32 @@ class TerminalInputTest {
                 is android.view.ViewGroup -> (0 until view.childCount).flatMap { buttons(view.getChildAt(it)) }
                 else -> emptyList()
             }
-            val ordinary = panel(KeyboardOptions())
+            val ordinary = panel(KeyboardOptions(numberRow = false))
             assertFalse(buttons(ordinary.view).any { it.contentDescription in listOf("1", "Control off", "Function keys") })
-            val numbers = panel(KeyboardOptions(numberRow=true))
+            val numbers = panel(KeyboardOptions(numberRow = true))
             assertTrue(buttons(numbers.view).any { it.contentDescription == "1" })
             assertFalse(buttons(numbers.view).any { it.contentDescription == "Control off" })
-            val terminal = panel(KeyboardOptions(terminal=true))
+            val terminal = panel(KeyboardOptions())
             fun key(label: String) = buttons(terminal.view).single { it.contentDescription == label }
-            assertFalse(buttons(terminal.view).any { it.contentDescription == "1" })
+            assertTrue(buttons(terminal.view).any { it.contentDescription == "1" })
+            assertFalse(buttons(terminal.view).any { it.contentDescription == "F1" })
+            key("Extra keys").performClick()
+            assertTrue(buttons(terminal.view).any { it.contentDescription == "1" })
             key("Function keys").performClick()
-            assertFalse(buttons(terminal.view).any { it.contentDescription == "1" })
+            assertTrue(buttons(terminal.view).any { it.contentDescription == "1" })
             key("F1").performClick(); key("F12").performClick()
             key("Forward delete").performClick(); key("Insert").performClick()
-            key("Return to terminal letters").performClick(); key("Navigation keys").performClick()
             key("Page up").performClick(); key("Left arrow").performClick()
             assertEquals(listOf(KeyEvent.KEYCODE_F1, KeyEvent.KEYCODE_F12, KeyEvent.KEYCODE_FORWARD_DEL,
                 KeyEvent.KEYCODE_INSERT, KeyEvent.KEYCODE_PAGE_UP, KeyEvent.KEYCODE_DPAD_LEFT), codes)
             assertTrue(buttons(terminal.view).all { !it.contentDescription.isNullOrBlank() && it.isFocusable })
-            key("Return to terminal letters").performClick()
-            assertFalse(buttons(terminal.view).any { it.contentDescription == "1" })
+            key("Hide function keys").performClick()
+            assertTrue(buttons(terminal.view).any { it.contentDescription == "1" })
             assertFalse(buttons(terminal.view).any { it.contentDescription == "F1" })
+            key("Extra keys").performClick()
+            assertTrue(buttons(terminal.view).any { it.contentDescription == "1" })
+            assertFalse(buttons(terminal.view).any { it.contentDescription == "F1" })
+            assertFalse(buttons(terminal.view).any { it.contentDescription == "Escape" })
         }
     }
 
@@ -319,14 +340,18 @@ class TerminalInputTest {
         instrumentation.runOnMainSync {
             val context = instrumentation.targetContext
             for (widthDp in listOf(320, 412)) for (large in listOf(false, true)) {
-                val panel = TypingPanel(context, KeyboardOptions(terminal=true, large=large),
+                val panel = TypingPanel(context, KeyboardOptions(large = large),
                     { true }, {}, {}, {}, {}, {}, {}, { _, _, _, _ -> true })
                 fun buttons(view: View): List<android.widget.Button> = when (view) {
                     is android.widget.Button -> listOf(view)
                     is android.view.ViewGroup -> (0 until view.childCount).flatMap { buttons(view.getChildAt(it)) }
                     else -> emptyList()
                 }
-                fun key(label: String) = buttons(panel.view).single { it.contentDescription == label }
+                fun key(label: String): android.widget.Button {
+                    val matches = buttons(panel.view).filter { it.contentDescription == label }
+                    check(matches.isNotEmpty()) { "Missing key $label" }
+                    return matches.first()
+                }
                 fun layout(): Int {
                     val width = Ui.dp(context, widthDp)
                     panel.view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
@@ -335,7 +360,7 @@ class TerminalInputTest {
                     for (button in buttons(panel.view)) {
                         val rect = android.graphics.Rect(0, 0, button.width, button.height)
                         panel.view.offsetDescendantRectToMyCoords(button, rect)
-                        assertTrue("Terminal control outside ${widthDp}dp large=$large: ${button.contentDescription}",
+                        assertTrue("Panel control outside ${widthDp}dp large=$large: ${button.contentDescription}",
                             rect.left >= 0 && rect.right <= width && rect.top >= 0 && rect.bottom <= panel.view.height &&
                                 rect.width() > 0 && rect.height() > 0)
                     }
@@ -343,13 +368,21 @@ class TerminalInputTest {
                 }
                 panel.reset(true, false, "Enter")
                 val typingHeight = layout()
+                key("Extra keys").performClick()
+                val panelHeight = layout()
+                assertTrue("Opening the fold-out panel must add its rows", panelHeight > typingHeight)
+                assertTrue(buttons(panel.view).any { it.contentDescription == "q" })
                 key("Function keys").performClick()
-                assertTrue("Fn must replace rows, not append height", layout() <= typingHeight)
-                assertFalse(buttons(panel.view).any { it.contentDescription == "q" })
-                for (label in listOf("F1", "F12", "Shift off", "Insert", "Forward delete", "Return to terminal letters", "Delete")) {
+                val functionsHeight = layout()
+                assertTrue("F-keys must add their rows", functionsHeight > panelHeight)
+                assertTrue(buttons(panel.view).any { it.contentDescription == "q" })
+                for (label in listOf("F1", "F12", "Shift off", "Insert", "Forward delete",
+                        "Hide function keys", "Delete")) {
                     assertTrue("Function control must remain focusable: $label", key(label).isFocusable)
                 }
-                key("Return to terminal letters").performClick()
+                key("Hide function keys").performClick()
+                assertEquals(panelHeight, layout())
+                key("Extra keys").performClick()
                 assertEquals(typingHeight, layout())
                 assertTrue(buttons(panel.view).any { it.contentDescription == "q" })
                 assertFalse(buttons(panel.view).any { it.contentDescription == "F1" })
@@ -361,7 +394,7 @@ class TerminalInputTest {
         instrumentation.runOnMainSync {
             var accepted = false
             val special = mutableListOf<Int>()
-            val panel = TypingPanel(instrumentation.targetContext, KeyboardOptions(terminal=true, numberRow=true),
+            val panel = TypingPanel(instrumentation.targetContext, KeyboardOptions(numberRow = true),
                 { true }, {}, {}, {}, {}, {}, {},
                 { code, _, _, _ -> special.add(code); accepted })
             fun buttons(view: View): List<android.widget.Button> = when (view) {
@@ -376,6 +409,7 @@ class TerminalInputTest {
                 return panel.view.measuredHeight
             }
             panel.reset(true, false, "Enter")
+            key("Extra keys").performClick()
             val before = height()
             key("Escape").performClick()
             assertEquals(listOf(KeyEvent.KEYCODE_ESCAPE), special)

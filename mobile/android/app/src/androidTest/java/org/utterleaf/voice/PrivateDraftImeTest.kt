@@ -120,32 +120,34 @@ class PrivateDraftImeTest {
         main { activity.editor.requestFocus() }
         val manager = app.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         await("Editor never became active") { main { manager.isActive(activity.editor) } }
-        main {
-            manager.restartInput(activity.editor)
-            manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
+        // A prior test's manual finish callbacks can leave the service expecting
+        // a fresh show cycle; retry the request until the panel appears.
+        val deadline = android.os.SystemClock.elapsedRealtime() + 20_000
+        var shown = false
+        while (!shown && android.os.SystemClock.elapsedRealtime() < deadline) {
+            main {
+                manager.restartInput(activity.editor)
+                manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
+            }
+            try {
+                await("Typing keyboard did not appear") { findNode("Undo") != null }
+                shown = true
+            } catch (retry: AssertionError) {
+                Thread.sleep(250)
+            }
         }
-        await("Typing keyboard did not appear") {
-            findNode("Keyboard tools") != null
-        }
+        check(shown) { "Typing keyboard did not appear" }
         return activity
     }
 
     private fun close(activity: KeyboardEditorContractActivity) {
         main { activity.finish() }
         await("Previous IME session did not close") {
-            findNode("Keyboard tools") == null && findNode("Insert private draft") == null
+            findNode("Undo") == null && findNode("Insert private draft") == null
         }
     }
 
     private fun openDraft() {
-        val previousTools = main { shownButtonOnMain("Keyboard tools") }
-            ?: throw AssertionError("Missing current Tools view")
-        press("Keyboard tools")
-        await("Tools did not publish the replacement private-draft action") {
-            main {
-                !previousTools.isAttachedToWindow && shownButtonOnMain("Private draft") != null
-            }
-        }
         press("Private draft")
         await("Private draft panel did not appear") { findNode("Insert private draft") != null }
     }
@@ -204,6 +206,10 @@ class PrivateDraftImeTest {
             press("grinning face")
             press("Return from emoji to letters")
             press("Enter")
+            // Auto-capitalization arms after a newline; a shift tap clears it.
+            val armedShift = checkNotNull(findNode("Shift on"))
+            armedShift.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            instrumentation.waitForIdleSync()
             press("c")
             press("d")
             val draft = "ab😀\ncd"
@@ -301,11 +307,10 @@ class PrivateDraftImeTest {
     }
 
     @Test fun rawAndPasswordFieldsCannotEnterDraftAndOrdinaryReopeningStartsEmpty() = withKeyboard {
-        KeyboardOptions(terminal = true).save(app)
-        await("Terminal preference was not stored for raw input") { KeyboardOptions.load(app).terminal }
+        KeyboardOptions(extraKeys = true).save(app)
+        await("Extra-keys preference was not stored for raw input") { KeyboardOptions.load(app).extraKeys }
         var activity = launch(raw = true)
         try {
-            press("Keyboard tools")
             assertEquals(null, findNode("Private draft"))
             assertEquals(android.view.KeyEvent.KEYCODE_UNKNOWN, main { activity.rawKey })
         } finally {
@@ -315,7 +320,6 @@ class PrivateDraftImeTest {
         KeyboardOptions().save(app)
         activity = launch(password = true)
         try {
-            press("Keyboard tools")
             assertEquals(null, findNode("Private draft"))
             assertEquals("", main { activity.editor.text.toString() })
         } finally {

@@ -55,11 +55,13 @@ class HeldModifiersTest {
                     }
                 }
             }
-            panel = TypingPanel(activity, KeyboardOptions(terminal = true, deleteRepeat = repeatDelete),
+            panel = TypingPanel(activity, KeyboardOptions(deleteRepeat = repeatDelete),
                 { text -> TerminalInput.printable(connection(), text, forceKeyEvents = true) },
                 { connection()?.deleteSurroundingText(1, 0) }, {}, {}, {}, {}, {},
                 { code, ctrl, alt, shift -> TerminalInput.send(connection(), code, ctrl, alt, shift) })
             panel.reset(false, false, "Enter")
+            // The mockup's fold-out panel keeps modifier and arrow keys beside letters.
+            buttons(panel.view).single { it.contentDescription == "Extra keys" }.performClick()
             panel.view.addOnLayoutChangeListener { _, left, top, right, bottom, _, _, _, _ ->
                 if (right > left && bottom > top) laidOut.countDown()
             }

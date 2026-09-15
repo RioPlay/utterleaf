@@ -1,4 +1,4 @@
-package org.utterleaf.voice
+﻿package org.utterleaf.voice
 
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.ClipData
@@ -120,7 +120,7 @@ class EmojiImeTest {
         await("Editor never became active") { main { manager.isActive(activity.editor) } }
         main { manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT) }
         await("Typing keyboard did not appear") {
-            findNode("Keyboard tools") != null
+            findNode("Undo") != null
         }
         return activity
     }
@@ -128,7 +128,7 @@ class EmojiImeTest {
     private fun close(activity: KeyboardEditorContractActivity) {
         main { activity.finish() }
         await("Previous IME session did not close") {
-            findNode("Keyboard tools") == null && findNode("Return from emoji to letters") == null
+            findNode("Undo") == null && findNode("Return from emoji to letters") == null
         }
     }
 
@@ -210,8 +210,8 @@ class EmojiImeTest {
             await("ABC did not return to ordinary typing") {
                 main { activity.editor.text.toString() == "before ${emoji}x after" }
             }
-            press("Edit actions")
             press("Paste")
+
             await("Explicit Paste did not use the unchanged synthetic clipboard") {
                 main { activity.editor.text.toString() == "before ${emoji}x$clipboardText after" }
             }
@@ -272,11 +272,9 @@ class EmojiImeTest {
             close(activity)
         }
 
-        KeyboardOptions(terminal = true).save(app)
         activity = launch(raw = true)
         try {
-            press("Keyboard tools")
-            val emoji = checkNotNull(findNode("Emoji unavailable in raw input"))
+            val emoji = checkNotNull(findNode("Emoji"))
             assertFalse(emoji.isEnabled)
             assertFalse(emoji.performAction(AccessibilityNodeInfo.ACTION_CLICK))
             assertEquals(android.view.KeyEvent.KEYCODE_UNKNOWN, main { activity.rawKey })

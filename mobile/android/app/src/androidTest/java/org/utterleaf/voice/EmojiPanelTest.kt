@@ -186,13 +186,13 @@ class EmojiPanelTest {
             val typing = TypingPanel(app, KeyboardOptions(), { inserted.add(it); true }, {}, {}, {}, {}, {}, {})
             fun key(name: String) = views(typing.view).filterIsInstance<Button>().single { it.contentDescription == name }
             typing.reset(false, false, "Enter", allowEmoji = false)
-            assertFalse(key("Emoji unavailable in raw input").isEnabled)
+            assertFalse(key("Emoji").isEnabled)
             typing.reset(false, false, "Enter")
             key("Emoji").performClick()
             val oldReturn = key("Return from emoji to letters")
             typing.reset(false, false, "Enter", allowEmoji = false)
             oldReturn.performClick()
-            assertFalse(key("Emoji unavailable in raw input").isEnabled)
+            assertFalse(key("Emoji").isEnabled)
             assertTrue(inserted.isEmpty())
         }
     }

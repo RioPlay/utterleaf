@@ -38,7 +38,7 @@ class AlternatePanelTest {
     @Test fun tapRouteAndCancelNeedNoLongPress() = instrumentation.runOnMainSync {
         val inserted = mutableListOf<String>(); val panel = panel(inserted, false)
         assertNull((key(panel, "a") as HintedKey).secondaryHint)
-        key(panel, "Keyboard tools").performClick()
+        key(panel, "Emoji").performLongClick()
         key(panel, "Accents and alternate characters").performClick()
         key(panel, "n").performClick()
         key(panel, "ñ").performClick()

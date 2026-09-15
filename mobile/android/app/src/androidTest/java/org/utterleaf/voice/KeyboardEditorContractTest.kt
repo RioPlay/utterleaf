@@ -55,6 +55,18 @@ class KeyboardEditorContractTest {
         }
         throw AssertionError("Could not press $label")
     }
+    private fun longPress(label: String) {
+        await("Missing $label") { key(label)?.isEnabled == true }
+        val deadline = android.os.SystemClock.elapsedRealtime() + 2_000
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            if (key(label)?.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK) == true) {
+                instrumentation.waitForIdleSync()
+                return
+            }
+            Thread.sleep(50)
+        }
+        throw AssertionError("Could not long press $label")
+    }
     private fun launch(options: Int, raw: Boolean = false, multiline: Boolean = false): KeyboardEditorContractActivity {
         val activity = instrumentation.startActivitySync(Intent(app, KeyboardEditorContractActivity::class.java)
             .putExtra("ime_options", options).putExtra("raw", raw).putExtra("multiline", multiline)
@@ -84,7 +96,7 @@ class KeyboardEditorContractTest {
                 this.flags = flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
             }
             shell("ime enable $id"); shell("ime set $id")
-            options.copy(terminal = true).save(app)
+            options.copy(extraKeys = true).save(app)
             await("Typing IME was not selected") { Settings.Secure.getString(app.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) == id }
             block()
         }
@@ -106,9 +118,9 @@ class KeyboardEditorContractTest {
                 press("Delete"); await("Unicode delete failed") { main { text.editor.text.toString() == expected } }
             }
             main { text.editor.setText("😀x"); text.editor.setSelection(0) }
-            press("Keyboard tools"); press("Edit actions"); press("Delete to right")
+            press("Extra keys"); press("Forward delete")
             await("Forward delete did not remove supplementary Unicode") { main { text.editor.text.toString() == "x" } }
-            press("Close edit actions")
+            press("Extra keys")
         } finally { close(text) }
         for ((options, label, expectedAction) in listOf(
             Triple(EditorInfo.IME_ACTION_GO, "Go", EditorInfo.IME_ACTION_GO), Triple(EditorInfo.IME_ACTION_SEARCH, "Search", EditorInfo.IME_ACTION_SEARCH),
@@ -135,9 +147,8 @@ class KeyboardEditorContractTest {
         val activity = launch(EditorInfo.IME_ACTION_DONE)
         try {
             main { activity.editor.setText("alpha beta"); activity.editor.setSelection(activity.editor.length()) }
-            press("Keyboard tools")
-            press("Edit actions")
-            press("Select text")
+            longPress("Emoji")
+            longPress("Select all text")
             await("Neighboring word was not selected") {
                 main {
                     val start = minOf(activity.editor.selectionStart, activity.editor.selectionEnd)
@@ -145,7 +156,7 @@ class KeyboardEditorContractTest {
                     activity.editor.text.toString() == "alpha beta" && start == 6 && end == 10
                 }
             }
-            press("Select all")
+            press("Select all text")
             await("Select all did not apply") {
                 main { activity.editor.selectionStart == 0 && activity.editor.selectionEnd == 10 }
             }
@@ -156,6 +167,7 @@ class KeyboardEditorContractTest {
         val activity = launch(EditorInfo.IME_ACTION_DONE)
         try {
             main { activity.editor.setText("one two three"); activity.editor.setSelection(activity.editor.length()) }
+            press("Extra keys")
             press("Control off")
             press("Shift off")
             press("Left arrow")

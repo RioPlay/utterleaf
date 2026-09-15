@@ -1,4 +1,4 @@
-package org.utterleaf.voice
+﻿package org.utterleaf.voice
 
 import android.graphics.Rect
 import android.os.SystemClock
@@ -66,15 +66,13 @@ class PrivateDraftPanelTest {
 
                 key(panel, "a").performClick()
                 key(panel, "b").performClick()
-                key(panel, "Edit actions").performClick()
-                key(panel, "Move cursor left").performClick()
-                key(panel, "Close edit actions").performClick()
+                key(panel, "Extra keys").performClick()
+                key(panel, "Left arrow").performClick()
+                key(panel, "Extra keys").performClick()
                 key(panel, "Delete").performClick()
-                key(panel, "Edit actions").performClick()
                 key(panel, "Undo").performClick()
                 assertEquals("ab", editor(panel).text.toString())
                 assertTrue(attempts.isEmpty())
-                key(panel, "Close edit actions").performClick()
                 key(panel, "Emoji").performClick()
             }
 
@@ -146,10 +144,8 @@ class PrivateDraftPanelTest {
             assertEquals("", editor(panel).text.toString())
             assertFalse(key(panel, "Insert private draft").isEnabled)
             key(panel, "Keyboard tools").performClick()
-            key(panel, "Return to typing").performClick()
-            key(panel, "Edit actions").performClick()
+            key(panel, "Close tools and settings").performClick()
             assertFalse(key(panel, "Undo").isEnabled)
-            key(panel, "Close edit actions").performClick()
             staleLetter.performClick()
             val discard = key(panel, "Discard private draft")
             val insert = key(panel, "Insert private draft")
@@ -204,3 +200,4 @@ class PrivateDraftPanelTest {
         }
     }
 }
+

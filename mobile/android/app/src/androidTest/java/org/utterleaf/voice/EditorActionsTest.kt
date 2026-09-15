@@ -58,24 +58,24 @@ class EditorActionsTest {
             instrumentation.runOnMainSync {
                 fun views() = descendants(activity.window.decorView)
                 fun key(description: String) = views().filterIsInstance<Button>().single { it.contentDescription == description }
-                val editor = views().filterIsInstance<EditText>().single()
+                views().single { (it.contentDescription as? String)?.startsWith("Layout & size") == true }.performClick()
+                val editor = views().filterIsInstance<EditText>()
+                    .single { it.hint == "Practice typing here" }
                 editor.setText("cat"); editor.setSelection(3)
                 key("s").performClick()
                 assertEquals("cats", editor.text.toString())
-                key("Edit actions").performClick()
-                assertFalse(views().filterIsInstance<Button>().any { it.contentDescription == "a" })
                 key("Undo").performClick(); assertEquals("cat", editor.text.toString())
                 key("Redo").performClick(); assertEquals("cats", editor.text.toString())
-                key("Select all").performClick()
+                key("Copy").performLongClick()
                 assertEquals(0, editor.selectionStart); assertEquals(4, editor.selectionEnd)
-                key("Copy").performClick(); key("Select all").performClick(); key("Cut").performClick()
+                key("Copy").performClick(); key("Copy").performLongClick(); key("Cut").performClick()
                 assertEquals("", editor.text.toString())
                 key("Paste").performClick(); assertEquals("cats", editor.text.toString())
                 val stale = key("Cut")
-                key("Close edit actions").performClick()
+                key("Extra keys").performClick()
                 editor.selectAll(); stale.performClick()
                 assertEquals("cats", editor.text.toString())
-                key("Edit actions").performClick()
+                key("Extra keys").performClick()
                 check(context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0)
                 activity.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
             }
@@ -100,7 +100,9 @@ class EditorActionsTest {
     @Test fun actionPanelIsCompactAndReportsRejection() {
         instrumentation.runOnMainSync {
             val context = instrumentation.targetContext
-            val panel = TypingPanel(context, KeyboardOptions(), { true }, {}, {}, {}, {}, {}, {})
+            val attempts = mutableListOf<EditorAction>()
+            val panel = TypingPanel(context, KeyboardOptions(), { true }, {}, {}, {}, {}, {}, {},
+                editorAction = { attempts.add(it); false })
             fun key(description: String) = descendants(panel.view).filterIsInstance<Button>().single { it.contentDescription == description }
             fun height(): Int {
                 panel.view.measure(View.MeasureSpec.makeMeasureSpec(Ui.dp(context, 320), View.MeasureSpec.EXACTLY),
@@ -108,16 +110,15 @@ class EditorActionsTest {
                 return panel.view.measuredHeight
             }
             panel.reset(false, false, "Enter"); val typingHeight = height()
-            key("Edit actions").performClick()
-            assertTrue(height() <= typingHeight)
-            val actionHeight = height()
             key("Undo").performClick()
-            assertEquals("A refused action must not add a status row", actionHeight, height())
-            assertFalse(descendants(panel.view).filterIsInstance<android.widget.TextView>()
-                .any { it.text == "Key unavailable" && it.visibility == View.VISIBLE })
+            assertEquals("A refused action must not change the layout", typingHeight, height())
+            assertFalse("Refused actions must not add a status row",
+                descendants(panel.view).filterIsInstance<android.widget.TextView>()
+                    .any { it.text == "Key unavailable" && it.visibility == View.VISIBLE })
+            assertEquals(1, attempts.size)
             val stale = key("Paste")
             panel.reset(false, true, "Next"); stale.performClick()
-            assertFalse(descendants(panel.view).filterIsInstance<Button>().any { it.contentDescription == "Paste" })
+            assertEquals("A stale toolbar button must not act after reset", 1, attempts.size)
         }
     }
 }

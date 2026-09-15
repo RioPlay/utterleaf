@@ -26,19 +26,21 @@ object AlternateCharacters {
     )
 
     /** Returns the symbol/digit hint at this letter's position in the selected layout. */
-    fun hint(key: Char, layout: LetterLayout = LetterLayout.QWERTY): String? = layout.hint(key)
+    fun hint(key: Char, layout: LetterLayout = LetterLayout.QWERTY,
+        numberRowShown: Boolean = false): String? = layout.hint(key, numberRowShown)
 
     /**
      * Returns alternate strings in menu order: common Latin accents first,
      * followed by the key hint. Non-letters have no alternate catalog.
      */
-    fun choices(key: Char, uppercase: Boolean, layout: LetterLayout = LetterLayout.QWERTY): List<String> {
+    fun choices(key: Char, uppercase: Boolean, layout: LetterLayout = LetterLayout.QWERTY,
+        numberRowShown: Boolean = false): List<String> {
         val lower = key.lowercaseChar()
         if (lower !in 'a'..'z') return emptyList()
         val values = accents[lower].orEmpty().map { value ->
             if (uppercase && value.all(Char::isLetter)) value.uppercase(Locale.ROOT) else value
         }.distinct()
-        val hint = hint(lower, layout)
+        val hint = hint(lower, layout, numberRowShown)
         return (values.filterNot { it == hint }.take(9) + listOfNotNull(hint)).distinct()
     }
 }
