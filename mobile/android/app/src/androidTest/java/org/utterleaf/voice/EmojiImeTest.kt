@@ -59,6 +59,7 @@ class EmojiImeTest {
     }
 
     private fun findNode(description: String): AccessibilityNodeInfo? {
+        if (android.os.Build.VERSION.SDK_INT >= 34) instrumentation.uiAutomation.clearCache()
         fun find(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
             if (node.contentDescription?.toString() == description) return node
             for (index in 0 until node.childCount) node.getChild(index)?.let(::find)?.let { return it }
