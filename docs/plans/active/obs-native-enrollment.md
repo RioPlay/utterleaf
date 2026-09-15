@@ -2,9 +2,20 @@
 
 September 13, 2026. The proof/admission increment merged through PR #34 at
 `9260e6b`; [exact-source desktop CI](https://github.com/RioPlay/utterleaf/actions/runs/34754090586)
-passed all five required jobs at `d44126a`. Native and desktop source/evidence
-review is clear for that increment. Continue the selected stores below on
-`feat/obs-pairing-store`. No live OBS entry point exists.
+passed all five required jobs at `d44126a`. The private-store increment merged
+through PR #35 at exact source head `c7f86f6202ff9cd6acc647443b9d0ce768b6359b`,
+with merge `3bd072deb7f03952f42d5516ff3c5818e1ab53e8` at
+`2026-09-13T12:03:22Z`. Exact-head CI
+[34755748029](https://github.com/RioPlay/utterleaf/actions/runs/34755748029)
+passed all five desktop jobs; release publication was skipped. No live OBS
+entry point exists.
+
+On `feat/obs-enrollment-flow`, the typed desktop preparation adapter below now
+passes **341** focused tests, including **66** enrollment cases. Independent
+source and final test review are clear after the documented failure-path additions.
+The native owner, Tools flow and vendor registration are now linked bounded
+components; frontend/device and real OBS acceptance remain unverified. No
+installed release changes here.
 
 ## Goal and area
 
@@ -50,7 +61,7 @@ from independent enrollment and request verification, never callback arrival.
 - Preserve actual pipe-client process checks before the first Hello read and
   the existing single-use and cancellation behavior. Check native completion
   before destroying owned buffers; no detached workers.
-- Keep the module inert until its integration gates pass. Do not launch OBS,
+- Keep capture disabled until its integration gates pass. Do not launch OBS,
   install the plugin, change profiles/routing/recording or acquire microphone
   audio during primitive verification. No new binary publication follows here.
 
@@ -66,7 +77,9 @@ Desktop Settings imports this user-selected package into its own private store.
 Neither UI displays or copies the key. Removal of the transfer file is best-effort
 and visible; a copied package remains usable by its Windows user until plugin
 revocation. Forget pairing is separate from Reset defaults. The storage component
-below implements persistence; the app pairing flow is not exposed yet.
+below implements persistence; the desktop import/replace/forget flow is now
+exposed in the development source through the separate
+[pairing setup dialog](obs-desktop-pairing-ui.md).
 
 The capability proves possession, not executable identity. It does not protect
 against a compromised process under the same Windows user. DPAPI normally binds
@@ -97,7 +110,8 @@ canonical challenge. The client must validate every fixed field and match its
 own PID, session ID and requested mix mask before signing. Its existing native
 OBS server identity and password-authentication checks remain prerequisites.
 Vendor JSON will carry only strict fixed-length public encodings, never a key
-or the pipe Hello secret. The JSON adapter remains to be implemented.
+or the pipe Hello secret. The typed client adapter and strict native dispatch
+are implemented in the linked increment below; actual OBS acceptance remains open.
 
 A challenge lasts 15,000 milliseconds on the server's monotonic clock. A matching
 repeated issue request may retrieve it; a different request cannot replace it
@@ -163,6 +177,190 @@ Final independent source/evidence review is clear for this component. Its proof
 tests do not verify the later stores, app pairing flow, vendor JSON adapter,
 atomic Arm or actual OBS/audio integration. Storage evidence is recorded below.
 Existing desktop/Android binaries remain unchanged.
+
+### Enrollment workflow integration contract
+
+Continue on `feat/obs-enrollment-flow`. The area includes native pairing Tools,
+one per-user live owner, vendor dispatch, and the desktop control/setup flow.
+Keep the five existing Settings destinations; eventual OBS setup opens from
+Speech & privacy in its own window. No connection, import, preparation or
+restart may arm capture. Android and published desktop binaries are unchanged.
+
+The first desktop adapter adds `ObsControl.prepare_session(key,
+additional_mix_mask=0) -> bytes`: an explicit call generates its own fresh,
+nonzero 16-byte session and uses the actual caller PID. Accept only a nonzero
+32-byte `bytes`/`bytearray` capability and an exact integer mask from 0 through
+63 (not `bool`). One control connection permits one preparation attempt.
+The existing version/status request entry remains read-only; a separate narrow
+adapter sends only these fixed requests under vendor name `Utterleaf`:
+
+| Request | Exact request data | Exact successful response data |
+| --- | --- | --- |
+| `IssueAuthorization` | `clientPid`: integer 5–4294967295; `sessionId`: 32 lowercase hex characters, nonzero; `additionalMixMask`: integer 0–63 | `ok`: true; `protocolVersion`: integer 1; `challenge`: 120 lowercase hex characters |
+| `PrepareSession` | `challenge`: 120 lowercase hex characters; `proof`: 64 lowercase hex characters | `ok`: true; `protocolVersion`: integer 1 |
+
+The failure response is `{ "ok": false }`. Reject extra fields, incorrect types,
+noncanonical hex, versions and echoes. The outer `CallVendorRequest` response
+must contain exactly the matching `vendorName`, matching `requestType` and an
+object `responseData`, in addition to the existing matching OBS request ID/type
+and success-status checks. This envelope follows the pinned
+[OBS protocol](https://github.com/obsproject/obs-websocket/blob/1ef34bf48110c2a18184e50e41cd0b1a855e2147/docs/generated/protocol.md#callvendorrequest).
+Require `CallVendorRequest` in the advertised capabilities only when preparing;
+status-only connections remain compatible without the plugin.
+
+After receiving the challenge, revalidate the authenticated native peer
+immediately before calling the existing proof function, with no intervening
+network operation. That function validates every challenge field against the
+actual PID, fresh session and selected mask. Never put the capability or pipe
+Hello secret into JSON. Clear the adapter's owned mutable key on every exit;
+Python/OpenSSL erasure remains best-effort. Do not retain or log request secrets.
+Malformed, refused, mismatched, cancelled, timed-out or uncertain operations
+close the connection with no retry. A nonblocking reentrant operation lock
+serializes complete prepare/status/event/peer-lease operations; a second thread
+is rejected and closes the connection. Close itself remains able to interrupt I/O.
+
+Return only the client-created session ID after confirmed prepare success.
+The existing pipe client derives its fixed name from this ID and independently
+checks the server against the retained control-process lease; do not accept a
+response-selected pipe path or PID. Preparing does not connect the pipe, confirm
+handshake readiness, or establish an idle/armed state. A failed response may
+leave a native admission until its bounded server expiry; do not claim rollback.
+
+Acceptance: focused control, proof, transport, pairing/privacy/boundary checks;
+synthetic loopback request/response interoperability; independent review of the
+contract, diff and results. Verify invalid local inputs before any request,
+challenge binding and post-challenge identity failure before any proof is sent,
+strict replies, event ordering, cancellation, concurrent-operation rejection,
+fresh session generation, one attempt and no automatic capture or logging.
+Use scoped `PYTHONPATH` and `python -m pytest tests/test_obs_control_enrollment.py
+tests/test_obs_control.py tests/test_obs_authorization.py tests/test_obs_websocket.py
+tests/test_obs_audio_pipe.py tests/test_privacy.py tests/test_repo_boundaries.py
+-o addopts='' -q` from this worktree. Native ownership, callback shutdown,
+pairing Tools, bounded admission expiry, vendor dispatch, visible setup, atomic
+Arm and PCM still require their own integrated verification. Stop changing this
+adapter when its checks and review pass; continue that required native/UI work.
+
+Implementation verification on September 13: the exact nine-file focused pytest
+bundle (control enrollment, control, proof, WebSocket, audio pipe, pairing store,
+Windows pipe, privacy and repository boundaries) passes **341 tests, no skips,
+in 6.20 seconds**. The 66 enrollment cases include an actual ephemeral loopback
+WebSocket exchange and independent literal-domain HMAC validation. That server
+uses a stub for native process identity; it is not a running OBS instance.
+Existing native identity/pipe checks retain their separately recorded scope.
+Five real two-thread cases exercise overlap with preparation, status, event
+polling, lease retention and close; both success and post-proof failure observe
+the adapter's mutable key cleared. Schema/echo/binding failures, cancellation,
+terminal uncertainty, one attempt, fresh sessions and no payload logging pass.
+Independent source/test review found no source defect, requested the latter
+failure/concurrency checks and cleared their final implementation. No full package or native rebuild
+is warranted by this Python-only adapter; no app/UI entry is enabled yet.
+
+#### Selected native callback lifetime and ownership
+
+The public C frontend API has no Tools-item removal function. The pinned
+[vendor dispatcher](https://github.com/obsproject/obs-websocket/blob/1ef34bf48110c2a18184e50e41cd0b1a855e2147/src/WebSocketApi.cpp)
+copies a callback before releasing its mutex and invoking it; unregistering a
+request therefore does not establish callback quiescence. Keep the original C
+implementation and solve lifetime explicitly rather than freeing callback data
+after unregister alone.
+
+Before registering any callback, pin the module with
+[`GetModuleHandleExW(PIN | FROM_ADDRESS)`](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getmodulehandleexw),
+using an address of static module data. Failure refuses load. Claim a never-reset
+first-load latch and allow only one generation per OBS process; after shutdown
+the gate must never reopen. Windows keeps a pinned module resident until process
+termination. Plugin reload/update consequently requires restarting OBS.
+
+All callbacks receive static module state, never a heap-runtime pointer. That
+state holds a permanently initialized SRW lock, a phase and the runtime pointer.
+Callback entry checks the accepting phase while holding the lock before accessing
+runtime state. A file picker releases the lock without retaining borrowed runtime
+state, then reacquires and checks the phase before any commit. Return data is
+copied locally before calling OBS response APIs outside the gate. Closed Tools
+callbacks return; closed vendor callbacks return only `{ "ok": false }` without
+accessing runtime, frontend, stores or logging. Pinning protects our code/data,
+not OBS APIs after their own teardown.
+
+At `OBS_FRONTEND_EVENT_EXIT`, first disable vendor dispatch and close the runtime
+gate under the static lock, signaling only stable cancellation objects. Unregister
+requests before any joins. Then detach runtime, take its operation lock before
+accessing the mutable authorizer, revoke/cancel/join the worker and drain retained
+runtime leases before freeing the store, exclusive owner and runtime. This
+rejects callbacks copied earlier but invoked later. Do not remove the frontend callback from inside
+itself. The [frontend contract](https://github.com/obsproject/obs-studio/blob/ba2f32bdf791005443988a4955e963663e16b1ed/docs/sphinx/reference-frontend-api.rst)
+makes EXIT the final opportunity to call frontend APIs. Module unload is an
+idempotent native-resource fallback; if EXIT was missed, it must not call
+frontend or websocket unregister APIs whose teardown order is not established.
+No joins, dialogs or OBS/frontend calls occur under the static/authorizer lock.
+
+The live owner holds a verified noninheritable share-zero private file handle
+at `Utterleaf/obs-plugin/owner-v1.lock` beneath LocalAppData until teardown.
+Validate path/locality/DACL through the existing store boundary; do not duplicate
+a weaker path-only check. A second OBS process cannot install an authorizer or
+dispatch privileged requests. A crash releases the handle; the inert lock file
+may remain. Creating/replacing/forgetting pairing suspends dispatch and uses the
+same owner. Forget always revokes the live generation, including deletion failure;
+report nondurable deletion failure distinctly.
+
+These constraints are implemented with the bounded fixture evidence below;
+real OBS interaction remains unverified. Acceptance must simulate a copied callback after close, overlapping close and
+dispatch, failed pin, second load, missing EXIT, in-flight worker cancellation,
+and a second actual Windows process competing for ownership. A joinable worker
+must also expire a prepared admission without depending on another incoming
+request. Finalize that bounded handshake/READY lifetime before exposing Prepare;
+the full Arm/PCM state machine remains required.
+
+### Linked native integration verification
+
+The native increment links `plugin_state`, `pairing_ui`, `vendor_dispatch`, stores,
+authorization and admission into the original module. It adds a single native
+Tools entry and a common-controls manifest. Both vendor endpoints remain disabled
+until both registrations succeed. Failed rollback unregister retains its flag
+for EXIT retry, while the disabled gate refuses copied callbacks. Unload only
+disables native dispatch and closes state; it makes no frontend/websocket calls.
+
+Replacement commits the store before retiring the old generation. A precommit
+failure preserves its exact authorizer, challenge and worker; postcommit store
+uncertainty or failed authorizer activation leaves pairing unavailable. The UI
+distinguishes these from a successful pairing whose export failed. Forget revokes
+before attempting deletion and reports nondurable failure. Informational dialogs
+use Close, while file selection/confirmations can cancel before mutation.
+UI rendering, keyboard/accessibility interaction and real frontend load still
+require acceptance.
+
+One joinable admission worker bounds authentication to 15 seconds and READY
+retention to at most another 15 seconds, then cancels without further requests.
+A completed worker handle and one canceled admission can remain until the next
+state call or close safely reaps them. `admission_pending=false` describes the
+worker, not zero retained handles or a closed pipe handle. No PCM or Arm exists.
+
+The September 13 driver at `.grok/obs-enrollment-flow/native-final/test-receipt.json`
+passes all **28 compilation/test commands**, including real Windows owner-process
+competition, controlled pin/reload/missing-EXIT/worker cases, close overlapping
+an in-flight Issue call, and the bridge wrapper's registration/teardown failure
+paths. Six parsed-request tests use actual libobs data APIs with a substituted
+runtime boundary and no OBS startup. They cannot verify duplicate/null JSON
+fields that libobs parsing discards. The receipt binds native/client sources,
+compiler, logs/artifacts, pinned headers and the associated build inputs.
+Three existing test-only heap-shim link warnings remain; production compiles
+with warnings as errors.
+
+The linked build uses 41 verified public resources. Its DLL SHA-256 is
+`b029401c1f5da71bf3c27c7dce084aa9c183d8ce8366f2ad1907c1447fe871cf`.
+`build-a/smoke-receipt.json` verifies headless refusal before store startup,
+returned libobs shutdown and unchanged metadata for the three fixed consumer
+store nodes; no contents are read, consumer paths created or OBS application/audio
+started. The exact build/test commands are in the native README. These are local
+fixture results, not successful frontend initialization or live OBS acceptance.
+Final independent source/test/documentation and receipt review is clear. The
+reviewer rehashed build inputs/outputs, both OBS runtimes, invoked tools, smoke
+inputs, native/client sources, dispatch inputs and all test artifacts/logs against
+the current files. All five desktop CI jobs passed for the linked native checkpoint `15e1c77` in
+[34758907354](https://github.com/RioPlay/utterleaf/actions/runs/34758907354).
+The draft PR does not establish actual OBS frontend or live-audio acceptance.
+The [desktop pairing setup follow-up](obs-desktop-pairing-ui.md) records its own
+new source, owner/UI checks and isolated native TaskDialog acceptance; that later
+work is not covered by the earlier CI run.
 
 ### Private pairing stores: contract
 
@@ -322,10 +520,15 @@ refuses to follow reparse entries and reports cleanup failures.
 Normal native translation units compile with warnings as errors; standalone
 native static analysis also passes. The existing test-only heap shim retains
 its three documented local-import warnings. Independent production-source and
-test and final receipt review is clear. These results do not
+test and final receipt review is clear. The local evidence records 22 native
+commands, 57 source/artifact hashes, five interop cases and five store
+state/fault groups; three known warnings are isolated to the test heap shim.
+Exact receipts are `.grok/obs-pairing-store/verification/test-receipt.json` and
+`.grok/obs-pairing-store/ci-34755748029/receipt.json`. These results do not
 verify different-user DPAPI behavior, power-loss durability, consumer pairing
-UI, real OBS dispatch, durable live-authorizer revocation or audio. No components
-are linked into the inert module and no binary is published by this increment.
+UI, real OBS dispatch, durable live-authorizer revocation or audio. These
+components are linked into the development module, but no binary is published
+by this increment and no live OBS/audio acceptance follows.
 
 ### Full enrollment checks
 
@@ -348,5 +551,5 @@ Do not expand into Android, custom speech models, theming, OBS routing changes
 or release packaging. Finish each reviewed component, then continue atomic
 idle-to-arm/start coordination and actual primary-mix/separate-bus PCM under the
 full [OBS design](obs-audio-design.md). The proof/admission component is integrated;
-implement the selected enrollment stores and user flow before exposing vendor
-handling.
+the private stores are integrated through PR #35. Complete the selected native
+ownership and user flow before exposing vendor handling.

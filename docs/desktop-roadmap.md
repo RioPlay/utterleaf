@@ -104,14 +104,14 @@ audio delivery after TCP loss and wrong-process rejection with zero secret bytes
 received. This checks the originally attributed process and current path/file
 identity; it is not historical loaded-image attestation.
 
-There is no app entry point. Actual OBS enrollment, the original server plugin's
+There is no live-capture app entry point. Actual OBS enrollment, the original server plugin's
 restrictive DACL/client authentication, atomic arming/start coordination,
 controller/UI, live recognition and streaming-load acceptance remain open.
-The original C-only [development module](../native/obs-plugin/README.md) now
-builds against 39 verified OBS 32.2.2 public resources. It opens, initializes and
-unloads through the installed libobs runtime in an isolated fixture without
-starting the OBS application or creating audio sources. This establishes only
-the inert build/load prerequisite, merged through PR #32 at `e61c7dd`.
+The original C-only [development module](../native/obs-plugin/README.md) first
+established the inert build/load prerequisite through PR #32 at `e61c7dd`.
+The current linked module builds against 41 pinned OBS/frontend/vendor public
+resources and deliberately refuses headless initialization before opening its
+pairing store. The isolated fixture starts no OBS application or audio sources.
 The separate [native session components](plans/active/obs-native-session.md) now
 pass fixed Hello/ACK and CNG-failure checks, 11 actual child-process transport
 tests, current-logon DACL/noninheritance checks and 64 create/destroy handle
@@ -119,22 +119,27 @@ balance cycles. A focused desktop boundary/pipe regression passes 54 tests.
 Independent admission source/test/evidence review is clear; PR #33 merged at
 `006d482` after all five exact-source desktop CI jobs passed. The next
 [enrollment step](plans/active/obs-native-enrollment.md) accounts for the public
-vendor API's lack of caller authentication context. These components are not
-linked into the module; vendor authorization/enrollment, atomic arming and PCM capture remain
-unimplemented. The enrollment branch now implements independent capability
+vendor API's lack of caller authentication context. That earlier increment kept
+the session components separate; the current linked increment is described below.
+The enrollment branch implements independent capability
 proof and native admission ownership: 30 client tests, 10 native child-process
 cases and six state/fault groups pass, including expiry, replay, revocation and
 concurrent preparation. The focused desktop regression passes 177 tests; final
-independent source/evidence review is clear. Pairing-file UI and the vendor
-adapter remain to be implemented before any app entry point is exposed.
+independent source/evidence review is clear. These historical component checks
+precede the native pairing/vendor integration described below.
 PR #34 merged at `9260e6b` after all five
 [exact-source desktop CI jobs](https://github.com/RioPlay/utterleaf/actions/runs/34754090586)
-passed at `d44126a`. The `feat/obs-pairing-store` increment now implements the
+passed at `d44126a`. The `feat/obs-pairing-store` increment, merged through
+PR #35 at `3bd072d` from exact source head `c7f86f6`, now implements the
 selected CurrentUser DPAPI package, separate native/desktop stores, native export,
 explicit desktop import/replacement and separate forget behavior. The first
-local regression passes 292 tests, including 48 pairing cases, plus the native
-store state/fault and five cross-language checks, including an actual junction.
-Independent source/test and final receipt review is clear.
+local regression passes 292 tests, including 48 pairing cases, plus 22 native
+verification commands, 57 source/artifact hashes, five interop cases and five
+store state/fault groups, including an actual junction. Exact-head CI
+[34755748029](https://github.com/RioPlay/utterleaf/actions/runs/34755748029)
+passes all five desktop jobs; release publication was skipped. Independent
+source/test and final receipt review is clear. Three known warnings remain
+isolated to the test heap shim.
 The enrollment plan distinguishes these
 storage results from pending UI, live revocation, vendor and audio integration.
 Cross-user/logon, remote clients, forced PID reuse and kernel
@@ -144,6 +149,38 @@ binary is included in desktop or Android releases. The
 [build plan](plans/active/obs-plugin-build.md) retains the complete native gates. The
 [control dependency record](desktop-obs-control-resource.md) records the pinned
 library, reviewed full license and development-wheel provenance.
+
+Continue on `feat/obs-enrollment-flow` with frontend acceptance and the desktop
+connection/controller after the pairing setup increment. Arm/PCM and live
+recognition remain later gates. No live-capture app entry point, audio endpoint, plugin binary
+publication or OBS capture integration exists yet.
+
+The linked native pairing Tools flow, exclusive per-user owner and strict
+vendor Issue/Prepare dispatch are now present in the development module.
+All 28 native driver commands pass, including lifecycle/dispatch races, actual
+owner competition, shimmed bridge lifecycle and six real-libobs parser cases.
+The linked DLL builds and headless refusal passes with unchanged fixed-store
+metadata. Frontend UI interaction and real OBS acceptance remain unverified.
+The typed desktop adapter sends only the defined Utterleaf Issue/Prepare
+requests after explicit invocation, verifies challenge binding and the OBS peer
+before proof, and rejects concurrent operations. The focused bundle passes
+**341 tests with no skips**, including **66** enrollment tests and an ephemeral
+loopback exchange. Independent source review is clear; native identity is stubbed
+in that new exchange fixture. This prepares a session ID and does not connect
+the audio pipe or arm capture. Native owner/UI/vendor integration remains
+unverified for real OBS/device acceptance.
+
+The [desktop pairing dialog](plans/active/obs-desktop-pairing-ui.md) now opens from
+Speech & privacy on Windows, with explicit import/replace/forget, a separate
+per-user store owner and asynchronous cancellation/teardown. Saved status never
+claims an OBS connection. The related bundle passes 204 tests; all 23 UI cases
+pass after the final status-card adjustment. Native TaskDialog activation,
+Escape, modal cleanup and zero-mutation checks also pass in an isolated fixture;
+all 29 native driver commands pass with `--ui`. Normal/compact/enlarged desktop
+renders were inspected. Independent final desktop setup review is clear, with
+29 focused and 187 related tests rerun on the final source. Its own CI remains
+pending; no existing release changes. Earlier linked checkpoint `15e1c77` passed
+all five desktop CI jobs in [34758907354](https://github.com/RioPlay/utterleaf/actions/runs/34758907354).
 
 Current integrated desktop regression: **1,432 passed, 13 skipped in 39.47 seconds**,
 including the reviewed OBS control, native identity, pipe and audio handshake.

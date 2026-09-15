@@ -274,6 +274,9 @@ static int cleanup_root(const wchar_t *root)
     swprintf(path, MAX_PATH, L"%ls\\Utterleaf\\obs-plugin\\pairing-v1.dat",
              root);
     failures += delete_known_file(path);
+    swprintf(path, MAX_PATH, L"%ls\\Utterleaf\\obs-plugin\\owner-v1.lock",
+             root);
+    failures += delete_known_file(path);
     swprintf(path, MAX_PATH, L"%ls\\Utterleaf\\obs-plugin", root);
     leaf_attributes = GetFileAttributesW(path);
     if (leaf_attributes != INVALID_FILE_ATTRIBUTES &&
@@ -758,15 +761,141 @@ static int test_volume_and_reparse_refusal(void)
     return failures;
 }
 
-int main(void)
+static int owner_child(void)
+{
+    wchar_t root[MAX_PATH];
+    ul_pairing_store *store = NULL;
+    ul_pairing_result result;
+
+    SecureZeroMemory(root, sizeof(root));
+    if (GetEnvironmentVariableW(L"UL_PAIRING_OWNER_TEST_ROOT", root,
+                                MAX_PATH) == 0)
+        return 1;
+    result = ul_pairing_store_open_test_root(root, &store);
+    if (result != UL_PAIRING_OK || store == NULL)
+        return 1;
+    result = ul_pairing_store_claim_owner(store);
+    ul_pairing_store_destroy(store);
+    return result == UL_PAIRING_IN_USE ? 0 : 1;
+}
+
+static int test_owner_claim(void)
+{
+    wchar_t root[MAX_PATH];
+    wchar_t executable[MAX_PATH];
+    wchar_t command[MAX_PATH + 32];
+    STARTUPINFOW startup;
+    PROCESS_INFORMATION process;
+    ul_pairing_store *store = NULL;
+    ul_pairing_store *successor = NULL;
+    ul_pairing_store *invalid = NULL;
+    HANDLE owner_file = INVALID_HANDLE_VALUE;
+    BYTE marker = 1;
+    DWORD written = 0;
+    DWORD flags = HANDLE_FLAG_INHERIT;
+    DWORD exit_code = 1;
+    DWORD wait_result;
+    int failures = 0;
+
+    SecureZeroMemory(root, sizeof(root));
+    SecureZeroMemory(executable, sizeof(executable));
+    SecureZeroMemory(command, sizeof(command));
+    SecureZeroMemory(&startup, sizeof(startup));
+    SecureZeroMemory(&process, sizeof(process));
+    startup.cb = sizeof(startup);
+    failures += check(make_root(root), "create owner root");
+    if (failures != 0)
+        return failures;
+    failures += check(ul_pairing_store_open_test_root(root, &store) ==
+                          UL_PAIRING_OK &&
+                          store != NULL,
+                      "open owner store");
+    if (store == NULL) {
+        failures += cleanup_root(root);
+        return failures;
+    }
+    failures += check(ul_pairing_store_claim_owner(store) == UL_PAIRING_OK,
+                      "claim owner");
+    failures += check(ul_pairing_store_claim_owner(store) == UL_PAIRING_OK,
+                      "owner claim idempotent");
+    failures += check(store->owner != INVALID_HANDLE_VALUE &&
+                          verify_private_security(store->owner,
+                                                  store->user_sid) ==
+                              UL_PAIRING_OK,
+                      "owner lock private ACL");
+    failures += check(GetHandleInformation(store->owner, &flags) &&
+                          (flags & HANDLE_FLAG_INHERIT) == 0,
+                      "owner lock handle noninheritable");
+    failures += check(GetModuleFileNameW(NULL, executable, MAX_PATH) > 0,
+                      "locate owner test executable");
+    failures += check(SetEnvironmentVariableW(L"UL_PAIRING_OWNER_TEST_ROOT",
+                                               root),
+                      "publish owner child root");
+    if (_snwprintf(command, MAX_PATH + 32, L"\"%ls\" --owner-child",
+                   executable) < 0)
+        failures += check(false, "build owner child command");
+    if (failures == 0)
+        failures += check(CreateProcessW(executable, command, NULL, NULL,
+                                         FALSE, 0, NULL, NULL, &startup,
+                                         &process),
+                          "start competing owner process");
+    (void)SetEnvironmentVariableW(L"UL_PAIRING_OWNER_TEST_ROOT", NULL);
+    if (process.hProcess != NULL) {
+        wait_result = WaitForSingleObject(process.hProcess, 5000);
+        if (wait_result != WAIT_OBJECT_0)
+            ExitProcess(1);
+        failures += check(GetExitCodeProcess(process.hProcess, &exit_code) &&
+                              exit_code == 0,
+                          "other process observes store in use");
+        CloseHandle(process.hThread);
+        CloseHandle(process.hProcess);
+    }
+    ul_pairing_store_destroy(store);
+    store = NULL;
+    failures += check(ul_pairing_store_open_test_root(root, &successor) ==
+                          UL_PAIRING_OK &&
+                          successor != NULL &&
+                          ul_pairing_store_claim_owner(successor) ==
+                              UL_PAIRING_OK,
+                      "owner released at destroy");
+    ul_pairing_store_destroy(successor);
+    successor = NULL;
+    swprintf(command, MAX_PATH + 32,
+             L"%ls\\Utterleaf\\obs-plugin\\owner-v1.lock", root);
+    owner_file = CreateFileW(command, GENERIC_WRITE, 0, NULL, OPEN_EXISTING,
+                             FILE_ATTRIBUTE_NORMAL |
+                                 FILE_FLAG_OPEN_REPARSE_POINT,
+                             NULL);
+    failures += check(owner_file != INVALID_HANDLE_VALUE &&
+                          WriteFile(owner_file, &marker, sizeof(marker),
+                                    &written, NULL) &&
+                          written == sizeof(marker),
+                      "make invalid nonempty owner file");
+    if (owner_file != INVALID_HANDLE_VALUE)
+        CloseHandle(owner_file);
+    failures += check(ul_pairing_store_open_test_root(root, &invalid) ==
+                          UL_PAIRING_OK &&
+                          invalid != NULL &&
+                          ul_pairing_store_claim_owner(invalid) ==
+                              UL_PAIRING_UNSAFE_SECURITY,
+                      "nonempty owner file refused");
+    ul_pairing_store_destroy(invalid);
+    failures += cleanup_root(root);
+    return failures;
+}
+
+int main(int argc, char **argv)
 {
     int failures = 0;
 
+    if (argc == 2 && strcmp(argv[1], "--owner-child") == 0)
+        return owner_child();
     failures += test_round_trip_and_security();
     failures += test_cancel_and_faults();
     failures += test_corruption_and_refusal();
     failures += test_codec_strictness();
     failures += test_volume_and_reparse_refusal();
+    failures += test_owner_claim();
     if (failures == 0)
         puts("pairing store tests passed");
     return failures == 0 ? 0 : 1;

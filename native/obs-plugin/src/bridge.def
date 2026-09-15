@@ -1,6 +1,7 @@
 LIBRARY utterleaf-obs-bridge
 EXPORTS
     obs_module_load
+    obs_module_post_load
     obs_module_unload
     obs_module_set_pointer
     obs_module_ver
