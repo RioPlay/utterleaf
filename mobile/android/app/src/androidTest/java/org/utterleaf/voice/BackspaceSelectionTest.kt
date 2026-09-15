@@ -83,12 +83,16 @@ class BackspaceSelectionTest {
             .putExtra("ime_options", EditorInfo.IME_ACTION_DONE).putExtra("password", password).putExtra("raw", raw)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as KeyboardEditorContractActivity
         val manager = app.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        // A cold CI emulator can hand out window focus late; nudge the activity
-        // until the window actually reports focus.
-        await("editor focus") {
-            if (!activity.hasWindowFocus()) activity.editor.requestFocus()
-            activity.hasWindowFocus()
+        // The first activity launch on a cold CI emulator can wait for window
+        // focus; nudge on the main thread until the window reports it.
+        val focusDeadline = android.os.SystemClock.elapsedRealtime() + 20_000
+        var focused = false
+        while (!focused && android.os.SystemClock.elapsedRealtime() < focusDeadline) {
+            focused = main { activity.hasWindowFocus() }
+            if (!focused) main { activity.editor.requestFocus() }
+            Thread.sleep(100)
         }
+        check(focused) { "editor focus" }
         main { activity.editor.requestFocus(); manager.showSoftInput(activity.editor, 0) }
         await("keyboard") { key("Delete") != null }; return activity
     }
