@@ -34,6 +34,8 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - name: Install SDK 36 build tools
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - name: Verify Gradle 8.13 toolchain

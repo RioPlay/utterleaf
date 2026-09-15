@@ -73,27 +73,29 @@ class PrivateTypingPanelTest {
             key(panel, "Done").performClick()
             key(panel, "Keyboard tools").performClick()
             val tools = descriptions(panel)
-            assertTrue(listOf("Caps lock off", "Move cursor left", "Move cursor right",
-                "Accents and alternate characters", "Select text", "Delete to right",
-                "Go to beginning", "Go to end").all { it in tools })
+            assertTrue(listOf("Caps lock off", "Edit actions", "Accents and alternate characters").all { it in tools })
             assertForbiddenControlsAbsent(tools)
+            key(panel, "Edit actions").performClick()
             key(panel, "Move cursor left").performClick()
             key(panel, "Move cursor right").performClick()
             key(panel, "Delete to right").performClick()
-            key(panel, "Go to beginning").performClick()
-            key(panel, "Go to end").performClick()
+            key(panel, "Home").performClick()
+            key(panel, "End").performClick()
+            key(panel, "Close edit actions").performClick()
+            key(panel, "Keyboard tools").performClick()
             key(panel, "Caps lock off").performClick()
             key(panel, "A").performClick()
+            key(panel, "Keyboard tools").performClick()
             key(panel, "Caps lock on").performClick()
             val alternate = AlternateCharacters.choices('a', false, LetterLayout.AZERTY).first()
+            key(panel, "Keyboard tools").performClick()
             key(panel, "Accents and alternate characters").performClick()
             key(panel, "a").performClick()
             key(panel, alternate).performClick()
-            key(panel, "Keyboard tools").performClick()
+            key(panel, "Edit actions").performClick()
             key(panel, "Select text").performClick()
             key(panel, "Move cursor left").performClick()
-
-            key(panel, "Return to typing").performClick()
+            key(panel, "Close edit actions").performClick()
             key(panel, "Edit actions").performClick()
             assertFalse(descriptions(panel).any { it in setOf("Cut", "Copy", "Paste") })
             val undo = key(panel, "Undo")
@@ -117,12 +119,15 @@ class PrivateTypingPanelTest {
             assertEquals(listOf("a", "A", alternate), inserted)
             assertEquals(1, eraseCalls)
             assertEquals(1, enterCalls)
-            assertEquals(listOf(true, false), moves)
+            assertTrue(moves.isEmpty())
             assertEquals(listOf(
+                listOf(KeyEvent.KEYCODE_DPAD_LEFT, false, false, false),
+                listOf(KeyEvent.KEYCODE_DPAD_RIGHT, false, false, false),
                 listOf(KeyEvent.KEYCODE_FORWARD_DEL, false, false, false),
                 listOf(KeyEvent.KEYCODE_MOVE_HOME, false, false, false),
                 listOf(KeyEvent.KEYCODE_MOVE_END, false, false, false),
-                listOf(KeyEvent.KEYCODE_DPAD_LEFT, false, false, true)), specialKeys)
+                listOf(KeyEvent.KEYCODE_DPAD_LEFT, true, false, true),
+                listOf(KeyEvent.KEYCODE_DPAD_LEFT, false, false, false)), specialKeys)
             assertEquals(listOf(EditorAction.SELECT_ALL, EditorAction.UNDO, EditorAction.REDO), actions)
             assertTrue(modified.isEmpty())
             assertEquals(0, dictateCalls)

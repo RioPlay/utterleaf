@@ -66,10 +66,10 @@ class PrivateDraftPanelTest {
 
                 key(panel, "a").performClick()
                 key(panel, "b").performClick()
-                key(panel, "Keyboard tools").performClick()
+                key(panel, "Edit actions").performClick()
                 key(panel, "Move cursor left").performClick()
+                key(panel, "Close edit actions").performClick()
                 key(panel, "Delete").performClick()
-                key(panel, "Return to typing").performClick()
                 key(panel, "Edit actions").performClick()
                 key(panel, "Undo").performClick()
                 assertEquals("ab", editor(panel).text.toString())

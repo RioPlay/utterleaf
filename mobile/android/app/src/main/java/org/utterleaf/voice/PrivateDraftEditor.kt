@@ -152,13 +152,13 @@ class PrivateDraftEditor(
     }
 
     /** Handles the navigation and forward-delete keys exposed by the restricted keyboard. */
-    fun navigate(keyCode: Int, select: Boolean = false): Boolean {
+    fun navigate(keyCode: Int, select: Boolean = false, word: Boolean = false): Boolean {
         if (disposed) return false
         if (keyCode == KeyEvent.KEYCODE_FORWARD_DEL) return eraseForward()
         val state = buffer.current
         val anchor = state.selectionStart
         val extent = state.selectionEnd
-        val destination = destination(state.text, anchor, extent, keyCode, select) ?: return false
+        val destination = destination(state.text, anchor, extent, keyCode, select, word) ?: return false
         return mutate { buffer.setSelection(if (select) anchor else destination, destination) }
     }
 
@@ -213,13 +213,16 @@ class PrivateDraftEditor(
         }
     }
 
-    private fun destination(text: String, anchor: Int, extent: Int, keyCode: Int, select: Boolean): Int? {
+    private fun destination(text: String, anchor: Int, extent: Int, keyCode: Int, select: Boolean, word: Boolean): Int? {
         if (!select && anchor != extent) {
             return when (keyCode) {
                 KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_MOVE_HOME -> minOf(anchor, extent)
                 KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_MOVE_END -> maxOf(anchor, extent)
                 else -> null
             }
+        }
+        if (word && keyCode in listOf(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT)) {
+            return if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) previousWord(text, extent) else nextWord(text, extent)
         }
         return when (keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT -> if (extent == 0) 0 else Character.offsetByCodePoints(text, extent, -1)
@@ -230,6 +233,30 @@ class PrivateDraftEditor(
             KeyEvent.KEYCODE_DPAD_DOWN -> vertical(text, extent, 1)
             else -> null
         }
+    }
+
+    private fun isWordCodePoint(codePoint: Int) = Character.isLetterOrDigit(codePoint) || codePoint == '_'.code
+
+    private fun previousWord(text: String, offset: Int): Int {
+        var index = offset.coerceIn(0, text.length)
+        while (index > 0 && Character.isWhitespace(text.codePointBefore(index))) {
+            index = Character.offsetByCodePoints(text, index, -1)
+        }
+        while (index > 0 && isWordCodePoint(text.codePointBefore(index))) {
+            index = Character.offsetByCodePoints(text, index, -1)
+        }
+        return index
+    }
+
+    private fun nextWord(text: String, offset: Int): Int {
+        var index = offset.coerceIn(0, text.length)
+        while (index < text.length && isWordCodePoint(text.codePointAt(index))) {
+            index = Character.offsetByCodePoints(text, index, 1)
+        }
+        while (index < text.length && Character.isWhitespace(text.codePointAt(index))) {
+            index = Character.offsetByCodePoints(text, index, 1)
+        }
+        return index
     }
 
     private fun lineStart(text: String, offset: Int): Int =

@@ -643,7 +643,9 @@ class BackspaceSelectionTest {
             await("Keyboard did not return for terminal toggle") { key("Delete") != null }
             press("Keyboard tools")
             press("Terminal controls off")
-            await("Terminal toggle did not update in place") { key("Terminal controls on") != null }
+            await("Terminal toggle did not reveal its accessory keys") {
+                key("Control off") != null && key("Left arrow") != null && key("Delete") != null
+            }
             val button = liveDelete()
             val x = main { button.width - 4f }; val y = main { button.height / 2f }
             val step = main { maxOf(ViewConfiguration.get(button.context).scaledTouchSlop,

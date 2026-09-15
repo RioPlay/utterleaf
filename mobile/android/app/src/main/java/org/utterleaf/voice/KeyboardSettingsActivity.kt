@@ -57,12 +57,8 @@ class KeyboardSettingsActivity : Activity() {
                 { TerminalInput.printable(practiceConnection(generation), "\n") },
                 { left -> TerminalInput.send(practiceConnection(generation), if (left) android.view.KeyEvent.KEYCODE_DPAD_LEFT else android.view.KeyEvent.KEYCODE_DPAD_RIGHT) },
                 {}, {}, {},
-                { code, ctrl, alt, shift -> if (shift && !ctrl && !alt && code in listOf(
-                    android.view.KeyEvent.KEYCODE_DPAD_LEFT, android.view.KeyEvent.KEYCODE_DPAD_RIGHT,
-                    android.view.KeyEvent.KEYCODE_DPAD_UP, android.view.KeyEvent.KEYCODE_DPAD_DOWN,
-                    android.view.KeyEvent.KEYCODE_MOVE_HOME, android.view.KeyEvent.KEYCODE_MOVE_END))
-                        TerminalInput.select(practiceConnection(generation), code)
-                    else TerminalInput.send(practiceConnection(generation), code, ctrl, alt, shift) },
+                { code, ctrl, alt, shift ->
+                    TerminalInput.command(practiceConnection(generation), code, ctrl, alt, shift) },
                 { value, ctrl, alt -> TerminalInput.printable(practiceConnection(generation), value, ctrl, alt) },
                 quickOptionsChanged = { options = KeyboardOptions.load(this); render() },
                 editorAction = { command -> EditorActions.perform(practiceConnection(generation), command, practiceEditor.inputType) }).apply {

@@ -125,7 +125,7 @@ class PrivateDraftImeTest {
             manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
         }
         await("Typing keyboard did not appear") {
-            findNode(if (raw) "Emoji unavailable in raw input" else "Keyboard tools") != null
+            findNode("Keyboard tools") != null
         }
         return activity
     }

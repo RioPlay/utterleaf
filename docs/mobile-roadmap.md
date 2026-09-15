@@ -2,7 +2,7 @@
 
 [Roadmap hub](roadmap.md) · [Execution plan](execution-plan.md) · [Current mobile preview](mobile.md) · [Ideas](ideas.md)
 
-Updated September 13, 2026. Product direction: a complete, customizable Utterleaf
+Updated September 14, 2026. Product direction: a complete, customizable Utterleaf
 keyboard with integrated offline speech, its own identity, and security first.
 The design uses historical public documentation as research context, not as a
 specification, dependency or source of product identity.
@@ -27,6 +27,15 @@ correctness, daily ergonomics, language/repair and evaluated prediction/swipe.
 One-hand reach and visual polish can proceed alongside foundation work.
 
 ## Current status
+
+- **Alpha16 snapshot prepared, unpublished:** All Actions, spatial Edit pad,
+  neighboring-word Select, latched Ctrl/Alt and complete US punctuation are in
+  source at versionCode 16 / `0.1.0-alpha16`. Alpha15 remains the current signed
+  APK. Canonical CI, merge, tag and protected signing have not run. Physical-phone
+  and assistive-technology acceptance remain open. This does not add swipe
+  decoding, correction or toolbar customization. See the
+  [action organization contract](plans/active/android-action-organization.md)
+  and the [alpha16 snapshot plan](plans/active/android-alpha16-snapshot.md).
 
 - **Backspace selection gesture released in alpha15:**
   dragging left from Backspace previews a bounded editor-native or private-draft

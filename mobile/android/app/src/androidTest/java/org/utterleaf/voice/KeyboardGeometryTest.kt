@@ -120,6 +120,7 @@ class KeyboardGeometryTest {
         key(panel, "Navigation keys").performClick()
         verify { key(panel, "Left arrow").performClick() }
         key(panel, "Return to terminal letters").performClick()
+        key(panel, "Keyboard tools").performClick()
         key(panel, "Edit actions").performClick()
         verify { key(panel, "Copy").performClick() }
         verify { panel.reset(false, false, "Enter") }
@@ -345,7 +346,7 @@ class KeyboardGeometryTest {
                     assertKeysInColumn("$side-$state", sideLeft, sideRight)
                 }
                 press("Keyboard tools")
-                sideCapture("tools", listOf("Return to typing", "More keyboard tools", "Select all", "Space", "Done"))
+                sideCapture("tools", listOf("Return to typing", "Edit actions", "Keyboard layout", "Keyboard settings", "Latin compose"))
                 revealTool("Keyboard layout"); press("Keyboard layout")
                 sideCapture("settings", listOf("Close keyboard settings", "Full width layout", "Left hand layout", "Right hand layout", "Keyboard settings"))
                 assertTrue(node(if (alignment == KeyboardAlignment.LEFT) "Left hand layout" else "Right hand layout")!!.isSelected)
@@ -357,10 +358,11 @@ class KeyboardGeometryTest {
                 press("Switch letters and symbols")
                 sideCapture("symbols", listOf("Keyboard tools", "Dictate", "Switch letters and symbols", "Space", "Done", "1", "0", "@", "/"))
                 press("More symbols")
-                sideCapture("more-symbols", listOf("Keyboard tools", "Dictate", "More numbers and symbols", "Space", "Done", "~", "∆"))
+                sideCapture("more-symbols", listOf("Keyboard tools", "Dictate", "More numbers and symbols", "Space", "Done", "~", "®"))
                 press("Switch letters and symbols")
                 longPress(","); press("Terminal controls off"); press("Close keyboard settings")
-                sideCapture("terminal", daily + listOf("Escape", "Function keys"))
+                sideCapture("terminal", daily.filter { it != "Edit actions" } +
+                    listOf("Escape", "Function keys", "Left arrow", "Down arrow", "Up arrow", "Right arrow"))
                 press("Function keys")
                 sideCapture("functions", listOf("Return to terminal letters", "F1", "F12", "Insert", "Forward delete", "Space", "Done"))
                 press("Return to terminal letters")

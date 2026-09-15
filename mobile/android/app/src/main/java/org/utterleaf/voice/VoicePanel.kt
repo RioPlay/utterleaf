@@ -225,9 +225,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
             { left -> if (current()) TerminalInput.send(localEditor, if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT) },
             {}, {}, {},
             { code, ctrl, alt, shift -> current() &&
-                if (shift && !ctrl && !alt && code in listOf(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
-                        KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_MOVE_HOME, KeyEvent.KEYCODE_MOVE_END))
-                    TerminalInput.select(localEditor, code) else TerminalInput.send(localEditor, code, ctrl, alt, shift) },
+                TerminalInput.command(localEditor, code, ctrl, alt, shift) },
             { text, ctrl, alt -> current() && TerminalInput.printable(localEditor, text, ctrl, alt) },
             editorAction = { command -> current() && EditorActions.perform(localEditor, command, preview.inputType) })
         panel.reset(false, false, "Enter"); editingKeys.addView(panel.view)

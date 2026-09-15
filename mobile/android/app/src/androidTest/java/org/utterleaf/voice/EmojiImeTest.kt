@@ -59,6 +59,7 @@ class EmojiImeTest {
     }
 
     private fun findNode(description: String): AccessibilityNodeInfo? {
+        if (android.os.Build.VERSION.SDK_INT >= 34) instrumentation.uiAutomation.clearCache()
         fun find(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
             if (node.contentDescription?.toString() == description) return node
             for (index in 0 until node.childCount) node.getChild(index)?.let(::find)?.let { return it }
@@ -119,7 +120,7 @@ class EmojiImeTest {
         await("Editor never became active") { main { manager.isActive(activity.editor) } }
         main { manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT) }
         await("Typing keyboard did not appear") {
-            findNode(if (raw) "Emoji unavailable in raw input" else "Emoji") != null
+            findNode("Keyboard tools") != null
         }
         return activity
     }
@@ -274,6 +275,7 @@ class EmojiImeTest {
         KeyboardOptions(terminal = true).save(app)
         activity = launch(raw = true)
         try {
+            press("Keyboard tools")
             val emoji = checkNotNull(findNode("Emoji unavailable in raw input"))
             assertFalse(emoji.isEnabled)
             assertFalse(emoji.performAction(AccessibilityNodeInfo.ACTION_CLICK))

@@ -123,6 +123,36 @@ class TerminalInputTest {
         assertEquals(KeyEvent.ACTION_UP, connection.events.last().action)
     }
 
+    @Test fun wordSelectionHoldsCtrlAndShiftAndStopsWhenControlRejected() = withConnection { connection ->
+        assertTrue(TerminalInput.select(connection, KeyEvent.KEYCODE_DPAD_LEFT, word = true))
+        assertEquals(listOf(KeyEvent.KEYCODE_CTRL_LEFT, KeyEvent.KEYCODE_SHIFT_LEFT, KeyEvent.KEYCODE_DPAD_LEFT,
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_SHIFT_LEFT, KeyEvent.KEYCODE_CTRL_LEFT),
+            connection.events.map { it.keyCode })
+        assertBalanced(connection.events)
+        assertTrue(connection.events.filter { it.keyCode == KeyEvent.KEYCODE_DPAD_LEFT }
+            .all { it.isCtrlPressed && it.isShiftPressed && !it.isAltPressed })
+        connection.events.clear(); connection.failDown = true
+        assertFalse(TerminalInput.select(connection, KeyEvent.KEYCODE_DPAD_LEFT, word = true))
+        assertEquals(listOf(KeyEvent.KEYCODE_CTRL_LEFT, KeyEvent.KEYCODE_CTRL_LEFT), connection.events.map { it.keyCode })
+        assertEquals(KeyEvent.ACTION_UP, connection.events.last().action)
+    }
+
+    @Test fun commandRoutesShiftedArrowsThroughSelectIncludingWordMovement() = withConnection { connection ->
+        assertTrue(TerminalInput.command(connection, KeyEvent.KEYCODE_DPAD_LEFT, shift = true))
+        assertEquals(KeyEvent.KEYCODE_SHIFT_LEFT, connection.events.first().keyCode)
+        connection.events.clear()
+        assertTrue(TerminalInput.command(connection, KeyEvent.KEYCODE_DPAD_LEFT, ctrl = true, shift = true))
+        assertEquals(KeyEvent.KEYCODE_CTRL_LEFT, connection.events.first().keyCode)
+        connection.events.clear()
+        assertTrue(TerminalInput.command(connection, KeyEvent.KEYCODE_ESCAPE, ctrl = true, shift = true))
+        assertEquals(listOf(KeyEvent.KEYCODE_ESCAPE, KeyEvent.KEYCODE_ESCAPE), connection.events.map { it.keyCode })
+        assertTrue(connection.events.all { it.isCtrlPressed && it.isShiftPressed })
+        connection.events.clear()
+        assertTrue(TerminalInput.command(connection, KeyEvent.KEYCODE_DPAD_LEFT, ctrl = true, shift = true, raw = true))
+        assertEquals(listOf(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_LEFT), connection.events.map { it.keyCode })
+        assertTrue(connection.events.all { it.isCtrlPressed && it.isShiftPressed })
+    }
+
     @Test fun failedOrThrowingDownStillAttemptsRelease() = withConnection { connection ->
         for (throwing in listOf(false, true)) {
             connection.events.clear()
@@ -186,7 +216,7 @@ class TerminalInputTest {
         assertTrue(connection.commits.isEmpty())
     }
 
-    @Test fun panelModifiersAreOneShotAndResetAcrossFields() {
+    @Test fun panelModifiersStayArmedUntilToggledAndResetAcrossFields() {
         instrumentation.runOnMainSync {
             val plain = mutableListOf<String>()
             val modified = mutableListOf<Triple<String, Boolean, Boolean>>()
@@ -204,30 +234,39 @@ class TerminalInputTest {
             fun key(label: String) = buttons(panel.view).single { it.contentDescription == label }
             panel.reset(true, false, "Enter")
             key("Control off").performClick(); key("c").performClick(); key("c").performClick()
-            assertEquals(listOf(Triple("c", true, false)), modified)
+            assertEquals(listOf(Triple("c", true, false), Triple("c", true, false)), modified)
+            assertTrue(key("Control on").isSelected)
+            key("Control on").performClick()
+            key("c").performClick()
             assertEquals(listOf("c"), plain)
             key("Shift off").performClick(); key("!").performClick(); key("1").performClick()
             assertEquals(listOf("!", "1"), plain.takeLast(2))
-            assertFalse("Shifted number is one-shot", key("Shift off").isSelected)
+            assertFalse("Letter/digit Shift remains one-shot", key("Shift off").isSelected)
+            key("Control off").performClick(); key("Shift off").performClick()
+            key("Left arrow").performClick(); key("Left arrow").performClick()
+            assertEquals(listOf(
+                listOf(KeyEvent.KEYCODE_DPAD_LEFT, true, false, true),
+                listOf(KeyEvent.KEYCODE_DPAD_LEFT, true, false, true)), special)
+            assertTrue(key("Control on").isSelected)
+            assertTrue(key("Shift on").isSelected)
+            key("Control on").performClick(); key("Shift on").performClick()
             key("Keyboard tools").performClick(); key("Caps lock off").performClick()
             key("1").performClick()
             assertEquals("Caps lock must not alter digits", "1", plain.last())
-            key("Caps lock on").performClick(); key("Return to typing").performClick()
+            key("Keyboard tools").performClick(); key("Caps lock on").performClick()
             key("Control off").performClick(); key("Alt off").performClick()
             key("Shift off").performClick(); key("X").performClick()
             assertEquals(Triple("X", true, true), modified.last())
-            assertFalse(key("Control off").isSelected)
-            assertFalse(key("Alt off").isSelected)
-            assertFalse(key("Shift off").isSelected)
-            key("Control off").performClick(); key("Alt off").performClick(); key("Shift off").performClick()
+            assertTrue(key("Control on").isSelected)
+            assertTrue(key("Alt on").isSelected)
+            assertFalse("Letter Shift remains one-shot", key("Shift off").isSelected)
             key("Escape").performClick(); key("Tab").performClick()
-            assertEquals(listOf(KeyEvent.KEYCODE_ESCAPE, true, true, true), special[0])
-            assertEquals(listOf(KeyEvent.KEYCODE_TAB, false, false, false), special[1])
+            assertEquals(listOf(KeyEvent.KEYCODE_ESCAPE, true, true, false), special[2])
+            assertEquals(listOf(KeyEvent.KEYCODE_TAB, true, true, false), special[3])
             accepted = false
-            key("Control off").performClick(); key("Alt off").performClick(); key("x").performClick()
-            assertFalse("Rejected dispatch must not latch Control", key("Control off").isSelected)
-            assertFalse("Rejected dispatch must not latch Alt", key("Alt off").isSelected)
-            key("Control off").performClick(); key("Alt off").performClick(); key("Shift off").performClick()
+            key("x").performClick()
+            assertTrue("Rejected dispatch keeps Control armed", key("Control on").isSelected)
+            assertTrue("Rejected dispatch keeps Alt armed", key("Alt on").isSelected)
             key("Function keys").performClick()
             assertTrue(buttons(panel.view).any { it.contentDescription == "F1" })
             panel.reset(false, true, "Next")

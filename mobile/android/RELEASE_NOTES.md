@@ -1,38 +1,41 @@
-﻿# Utterleaf Android 0.1.0-alpha15
+# Utterleaf Android 0.1.0-alpha16
 
-This experimental preview makes the original Utterleaf keyboard substantially
-more compact and gives it the shorter installed name **Utterleaf**.
+This experimental preview replaces the long Tools strip with everyday actions
+that stay in reach, and makes Terminal modifiers stay on until you turn them off.
 
 ## What changed
 
-- **One sliding Tools strip.** Select all, Cut, Copy, Paste and additional tools
-  share a horizontal row. Swipe the strip or use More to reveal actions; the
-  ABC exit stays visible. Opening Tools no longer stacks five rows above the keys.
-- **Separate layers for controls.** Layout/settings and Edit replace the letter
-  area. Terminal navigation and function keys use replacement layers with one
-  modifier row. The optional number row remains an independent preference.
-- **Hold comma for settings.** A normal tap still inserts one comma. Holding
-  opens the compact layout/settings layer without inserting punctuation.
-  Cancellation and session changes discard pending holds; private-draft guards
-  continue to prevent leaving the protected editor through Settings.
-- **Backspace selection.** Drag left from Backspace to preview a selection and
-  release to delete it once. Reversing shrinks the selection without crossing its
-  starting point. Tap and held-repeat deletion remain available. Editor support
-  varies, and restricted or unconfirmed editor states refuse the gesture.
-- **Clearer presentation.** The toolbar uses restrained controls, consistent
-  labels and secondary hints. The launcher and Android keyboard chooser now show
-  Utterleaf. The optional voice-only provider is **Utterleaf dictation**.
+- **All Actions instead of a sliding Tools strip.** Tools opens a bounded
+  replacement layer for Edit, Emoji, drafts, accents, composition, layout,
+  settings and keyboard switching. ABC returns to typing. No extra rows stack
+  above the letters.
+- **Spatial Edit pad.** Undo, Redo, Select all and forward Delete sit on the
+  top row. Cut, Copy and Paste sit beside a directional pad. Tap Select to
+  select the neighboring word through the editor's Ctrl+Shift+Left equivalent;
+  hold Select for Select all. The existing Select all action remains on the
+  same layer.
+- **Terminal arrows stay beside the letters.** Esc, Tab, Ctrl, Alt, Nav and Fn
+  use a shorter accessory row. F1–F12 remain behind Fn. Enabling Terminal from
+  All Actions shows the accessory keys immediately.
+- **Latched Ctrl and Alt.** Tap a modifier to keep it selected until you tap it
+  again. Hold-chords still apply only while the finger is down. Shift stays
+  selected for arrows and terminal keys, so Ctrl+Shift+Left can keep extending
+  a word selection. Letter and digit Shift remain one-shot. Field and layer
+  changes still clear local modifiers.
+- **Complete US punctuation** on the two symbol pages, including brackets,
+  braces, backtick, pipe and the usual paired marks.
 
-Alpha14's two-thumb rollover, QWERTY/QWERTZ/AZERTY layouts, one-hand alignment,
-local emoji, Latin composition, private drafts and visible long-press hint
-selection remain included. The keyboard engine is Utterleaf's own implementation.
+Alpha15's compact Utterleaf names, Backspace selection gesture, comma-hold
+Settings, two-thumb rollover, QWERTY/QWERTZ/AZERTY layouts, one-hand alignment,
+local emoji, Latin composition, private drafts and visible long-press hints
+remain included. The keyboard engine is Utterleaf's own implementation.
 
 ## Install and updates
 
-Use **Utterleaf-Android-0.1.0-alpha15.apk**, version code **15**. The package remains
+Use **Utterleaf-Android-0.1.0-alpha16.apk**, version code **16**. The package remains
 `org.utterleaf.voice` and retains the persistent alpha03-and-later signing
 identity. Update an existing signed preview in place; do not uninstall first.
-The shorter display name does not create a second app or a new settings store.
+The display name does not create a second app or a new settings store.
 Alpha01/alpha02 used disposable debug signers and require a one-time reinstall,
 which removes their app data.
 

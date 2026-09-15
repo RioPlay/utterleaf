@@ -61,7 +61,6 @@ class AlternatePanelTest {
 
     @Test fun capsChangesAnOpenPickerAndRemainsEnabledAfterSelection() = instrumentation.runOnMainSync {
         val inserted = mutableListOf<String>(); val panel = panel(inserted)
-        key(panel, "Keyboard tools").performClick()
         key(panel, "e").performLongClick()
         val lower = key(panel, "é")
         key(panel, "Caps lock off").performClick()

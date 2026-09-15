@@ -4,15 +4,25 @@ Released in [signed Android alpha12](https://github.com/RioPlay/utterleaf/releas
 
 Tap **Edit** in the toolbar for Undo, Redo, Select all, Cut, Copy, Paste, four-way
 cursor movement, selection mode, Home and End. The action panel replaces letters
-instead of stacking extra rows above them. **ABC** returns to typing. Tools still
-offers accents, forward Delete, keyboard switching and Settings. The number-row,
-terminal and dictation shortcuts remain available.
+instead of stacking extra rows above them. **ABC** returns to typing.
+
+**Prepared for unpublished alpha16:** Undo, Redo, Select all and forward Delete form
+the top Edit row; Cut/Copy/Paste sit beside a directional cursor pad. Tap Select
+to select the neighboring word through the editor's Ctrl+Shift+Left equivalent;
+hold Select for Select all. The existing Select all action remains on the same
+layer. Tools opens a bounded All Actions layer for accents, composition,
+layout, settings and keyboard switching. In Terminal mode, arrows remain beside
+the letters and Esc/Tab/Ctrl/Alt; Edit and Emoji are available through Tools.
+Enabling Terminal from All Actions immediately reveals the accessory keys.
+Ctrl and Alt stay selected until tapped off; Shift stays selected for arrows so
+Ctrl+Shift+Left can keep selecting words. Field and layer changes still clear
+them. See the [action/accessory contract](plans/active/android-action-organization.md).
 
 Commands go to the current editor through Android's context-menu API. Utterleaf
 does not read or retain clipboard contents, listen for clipboard changes, or
-maintain an undo history. Copy/Cut explicitly put selected text on the system
-clipboard through the editor; that content leaves Utterleaf's private transcript
-when used in its local editor. Password Copy/Cut are blocked. Paste remains an
+maintain a host-editor undo history. Copy/Cut explicitly put selected text on the system
+clipboard through the editor. Private drafts omit Cut/Copy/Paste and keep their
+own Undo/Redo history in memory. Password Copy/Cut are blocked. Paste remains an
 explicit editor action, including in password fields where the editor permits it.
 
 Undo and Redo use the receiving editor's history. Some apps do not implement
