@@ -104,7 +104,12 @@ class ComposeImeTest {
                 .putExtra("raw", raw)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         ) as KeyboardEditorContractActivity
-        await("Editor activity never acquired window focus") { main { activity.hasWindowFocus() } }
+        await("Editor activity never acquired window focus") {
+            // A cold CI emulator can hand out window focus late; nudge the
+            // editor while waiting instead of failing on the first pass.
+            if (!main { activity.hasWindowFocus() }) main { activity.editor.requestFocus() }
+            main { activity.hasWindowFocus() }
+        }
         val manager = app.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         main { activity.editor.requestFocus() }
         await("Editor never became active") { main { manager.isActive(activity.editor) } }
