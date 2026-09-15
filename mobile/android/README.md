@@ -8,6 +8,13 @@ reviewed Backspace selection gesture, sliding Tools strip, replacement
 settings/navigation layers, comma-hold Settings access and the installed name
 **Utterleaf**. See the [alpha15 release and verification record](../../docs/plans/completed/android-alpha15-snapshot.md).
 
+**Prepared unpublished alpha16:** All Actions replaces the sliding Tools strip,
+Edit is a spatial pad, Terminal arrows stay beside the letters, Ctrl/Alt stay
+selected until tapped off, and Select taps the neighboring word. This source is
+not yet tagged or signed. Swipe recognition and correction are still missing.
+See the [action-organization contract](../../docs/plans/active/android-action-organization.md)
+and the [alpha16 snapshot plan](../../docs/plans/active/android-alpha16-snapshot.md).
+
 Alpha15 preserves alpha14's two-thumb rollover, letter layouts, one-hand
 alignment, local emoji, Latin composition, private drafts and visible
 long-press hint default. See the [completed compact-layer contract](../../docs/plans/completed/android-compact-layers.md).
@@ -88,8 +95,8 @@ prediction, accessibility and device coverage remain on the
 
 1. [Download and install Utterleaf Android alpha15](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha15/Utterleaf-Android-0.1.0-alpha15.apk)
    on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Use `Utterleaf-Android-0.1.0-alpha15.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha15).
-   If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
+   Use `Utterleaf-Android-0.1.0-alpha15.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha15)
+   until alpha16 is published. If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
    then install alpha15. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
    the same release identity and should be updated in place rather than uninstalled.
