@@ -14,15 +14,23 @@ enum class LetterLayout(
 
     val rows: List<String> get() = listOf(top, home, bottom)
 
-    fun hint(key: Char): String? {
+    /**
+     * Returns the symbol/digit hint at this letter's position. With the number
+     * row shown, the top row hints the mockup's bracket/symbol set so digits
+     * are not repeated; with it hidden, digits return so every value stays
+     * reachable by hold.
+     */
+    fun hint(key: Char, numberRowShown: Boolean = false): String? {
         val lower = key.lowercaseChar()
-        return rows.zip(HINT_ROWS).firstNotNullOfOrNull { (letters, hints) ->
+        val hintRows = if (numberRowShown) NUMBER_ROW_ROWS else DIGIT_ROWS
+        return rows.zip(hintRows).firstNotNullOfOrNull { (letters, hints) ->
             letters.indexOf(lower).takeIf { it >= 0 }?.let { hints[it].toString() }
         }
     }
 
     companion object {
-        private val HINT_ROWS = listOf("1234567890", "@#$%&-+()/", "*\"':;!?")
+        private val DIGIT_ROWS = listOf("1234567890", "@#$%&-+()/", "*\"':;!?")
+        private val NUMBER_ROW_ROWS = listOf("~\\|=[]<>{}", "@#$%&-+()/", "*\"':;!?")
 
         fun fromStored(value: String?) = entries.firstOrNull { it.stored == value } ?: QWERTY
     }

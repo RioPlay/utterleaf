@@ -1,4 +1,4 @@
-package org.utterleaf.voice
+﻿package org.utterleaf.voice
 
 import android.app.Activity
 import android.content.Intent
@@ -84,13 +84,14 @@ class LetterLayoutTest {
         val typed = mutableListOf<String>()
         val modified = mutableListOf<Triple<String, Boolean, Boolean>>()
         instrumentation.runOnMainSync {
-            val panel = panel(KeyboardOptions(terminal = true, letterLayout = LetterLayout.QWERTZ), typed,
+            val panel = panel(KeyboardOptions(numberRow = false, letterLayout = LetterLayout.QWERTZ), typed,
                 modified = modified)
             panel.reset(false, false, "Enter")
             key(panel, "z").performClick()
             key(panel, "Shift off").performClick(); key(panel, "Y").performClick()
-            key(panel, "Keyboard tools").performClick(); key(panel, "Caps lock off").performClick()
+            key(panel, "Emoji").performLongClick(); key(panel, "Caps lock off").performClick()
             key(panel, "Z").performClick()
+            key(panel, "Extra keys").performClick()
             key(panel, "Control off").performClick(); key(panel, "Y").performClick()
             assertEquals(listOf("z", "Y", "Z"), typed)
             assertEquals(listOf(Triple("Y", true, false)), modified)
@@ -106,7 +107,8 @@ class LetterLayoutTest {
             KeyboardSettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         try {
             instrumentation.runOnMainSync {
-                panel = panel(KeyboardOptions(letterLayout = LetterLayout.AZERTY, holdDelayMs = 250), typed)
+                panel = panel(KeyboardOptions(letterLayout = LetterLayout.AZERTY, holdDelayMs = 250,
+                    numberRow = false), typed)
                 panel.reset(false, false, "Enter")
                 panel.view.addOnLayoutChangeListener { _, l, t, r, b, _, _, _, _ ->
                     if (r > l && b > t) ready.countDown()
@@ -120,7 +122,7 @@ class LetterLayoutTest {
                     val button = buttons(panel.view).single { it.tag == letter } as HintedKey
                     assertEquals(hint, button.secondaryHint)
                 }
-                key(panel, "Keyboard tools").performClick()
+                key(panel, "Emoji").performLongClick()
                 key(panel, "Accents and alternate characters").performClick()
                 key(panel, "q").performClick()
                 val alternateButtons = buttons(panel.view)
@@ -189,7 +191,7 @@ class LetterLayoutTest {
     @Test fun switchingLayoutCancelsPendingTouchRepeatSelectionAlternateAndModifiers() {
         val context = instrumentation.targetContext
         val original = KeyboardOptions.load(context)
-        val options = KeyboardOptions(terminal = true, holdDelayMs = 250)
+        val options = KeyboardOptions(holdDelayMs = 250)
         val typed = mutableListOf<String>(); val erased = mutableListOf<Unit>()
         val modified = mutableListOf<Triple<String, Boolean, Boolean>>(); val moved = mutableListOf<Boolean>()
         var activity: Activity? = null; lateinit var panel: TypingPanel
@@ -211,12 +213,12 @@ class LetterLayoutTest {
                     (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), listOf(q, w))
                 sendRoot(panel, down, MotionEvent.ACTION_POINTER_UP or
                     (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), listOf(q, w))
-                key(panel, ",").performLongClick()
+                key(panel, "Emoji").performLongClick()
                 key(panel, "QWERTZ letter layout").performClick()
                 sendRoot(panel, down, MotionEvent.ACTION_UP, listOf(q))
                 assertTrue(key(panel, "QWERTZ letter layout").isSelected)
                 assertTrue(typed.isEmpty())
-                key(panel, "Close keyboard settings").performClick()
+                key(panel, "Close tools and settings").performClick()
             }
             instrumentation.waitForIdleSync()
 
@@ -233,31 +235,27 @@ class LetterLayoutTest {
             }
             instrumentation.runOnMainSync {
                 assertTrue((0 until panel.view.childCount).any { panel.view.getChildAt(it) is AlternateStrip })
-                key(panel, ",").performLongClick()
+                key(panel, "Emoji").performLongClick()
                 key(panel, "AZERTY letter layout").performClick()
                 val event = MotionEvent.obtain(heldDown, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP,
                     held.width / 2f, held.height / 2f, 0)
                 try { held.dispatchTouchEvent(event) } finally { event.recycle() }
                 assertFalse((0 until panel.view.childCount).any { panel.view.getChildAt(it) is AlternateStrip })
 
-                key(panel, "Close keyboard settings").performClick()
-                key(panel, "Keyboard tools").performClick()
-                key(panel, "Edit actions").performClick()
-                key(panel, "Select text").performClick()
-                key(panel, "Close edit actions").performClick()
-                key(panel, ",").performLongClick()
+                key(panel, "Close tools and settings").performClick()
+                key(panel, "Emoji").performLongClick()
+                key(panel, "Select all text").performLongClick()
+                key(panel, "Close tools and settings").performClick()
+                key(panel, "Emoji").performLongClick()
                 key(panel, "QWERTZ letter layout").performClick()
-                key(panel, "Close keyboard settings").performClick()
-                key(panel, "Keyboard tools").performClick()
-                key(panel, "Edit actions").performClick()
-                assertFalse("Select stayed latched after the layout change", key(panel, "Select text").isSelected)
-                key(panel, "Move cursor left").performClick()
+                key(panel, "Close tools and settings").performClick()
+                key(panel, "Extra keys").performClick()
+                key(panel, "Left arrow").performClick()
                 assertTrue("Navigation inserted text", typed.isEmpty())
-                key(panel, "Close edit actions").performClick()
                 key(panel, "Control off").performClick()
-                key(panel, ",").performLongClick()
+                key(panel, "Emoji").performLongClick()
                 key(panel, "AZERTY letter layout").performClick()
-                key(panel, "Close keyboard settings").performClick()
+                key(panel, "Close tools and settings").performClick()
                 key(panel, "q").performClick()
                 assertEquals(listOf("q"), typed)
                 assertTrue(modified.isEmpty())
@@ -274,7 +272,7 @@ class LetterLayoutTest {
             instrumentation.waitForIdleSync()
             assertTrue(erased.isNotEmpty())
             instrumentation.runOnMainSync {
-                key(panel, ",").performLongClick()
+                key(panel, "Emoji").performLongClick()
                 key(panel, "QWERTY letter layout").performClick()
             }
             val stopped = erased.size
@@ -282,7 +280,7 @@ class LetterLayoutTest {
             assertEquals(stopped, erased.size)
             assertFalse((0 until panel.view.childCount).any { panel.view.getChildAt(it) is AlternateStrip })
             instrumentation.runOnMainSync {
-                key(panel, "Close keyboard settings").performClick()
+                key(panel, "Close tools and settings").performClick()
                 key(panel, "z").performClick()
             }
             assertEquals("z", typed.last())
@@ -293,3 +291,4 @@ class LetterLayoutTest {
         }
     }
 }
+

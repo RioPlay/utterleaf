@@ -2,31 +2,49 @@ package org.utterleaf.voice
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.Context
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.text.Editable
 import android.text.InputFilter
 import android.text.InputType
+import android.text.TextWatcher
+import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
-import android.widget.SeekBar
 import android.widget.ScrollView
+import android.widget.SeekBar
+import android.widget.TextView
 
+/**
+ * Mockup Settings: category list with search, staged edits applied only on
+ * Apply, and a practice message with the live keyboard preview. Input in the
+ * practice area stays on this screen, is cleared on close and is never saved.
+ */
 class KeyboardSettingsActivity : Activity() {
-    private var options = KeyboardOptions()
+    private var staged = KeyboardOptions()
     private lateinit var practiceEditor: EditText
     private var practiceActive = false
     private var practiceGeneration = 0
     private var previewContainer: LinearLayout? = null
+    private var detail: String? = null
+    private var query = ""
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         practiceEditor = EditText(this).apply {
             hint = "Practice typing here"
+            setText("Let's meet tomorrow at six. Bring the notes.")
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
             filters = arrayOf(InputFilter.LengthFilter(256))
             isSaveEnabled = false
@@ -34,7 +52,7 @@ class KeyboardSettingsActivity : Activity() {
             importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
             setTextIsSelectable(true)
         }
-        options = KeyboardOptions.load(this)
+        staged = KeyboardOptions.load(this)
     }
     override fun onStart() { super.onStart(); practiceActive = true; render() }
     private fun practiceConnection(generation: Int): android.view.inputmethod.InputConnection? {
@@ -42,139 +60,414 @@ class KeyboardSettingsActivity : Activity() {
         practiceEditor.requestFocus()
         return practiceEditor.onCreateInputConnection(EditorInfo())
     }
+
+    private fun subtypeSummary(): String {
+        val subtype = (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
+            .currentInputMethodSubtype ?: return ""
+        @Suppress("DEPRECATION")
+        val parts = subtype.locale.split("_", "-")
+        if (parts.isEmpty()) return ""
+        val locale = java.util.Locale(parts[0], parts.getOrElse(1) { "" })
+        val language = locale.displayLanguage.uppercase()
+        val rawRegion = locale.displayCountry.uppercase()
+        val region = if (rawRegion.length > 3) locale.country.uppercase() else rawRegion
+        return if (region.isBlank()) language else "$language · $region"
+    }
+
+    private fun subtypeSpaceLabel(): String {
+        val subtype = (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
+            .currentInputMethodSubtype ?: return ""
+        @Suppress("DEPRECATION")
+        val parts = subtype.locale.split("_", "-")
+        if (parts.isEmpty()) return ""
+        val locale = java.util.Locale(parts[0], parts.getOrElse(1) { "" })
+        return if (locale.displayCountry.isBlank()) locale.displayLanguage
+        else "${locale.displayLanguage} (${locale.displayCountry})"
+    }
+
+    private fun header(title: String, leftLabel: String, leftAction: () -> Unit): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, Ui.dp(this@KeyboardSettingsActivity, 8), 0, Ui.dp(this@KeyboardSettingsActivity, 12))
+        }
+        row.addView(Ui.button(this, leftLabel) { leftAction() }.apply {
+            background = null
+            setPadding(0, Ui.dp(this@KeyboardSettingsActivity, 12), Ui.dp(this@KeyboardSettingsActivity, 8),
+                Ui.dp(this@KeyboardSettingsActivity, 12))
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(TextView(this).apply {
+            text = title; textSize = 18f; setTextColor(Ui.ink); setTypeface(typeface, Typeface.BOLD)
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(Ui.button(this, "Apply") { staged.save(this@KeyboardSettingsActivity); finish() }.apply {
+            minHeight = Ui.dp(this@KeyboardSettingsActivity, 44)
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        return row
+    }
+
+    private fun categoryRow(icon: Int, title: String, summary: String, open: () -> Unit): View {
+        val context = this
+        val row = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            minimumHeight = Ui.dp(context, 60)
+            setPadding(Ui.dp(context, 4), Ui.dp(context, 8), Ui.dp(context, 4), Ui.dp(context, 8))
+            background = Ripple()
+            setOnClickListener { open() }
+            contentDescription = "$title, $summary"
+        }
+        fun label(size: Float, value: String, bold: Boolean = false, color: Int = Ui.ink) = TextView(context).apply {
+            text = value; textSize = size; setTextColor(color)
+            if (bold) setTypeface(typeface, Typeface.BOLD)
+        }
+        row.addView(ImageView(context).apply {
+            setImageResource(icon)
+            colorFilter = android.graphics.PorterDuffColorFilter(Ui.ink, android.graphics.PorterDuff.Mode.SRC_IN)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }, LinearLayout.LayoutParams(Ui.dp(context, 22), Ui.dp(context, 22)).apply {
+            marginEnd = Ui.dp(context, 16)
+        })
+        val text = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        text.addView(label(16f, title, bold = true))
+        text.addView(label(12f, summary, color = Color.parseColor("#97A79E")))
+        row.addView(text, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(label(20f, "›", color = Color.parseColor("#97A79E")))
+        return row
+    }
+
+    private inner class Ripple : android.graphics.drawable.RippleDrawable(
+        android.content.res.ColorStateList.valueOf(Color.parseColor("#33808080")),
+        GradientDrawable().apply { setColor(Color.TRANSPARENT) },
+        GradientDrawable().apply { setColor(Color.WHITE) })
+
+    private fun renderCategoryList(target: LinearLayout) {
+        target.removeAllViews()
+        val context = this
+        data class Category(val id: String, val icon: Int, val title: String, val summary: String)
+        val categories = listOf(
+            Category("layout", R.drawable.ic_layout, "Layout & size", listOf(
+                if (staged.numberRow) "Number row on" else "Number row off",
+                if (staged.extraKeys) "Fold-out extra keys" else "Extra keys hidden",
+                when (staged.alignment) {
+                    KeyboardAlignment.FULL -> "Full width"
+                    KeyboardAlignment.LEFT -> "Left hand"
+                    KeyboardAlignment.RIGHT -> "Right hand"
+                }).joinToString(" · ")),
+            Category("terminal", R.drawable.ic_nav, "Navigation & terminal", listOf(
+                if (staged.arrowRepeat) "Arrow repeat on" else "Arrow repeat off",
+                if (staged.extraKeys) "Expand arrow on" else "Expand arrow off").joinToString(" · ")),
+            Category("assistance", R.drawable.ic_typing, "Typing assistance", listOf(
+                if (staged.autoCapitalize) "Auto-capitalization on" else "Auto-capitalization off",
+                if (staged.secondaryHints) "Hints on" else "Hints off").joinToString(" · ")),
+            Category("gestures", R.drawable.ic_gestures, "Holds & gestures", listOf(
+                if (staged.holdDelayMs == 0) "System hold" else "${staged.holdDelayMs} ms hold",
+                if (staged.secondaryHints) "Accents on" else "Accents by menu",
+                "Cursor slide on").joinToString(" · ")),
+            Category("appearance", R.drawable.ic_appearance, "Appearance", listOf(
+                when (staged.theme) {
+                    ThemeMode.SYSTEM -> "System"
+                    ThemeMode.LIGHT -> "Light"
+                    ThemeMode.DARK -> "Dark"
+                },
+                if (staged.keyBorders) "Key borders on" else "Key borders off").joinToString(" · ")),
+            Category("voice", R.drawable.ic_mic, "Voice input",
+                if (context.getSharedPreferences("keyboard", Context.MODE_PRIVATE)
+                        .getBoolean("voiceHoldToInsert", false)) "Hold to start · On-device recognition"
+                else "Tap to start · On-device recognition"),
+            Category("privacy", R.drawable.ic_privacy, "Privacy & data",
+                "No connected microphone · No passive learning"))
+        val needle = query.trim().lowercase()
+        categories.filter { needle.isEmpty() || it.title.lowercase().contains(needle) ||
+            it.summary.lowercase().contains(needle) }.forEach { category ->
+            target.addView(categoryRow(category.icon, category.title, category.summary) {
+                detail = category.id
+                render()
+            })
+        }
+        if (target.childCount == 0) {
+            target.addView(Ui.text(context, "No settings match \"$query\""))
+        }
+    }
+
     private fun render() {
         val column = Ui.column(this)
-        column.addView(Ui.title(this, "Keyboard preferences"))
-        column.addView(Ui.text(this, "Changes save on this device and apply when you reopen the keyboard. No typing history is stored."))
-        val preview = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        previewContainer = preview
-        fun updatePreview() {
-            val generation = ++practiceGeneration
-            preview.removeAllViews()
-            preview.addView(TypingPanel(this, options,
-                { value -> TerminalInput.printable(practiceConnection(generation), value) },
-                { TerminalInput.send(practiceConnection(generation), android.view.KeyEvent.KEYCODE_DEL) },
-                { TerminalInput.printable(practiceConnection(generation), "\n") },
-                { left -> TerminalInput.send(practiceConnection(generation), if (left) android.view.KeyEvent.KEYCODE_DPAD_LEFT else android.view.KeyEvent.KEYCODE_DPAD_RIGHT) },
-                {}, {}, {},
-                { code, ctrl, alt, shift ->
-                    TerminalInput.command(practiceConnection(generation), code, ctrl, alt, shift) },
-                { value, ctrl, alt -> TerminalInput.printable(practiceConnection(generation), value, ctrl, alt) },
-                quickOptionsChanged = { options = KeyboardOptions.load(this); render() },
-                editorAction = { command -> EditorActions.perform(practiceConnection(generation), command, practiceEditor.inputType) }).apply {
-                reset(false, false, "Enter")
-            }.view)
-        }
-        fun tuningSlider(value: Int, max: Int, display: (Int) -> String, update: (Int) -> Unit) {
-            val labelView = Ui.text(this, display(value), 16f)
-            column.addView(labelView)
-            column.addView(SeekBar(this).apply {
-                this.max = max; progress = value
-                contentDescription = display(value)
-                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                        labelView.text = display(progress)
-                        seekBar.contentDescription = display(progress)
-                        if (fromUser) { update(progress); options.save(this@KeyboardSettingsActivity); updatePreview() }
-                    }
-                    override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
-                    override fun onStopTrackingTouch(seekBar: SeekBar) = Unit
-                })
-            })
-        }
-        fun toggle(label: String, checked: Boolean, update: (Boolean) -> Unit) {
-            column.addView(CheckBox(this).apply {
-                text = label; textSize = 18f; setTextColor(Ui.ink); minHeight = Ui.dp(context, 48)
-                isChecked = checked
-                setOnCheckedChangeListener { _, value -> update(value); options.save(this@KeyboardSettingsActivity); updatePreview() }
-            })
-        }
-        fun holdDelayFromProgress(progress: Int): Int = if (progress == 0) 0 else 250 + ((progress - 1) * 50)
-        fun holdDelayProgress(value: Int): Int =
-            if (value <= 0) 0 else ((value - 250) / 50 + 1).coerceIn(1, 12)
-        toggle("Larger keys and labels", options.large) { options = options.copy(large = it) }
-        toggle("Light keyboard", options.light) { options = options.copy(light = it) }
-        column.addView(Ui.text(this, "Keyboard alignment", 18f))
-        column.addView(RadioGroup(this).apply {
-            orientation = RadioGroup.VERTICAL
-            listOf(
-                KeyboardAlignment.FULL to "Full width",
-                KeyboardAlignment.LEFT to "Left hand",
-                KeyboardAlignment.RIGHT to "Right hand",
-            ).forEach { (alignment, label) ->
-                addView(RadioButton(this@KeyboardSettingsActivity).apply {
-                    text = label; textSize = 18f; setTextColor(Ui.ink)
-                    minHeight = Ui.dp(context, 48)
-                    isChecked = options.alignment == alignment
-                    setOnClickListener {
-                        if (options.alignment != alignment) {
-                            options = options.copy(alignment = alignment)
-                            options.save(this@KeyboardSettingsActivity)
-                            updatePreview()
-                        }
-                    }
-                })
+        column.addView(if (detail == null) header("Settings", "Cancel") { finish() }
+        else header(detailTitle(), "‹ Back") { detail = null; render() })
+        if (detail == null) {
+            val search = EditText(this).apply {
+                hint = "Search settings"
+                textSize = 15f; setTextColor(Ui.ink)
+                setHintTextColor(Color.parseColor("#71897B"))
+                setSingleLine()
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#242E2B"))
+                    cornerRadius = Ui.dp(this@KeyboardSettingsActivity, 12).toFloat()
+                }
+                setPadding(Ui.dp(this@KeyboardSettingsActivity, 14), Ui.dp(this@KeyboardSettingsActivity, 12),
+                    Ui.dp(this@KeyboardSettingsActivity, 14), Ui.dp(this@KeyboardSettingsActivity, 12))
             }
+            column.addView(search)
+            val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            column.addView(list)
+            renderCategoryList(list)
+            search.addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+                override fun afterTextChanged(s: Editable?) {
+                    query = s?.toString() ?: ""
+                    renderCategoryList(list)
+                }
+            })
+            column.addView(resetRow())
+            column.addView(Ui.text(this,
+                "Changes apply when you choose Apply; Cancel leaves everything unchanged. " +
+                    "Reset restores defaults and keeps your models and microphone permission."))
+        } else {
+            column.addView(Ui.text(this, detailSummary(), 14f))
+            column.addView(practiceSection())
+            column.addView(Ui.text(this, detailTitle(), 20f))
+            detailControls(column)
+        }
+        setContentView(ScrollView(this).apply { addView(column); Ui.applySystemInsets(this) })
+    }
+
+    private fun detailTitle() = when (detail) {
+        "layout" -> "Layout & size"
+        "terminal" -> "Navigation & terminal"
+        "assistance" -> "Typing assistance"
+        "gestures" -> "Holds & gestures"
+        "appearance" -> "Appearance"
+        "voice" -> "Voice input"
+        else -> "Privacy & data"
+    }
+
+    private fun detailSummary() = when (detail) {
+        "layout" -> "Rows, alignment and key sizing for the keyboard."
+        "terminal" -> "Navigation keys, F-keys and repeat behavior."
+        "assistance" -> "Automatic capitalization and visible character hints."
+        "gestures" -> "Hold timing, vibration and gesture notes."
+        "appearance" -> "Theme and key borders."
+        "voice" -> "How dictation starts, and where recognition runs."
+        else -> "What the keyboard does and does not store."
+    }
+
+    private fun practiceSection(): View {
+        val context = this
+        val section = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        section.addView(Ui.text(context, "Practice message", 16f))
+        val card = GradientDrawable().apply {
+            setColor(Color.parseColor("#242E2B"))
+            cornerRadius = Ui.dp(context, 10).toFloat()
+        }
+        (practiceEditor.parent as? android.view.ViewGroup)?.removeView(practiceEditor)
+        practiceEditor.background = card
+        practiceEditor.setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
+        practiceEditor.setTextColor(Ui.ink)
+        practiceEditor.setHintTextColor(Color.parseColor("#71897B"))
+        section.addView(practiceEditor, LinearLayout.LayoutParams(-1, Ui.dp(context, 88)).apply {
+            topMargin = Ui.dp(context, 6)
         })
-        column.addView(Ui.text(this, "Left and Right keep every key in a narrower column on wider screens. Full width remains the default and is used automatically on narrow screens."))
-        column.addView(Ui.text(this, "Letter layout", 18f))
-        column.addView(RadioGroup(this).apply {
-            orientation = RadioGroup.VERTICAL
-            LetterLayout.entries.forEach { layout ->
-                addView(RadioButton(this@KeyboardSettingsActivity).apply {
-                    text = layout.label; textSize = 18f; setTextColor(Ui.ink)
-                    minHeight = Ui.dp(context, 48)
-                    isChecked = options.letterLayout == layout
-                    setOnClickListener {
-                        if (options.letterLayout != layout) {
-                            options = options.copy(letterLayout = layout)
-                            options.save(this@KeyboardSettingsActivity)
-                            updatePreview()
-                        }
-                    }
-                })
-            }
+        previewContainer = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        section.addView(Ui.text(context, "Keyboard preview", 14f))
+        section.addView(previewContainer)
+        updatePreview()
+        return section
+    }
+
+    private fun updatePreview() {
+        val generation = ++practiceGeneration
+        val preview = previewContainer ?: return
+        preview.removeAllViews()
+        preview.addView(TypingPanel(this, staged,
+            { value -> TerminalInput.printable(practiceConnection(generation), value) },
+            { TerminalInput.send(practiceConnection(generation), android.view.KeyEvent.KEYCODE_DEL) },
+            { TerminalInput.printable(practiceConnection(generation), "\n") },
+            { left -> TerminalInput.send(practiceConnection(generation),
+                if (left) android.view.KeyEvent.KEYCODE_DPAD_LEFT else android.view.KeyEvent.KEYCODE_DPAD_RIGHT) },
+            {}, {}, {},
+            { code, ctrl, alt, shift ->
+                TerminalInput.command(practiceConnection(generation), code, ctrl, alt, shift) },
+            { value, ctrl, alt -> TerminalInput.printable(practiceConnection(generation), value, ctrl, alt) },
+            quickOptionsChanged = { staged = KeyboardOptions.load(this); render() },
+            editorAction = { command -> EditorActions.perform(practiceConnection(generation), command, practiceEditor.inputType) },
+            spaceLabel = subtypeSpaceLabel().ifBlank { null }).apply {
+            reset(false, false, "Enter")
+        }.view)
+    }
+
+    private fun resetRow(): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            minimumHeight = Ui.dp(this@KeyboardSettingsActivity, 56)
+            setPadding(Ui.dp(this@KeyboardSettingsActivity, 4), Ui.dp(this@KeyboardSettingsActivity, 10), 0,
+                Ui.dp(this@KeyboardSettingsActivity, 10))
+            background = Ripple()
+        }
+        row.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_undo)
+            colorFilter = android.graphics.PorterDuffColorFilter(Ui.ink, android.graphics.PorterDuff.Mode.SRC_IN)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }, LinearLayout.LayoutParams(Ui.dp(this, 20), Ui.dp(this, 20)).apply {
+            marginEnd = Ui.dp(this@KeyboardSettingsActivity, 16)
         })
-        column.addView(Ui.text(this, "Changes letter positions only. It does not add spelling or speech support."))
-        toggle("Number row", options.numberRow) { options = options.copy(numberRow = it) }
-        toggle("Secondary character hints", options.secondaryHints) { options = options.copy(secondaryHints = it) }
-        column.addView(Ui.text(this, "Hold a letter, slide to a highlighted accent or symbol, then release. Slide away to cancel. For tap selection, choose Tools → Accents and a letter. Hiding hints keeps both routes available."))
-        column.addView(Ui.text(this, "Hold the period key for quick punctuation, slide to a mark and release. A tap still types a period; symbol pages also provide tap access."))
-        column.addView(Ui.text(this, "Slide the spacebar to move the cursor. Hold Shift first, then slide the spacebar with another finger to select text. Release either finger to stop. For taps, use Tools → Select and the cursor arrows. Tools also provides Delete to right, Home and End."))
-        toggle("Terminal controls", options.terminal) { options = options.copy(terminal = it) }
-        column.addView(Ui.text(this, "Adds Esc, Tab, Ctrl, Alt, navigation and F1–F12. Ctrl and Alt apply to the next key, then release. Terminal apps decide which shortcuts they support."))
-        toggle("Key vibration (respects device settings)", options.haptics) { options = options.copy(haptics = it) }
-        toggle("Ignore repeated taps on the same key within 250 ms", options.repeatGuard) { options = options.copy(repeatGuard = it) }
-        toggle("Hold Backspace or Delete to repeat", options.deleteRepeat) { options = options.copy(deleteRepeat = it) }
-        column.addView(Ui.text(this, "Hold a delete key to repeat after the system hold delay; release or slide outside to stop. Repeat filtering disables held deletion and can help with accidental double taps, but slows intentional double letters. It is off by default. All essential actions have tap controls."))
-        tuningSlider(holdDelayProgress(options.holdDelayMs), 12,
-            { progress -> if (progress == 0) "Hold timing: system default" else "Hold timing: ${holdDelayFromProgress(progress)} ms" },
-            { progress -> options = options.copy(holdDelayMs = holdDelayFromProgress(progress)) })
-        column.addView(Ui.text(this, "Hold timing only changes how long you press before accent or punctuation choices appear. A tap still types the key, and Tools → Accents remains available. System default uses the device long-press timeout."))
-        column.addView(Ui.button(this, "Reset keyboard preferences") {
-            AlertDialog.Builder(this).setTitle("Reset keyboard preferences?")
-                .setMessage("Restore QWERTY, Full width, standard key size, dark keys, secondary character hints, no extra rows, no vibration, default hold timing, and no repeat filtering. Your model and microphone permission stay unchanged.")
+        row.addView(Ui.text(this, "Reset preferences", 16f))
+        row.contentDescription = "Reset preferences"
+        row.setOnClickListener {
+            AlertDialog.Builder(this).setTitle("Reset preferences?")
+                .setMessage("Restore the redesigned defaults: number row on, extra keys on, system theme, " +
+                    "auto-capitalization on, arrow repeat on, key borders on, QWERTY, Full width, standard key " +
+                    "size, 320 ms hold and no repeat filtering. Your models and microphone permission stay unchanged.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Reset") { _, _ ->
                     KeyboardOptions.resetPreferences(this)
-                    options = KeyboardOptions.load(this)
+                    staged = KeyboardOptions.load(this)
                     render()
                 }.show()
+        }
+        return row
+    }
+
+    private fun toggle(label: String, checked: Boolean, update: (Boolean) -> Unit) {
+        val context = this
+        column2().addView(CheckBox(context).apply {
+            text = label; textSize = 16f; setTextColor(Ui.ink); minHeight = Ui.dp(context, 48)
+            isChecked = checked
+            setOnCheckedChangeListener { _, value ->
+                update(value)
+                updatePreview()
+            }
         })
-        column.addView(Ui.button(this, "Done") { finish() })
-        column.addView(Ui.text(this, "Tune your layout", 20f))
-        tuningSlider(if (options.keyHeightDp == 0) 0 else options.keyHeightDp - 47, 33,
-            { progress -> if (progress == 0) "Key height: default" else "Key height: ${progress + 47} dp" },
-            { progress -> options = options.copy(keyHeightDp = if (progress == 0) 0 else progress + 47) })
-        tuningSlider(options.bottomPaddingDp, 80,
-            { progress -> "Bottom space: $progress dp" },
-            { progress -> options = options.copy(bottomPaddingDp = progress) })
-        column.addView(Ui.text(this, "Bottom space raises the keys above the system navigation area. Try typing below; the preview updates immediately."))
-        column.addView(Ui.text(this, "Practice area · input stays in this screen, is cleared when it closes, and is never saved", 18f))
-        (practiceEditor.parent as? android.view.ViewGroup)?.removeView(practiceEditor)
-        column.addView(practiceEditor)
-        column.addView(Ui.text(this, "Keyboard preview", 18f))
-        column.addView(preview); updatePreview()
-        setContentView(ScrollView(this).apply { addView(column); Ui.applySystemInsets(this) })
+    }
+    private var controlsColumn: LinearLayout? = null
+    private fun column2(): LinearLayout = controlsColumn!!
+
+    private fun choice(label: String, options: List<Pair<String, Boolean>>, pick: (Int) -> Unit) {
+        val context = this
+        column2().addView(RadioGroup(context).apply {
+            orientation = RadioGroup.VERTICAL
+            options.forEachIndexed { index, (text, checked) ->
+                addView(RadioButton(context).apply {
+                    this.text = text; textSize = 16f; setTextColor(Ui.ink)
+                    minHeight = Ui.dp(context, 44)
+                    isChecked = checked
+                    setOnClickListener { if (!checked) pick(index) }
+                })
+            }
+        })
+    }
+
+    private fun slider(value: Int, max: Int, display: (Int) -> String, update: (Int) -> Unit) {
+        val context = this
+        val labelView = Ui.text(context, display(value), 14f)
+        column2().addView(labelView)
+        column2().addView(SeekBar(context).apply {
+            this.max = max; progress = value
+            contentDescription = display(value)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                    labelView.text = display(progress)
+                    seekBar.contentDescription = display(progress)
+                    if (fromUser) {
+                        update(progress)
+                        updatePreview()
+                    }
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
+                override fun onStopTrackingTouch(seekBar: SeekBar) = Unit
+            })
+        })
+    }
+
+    private fun note(value: String) {
+        column2().addView(Ui.text(this, value, 13f).apply {
+            setTextColor(Color.parseColor("#97A79E"))
+        })
+    }
+
+    private fun detailControls(controls: LinearLayout) {
+        controlsColumn = controls
+        when (detail) {
+            "layout" -> {
+                toggle("Number row", staged.numberRow) { staged = staged.copy(numberRow = it) }
+                toggle("Fold-out extra keys", staged.extraKeys) { staged = staged.copy(extraKeys = it) }
+                toggle("Larger keys and labels", staged.large) { staged = staged.copy(large = it) }
+                slider(if (staged.keyHeightDp == 0) 0 else staged.keyHeightDp - 47, 33,
+                    { progress -> if (progress == 0) "Key height: default" else "Key height: ${progress + 47} dp" },
+                    { progress -> staged = staged.copy(keyHeightDp = if (progress == 0) 0 else progress + 47) })
+                slider(staged.bottomPaddingDp, 80,
+                    { progress -> "Bottom space: $progress dp" },
+                    { progress -> staged = staged.copy(bottomPaddingDp = progress) })
+                Ui.text(this, "Keyboard alignment", 16f).let { controls.addView(it) }
+                choice("alignment", listOf(
+                    "Full width" to (staged.alignment == KeyboardAlignment.FULL),
+                    "Left hand" to (staged.alignment == KeyboardAlignment.LEFT),
+                    "Right hand" to (staged.alignment == KeyboardAlignment.RIGHT))) { index ->
+                    staged = staged.copy(alignment = KeyboardAlignment.entries[index])
+                }
+                note("Left and Right keep every key in a narrower column on wider screens.")
+                Ui.text(this, "Letter layout", 16f).let { controls.addView(it) }
+                choice("letters", LetterLayout.entries.map { it.label to (staged.letterLayout == it) }) { index ->
+                    staged = staged.copy(letterLayout = LetterLayout.entries[index])
+                }
+                note("Changes letter positions only. It does not add spelling or speech support.")
+            }
+            "terminal" -> {
+                toggle("Arrow repeat", staged.arrowRepeat) { staged = staged.copy(arrowRepeat = it) }
+                toggle("Hold Backspace or Delete to repeat", staged.deleteRepeat) { staged = staged.copy(deleteRepeat = it) }
+                toggle("Ignore repeated taps on the same key within 250 ms", staged.repeatGuard) {
+                    staged = staged.copy(repeatGuard = it)
+                }
+                note("Open the expand arrow in the toolbar for Esc, Tab, Ctrl, Alt, navigation and F1–F12. " +
+                    "Ctrl and Alt apply to the next key, then release. Terminal apps decide which shortcuts they support.")
+            }
+            "assistance" -> {
+                toggle("Auto-capitalization", staged.autoCapitalize) { staged = staged.copy(autoCapitalize = it) }
+                note("Arms shift after a sentence-ending period, !, ? or Enter. A tap still types the key.")
+                toggle("Secondary character hints", staged.secondaryHints) { staged = staged.copy(secondaryHints = it) }
+                note("Hold a letter, slide to a highlighted accent or symbol, then release; slide away to cancel. " +
+                    "Hiding hints keeps the hold-to-insert and Tools routes available.")
+                note("Suggestions arrive with the planned local prediction work; nothing is learned from typing today.")
+            }
+            "gestures" -> {
+                fun holdDelayFromProgress(progress: Int) = if (progress == 0) 0 else 250 + ((progress - 1) * 50)
+                fun holdDelayProgress(value: Int) = if (value <= 0) 0 else ((value - 250) / 50 + 1).coerceIn(1, 12)
+                slider(holdDelayProgress(staged.holdDelayMs), 12,
+                    { progress -> if (progress == 0) "Hold timing: system default" else "Hold timing: ${holdDelayFromProgress(progress)} ms" },
+                    { progress -> staged = staged.copy(holdDelayMs = holdDelayFromProgress(progress)) })
+                note("Hold timing changes how long a press shows accent or punctuation choices. " +
+                    "System default uses the device long-press timeout.")
+                toggle("Key vibration (respects device settings)", staged.haptics) { staged = staged.copy(haptics = it) }
+                note("Slide the spacebar to move the cursor. Hold Shift first, then slide the spacebar with another " +
+                    "finger to select text. For taps, use Select all in Tools and the arrows in Extra keys.")
+            }
+            "appearance" -> {
+                choice("theme", listOf(
+                    "System" to (staged.theme == ThemeMode.SYSTEM),
+                    "Light" to (staged.theme == ThemeMode.LIGHT),
+                    "Dark" to (staged.theme == ThemeMode.DARK))) { index ->
+                    staged = staged.copy(theme = ThemeMode.entries[index])
+                }
+                toggle("Key borders", staged.keyBorders) { staged = staged.copy(keyBorders = it) }
+            }
+            "voice" -> {
+                val prefs = getSharedPreferences("keyboard", Context.MODE_PRIVATE)
+                toggle("Hold the mic key to insert", prefs.getBoolean("voiceHoldToInsert", false)) { value ->
+                    prefs.edit().putBoolean("voiceHoldToInsert", value).apply()
+                }
+                note("Recognition runs on this device with imported models. Import or switch models in Utterleaf Setup. " +
+                    "Nothing is sent anywhere and dictation is unavailable in password fields.")
+            }
+            else -> {
+                note("No connected microphone — voice needs explicit permission and stays off until you allow it.")
+                note("No passive learning — the keyboard never learns from what you type.")
+                note("No typing history — practice input is cleared when this screen closes and is never saved.")
+                note("No clipboard monitoring — paste only reads the clipboard when you tap Paste.")
+                note("Screen capture is blocked while the keyboard is visible.")
+                note("Speech models stay in app storage; Reset preferences never deletes them.")
+            }
+        }
+        controlsColumn = null
     }
 
     private fun clearPractice() {

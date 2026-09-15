@@ -86,7 +86,7 @@ class OneHandLayoutTest {
         instrumentation.runOnMainSync {
             for (large in listOf(false, true)) for (light in listOf(false, true)) {
                 val panel = panel(KeyboardOptions(alignment = KeyboardAlignment.RIGHT,
-                    numberRow = true, terminal = true, large = large, light = light))
+                    numberRow = true, large = large, light = light))
                 panel.reset(true, false, "Send")
                 assertColumn(panel, 600, KeyboardAlignment.RIGHT)
 
@@ -94,18 +94,18 @@ class OneHandLayoutTest {
                 key("Switch letters and symbols").performClick()
                 assertColumn(panel, 600, KeyboardAlignment.RIGHT)
                 key("Switch letters and symbols").performClick()
+                key("Extra keys").performClick()
                 key("Function keys").performClick()
                 assertColumn(panel, 600, KeyboardAlignment.RIGHT)
-                key("Return to terminal letters").performClick()
-                key("Keyboard tools").performClick()
+                key("Hide function keys").performClick()
+                key("Extra keys").performClick()
+                key("Emoji").performLongClick()
                 assertColumn(panel, 600, KeyboardAlignment.RIGHT)
-                key("Keyboard layout").performClick()
                 assertTrue(key("Right hand layout").isSelected)
-                key("Close keyboard settings").performClick()
-                key("Keyboard tools").performClick()
-                key("Edit actions").performClick()
+                key("Close tools and settings").performClick()
+                key("Emoji").performLongClick()
                 assertColumn(panel, 600, KeyboardAlignment.RIGHT)
-                assertTrue(buttons(panel.view).any { it.contentDescription == "Close edit actions" })
+                assertTrue(buttons(panel.view).any { it.contentDescription == "Select all text" })
             }
         }
     }
@@ -122,7 +122,7 @@ class OneHandLayoutTest {
         instrumentation.runOnMainSync {
             val typed = mutableListOf<String>(); val erased = mutableListOf<Unit>()
             val terminal = mutableListOf<List<Boolean>>()
-            val panel = panel(KeyboardOptions(terminal = true, holdDelayMs = 250), typed, erased, terminal)
+            val panel = panel(KeyboardOptions(holdDelayMs = 250), typed, erased, terminal)
             panel.reset(false, false, "Enter")
             panel.view.addOnLayoutChangeListener { _, left, top, right, bottom, _, _, _, _ ->
                 if (right > left && bottom > top) laidOut.countDown()
@@ -184,16 +184,16 @@ class OneHandLayoutTest {
         val original = KeyboardOptions.load(context)
         val f = attachedFixture()
         try {
-            KeyboardOptions(terminal = true, holdDelayMs = 250).save(context)
+            KeyboardOptions(holdDelayMs = 250).save(context)
             instrumentation.runOnMainSync {
                 fun key(description: String) = buttons(f.panel.view).single { it.contentDescription == description }
                 val q = key("q"); val qDown = SystemClock.uptimeMillis()
                 assertTrue(q.width > 0 && q.height > 0)
                 send(q, MotionEvent.ACTION_DOWN, qDown)
-                key(",").performLongClick()
+                key("Emoji").performLongClick()
                 key("Right hand layout").performClick()
                 send(q, MotionEvent.ACTION_UP, qDown)
-                key("Close keyboard settings").performClick()
+                key("Close tools and settings").performClick()
             }
             instrumentation.waitForIdleSync()
 
@@ -202,10 +202,10 @@ class OneHandLayoutTest {
                 val e = key("e"); val eDown = SystemClock.uptimeMillis()
                 assertTrue(e.width > 0 && e.height > 0)
                 send(e, MotionEvent.ACTION_DOWN, eDown)
-                key(",").performLongClick()
+                key("Emoji").performLongClick()
                 key("Left hand layout").performClick()
                 send(e, MotionEvent.ACTION_UP, eDown)
-                key("Close keyboard settings").performClick()
+                key("Close tools and settings").performClick()
             }
             instrumentation.waitForIdleSync()
 
@@ -244,11 +244,13 @@ class OneHandLayoutTest {
 
             instrumentation.runOnMainSync {
                 fun key(description: String) = buttons(f.panel.view).single { it.contentDescription == description }
+                key("Extra keys").performClick()
                 key("Control off").performClick()
                 assertTrue(key("Control on").isSelected)
-                key(",").performLongClick()
+                key("Emoji").performLongClick()
                 key("Right hand layout").performClick()
-                key("Close keyboard settings").performClick()
+                key("Close tools and settings").performClick()
+                key("Extra keys").performClick()
                 key("Tab").performClick()
             }
             assertTrue(f.typed.isEmpty())

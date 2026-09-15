@@ -1,4 +1,4 @@
-package org.utterleaf.voice
+﻿package org.utterleaf.voice
 
 import android.os.SystemClock
 import android.view.KeyEvent
@@ -48,7 +48,7 @@ class PrivateTypingPanelTest {
             val actions = mutableListOf<EditorAction>()
             val available = mutableSetOf(EditorAction.SELECT_ALL)
             val panel = TypingPanel(context,
-                KeyboardOptions(terminal = true, numberRow = true,
+                KeyboardOptions(numberRow = true,
                     alignment = KeyboardAlignment.RIGHT, letterLayout = LetterLayout.AZERTY),
                 { inserted += it; true }, { eraseCalls++ }, { enterCalls++ }, { moves += it },
                 { dictateCalls++ }, { settingsCalls++ }, { switchCalls++ },
@@ -65,7 +65,7 @@ class PrivateTypingPanelTest {
             val initial = descriptions(panel)
             assertTrue("Inherited number-row preference was lost", "1" in initial)
             assertTrue("Inherited AZERTY layout was lost", "a" in initial && "z" in initial)
-            assertFalse("Terminal mode escaped its private gate", "Escape" in initial || "Control off" in initial)
+            assertFalse("Panel keys escaped their closed gate", "Escape" in initial || "Control off" in initial)
             assertForbiddenControlsAbsent(initial)
 
             key(panel, "a").performClick()
@@ -73,15 +73,16 @@ class PrivateTypingPanelTest {
             key(panel, "Done").performClick()
             key(panel, "Keyboard tools").performClick()
             val tools = descriptions(panel)
-            assertTrue(listOf("Caps lock off", "Edit actions", "Accents and alternate characters").all { it in tools })
+            assertTrue(listOf("Caps lock off", "Accents and alternate characters", "Latin compose").all { it in tools })
             assertForbiddenControlsAbsent(tools)
-            key(panel, "Edit actions").performClick()
-            key(panel, "Move cursor left").performClick()
-            key(panel, "Move cursor right").performClick()
-            key(panel, "Delete to right").performClick()
+            key(panel, "Close tools and settings").performClick()
+            key(panel, "Extra keys").performClick()
+            key(panel, "Left arrow").performClick()
+            key(panel, "Right arrow").performClick()
+            key(panel, "Forward delete").performClick()
             key(panel, "Home").performClick()
             key(panel, "End").performClick()
-            key(panel, "Close edit actions").performClick()
+            key(panel, "Extra keys").performClick()
             key(panel, "Keyboard tools").performClick()
             key(panel, "Caps lock off").performClick()
             key(panel, "A").performClick()
@@ -92,29 +93,32 @@ class PrivateTypingPanelTest {
             key(panel, "Accents and alternate characters").performClick()
             key(panel, "a").performClick()
             key(panel, alternate).performClick()
-            key(panel, "Edit actions").performClick()
-            key(panel, "Select text").performClick()
-            key(panel, "Move cursor left").performClick()
-            key(panel, "Close edit actions").performClick()
-            key(panel, "Edit actions").performClick()
+            key(panel, "Keyboard tools").performClick()
+            key(panel, "Select all text").performLongClick()
+            key(panel, "Close tools and settings").performClick()
+            key(panel, "Extra keys").performClick()
+            buttons(panel).first { it.contentDescription == "Shift off" }.performClick()
+            key(panel, "Left arrow").performClick()
+            key(panel, "Extra keys").performClick()
             assertFalse(descriptions(panel).any { it in setOf("Cut", "Copy", "Paste") })
             val undo = key(panel, "Undo")
             val redo = key(panel, "Redo")
-            val selectAll = key(panel, "Select all")
             assertFalse(undo.isEnabled)
             assertFalse(redo.isEnabled)
-            assertTrue(selectAll.isEnabled)
             touch(undo, MotionEvent.ACTION_DOWN)
             touch(undo, MotionEvent.ACTION_UP)
             assertTrue(actions.isEmpty())
+            key(panel, "Keyboard tools").performClick()
+            val selectAll = key(panel, "Select all text")
+            assertTrue(selectAll.isEnabled)
             selectAll.performClick()
             available += EditorAction.UNDO
             available += EditorAction.REDO
-            panel.refreshEditorActions()
-            assertTrue(undo.isEnabled)
-            assertTrue(redo.isEnabled)
-            undo.performClick()
-            redo.performClick()
+            key(panel, "Close tools and settings").performClick()
+            assertTrue(key(panel, "Undo").isEnabled)
+            assertTrue(key(panel, "Redo").isEnabled)
+            key(panel, "Undo").performClick()
+            key(panel, "Redo").performClick()
 
             assertEquals(listOf("a", "A", alternate), inserted)
             assertEquals(1, eraseCalls)
@@ -127,7 +131,7 @@ class PrivateTypingPanelTest {
                 listOf(KeyEvent.KEYCODE_MOVE_HOME, false, false, false),
                 listOf(KeyEvent.KEYCODE_MOVE_END, false, false, false),
                 listOf(KeyEvent.KEYCODE_DPAD_LEFT, true, false, true),
-                listOf(KeyEvent.KEYCODE_DPAD_LEFT, false, false, false)), specialKeys)
+                listOf(KeyEvent.KEYCODE_DPAD_LEFT, false, false, true)), specialKeys)
             assertEquals(listOf(EditorAction.SELECT_ALL, EditorAction.UNDO, EditorAction.REDO), actions)
             assertTrue(modified.isEmpty())
             assertEquals(0, dictateCalls)
@@ -154,12 +158,11 @@ class PrivateTypingPanelTest {
                 }
 
             val withoutDraft = panel(privateEditing = false, draft = null)
-            key(withoutDraft, "Keyboard tools").performClick()
+            key(withoutDraft, "Emoji").performLongClick()
             assertFalse("Private draft" in descriptions(withoutDraft))
 
             var opens = 0
             val ordinary = panel(privateEditing = false, draft = { opens++ })
-            key(ordinary, "Keyboard tools").performClick()
             key(ordinary, "Private draft").performClick()
             assertEquals(1, opens)
 
@@ -238,7 +241,7 @@ class PrivateTypingPanelTest {
 
     private fun assertForbiddenControlsAbsent(labels: Set<String>) {
         val forbidden = setOf("Dictate", "Keyboard settings", "Switch keyboard", "Private draft",
-            "Number row on", "Number row off", "Terminal controls on", "Terminal controls off",
+            "Number row on", "Number row off", "Extra keys on", "Extra keys off",
             "Full width layout", "Left hand layout", "Right hand layout",
             "QWERTY letter layout", "QWERTZ letter layout", "AZERTY letter layout",
             "Escape", "Tab", "Control off", "Alt off", "Function keys", "Cut", "Copy", "Paste")
@@ -252,3 +255,4 @@ class PrivateTypingPanelTest {
         try { button.dispatchTouchEvent(event) } finally { event.recycle() }
     }
 }
+

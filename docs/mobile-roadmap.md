@@ -28,6 +28,23 @@ One-hand reach and visual polish can proceed alongside foundation work.
 
 ## Current status
 
+- **Daily redesign to the approved mockups implemented in unreleased source:**
+  the keyboard now has the mockup's icon toolbar with a fold-out Extra keys
+  panel (Esc/Tab/Ctrl/Alt/Shift, Home/End/Ins/Del/PgUp/PgDn, arrows, F1–F12),
+  a hinted number row on by default, symbol letter hints, the
+  `?123 · emoji/hold-for-tools · labeled space · period · Enter` bottom row,
+  auto-capitalization, arrow repeat, key borders and a System/Light/Dark theme.
+  Settings is the mockup's category list with search, staged Apply/Cancel and a
+  practice message with live preview. The terminal-controls preference is
+  superseded by the Extra keys panel and the comma key moved to the period menu
+  and symbols page by product decision; the mockup's suggestion strip is
+  intentionally absent until real local prediction exists. Emulator evidence:
+  157 instrumented tests (one intermittent drag-timing failure under full-suite
+  load passes standalone), 8 JVM, 14 tooling tests, lint 0 errors, and 41 owned
+  captures in `artifacts/screenshots/android-daily-redesign/`. See the
+  [daily redesign plan](plans/active/android-keyboard-daily-redesign.md).
+  Physical-phone, TalkBack/Switch Access and release gates remain open.
+
 - **Alpha16 snapshot prepared, unpublished:** All Actions, spatial Edit pad,
   neighboring-word Select, latched Ctrl/Alt and complete US punctuation are in
   source at versionCode 16 / `0.1.0-alpha16`. Alpha15 remains the current signed

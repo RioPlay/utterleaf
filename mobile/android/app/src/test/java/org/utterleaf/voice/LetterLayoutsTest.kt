@@ -44,6 +44,20 @@ class LetterLayoutsTest {
         assertNull(AlternateCharacters.hint('?', LetterLayout.AZERTY))
     }
 
+    @Test fun numberRowHintsSwapTopRowDigitsForSymbols() {
+        val symbolRows = listOf("~\\|=[]<>{}", "@#$%&-+()/", "*\"':;!?")
+        LetterLayout.entries.forEach { layout ->
+            layout.rows.zip(symbolRows).forEach { (letters, hints) ->
+                letters.forEachIndexed { index, letter ->
+                    val hint = hints[index].toString()
+                    assertEquals("$layout $letter", hint,
+                        AlternateCharacters.hint(letter, layout, numberRowShown = true))
+                    assertEquals(hint, AlternateCharacters.choices(letter, false, layout, true).last())
+                }
+            }
+        }
+    }
+
     @Test fun qwertyAlternateOrderAndCaseRemainStable() {
         assertEquals(listOf("á", "à", "ä", "â", "å", "ā", "æ", "ã", "@"),
             AlternateCharacters.choices('a', false, LetterLayout.QWERTY))

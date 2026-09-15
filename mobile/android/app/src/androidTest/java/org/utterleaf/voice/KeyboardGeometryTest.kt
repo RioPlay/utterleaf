@@ -1,4 +1,4 @@
-package org.utterleaf.voice
+﻿package org.utterleaf.voice
 
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Context
@@ -57,7 +57,7 @@ class KeyboardGeometryTest {
         val ordinary = panel(KeyboardOptions())
         ordinary.reset(false, false, "Enter")
         val ordinaryHeight = layout(ordinary, 320)
-            val ordinaryKeys = listOf("Keyboard tools", "Edit actions", "Emoji", "Dictate",
+        val ordinaryKeys = listOf("Undo", "Copy", "Dictate", "Emoji",
             "Switch letters and symbols", "Space", "Enter")
         ordinaryKeys.forEach { label ->
             val rect = bounds(ordinary, label)
@@ -67,7 +67,7 @@ class KeyboardGeometryTest {
         val rejected = panel(KeyboardOptions(), accepted = false)
         rejected.reset(false, false, "Enter")
         layout(rejected, 320)
-        val before = listOf("Keyboard tools", "Dictate", "Space", "Enter").associateWith { bounds(rejected, it) }
+        val before = listOf("Undo", "Dictate", "Space", "Enter").associateWith { bounds(rejected, it) }
         val beforeHeight = rejected.view.height
         key(rejected, "q").performClick()
         assertEquals("Rejected input must not add a row", beforeHeight, layout(rejected, 320))
@@ -75,23 +75,29 @@ class KeyboardGeometryTest {
         assertFalse(descendants(rejected.view).filterIsInstance<android.widget.TextView>()
             .any { it.text == "Key unavailable" && it.visibility == View.VISIBLE })
 
-        val terminalOnly = panel(KeyboardOptions(terminal = true))
-        terminalOnly.reset(false, false, "Enter")
-        layout(terminalOnly, 320)
-        assertNotNull(key(terminalOnly, "Escape"))
-        assertFalse("Terminal controls must not imply a number row", descendants(terminalOnly.view)
+        val withPanel = panel(KeyboardOptions())
+        withPanel.reset(false, false, "Enter")
+        layout(withPanel, 320)
+        key(withPanel, "Extra keys").performClick()
+        assertNotNull(key(withPanel, "Escape"))
+        assertTrue("The fold-out panel keeps the number row", descendants(withPanel.view)
             .filterIsInstance<android.widget.Button>().any { it.contentDescription == "1" })
 
-        val withNumbers = panel(KeyboardOptions(terminal = true, numberRow = true))
+        val withNumbers = panel(KeyboardOptions(numberRow = true))
         withNumbers.reset(false, false, "Enter")
         layout(withNumbers, 320)
         assertNotNull(key(withNumbers, "1"))
+        val withoutNumbers = panel(KeyboardOptions(numberRow = false))
+        withoutNumbers.reset(false, false, "Enter")
+        layout(withoutNumbers, 320)
+        assertFalse(descendants(withoutNumbers.view).filterIsInstance<android.widget.Button>()
+            .any { it.contentDescription == "1" })
 
         for (options in listOf(KeyboardOptions(large = true, light = true), KeyboardOptions(large = true, light = false))) {
             val large = panel(options)
             large.reset(false, false, "Enter")
             val height = layout(large, 320)
-            listOf("Keyboard tools", "Dictate", "Space", "Enter").forEach { label ->
+            listOf("Undo", "Dictate", "Space", "Enter").forEach { label ->
                 val rect = bounds(large, label)
                 assertTrue("$label is clipped with $options", rect.left >= 0 && rect.right <= large.view.width && rect.top >= 0 && rect.bottom <= height)
             }
@@ -102,7 +108,7 @@ class KeyboardGeometryTest {
         instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
 
     @Test fun subsequentActionsAndResetCancelEarlierFailureFeedback() = main {
-        val panel = TypingPanel(app, KeyboardOptions(terminal = true),
+        val panel = TypingPanel(app, KeyboardOptions(),
             { true }, {}, {}, {}, {}, {}, {}, terminalKey = { _, _, _, _ -> true }, editorAction = { true })
         panel.reset(false, false, "Enter")
         layout(panel, 320)
@@ -116,12 +122,11 @@ class KeyboardGeometryTest {
             assertTrue(owner.get(panel) == null)
         }
         verify { key(panel, "q").performClick() }
+        key(panel, "Extra keys").performClick()
         verify { key(panel, "Tab").performClick() }
-        key(panel, "Navigation keys").performClick()
         verify { key(panel, "Left arrow").performClick() }
-        key(panel, "Return to terminal letters").performClick()
-        key(panel, "Keyboard tools").performClick()
-        key(panel, "Edit actions").performClick()
+        verify { key(panel, "Escape").performClick() }
+        key(panel, "Extra keys").performClick()
         verify { key(panel, "Copy").performClick() }
         verify { panel.reset(false, false, "Enter") }
     }
@@ -153,19 +158,24 @@ class KeyboardGeometryTest {
     }
 
     private fun longPress(label: String) {
-        await("Could not long press $label") {
-            node(label)?.let { it.isEnabled && it.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK) } == true
+        val deadline = android.os.SystemClock.elapsedRealtime() + 10_000
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            if (node(label)?.let { it.isEnabled && it.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK) } == true) {
+                instrumentation.waitForIdleSync()
+                return
+            }
+            Thread.sleep(50)
         }
-        instrumentation.waitForIdleSync()
-    }
-
-    private fun revealTool(label: String) {
-        repeat(12) {
-            val target = node(label)
-            if (target?.isVisibleToUser == true) return
-            press("More keyboard tools")
+        val present = StringBuilder()
+        fun collect(current: AccessibilityNodeInfo) {
+            if (present.length < 1500) present.append(current.contentDescription).append(" click=")
+                .append(current.isClickable).append(" long=").append(current.isLongClickable).append(" enabled=")
+                .append(current.isEnabled).append("; ")
+            for (index in 0 until current.childCount) current.getChild(index)?.let(::collect)
         }
-        error("$label was not reachable through More keyboard tools")
+        instrumentation.uiAutomation.windows.filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+            .forEach { it.root?.let(::collect) }
+        throw AssertionError("Could not long press $label; present=$present")
     }
 
     private fun screenBounds(label: String): Rect = Rect().also { node(label)?.getBoundsInScreen(it) ?: error("Missing $label") }
@@ -179,7 +189,7 @@ class KeyboardGeometryTest {
         val manager = app.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         await("Editor never became active") { main { manager.isActive(activity.editor) } }
         main { manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT) }
-        await("Typing IME did not appear") { node("Keyboard tools") != null }
+        await("Typing IME did not appear") { node("Undo") != null }
         return activity
     }
 
@@ -202,20 +212,28 @@ class KeyboardGeometryTest {
                     manager.hideSoftInputFromWindow(editor.editor.windowToken, 0)
                     editor.finish()
                 } }
-                await("Previous IME did not close") { node("Keyboard tools") == null }
+                await("Previous IME did not close") { node("Undo") == null }
                 activity = null
             }
             val display = app.resources.displayMetrics
             fun settled(labels: List<String>) {
                 var previous: List<Rect>? = null
-                await("IME utilities did not settle inside the display") {
-                    if (android.os.Build.VERSION.SDK_INT >= 34) assertTrue(automation.clearCache())
-                    val current = labels.map { runCatching { screenBounds(it) }.getOrNull() ?: return@await false }
-                    val visible = current.all { rect -> rect.width() > 0 && rect.height() > 0 &&
-                        rect.left >= 0 && rect.top >= 0 && rect.right <= display.widthPixels && rect.bottom <= display.heightPixels }
-                    val stable = current == previous
-                    previous = current
-                    visible && stable
+                try {
+                    await("IME utilities did not settle inside the display") {
+                        if (android.os.Build.VERSION.SDK_INT >= 34) assertTrue(automation.clearCache())
+                        val current = labels.map { runCatching { screenBounds(it) }.getOrNull() ?: return@await false }
+                        val visible = current.all { rect -> rect.width() > 0 && rect.height() > 0 &&
+                            rect.left >= 0 && rect.top >= 0 && rect.right <= display.widthPixels && rect.bottom <= display.heightPixels }
+                        val stable = current == previous
+                        previous = current
+                        visible && stable
+                    }
+                } catch (error: AssertionError) {
+                    val state = labels.joinToString { label ->
+                        val found = runCatching { node(label) }.getOrNull()
+                        "$label=${found != null}"
+                    }
+                    throw AssertionError("IME utilities did not settle inside the display: $state", error)
                 }
             }
             fun screenshot(state: String) {
@@ -272,9 +290,9 @@ class KeyboardGeometryTest {
                     }
                 }
             }
-            capture("normal", listOf("Keyboard tools", "Edit actions", "Emoji", "Dictate", "Space", "Done"))
-            val fullLeft = screenBounds("Keyboard tools").left
-            val fullRight = screenBounds("Dictate").right
+            capture("normal", listOf("Undo", "Copy", "Paste", "Dictate", "Space", "Done"))
+            val fullLeft = screenBounds("Undo").left
+            val fullRight = screenBounds("Extra keys").right
             val horizontalPadding = Ui.dp(app, 3) * 2
             val fullAvailableWidth = fullRight - fullLeft + horizontalPadding
             closeEditor()
@@ -284,11 +302,8 @@ class KeyboardGeometryTest {
                 activity!!.editor.setSelection(0, activity!!.editor.length())
             }
             instrumentation.waitForIdleSync()
-            settled(listOf("Keyboard tools", "Edit actions", "Dictate", "Space"))
-            press("Edit actions")
-            settled(listOf("Close edit actions", "Cut", "Copy"))
-            val beforeFailure = mapOf("Close edit actions" to screenBounds("Close edit actions"),
-                "Cut" to screenBounds("Cut"), "Copy" to screenBounds("Copy"))
+            settled(listOf("Undo", "Cut", "Dictate", "Space"))
+            val beforeFailure = mapOf("Cut" to screenBounds("Cut"), "Copy" to screenBounds("Copy"))
             // The controlled password field rejects Cut. Verify actual failure
             // feedback separately from the keyboard-only geometry render.
             val rejection = automation.executeAndWaitForEvent({ press("Cut") }, { event ->
@@ -301,26 +316,28 @@ class KeyboardGeometryTest {
                 assertEquals(0, activity!!.editor.selectionStart)
                 assertEquals(activity!!.editor.length(), activity!!.editor.selectionEnd)
             }
-            capture("failure-status", listOf("Close edit actions", "Cut", "Copy", "Paste"))
-            assertEquals(beforeFailure["Close edit actions"], screenBounds("Close edit actions"))
+            capture("failure-status", listOf("Undo", "Cut", "Copy", "Paste"))
             assertEquals(beforeFailure["Cut"], screenBounds("Cut"))
             assertEquals(beforeFailure["Copy"], screenBounds("Copy"))
-            press("Close edit actions")
-            longPress(","); press("Number row off"); press("Close keyboard settings")
-            await("Number row did not appear") { node("1") != null }
-            capture("number", listOf("Keyboard tools", "Dictate", "Space", "Done", "1"))
-            longPress(","); press("Number row on"); press("Close keyboard settings")
+            longPress("Emoji"); press("Number row on")
+            press("Close tools and settings")
             await("Number row did not close") { node("1") == null }
-            longPress(","); press("Terminal controls off"); press("Close keyboard settings")
-            await("Terminal controls did not appear") { node("Escape") != null }
-            assertTrue("Terminal-only layer showed a number row", node("1") == null)
-            capture("terminal", listOf("Keyboard tools", "Dictate", "Space", "Done", "Escape", "Function keys"))
+            longPress("Emoji"); press("Number row off")
+            press("Close tools and settings")
+            await("Number row did not appear") { node("1") != null }
+            capture("number", listOf("Undo", "Dictate", "Space", "Done", "1"))
+            press("Extra keys")
+            await("Extra keys panel did not open") { node("Escape") != null }
+            assertTrue("The fold-out panel keeps the number row", node("1") != null)
+            capture("terminal", listOf("Undo", "Dictate", "Space", "Done", "Escape", "Function keys"))
+            press("Extra keys")
+            await("Extra keys panel did not close") { node("Escape") == null }
             for (light in listOf(false, true)) {
                 closeEditor()
                 KeyboardOptions(large = true, light = light).save(app)
                 activity = launch()
                 capture(if (light) "large-light" else "large-dark",
-                    listOf("Keyboard tools", "Dictate", "Space", "Done"))
+                    listOf("Undo", "Dictate", "Space", "Done"))
             }
             for (alignment in listOf(KeyboardAlignment.LEFT, KeyboardAlignment.RIGHT)) {
                 closeEditor()
@@ -328,10 +345,10 @@ class KeyboardGeometryTest {
                     large = true).save(app)
                 activity = launch()
                 val side = alignment.name.lowercase(java.util.Locale.ROOT)
-                val daily = listOf("Keyboard tools", "Edit actions", "Dictate", "Space", "Done", "q", "p")
+                val daily = listOf("Undo", "Dictate", "Space", "Done", "q", "p")
                 capture("$side-normal", daily)
-                val sideLeft = screenBounds("Keyboard tools").left
-                val sideRight = screenBounds("Dictate").right
+                val sideLeft = screenBounds("Undo").left
+                val sideRight = screenBounds("Extra keys").right
                 val expectedColumn = if (fullAvailableWidth <= Ui.dp(app, 320)) fullAvailableWidth
                     else (fullAvailableWidth * .82).toInt().coerceIn(Ui.dp(app, 320), Ui.dp(app, 360))
                 assertEquals("Live column width violates the layout contract", expectedColumn.toDouble(),
@@ -345,42 +362,43 @@ class KeyboardGeometryTest {
                     capture("$side-$state", labels)
                     assertKeysInColumn("$side-$state", sideLeft, sideRight)
                 }
-                press("Keyboard tools")
-                sideCapture("tools", listOf("Return to typing", "Edit actions", "Keyboard layout", "Keyboard settings", "Latin compose"))
-                revealTool("Keyboard layout"); press("Keyboard layout")
-                sideCapture("settings", listOf("Close keyboard settings", "Full width layout", "Left hand layout", "Right hand layout", "Keyboard settings"))
+                longPress("Emoji")
+                sideCapture("tools", listOf("Close tools and settings", "Keyboard settings", "Switch keyboard", "Latin compose"))
                 assertTrue(node(if (alignment == KeyboardAlignment.LEFT) "Left hand layout" else "Right hand layout")!!.isSelected)
                 assertFalse(node("Full width layout")!!.isSelected)
-                press("Close keyboard settings")
-                longPress(","); press("Number row off"); press("Close keyboard settings")
-                sideCapture("number", daily + listOf("1", "0"))
-                longPress(","); press("Number row on"); press("Close keyboard settings")
+                press("Close tools and settings")
+                longPress("Emoji"); press("Number row on")
+                press("Close tools and settings")
+                await("Number row did not close") { node("1") == null }
+                sideCapture("number", daily)
+                longPress("Emoji"); press("Number row off")
+                press("Close tools and settings")
+                await("Number row did not appear") { node("1") != null }
                 press("Switch letters and symbols")
-                sideCapture("symbols", listOf("Keyboard tools", "Dictate", "Switch letters and symbols", "Space", "Done", "1", "0", "@", "/"))
+                sideCapture("symbols", listOf("Undo", "Dictate", "Switch letters and symbols", "Space", "Done", "1", "0", "@", "/"))
                 press("More symbols")
-                sideCapture("more-symbols", listOf("Keyboard tools", "Dictate", "More numbers and symbols", "Space", "Done", "~", "®"))
+                sideCapture("more-symbols", listOf("Undo", "Dictate", "More numbers and symbols", "Space", "Done", "~", "®"))
                 press("Switch letters and symbols")
-                longPress(","); press("Terminal controls off"); press("Close keyboard settings")
-                sideCapture("terminal", daily.filter { it != "Edit actions" } +
+                press("Extra keys")
+                await("Extra keys panel did not open") { node("Escape") != null }
+                sideCapture("terminal", daily +
                     listOf("Escape", "Function keys", "Left arrow", "Down arrow", "Up arrow", "Right arrow"))
                 press("Function keys")
-                sideCapture("functions", listOf("Return to terminal letters", "F1", "F12", "Insert", "Forward delete", "Space", "Done"))
-                press("Return to terminal letters")
-                longPress(","); press("Terminal controls on"); press("Close keyboard settings")
-                press("Edit actions")
-                sideCapture("edit", listOf("Close edit actions", "Cut", "Copy", "Paste", "Select text"))
-                press("Close edit actions")
-                longPress(",")
+                sideCapture("functions", listOf("Hide function keys", "F1", "F12", "Insert", "Forward delete", "Space", "Done"))
+                press("Hide function keys")
+                press("Extra keys")
+                await("Extra keys panel did not close") { node("Escape") == null }
+                longPress("Emoji")
                 press("Full width layout")
-                capture("$side-full-return", listOf("Close keyboard settings", "Full width layout"))
+                capture("$side-full-return", listOf("Close tools and settings", "Full width layout"))
                 assertTrue(node("Full width layout")!!.isSelected)
                 assertEquals(KeyboardAlignment.FULL, KeyboardOptions.load(app).alignment)
-                press("Close keyboard settings")
+                press("Close tools and settings")
                 await("Full-width keyboard did not finish relayout") {
-                    node("Keyboard tools") != null && node("Dictate") != null
+                    node("Undo") != null && node("Dictate") != null
                 }
-                assertEquals(fullLeft, screenBounds("Keyboard tools").left)
-                assertEquals(fullRight, screenBounds("Dictate").right)
+                assertEquals(fullLeft, screenBounds("Undo").left)
+                assertEquals(fullRight, screenBounds("Extra keys").right)
             }
             for (alignment in KeyboardAlignment.entries) {
                 closeEditor()
@@ -388,23 +406,23 @@ class KeyboardGeometryTest {
                     large = true).save(app)
                 activity = launch()
                 var expectedText = ""
-                val left = screenBounds("Keyboard tools").left
-                val right = screenBounds("Dictate").right
+                val left = screenBounds("Undo").left
+                val right = screenBounds("Extra keys").right
                 for (layout in LetterLayout.entries) {
                     val state = "${layout.stored}-${alignment.stored}"
                     val choices = LetterLayout.entries.map { "${it.label} letter layout" }
-                    longPress(",")
+                    longPress("Emoji")
                     press("${layout.label} letter layout")
-                    capture("$state-tools", choices + listOf("Close keyboard settings", "Keyboard settings"))
+                    capture("$state-tools", choices + listOf("Close tools and settings", "Keyboard settings"))
                     LetterLayout.entries.forEach { choice ->
                         assertEquals(choice == layout, node("${choice.label} letter layout")!!.isSelected)
                     }
                     assertEquals(layout, KeyboardOptions.load(app).letterLayout)
                     assertEquals(alignment, KeyboardOptions.load(app).alignment)
                     assertKeysInColumn("$state-tools", left, right)
-                    press("Close keyboard settings")
+                    press("Close tools and settings")
                     val letters = layout.rows.joinToString("").map { it.toString() }
-                    capture(state, letters + listOf("Keyboard tools", "Dictate", "Shift off", "Delete", "Space", "Done"))
+                    capture(state, letters + listOf("Undo", "Dictate", "Shift off", "Delete", "Space", "Done"))
                     assertKeysInColumn(state, left, right)
                     var priorRowBottom = -1
                     layout.rows.forEach { row ->
@@ -433,12 +451,27 @@ class KeyboardGeometryTest {
                 try {
                     await("Preferences never focused") { main { preferences.hasWindowFocus() } }
                     instrumentation.waitForIdleSync()
-                    // This fresh settings screen contains an empty private practice
-                    // field. Render the owned view without changing FLAG_SECURE.
+                    // The redesigned landing is the category list; alignment and
+                    // letter layouts live in the Layout & size detail beside the
+                    // practice field, which holds only the demo sentence.
+                    main {
+                        val decor = preferences.window.decorView
+                        descendants(decor)
+                            .single { (it.contentDescription as? String)?.startsWith("Layout & size") == true }
+                            .performClick()
+                    }
+                    instrumentation.waitForIdleSync()
+                    // Alignment radios sit below the practice preview; scroll to them.
+                    main {
+                        (descendants(preferences.window.decorView)
+                            .filterIsInstance<android.widget.ScrollView>().first()).fullScroll(View.FOCUS_DOWN)
+                    }
+                    instrumentation.waitForIdleSync()
                     val bitmap = main {
                         val decor = preferences.window.decorView
                         val views = descendants(decor)
-                        assertTrue(views.filterIsInstance<android.widget.EditText>().all { it.text.isEmpty() })
+                        assertTrue(views.filterIsInstance<android.widget.EditText>()
+                            .all { it.text.toString() == "Let's meet tomorrow at six. Bring the notes." })
                         for (label in listOf("Full width", "Left hand", "Right hand")) {
                             val radio = views.filterIsInstance<android.widget.RadioButton>().single { it.text == label }
                             val bounds = Rect()
@@ -474,3 +507,4 @@ class KeyboardGeometryTest {
         }
     }
 }
+

@@ -26,12 +26,13 @@ class PrivateDraftPanel(
     private val insert: (String) -> DraftInsertionResult,
     private val exit: () -> Unit,
 ) {
-    private val surface = Color.parseColor(if (options.light) "#E8EEEB" else "#171E20")
-    private val paper = Color.parseColor(if (options.light) "#FFFFFF" else "#303A3D")
-    private val ink = Color.parseColor(if (options.light) "#17251D" else "#F0F5F2")
-    private val muted = Color.parseColor(if (options.light) "#486052" else "#B2C5B9")
-    private val accent = Color.parseColor(if (options.light) "#25643D" else "#A2DFB3")
-    private val accentInk = Color.parseColor(if (options.light) "#FFFFFF" else "#10291B")
+    private val light = options.resolvedLight(context)
+    private val surface = Color.parseColor(if (light) "#E8EEEB" else "#171E20")
+    private val paper = Color.parseColor(if (light) "#FFFFFF" else "#303A3D")
+    private val ink = Color.parseColor(if (light) "#17251D" else "#F0F5F2")
+    private val muted = Color.parseColor(if (light) "#486052" else "#B2C5B9")
+    private val accent = Color.parseColor(if (light) "#25643D" else "#A2DFB3")
+    private val accentInk = Color.parseColor(if (light) "#FFFFFF" else "#10291B")
     private var disposed = false
     private var inserting = false
     private var unconfirmed = false
@@ -238,7 +239,7 @@ class PrivateDraftPanel(
             minHeight = Ui.dp(context, if (options.large) 56 else 48)
             minimumHeight = minHeight
             setPadding(Ui.dp(context, 5), Ui.dp(context, 4), Ui.dp(context, 5), Ui.dp(context, 4))
-            background = RippleDrawable(ColorStateList.valueOf(if (options.light) 0x22000000 else 0x33FFFFFF),
+            background = RippleDrawable(ColorStateList.valueOf(if (light) 0x22000000 else 0x33FFFFFF),
                 shape(if (primary) accent else paper), null)
             setTextColor(ColorStateList(arrayOf(intArrayOf(-android.R.attr.state_enabled), intArrayOf()),
                 intArrayOf(if (primary) accentInk and 0x00FFFFFF or 0x66000000 else muted,

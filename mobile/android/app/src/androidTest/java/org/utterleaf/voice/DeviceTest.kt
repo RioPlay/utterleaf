@@ -1,4 +1,4 @@
-package org.utterleaf.voice
+﻿package org.utterleaf.voice
 
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -62,9 +62,13 @@ class DeviceTest {
                 fun descendants(view: android.view.View): List<android.view.View> = listOf(view) +
                     if (view is android.view.ViewGroup) (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) } else emptyList()
                 val views = descendants(activity.findViewById(android.R.id.content))
-                practice = views.filterIsInstance<android.widget.EditText>().single()
+                views.single { (it.contentDescription as? String)?.startsWith("Layout & size") == true }.performClick()
+                val detail = descendants(activity.findViewById(android.R.id.content))
+                practice = detail.filterIsInstance<android.widget.EditText>()
+                    .single { it.hint == "Practice typing here" }
                 assertFalse(practice!!.isSaveEnabled); assertFalse(practice!!.showSoftInputOnFocus)
-                oldKey = views.filterIsInstance<android.widget.Button>().single { it.contentDescription == "a" }
+                practice!!.setText("")
+                oldKey = detail.filterIsInstance<android.widget.Button>().single { it.contentDescription == "a" }
                 oldKey!!.performClick()
                 assertEquals("a", practice!!.text.toString())
                 activity.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
@@ -106,9 +110,15 @@ class DeviceTest {
             panel.reset(false, false, "Done")
             assertFalse(key("Dictate").isEnabled)
             key("Shift off").performClick(); key("A").performClick(); key("a").performClick()
-            key("Keyboard tools").performClick()
+            key("Emoji").performLongClick()
             key("Caps lock off").performClick(); key("B").performClick(); key("B").performClick()
-            key("Shift off").performClick(); key("a").performClick(); key("B").performClick()
+            // Caps lock shows on the shift key; tapping it exits caps and clears shift.
+            buttons(panel.view).first { it.contentDescription == "Shift off" || it.contentDescription == "Shift on" }
+                .performClick()
+            key("a").performClick()
+            buttons(panel.view).first { it.contentDescription == "Shift off" || it.contentDescription == "Shift on" }
+                .performClick()
+            key("B").performClick()
             key("Delete").performClick(); key("Done").performClick()
             assertEquals(listOf("A", "a", "B", "B", "a", "B"), inserted)
             assertEquals(1, deletes); assertEquals(1, enters)
@@ -134,11 +144,11 @@ class DeviceTest {
             fun key(label: String) = keys().single { it.contentDescription == label }
             panel.reset(true, false, "Done")
             assertFalse(keys().any { it.contentDescription == "Move cursor left" })
-            key("Keyboard tools").performClick()
-            for (label in listOf("Caps lock off", "Edit actions", "Accents and alternate characters", "Keyboard settings", "Switch keyboard")) {
+            key("Emoji").performLongClick()
+            for (label in listOf("Caps lock off", "Accents and alternate characters", "Latin compose", "Keyboard settings", "Switch keyboard")) {
                 assertTrue("Tool must be keyboard accessible: $label", key(label).isFocusable)
             }
-            key("Return to typing").performClick()
+            key("Close tools and settings").performClick()
             assertFalse(keys().any { it.contentDescription == "Move cursor left" })
             key("Switch letters and symbols").performClick()
             key("$").performClick()
@@ -198,9 +208,9 @@ class DeviceTest {
                 assertEquals("Home row must stagger half a cell: $description", pitch / 2, a.exactCenterX() - q.exactCenterX(), 3f)
                 assertEquals("Bottom letters must follow the wide Shift key: $description", pitch * 1.5f, z.exactCenterX() - q.exactCenterX(), 3f)
                 assertTrue("Space must remain broad: $description", bounds(key("Space")).width() >= q.width() * 4)
-                key("Keyboard tools").performClick()
+                key("Emoji").performLongClick()
                 layoutAndCheck()
-                key("Return to typing").performClick()
+                key("Close tools and settings").performClick()
                 key("Switch letters and symbols").performClick()
                 layoutAndCheck()
                 val digitWidth = bounds(key("1")).width()
@@ -266,6 +276,20 @@ class DeviceTest {
             }
             fail("Could not press $description")
         }
+        fun pressLong(description: String) {
+            awaitCondition("Keyboard key unavailable: $description") { findKey(description)?.isEnabled == true }
+            val deadline = android.os.SystemClock.elapsedRealtime() + 2000
+            while (android.os.SystemClock.elapsedRealtime() < deadline) {
+                val key = findKey(description)
+                if (key?.isEnabled == true && key.performAction(
+                        android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK)) {
+                    instrumentation.waitForIdleSync()
+                    return
+                }
+                Thread.sleep(50)
+            }
+            fail("Could not long press $description")
+        }
         var activity: KeyboardTestActivity? = null
         var dismissedLauncherAnr = false
         try {
@@ -307,16 +331,15 @@ class DeviceTest {
             show(screen.editor)
             press("a"); press("b"); press("c")
             awaitCondition("InputConnection did not commit letters") { onMain { screen.editor.text.toString() == "abc" } }
-            press("Edit actions")
-            press("Move cursor left")
+            press("Extra keys"); press("Left arrow")
             awaitCondition("InputConnection did not move cursor") { onMain { screen.editor.selectionStart == 2 } }
-            press("Close edit actions"); press("Delete")
+            press("Extra keys"); press("Delete")
             awaitCondition("InputConnection did not delete before cursor") { onMain { screen.editor.text.toString() == "ac" } }
-            press("Edit actions"); press("Move cursor right"); press("Close edit actions"); press("d")
+            press("Extra keys"); press("Right arrow"); press("Extra keys"); press("d")
             awaitCondition("Cursor-right edit was incorrect") { onMain { screen.editor.text.toString() == "acd" } }
-            press("Edit actions"); press("Move cursor left"); press("Delete to right")
+            press("Extra keys"); press("Left arrow"); press("Forward delete")
             awaitCondition("Forward delete did not remove text after the cursor") { onMain { screen.editor.text.toString() == "ac" } }
-            press("Close edit actions"); press("d")
+            press("Extra keys"); press("d")
             press("Done")
             awaitCondition("Editor action did not reach editor") { onMain { screen.lastEditorAction == android.view.inputmethod.EditorInfo.IME_ACTION_DONE } }
 
@@ -363,8 +386,15 @@ class DeviceTest {
                         }
                         return find(root)
                     }
+                    fun sequenceRootButtons(root: android.view.View): Sequence<android.widget.Button> = sequence {
+                        if (root is android.widget.Button && root.isShown) yield(root)
+                        if (root is android.view.ViewGroup) {
+                            for (index in 0 until root.childCount) yieldAll(sequenceRootButtons(root.getChildAt(index)))
+                        }
+                    }
                     fun center(root: android.view.View, label: String): Pair<Float, Float> = onMain {
-                        val key = findNativeKey(root, label) ?: error("Missing touch key: $label")
+                        val key = findNativeKey(root, label) ?: error("Missing touch key: $label; shown=" +
+                            sequenceRootButtons(root).map { it.contentDescription }.toList())
                         val position = IntArray(2); key.getLocationOnScreen(position)
                         Pair(position[0] + key.width / 2f, position[1] + key.height / 2f)
                     }
@@ -424,10 +454,21 @@ class DeviceTest {
                     awaitCondition("Typing did not replace gesture selection") { onMain { screen.editor.text.toString() == "ax" } }
                     onMain { screen.editor.setText("acd"); screen.editor.setSelection(3) }
                     instrumentation.waitForIdleSync()
+                    // The editor restart rebuilds the IME asynchronously; wait
+                    // until the same letter button survives two polls before
+                    // driving gestures against it.
+                    var stableKey: android.widget.Button? = null
+                    awaitCondition("Keyboard did not stabilize after restart") {
+                        val current = onMain { findNativeKey(currentImeRoot(), "e") }
+                        val same = current != null && current === stableKey
+                        stableKey = current
+                        same
+                    }
                     val holdRoot = onMain { currentImeRoot() }
                     val imeHeight = onMain { holdRoot.height }
                     val letterButton = onMain {
-                        findNativeKey(holdRoot, "e") ?: error("Missing touch key: e")
+                        findNativeKey(holdRoot, "e") ?: error("Missing touch key: e; shown=" +
+                            sequenceRootButtons(holdRoot).map { it.contentDescription }.toList())
                     }
                     val letter = center(holdRoot, "e")
                     fun findHoldStrip(view: android.view.View): AlternateStrip? {
@@ -458,7 +499,7 @@ class DeviceTest {
                         onMain { screen.editor.text.toString() == "acdé" }
                     }
                     press("Delete")
-                    press("Keyboard tools")
+                    pressLong("Emoji")
                     press("Accents and alternate characters")
                     press("e")
                     shell("screencap -p /data/local/tmp/utterleaf-keyboard-accents.png")
@@ -468,7 +509,7 @@ class DeviceTest {
                     }
                     press("Delete")
 
-                    press("Keyboard tools")
+                    pressLong("Emoji")
                     press("Accents and alternate characters")
                     press("e")
                     val detachedAlternate = onMain {
@@ -491,6 +532,13 @@ class DeviceTest {
                         }
                         instrumentation.waitForIdleSync()
                     }
+                    fun liveLongPress(label: String) {
+                        UiAwait.until("Live IME key unavailable: $label") {
+                            val button = findNativeKey(currentImeRoot(), label)
+                            button != null && button.isAttachedToWindow && button.isShown && button.isEnabled && button.performLongClick()
+                        }
+                        instrumentation.waitForIdleSync()
+                    }
                     val beforeRestart = onMain { findNativeKey(currentImeRoot(), "a") ?: error("Missing live letter") }
                     onMain {
                         screen.editor.setText("cat"); screen.editor.setSelection(3)
@@ -499,9 +547,9 @@ class DeviceTest {
                     UiAwait.until("Editor restart did not replace the IME panel") { !beforeRestart.isAttachedToWindow }
                     livePress("s")
                     awaitCondition("Live action fixture did not type") { onMain { screen.editor.text.toString() == "cats" } }
-                    livePress("Edit actions"); livePress("Undo")
+                    livePress("Undo")
                     awaitCondition("Live Undo did not reach editor history") { onMain { screen.editor.text.toString() == "cat" } }
-                    livePress("Select all")
+                    liveLongPress("Copy")
                     awaitCondition("Live Select all did not select the editor") { onMain {
                         screen.editor.selectionStart == 0 && screen.editor.selectionEnd == 3
                     } }
@@ -510,10 +558,10 @@ class DeviceTest {
                     livePress("Paste")
                     awaitCondition("Live Copy/Paste did not duplicate the selected text") { onMain { screen.editor.text.toString() == "catcat" } }
                     val leftPanelPaste = onMain { findNativeKey(currentImeRoot(), "Paste") ?: error("Missing live Paste") }
-                    livePress("Close edit actions")
+                    liveLongPress("Emoji")
                     onMain { leftPanelPaste.performClick() }
-                    UiAwait.remains("Old action changed text after leaving Edit") { screen.editor.text.toString() == "catcat" }
-                    livePress("Edit actions")
+                    UiAwait.remains("Old action changed text after leaving typing") { screen.editor.text.toString() == "catcat" }
+                    livePress("Close tools and settings")
                     val oldFieldPaste = onMain { findNativeKey(currentImeRoot(), "Paste") ?: error("Missing live Paste") }
                     show(screen.password)
                     onMain { oldFieldPaste.performClick() }
@@ -548,16 +596,12 @@ class DeviceTest {
             press("y")
             awaitCondition("Keyboard failed after reopen") { onMain { screen.password.text.toString() == "xy" } }
             assertEquals("Password input changed the previous field", "acd", onMain { screen.editor.text.toString() })
-            press("Keyboard tools")
-            awaitCondition("Terminal controls toggle did not appear") {
-                findKey("Terminal controls off") != null || findKey("Terminal controls on") != null
-            }
-            if (findKey("Terminal controls off") != null) press("Terminal controls off")
             show(screen.raw)
             press("l"); press("s")
             awaitCondition("TYPE_NULL terminal field did not receive raw ASCII key events") {
                 onMain { screen.raw.text.toString() == "ls" }
             }
+            press("Extra keys")
             press("Control off")
             press("c")
             awaitCondition("Ctrl+C inserted a letter into the TYPE_NULL terminal field") {
@@ -685,3 +729,5 @@ class DeviceTest {
         assertNull(failure.get())
     }
 }
+
+

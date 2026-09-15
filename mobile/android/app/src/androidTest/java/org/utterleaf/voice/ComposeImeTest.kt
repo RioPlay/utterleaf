@@ -74,6 +74,19 @@ class ComposeImeTest {
         throw AssertionError("Could not press $description")
     }
 
+    private fun longPress(description: String) {
+        await("Missing enabled $description") { findNode(description)?.isEnabled == true }
+        val deadline = android.os.SystemClock.elapsedRealtime() + 2_000
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            if (findNode(description)?.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK) == true) {
+                instrumentation.waitForIdleSync()
+                return
+            }
+            Thread.sleep(50)
+        }
+        throw AssertionError("Could not long press $description")
+    }
+
     private fun descendants(view: View): List<View> = listOf(view) + if (view is ViewGroup)
         (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) } else emptyList()
 
@@ -82,7 +95,7 @@ class ComposeImeTest {
             .filterIsInstance<Button>().single { it.isShown && it.contentDescription == description }
     }
 
-    private fun currentService(): KeyboardIme = currentButton("Keyboard tools").context as KeyboardIme
+    private fun currentService(): KeyboardIme = currentButton("Undo").context as KeyboardIme
 
     private fun launch(raw: Boolean = false): KeyboardEditorContractActivity {
         val activity = instrumentation.startActivitySync(
@@ -91,27 +104,42 @@ class ComposeImeTest {
                 .putExtra("raw", raw)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         ) as KeyboardEditorContractActivity
-        await("Editor activity never acquired window focus") { main { activity.hasWindowFocus() } }
+        await("Editor activity never acquired window focus") {
+            // A cold CI emulator can hand out window focus late; nudge the
+            // editor while waiting instead of failing on the first pass.
+            if (!main { activity.hasWindowFocus() }) main { activity.editor.requestFocus() }
+            main { activity.hasWindowFocus() }
+        }
         val manager = app.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         main { activity.editor.requestFocus() }
         await("Editor never became active") { main { manager.isActive(activity.editor) } }
-        main {
-            manager.restartInput(activity.editor)
-            manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
+        // A prior test's manual service callbacks can leave the IME expecting a
+        // fresh show cycle; retry until the panel actually appears.
+        val deadline = android.os.SystemClock.elapsedRealtime() + 20_000
+        var shown = false
+        while (!shown && android.os.SystemClock.elapsedRealtime() < deadline) {
+            main {
+                manager.restartInput(activity.editor)
+                manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
+            }
+            try {
+                await("Typing keyboard did not appear") { findNode("Undo") != null }
+                shown = true
+            } catch (retry: AssertionError) {
+                Thread.sleep(250)
+            }
         }
-        await("Typing keyboard did not appear") {
-            findNode("Keyboard tools") != null
-        }
+        check(shown) { "Typing keyboard did not appear" }
         return activity
     }
 
     private fun close(activity: KeyboardEditorContractActivity) {
         main { activity.finish() }
-        await("Previous IME session did not close") { findNode("Keyboard tools") == null }
+        await("Previous IME session did not close") { findNode("Undo") == null }
     }
 
     private fun openCompose() {
-        if (findNode("Latin compose") == null) press("Keyboard tools")
+        if (findNode("Latin compose") == null) longPress("Emoji")
         press("Latin compose")
         press("Acute compose mark")
         await("Compose letter view did not appear") { findNode("Cancel compose") != null }
@@ -219,14 +247,14 @@ class ComposeImeTest {
         }
     }
 
-    @Test fun rawTerminalModeCannotEnterCompose() = withKeyboard {
-        KeyboardOptions(terminal = true).save(app)
+    @Test fun rawFieldCannotEnterCompose() = withKeyboard {
         val activity = launch(raw = true)
         try {
-            press("Keyboard tools")
-            val disabled = checkNotNull(findNode("Latin compose unavailable in terminal mode"))
-            assertFalse(disabled.isEnabled)
-            assertFalse(disabled.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+            // Raw fields disable the emoji/settings key, so the tools hub and
+            // Latin compose are unreachable; compose cannot commit there anyway.
+            val emoji = checkNotNull(findNode("Emoji"))
+            assertFalse(emoji.isEnabled)
+            assertFalse(emoji.performAction(AccessibilityNodeInfo.ACTION_CLICK))
             assertEquals(android.view.KeyEvent.KEYCODE_UNKNOWN, main { activity.rawKey })
             assertEquals(null, findNode("Acute compose mark"))
         } finally {

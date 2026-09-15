@@ -43,8 +43,10 @@ class ComposePanelTest {
         privateEditing: Boolean = false,
         accepted: () -> Boolean = { true },
         openDraft: (() -> Unit)? = null,
+        rawField: Boolean = false,
     ) = TypingPanel(app, options, { value -> attempts += value; accepted() }, {}, {}, {}, {}, {}, {},
-        privateEditing = privateEditing, openDraft = openDraft).apply { reset(false, false, "Enter") }
+        privateEditing = privateEditing, openDraft = openDraft, rawField = rawField)
+        .apply { reset(false, false, "Enter") }
 
     private fun openCompose(panel: TypingPanel, mark: String = "Acute compose mark") {
         revealTool(panel, "Latin compose").performClick()
@@ -53,7 +55,12 @@ class ComposePanelTest {
     }
 
     private fun revealTool(panel: TypingPanel, description: String, widthDp: Int = 360): Button {
-        if (maybeKey(panel, description) == null) key(panel, "Keyboard tools").performClick()
+        if (maybeKey(panel, description) == null) {
+            // The draft opens its restricted hub with a tap; ordinary keyboards
+            // reach the same hub by holding the emoji key.
+            if (maybeKey(panel, "Keyboard tools") != null) key(panel, "Keyboard tools").performClick()
+            else key(panel, "Emoji").performLongClick()
+        }
         val width = Ui.dp(app, widthDp)
         fun layout() {
             panel.view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
@@ -61,14 +68,7 @@ class ComposePanelTest {
             panel.view.layout(0, 0, width, panel.view.measuredHeight)
         }
         layout(); layout()
-        repeat(12) {
-            val target = key(panel, description)
-            val bounds = Rect(0, 0, target.width, target.height)
-            panel.view.offsetDescendantRectToMyCoords(target, bounds)
-            if (bounds.left >= 0 && bounds.right <= width) return target
-            key(panel, "More keyboard tools").performClick(); layout()
-        }
-        error("$description was not reachable through More keyboard tools")
+        return key(panel, description)
     }
 
     @Test fun tapRouteCommitsOnlyOneCompletedPairAndUnsupportedPairIsAtomic() = instrumentation.runOnMainSync {
@@ -106,7 +106,7 @@ class ComposePanelTest {
 
         val capsAttempts = mutableListOf<String>()
         val caps = panel(capsAttempts)
-        key(caps, "Keyboard tools").performClick()
+        key(caps, "Emoji").performLongClick()
         revealTool(caps, "Caps lock off").performClick()
         revealTool(caps, "Latin compose").performClick()
         key(caps, "Acute compose mark").performClick()
@@ -119,21 +119,21 @@ class ComposePanelTest {
         assertEquals(listOf("É", "E"), capsAttempts)
     }
 
-    @Test fun privateDraftCanComposeWhileTerminalModeCannotEnterCompose() = instrumentation.runOnMainSync {
+    @Test fun privateDraftCanComposeWhileRawFieldCannotEnterCompose() = instrumentation.runOnMainSync {
         val local = mutableListOf<String>()
-        val privatePanel = panel(local, KeyboardOptions(terminal = true), privateEditing = true)
+        val privatePanel = panel(local, privateEditing = true)
         openCompose(privatePanel, "Tilde compose mark")
         key(privatePanel, "n").performClick()
         assertEquals(listOf("ñ"), local)
 
-        val terminalAttempts = mutableListOf<String>()
-        val terminal = panel(terminalAttempts, KeyboardOptions(terminal = true))
-        key(terminal, "Keyboard tools").performClick()
-        val disabled = key(terminal, "Latin compose unavailable in terminal mode")
+        val rawAttempts = mutableListOf<String>()
+        val raw = panel(rawAttempts, rawField = true)
+        key(raw, "Emoji").performLongClick()
+        val disabled = key(raw, "Latin compose unavailable in raw input")
         assertFalse(disabled.isEnabled)
         disabled.performClick()
-        assertTrue(terminalAttempts.isEmpty())
-        assertNull(maybeKey(terminal, "Acute compose mark"))
+        assertTrue(rawAttempts.isEmpty())
+        assertNull(maybeKey(raw, "Acute compose mark"))
     }
 
     @Test fun resetLayoutToolDetachAndDisposeInvalidatePendingButtons() {
@@ -149,17 +149,17 @@ class ComposePanelTest {
             openCompose(fixture)
             val staleLayout = key(fixture, "e")
             key(fixture, "Return to typing").performClick()
-            key(fixture, ",").performLongClick()
+            key(fixture, "Emoji").performLongClick()
             key(fixture, "QWERTZ letter layout").performClick()
             staleLayout.performClick()
-            key(fixture, "Close keyboard settings").performClick()
+            key(fixture, "Close tools and settings").performClick()
             openCompose(fixture)
             val staleAlignment = key(fixture, "e")
             key(fixture, "Return to typing").performClick()
-            key(fixture, ",").performLongClick()
+            key(fixture, "Emoji").performLongClick()
             key(fixture, "Left hand layout").performClick()
             staleAlignment.performClick()
-            key(fixture, "Close keyboard settings").performClick()
+            key(fixture, "Close tools and settings").performClick()
             openCompose(fixture)
             val staleDispose = key(fixture, "e")
             fixture.dispose()
@@ -238,8 +238,7 @@ class ComposePanelTest {
                     }
                 }
             }
-            key(panel, "Keyboard tools").performClick()
-            assertNotNull(revealTool(panel, "Private draft", 412))
+            assertNotNull(key(panel, "Private draft"))
             revealTool(panel, "Latin compose", 412).performClick()
             validateAndCapture("marks")
             key(panel, "Acute compose mark").performClick()

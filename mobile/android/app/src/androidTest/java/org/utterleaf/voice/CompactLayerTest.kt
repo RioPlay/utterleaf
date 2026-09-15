@@ -1,4 +1,4 @@
-package org.utterleaf.voice
+﻿package org.utterleaf.voice
 
 import android.content.Intent
 import android.graphics.Bitmap
@@ -93,7 +93,7 @@ class CompactLayerTest {
             assertTrue("$description must be visible without scrolling", fullyVisible(it))
         }
         fun cancelMenuTouch() {
-            val target = key("Keyboard layout")
+            val target = key("Accents and alternate characters")
             send(target, MotionEvent.ACTION_DOWN)
             send(target, MotionEvent.ACTION_MOVE, dx = -target.width * 2f)
             send(target, MotionEvent.ACTION_UP, dx = -target.width * 2f)
@@ -103,11 +103,9 @@ class CompactLayerTest {
             val directoryName = InstrumentationRegistry.getArguments().getString("r2Screenshots") ?: return
             require(directoryName.matches(Regex("[a-zA-Z0-9_-]{1,32}")))
             val anchors = when (state) {
-                "settings-layer" -> listOf("Close keyboard settings", "Full width layout")
-                "edit-layer" -> listOf("Close edit actions", "Cut")
-                "terminal-functions" -> listOf("Return to terminal letters", "F1", "Space")
-                "terminal-navigation" -> listOf("Return to terminal letters", "Left arrow", "Space")
-                "tools-start", "tools-slid" -> listOf("Return to typing", "Keyboard layout", "Edit actions")
+                "tools-hub" -> listOf("Close tools and settings", "Keyboard settings", "Latin compose")
+                "extra-keys" -> listOf("Escape", "Left arrow", "Space")
+                "extra-functions" -> listOf("Hide function keys", "F1", "Space")
                 else -> listOf("q", "Space")
             }
             var previousScroll = -1
@@ -172,7 +170,7 @@ class CompactLayerTest {
         }
     }
 
-    @Test fun toolsSettingsAndEditingReplaceRowsAcrossSupportedGeometry() {
+    @Test fun hubAndPanelLayersStayUsableAcrossSupportedGeometry() {
         main {
             for (width in listOf(320, 360, 412)) for (light in listOf(false, true))
                 for (large in listOf(false, true)) for (alignment in KeyboardAlignment.entries) {
@@ -202,45 +200,48 @@ class CompactLayerTest {
                         return panel.view.height
                     }
                     val normalHeight = layout()
-                    key("Keyboard tools").performClick()
-                    assertTrue("Tools grew ${width}dp light=$light large=$large $alignment", layout() <= normalHeight)
+                    assertTrue(key("Emoji").performLongClick())
+                    assertTrue("Hub grew ${width}dp light=$light large=$large $alignment", layout() <= normalHeight)
                     checkActions()
-                    for (label in listOf("Return to typing", "Edit actions", "Keyboard layout", "Keyboard settings", "Latin compose")) {
-                        assertTrue("Missing $label in compact tools", key(label).isFocusable)
-                    }
-                    key("Return to typing").performClick()
-                    assertTrue(key(",").performLongClick())
-                    val settingsHeight = layout()
-                    assertTrue("Settings layer grew the keyboard", settingsHeight <= normalHeight)
-                    assertFalse(buttons().any { it.contentDescription == "q" })
-                    for (label in listOf("Close keyboard settings", "Keyboard settings", "Switch keyboard",
+                    for (label in listOf("Close tools and settings", "Keyboard settings", "Switch keyboard", "Latin compose",
                         "Full width layout", "Left hand layout", "Right hand layout", "QWERTY letter layout",
-                        "QWERTZ letter layout", "AZERTY letter layout", "Number row off", "Terminal controls off")) {
+                        "QWERTZ letter layout", "AZERTY letter layout", "Number row on", "Extra keys on")) {
                         val button = key(label)
-                        val rect = Rect(0, 0, button.width, button.height)
-                        panel.view.offsetDescendantRectToMyCoords(button, rect)
+                        assertTrue("Missing $label in the hub", button.isFocusable)
+                        val rect = bounds(label)
                         assertTrue("$label clipped at ${width}dp light=$light large=$large $alignment: $rect",
                             rect.left >= 0 && rect.right <= panel.view.width && rect.top >= 0 && rect.bottom <= panel.view.height)
                     }
-                    key("Close keyboard settings").performClick()
+                    key("Close tools and settings").performClick()
                     assertEquals(normalHeight, layout())
-                    key("Edit actions").performClick()
-                    assertTrue("Edit layer grew the keyboard", layout() <= normalHeight)
-                    checkActions()
-                    assertEquals(bounds("Move cursor up").centerX(), bounds("Select text").centerX())
-                    assertEquals(bounds("Move cursor down").centerX(), bounds("Select text").centerX())
-                    assertTrue(bounds("Move cursor up").bottom <= bounds("Select text").top)
-                    assertTrue(bounds("Move cursor down").top >= bounds("Select text").bottom)
-                    assertTrue(bounds("Move cursor left").right <= bounds("Select text").left)
-                    assertTrue(bounds("Move cursor right").left >= bounds("Select text").right)
-                    assertTrue(key("Close edit actions").isFocusable)
-                    assertTrue(key("Cut").isFocusable)
+                    key("Extra keys").performClick()
+                    val panelHeight = layout()
+                    assertTrue("The fold-out panel must add its rows", panelHeight > normalHeight)
+                    for (label in listOf("Function keys", "Escape", "Tab", "Control off", "Alt off",
+                        "Home", "End", "Insert", "Forward delete", "Page up", "Page down",
+                        "Left arrow", "Down arrow", "Up arrow", "Right arrow", "q", "Space")) {
+                        val rect = bounds(label)
+                        assertTrue("$label clipped at ${width}dp light=$light large=$large $alignment: $rect",
+                            rect.left >= 0 && rect.right <= panel.view.width && rect.top >= 0 && rect.bottom <= panel.view.height)
+                    }
+                    key("Function keys").performClick()
+                    val functionsHeight = layout()
+                    assertTrue("F-keys must add their rows", functionsHeight > panelHeight)
+                    for (label in listOf("Hide function keys", "F1", "F12", "q")) {
+                        val rect = bounds(label)
+                        assertTrue("$label clipped at ${width}dp: $rect",
+                            rect.left >= 0 && rect.right <= panel.view.width && rect.top >= 0 && rect.bottom <= panel.view.height)
+                    }
+                    key("Hide function keys").performClick()
+                    assertEquals(panelHeight, layout())
+                    key("Extra keys").performClick()
+                    assertEquals(normalHeight, layout())
                     panel.dispose()
                 }
         }
     }
 
-    @Test fun allActionsAreVisibleAndCommaTapHoldCancellationRemainDistinct() {
+    @Test fun emojiTapHoldAndSwipeCancellationRemainDistinct() {
         val captureWidth = InstrumentationRegistry.getArguments().getString("r2WidthDp")?.toIntOrNull() ?: 360
         val captureLight = InstrumentationRegistry.getArguments().getString("r2Light") == "true"
         val captureLarge = InstrumentationRegistry.getArguments().getString("r2Large") == "true"
@@ -250,152 +251,101 @@ class CompactLayerTest {
             alignment = captureAlignment), widthDp = captureWidth) { fixture ->
             val normalHeight = fixture.height()
             fixture.capture("normal")
-            fixture.tap(fixture.key("Keyboard tools"))
-            assertTrue(fixture.height() <= normalHeight)
-            assertTrue(fixture.fullyVisible(fixture.key("Return to typing")))
-            assertTrue(fixture.fullyVisible(fixture.key("Edit actions")))
-            fixture.capture("tools-start")
-            fixture.cancelMenuTouch()
-            assertTrue(fixture.has("Return to typing"))
-            assertFalse(fixture.has("Close keyboard settings"))
-            assertTrue("Swipe release activated an editor tool", fixture.calls.actions.isEmpty())
+            // A tap opens the emoji picker, never the tools hub.
+            fixture.tap(fixture.key("Emoji"))
+            assertFalse(fixture.has("Close tools and settings"))
+            assertTrue(fixture.calls.inserted.isEmpty())
             assertEquals(0, fixture.calls.settings)
-            val layout = fixture.reveal("Keyboard layout")
-            fixture.capture("tools-slid")
-            fixture.tap(layout)
-            assertTrue(fixture.has("Close keyboard settings"))
-            assertFalse(fixture.has("q"))
-            assertTrue(fixture.height() <= normalHeight)
-            fixture.capture("settings-layer")
-            fixture.tap(fixture.key("Close keyboard settings"))
+            fixture.tap(fixture.key("Return from emoji to letters"))
+            assertEquals(normalHeight, fixture.height())
 
-            fixture.tap(fixture.key("Edit actions"))
-            assertTrue(fixture.has("Close edit actions"))
-            assertTrue(fixture.height() <= normalHeight)
-            fixture.capture("edit-layer")
-            fixture.tap(fixture.key("Close edit actions"))
+            // The long press is the tools hub; it never inserts text.
+            val emojiKey = fixture.key("Emoji")
+            assertTrue(main { emojiKey.performAccessibilityAction(AccessibilityNodeInfo.ACTION_LONG_CLICK, null) })
+            assertTrue(fixture.has("Close tools and settings"))
+            assertTrue(fixture.calls.inserted.isEmpty())
+            fixture.capture("tools-hub")
+            fixture.cancelMenuTouch()
+            assertTrue(fixture.has("Close tools and settings"))
+            assertTrue("Swipe release activated a hub tool",
+                fixture.calls.actions.isEmpty() && fixture.calls.settings == 0)
+            fixture.tap(fixture.reveal("Latin compose"))
+            assertTrue(fixture.has("Cancel compose"))
+            fixture.tap(fixture.key("Cancel compose"))
+            assertEquals(normalHeight, fixture.height())
 
-            var comma = fixture.key(",")
-            fixture.send(comma, MotionEvent.ACTION_DOWN)
-            fixture.send(comma, MotionEvent.ACTION_UP)
-            assertEquals(listOf(","), fixture.calls.inserted)
+            // Panel open and close keep the everyday keyboard intact.
+            fixture.tap(fixture.key("Extra keys"))
+            assertTrue(fixture.has("Escape"))
+            assertTrue(fixture.height() > normalHeight)
+            fixture.capture("extra-keys")
+            fixture.tap(fixture.key("Function keys"))
+            assertTrue(fixture.has("F1"))
+            fixture.capture("extra-functions")
+            fixture.tap(fixture.key("Hide function keys"))
+            assertFalse(fixture.has("F1"))
+            fixture.tap(fixture.key("Extra keys"))
+            assertFalse(fixture.has("Escape"))
+            assertEquals(normalHeight, fixture.height())
 
-            comma = fixture.key(",")
-            fixture.send(comma, MotionEvent.ACTION_DOWN)
-            UiAwait.until("Comma hold did not open compact settings") { fixture.has("Close keyboard settings") }
-            fixture.send(comma, MotionEvent.ACTION_UP)
-            assertEquals("Hold inserted a comma", listOf(","), fixture.calls.inserted)
+            assertTrue(main { fixture.key("Emoji").performAccessibilityAction(AccessibilityNodeInfo.ACTION_LONG_CLICK, null) })
             fixture.tap(fixture.key("Keyboard settings"))
             assertEquals(1, fixture.calls.settings)
-            fixture.tap(fixture.key("Close keyboard settings"))
-
-            comma = fixture.key(",")
-            fixture.send(comma, MotionEvent.ACTION_DOWN)
-            fixture.send(comma, MotionEvent.ACTION_CANCEL)
-            UiAwait.remains("Cancelled comma hold launched settings or typed",
-                durationMs = 300) { !fixture.has("Close keyboard settings") && fixture.calls.inserted == listOf(",") }
-
-            comma = fixture.key(",")
-            fixture.send(comma, MotionEvent.ACTION_DOWN)
-            fixture.send(comma, MotionEvent.ACTION_MOVE, dx = -comma.width.toFloat() * 2)
-            fixture.send(comma, MotionEvent.ACTION_UP, dx = -comma.width.toFloat() * 2)
-            UiAwait.remains("Slide-off comma hold launched settings or typed",
-                durationMs = 300) { !fixture.has("Close keyboard settings") && fixture.calls.inserted == listOf(",") }
-
-            comma = fixture.key(",")
-            fixture.send(comma, MotionEvent.ACTION_DOWN)
-            fixture.multiTouch(comma)
-            fixture.send(comma, MotionEvent.ACTION_UP)
-            UiAwait.remains("Multitouch comma hold launched settings or typed",
-                durationMs = 300) { !fixture.has("Close keyboard settings") && fixture.calls.inserted == listOf(",") }
-
-            comma = fixture.key(",")
-            fixture.send(comma, MotionEvent.ACTION_DOWN)
-            main { fixture.panel.reset(false, false, "Done") }
-            fixture.send(comma, MotionEvent.ACTION_UP)
-            UiAwait.remains("Stale comma key launched settings or typed",
-                durationMs = 300) { !fixture.has("Close keyboard settings") && fixture.calls.inserted == listOf(",") }
-
-            comma = fixture.key(",")
-            fixture.send(comma, MotionEvent.ACTION_DOWN)
-            main { fixture.host.removeView(fixture.panel.view) }
-            UiAwait.remains("Detached comma hold launched settings or typed",
-                durationMs = 300) { !fixture.has("Close keyboard settings") && fixture.calls.inserted == listOf(",") }
-            main {
-                fixture.host.addView(fixture.panel.view,
-                    FrameLayout.LayoutParams(Ui.dp(app, fixture.widthDp), FrameLayout.LayoutParams.WRAP_CONTENT))
-                fixture.panel.reset(false, false, "Done")
-            }
-            UiAwait.until("Compact keyboard did not recover after comma detach") {
-                fixture.has(",") && fixture.fullyVisible(fixture.key(","))
-            }
-
-            comma = fixture.key(",")
-            assertTrue(main { comma.performAccessibilityAction(AccessibilityNodeInfo.ACTION_LONG_CLICK, null) })
-            assertTrue(fixture.has("Close keyboard settings"))
-            assertEquals(listOf(","), fixture.calls.inserted)
         }
     }
 
-    @Test fun privateCommaHoldAndTerminalLayerExitsFailClosed() {
+    @Test fun privateHubStaysRestrictedAndPanelExitsStayClean() {
         val captureWidth = InstrumentationRegistry.getArguments().getString("r2WidthDp")?.toIntOrNull() ?: 360
         val captureLight = InstrumentationRegistry.getArguments().getString("r2Light") == "true"
         val captureLarge = InstrumentationRegistry.getArguments().getString("r2Large") == "true"
         val captureAlignment = InstrumentationRegistry.getArguments().getString("r2Alignment")
             ?.let { stored -> KeyboardAlignment.entries.singleOrNull { it.stored == stored } } ?: KeyboardAlignment.FULL
         withPanel(KeyboardOptions(holdDelayMs = 120), privateEditing = true) { fixture ->
-            val comma = fixture.key(",")
-            fixture.send(comma, MotionEvent.ACTION_DOWN)
-            UiAwait.remains("Private comma hold escaped to settings",
-                durationMs = 300) { !fixture.has("Close keyboard settings") && fixture.calls.settings == 0 && fixture.calls.inserted.isEmpty() }
-            fixture.send(comma, MotionEvent.ACTION_UP)
-            assertTrue(main { comma.performAccessibilityAction(AccessibilityNodeInfo.ACTION_LONG_CLICK, null) })
-            assertFalse(fixture.has("Close keyboard settings"))
+            fixture.tap(fixture.key("Keyboard tools"))
+            assertTrue(fixture.has("Close tools and settings"))
+            assertTrue(fixture.has("Latin compose"))
+            assertFalse(fixture.has("Keyboard settings"))
+            assertFalse(fixture.has("Switch keyboard"))
+            assertFalse(fixture.has("Private draft"))
             assertEquals(0, fixture.calls.settings)
             assertTrue(fixture.calls.inserted.isEmpty())
+            fixture.tap(fixture.key("Close tools and settings"))
         }
 
-        withPanel(KeyboardOptions(terminal = true, numberRow = true, light = captureLight,
+        withPanel(KeyboardOptions(numberRow = true, light = captureLight,
             large = captureLarge, alignment = captureAlignment), widthDp = captureWidth) { fixture ->
-            val terminalHeight = fixture.height()
-            fixture.capture("terminal-letters")
-            assertTrue(fixture.has("Navigation keys"))
+            val normalHeight = fixture.height()
+            fixture.tap(fixture.key("Extra keys"))
+            assertTrue(fixture.has("Escape"))
             assertTrue(fixture.has("Left arrow"))
             fixture.tap(fixture.key("Control off"))
             fixture.tap(fixture.key("Function keys"))
             assertTrue(fixture.has("F1"))
-            assertTrue(fixture.has("Return to terminal letters"))
-            assertTrue(fixture.height() <= terminalHeight)
-            fixture.capture("terminal-functions")
-            fixture.tap(fixture.key("Return to terminal letters"))
-            assertTrue(fixture.has("Control off"))
+            assertTrue(fixture.has("Hide function keys"))
+            assertTrue(fixture.height() > normalHeight)
+            fixture.capture("extra-functions")
+            fixture.tap(fixture.key("Hide function keys"))
+            assertTrue(fixture.has("Control on"))
             assertFalse(fixture.has("F1"))
-            fixture.tap(fixture.key("Navigation keys"))
+            assertTrue("The panel keeps letters visible", fixture.has("q"))
             assertTrue(fixture.has("Left arrow"))
-            assertFalse(fixture.has("q"))
-            assertTrue("Nav layer grew the keyboard", fixture.height() <= terminalHeight)
-            fixture.capture("terminal-navigation")
-            fixture.tap(fixture.key("Return to terminal letters"))
+            fixture.capture("extra-keys")
+            fixture.tap(fixture.key("Extra keys"))
             assertTrue(fixture.has("q"))
-            assertTrue(fixture.has("Left arrow"))
+            assertFalse(fixture.has("Left arrow"))
         }
     }
 
-    @Test fun selectTapSelectsNeighboringWordAndHoldSelectsAll() {
+    @Test fun selectAllTapAndWordHoldStayDistinct() {
         withPanel { fixture ->
-            fixture.tap(fixture.key("Edit actions"))
-            val select = fixture.key("Select text")
-            assertFalse(select.isSelected)
-            fixture.tap(select)
-            assertEquals(listOf(listOf(KeyEvent.KEYCODE_DPAD_LEFT, true, false, true)), fixture.calls.special)
-            assertFalse("Select is a one-shot word action, not a mode", select.isSelected)
-            fixture.tap(fixture.key("Move cursor left"))
-            assertEquals(listOf(
-                listOf(KeyEvent.KEYCODE_DPAD_LEFT, true, false, true),
-                listOf(KeyEvent.KEYCODE_DPAD_LEFT, false, false, false)), fixture.calls.special)
-            assertTrue(main { select.performLongClick() })
+            assertTrue(main { fixture.key("Emoji").performLongClick() })
+            val selectAll = fixture.key("Select all text")
+            assertFalse(selectAll.isSelected)
+            fixture.tap(selectAll)
             assertEquals(listOf(EditorAction.SELECT_ALL), fixture.calls.actions)
-            assertFalse(select.isSelected)
+            assertFalse("Select all is a one-shot action, not a mode", selectAll.isSelected)
+            assertTrue(main { selectAll.performLongClick() })
+            assertEquals(listOf(listOf(KeyEvent.KEYCODE_DPAD_LEFT, true, false, true)), fixture.calls.special)
         }
     }
 
@@ -414,3 +364,5 @@ class CompactLayerTest {
         }
     }
 }
+
+

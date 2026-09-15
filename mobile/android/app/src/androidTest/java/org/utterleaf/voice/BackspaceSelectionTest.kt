@@ -61,7 +61,7 @@ class BackspaceSelectionTest {
         }
         throw AssertionError("Could not press $label")
     }
-    private fun withKeyboard(terminal: Boolean = false, block: () -> Unit) {
+    private fun withKeyboard(block: () -> Unit) {
         val manager = app.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         val id = manager.inputMethodList.single { it.serviceName == KeyboardIme::class.java.name }.id
         val previous = Settings.Secure.getString(app.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
@@ -71,7 +71,7 @@ class BackspaceSelectionTest {
             instrumentation.uiAutomation.serviceInfo = instrumentation.uiAutomation.serviceInfo.apply {
                 this.flags = flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS }
             shell("ime enable $id"); shell("ime set $id")
-            options.copy(terminal = terminal, deleteRepeat = true, repeatGuard = false).save(app)
+            options.copy(deleteRepeat = true, repeatGuard = false).save(app)
             block()
         } finally {
             if (!previous.isNullOrBlank()) shell("ime set $previous"); if (!enabled) shell("ime disable $id")
@@ -83,7 +83,17 @@ class BackspaceSelectionTest {
             .putExtra("ime_options", EditorInfo.IME_ACTION_DONE).putExtra("password", password).putExtra("raw", raw)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as KeyboardEditorContractActivity
         val manager = app.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        await("editor focus") { activity.hasWindowFocus() }; main { activity.editor.requestFocus(); manager.showSoftInput(activity.editor, 0) }
+        // The first activity launch on a cold CI emulator can wait for window
+        // focus; nudge on the main thread until the window reports it.
+        val focusDeadline = android.os.SystemClock.elapsedRealtime() + 20_000
+        var focused = false
+        while (!focused && android.os.SystemClock.elapsedRealtime() < focusDeadline) {
+            focused = main { activity.hasWindowFocus() }
+            if (!focused) main { activity.editor.requestFocus() }
+            Thread.sleep(100)
+        }
+        check(focused) { "editor focus" }
+        main { activity.editor.requestFocus(); manager.showSoftInput(activity.editor, 0) }
         await("keyboard") { key("Delete") != null }; return activity
     }
 
@@ -98,6 +108,22 @@ class BackspaceSelectionTest {
                 android.view.WindowManager.LayoutParams.TYPE_INPUT_METHOD
         }
         find(root) ?: error("Missing live Delete")
+    }
+
+    /**
+     * The editor restart rebuilds the IME asynchronously; under load a gesture
+     * aimed at the previous panel dies silently. Require the same Delete button
+     * across two polls before driving any drag against it.
+     */
+    private fun stableDelete(): Button {
+        var stable: Button? = null
+        await("Delete key did not stabilize after restart") {
+            val current = runCatching { liveDelete() }.getOrNull()
+            val same = current != null && current === stable
+            stable = current
+            same
+        }
+        return stable ?: liveDelete()
     }
 
     private fun dispatch(button: Button, action: Int, x: Float, y: Float, down: Long) = main {
@@ -495,7 +521,7 @@ class BackspaceSelectionTest {
                     manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
                 }
                 await("Keyboard did not return for $unit") { key("Delete") != null }
-                val button = liveDelete()
+                val button = stableDelete()
                 await("IME did not observe the collapsed caret before $unit") {
                     imeOffsets(button) == (origin to origin)
                 }
@@ -528,7 +554,7 @@ class BackspaceSelectionTest {
                 manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
             }
             await("Keyboard did not return for cancellation") { key("Delete") != null }
-            val button = liveDelete()
+            val button = stableDelete()
             val x = main { button.width - 4f }
             val y = main { button.height / 2f }
             val step = main { maxOf(ViewConfiguration.get(button.context).scaledTouchSlop,
@@ -557,7 +583,7 @@ class BackspaceSelectionTest {
                 manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
             }
             await("Keyboard did not return for overshoot reversal") { key("Delete") != null }
-            val overshootButton = liveDelete()
+            val overshootButton = stableDelete()
             await("IME did not observe the overshoot origin") { imeOffsets(overshootButton) == (2 to 2) }
             val overshootX = main { overshootButton.width - 4f }
             val overshootY = main { overshootButton.height / 2f }
@@ -589,7 +615,7 @@ class BackspaceSelectionTest {
             try {
                 main { activity.editor.setText("secret"); activity.editor.setSelection(6) }
                 Thread.sleep(150)
-                val button = liveDelete(); val x = main { button.width - 4f }; val y = main { button.height / 2f }
+                val button = stableDelete(); val x = main { button.width - 4f }; val y = main { button.height / 2f }
                 val step = main { maxOf(ViewConfiguration.get(button.context).scaledTouchSlop,
                     Ui.dp(button.context, 16)).toFloat() }
                 var down = SystemClock.uptimeMillis()
@@ -604,34 +630,33 @@ class BackspaceSelectionTest {
                 await("Password-field Backspace tap regressed") { main { activity.editor.text.toString() == "secre" } }
             } finally { main { activity.finish() } }
         }
-        withKeyboard(terminal = true) {
-            for ((raw, value) in listOf(false to "terminal", true to "raw")) {
-                val activity = launch(raw = raw)
-                try {
-                    main { activity.editor.setText(value); activity.editor.setSelection(value.length) }
-                    Thread.sleep(150)
-                    val button = liveDelete(); val x = main { button.width - 4f }; val y = main { button.height / 2f }
-                    val step = main { maxOf(ViewConfiguration.get(button.context).scaledTouchSlop,
-                        Ui.dp(button.context, 16)).toFloat() }
-                    var down = SystemClock.uptimeMillis()
-                    dispatch(button, MotionEvent.ACTION_DOWN, x, y, down)
-                    dispatch(button, MotionEvent.ACTION_MOVE, x - step - 1f, y, down)
-                    dispatch(button, MotionEvent.ACTION_UP, x - step - 1f, y, down)
-                    Thread.sleep(200)
-                    assertEquals("A ${if (raw) "raw" else "terminal-mode"} swipe must not delete", value,
-                        main { activity.editor.text.toString() })
-                    down = SystemClock.uptimeMillis()
-                    dispatch(button, MotionEvent.ACTION_DOWN, x, y, down)
-                    dispatch(button, MotionEvent.ACTION_UP, x, y, down)
-                    await("${if (raw) "Raw" else "Terminal-mode"} Backspace tap regressed") {
-                        main { activity.editor.text.toString() == value.dropLast(1) }
-                    }
-                } finally { main { activity.finish() } }
-            }
+        withKeyboard {
+            val activity = launch(raw = true)
+            try {
+                val value = "raw"
+                main { activity.editor.setText(value); activity.editor.setSelection(value.length) }
+                Thread.sleep(150)
+                val button = liveDelete(); val x = main { button.width - 4f }; val y = main { button.height / 2f }
+                val step = main { maxOf(ViewConfiguration.get(button.context).scaledTouchSlop,
+                    Ui.dp(button.context, 16)).toFloat() }
+                var down = SystemClock.uptimeMillis()
+                dispatch(button, MotionEvent.ACTION_DOWN, x, y, down)
+                dispatch(button, MotionEvent.ACTION_MOVE, x - step - 1f, y, down)
+                dispatch(button, MotionEvent.ACTION_UP, x - step - 1f, y, down)
+                Thread.sleep(200)
+                assertEquals("A raw-field swipe must not delete", value,
+                    main { activity.editor.text.toString() })
+                down = SystemClock.uptimeMillis()
+                dispatch(button, MotionEvent.ACTION_DOWN, x, y, down)
+                dispatch(button, MotionEvent.ACTION_UP, x, y, down)
+                await("Raw Backspace tap regressed") {
+                    main { activity.editor.text.toString() == value.dropLast(1) }
+                }
+            } finally { main { activity.finish() } }
         }
     }
 
-    @Test fun liveTerminalToggleImmediatelyRefusesSelectionGesture() = withKeyboard {
+    @Test fun livePanelOpenImmediatelyRefusesSelectionGesture() = withKeyboard {
         val activity = launch()
         try {
             val manager = app.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -640,13 +665,12 @@ class BackspaceSelectionTest {
                 manager.restartInput(activity.editor)
                 manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
             }
-            await("Keyboard did not return for terminal toggle") { key("Delete") != null }
-            press("Keyboard tools")
-            press("Terminal controls off")
-            await("Terminal toggle did not reveal its accessory keys") {
+            await("Keyboard did not return for the extra-keys panel") { key("Delete") != null }
+            press("Extra keys")
+            await("The panel did not reveal its accessory keys") {
                 key("Control off") != null && key("Left arrow") != null && key("Delete") != null
             }
-            val button = liveDelete()
+            val button = stableDelete()
             val x = main { button.width - 4f }; val y = main { button.height / 2f }
             val step = main { maxOf(ViewConfiguration.get(button.context).scaledTouchSlop,
                 Ui.dp(button.context, 16)).toFloat() }
@@ -655,7 +679,7 @@ class BackspaceSelectionTest {
             dispatch(button, MotionEvent.ACTION_MOVE, x - step - 1f, y, down)
             dispatch(button, MotionEvent.ACTION_UP, x - step - 1f, y, down)
             Thread.sleep(200)
-            assertEquals("A live terminal toggle must gate the existing panel immediately", "abcd",
+            assertEquals("A live panel-open swipe must not delete", "abcd",
                 main { activity.editor.text.toString() })
         } finally { main { activity.finish() } }
     }

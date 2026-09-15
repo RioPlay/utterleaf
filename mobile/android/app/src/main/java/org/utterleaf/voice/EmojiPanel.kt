@@ -90,11 +90,12 @@ internal class EmojiPanel(private val context: Context, private val options: Key
         orientation = LinearLayout.VERTICAL
         layoutDirection = View.LAYOUT_DIRECTION_LTR
     }
-    private val keyColor = Color.parseColor(if (options.light) "#FFFFFF" else "#303A3D")
-    private val utility = Color.parseColor(if (options.light) "#D1DFD6" else "#24322D")
-    private val ink = Color.parseColor(if (options.light) "#17251D" else "#F0F5F2")
-    private val accent = Color.parseColor(if (options.light) "#25643D" else "#A2DFB3")
-    private val accentInk = Color.parseColor(if (options.light) "#FFFFFF" else "#10291B")
+    private val light = options.resolvedLight(context)
+    private val keyColor = Color.parseColor(if (light) "#FFFFFF" else "#303A3D")
+    private val utility = Color.parseColor(if (light) "#D1DFD6" else "#24322D")
+    private val ink = Color.parseColor(if (light) "#17251D" else "#F0F5F2")
+    private val accent = Color.parseColor(if (light) "#25643D" else "#A2DFB3")
+    private val accentInk = Color.parseColor(if (light) "#FFFFFF" else "#10291B")
     private val keyHeight = if (options.keyHeightDp == 0) { if (options.large) 66 else 54 }
         else options.keyHeightDp.coerceIn(48, 80)
     private var disposed = false
@@ -174,7 +175,7 @@ internal class EmojiPanel(private val context: Context, private val options: Key
             backgroundTintList = null; stateListAnimator = null
             setTextColor(ColorStateList(arrayOf(intArrayOf(-android.R.attr.state_enabled),
                 intArrayOf(android.R.attr.state_selected), intArrayOf(android.R.attr.state_focused), intArrayOf()),
-                intArrayOf(Color.parseColor(if (options.light) "#66766B" else "#97A79E"), accentInk, accentInk, ink)))
+                intArrayOf(Color.parseColor(if (light) "#66766B" else "#97A79E"), accentInk, accentInk, ink)))
             isSoundEffectsEnabled = false; isHapticFeedbackEnabled = options.haptics
             setOnClickListener {
                 if (disposed || token != generation) return@setOnClickListener

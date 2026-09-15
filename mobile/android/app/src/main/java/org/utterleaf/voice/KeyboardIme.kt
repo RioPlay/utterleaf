@@ -24,6 +24,7 @@ class KeyboardIme : InputMethodService() {
     private var selectionStart = -1
     private var selectionEnd = -1
     private var backspaceSelection: HostBackspaceSelection? = null
+    private var currentSubtype: InputMethodSubtype? = null
 
     private fun invalidateUiSession() {
         uiGeneration++
@@ -49,7 +50,7 @@ class KeyboardIme : InputMethodService() {
     }
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        active = info != null && (info.inputType != InputType.TYPE_NULL || KeyboardOptions.load(this).terminal)
+        active = info != null && (info.inputType != InputType.TYPE_NULL || KeyboardOptions.load(this).extraKeys)
         showTyping()
         if (!active) requestHideSelf(0)
     }
@@ -58,6 +59,17 @@ class KeyboardIme : InputMethodService() {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
         selectionStart = newSelStart; selectionEnd = newSelEnd
         backspaceSelection?.update(newSelStart, newSelEnd)
+    }
+    /** Mockup space label, e.g. "English (US)"; blank when the subtype has no locale. */
+    private fun subtypeSpaceLabel(): String {
+        val subtype = currentSubtype ?: return ""
+        @Suppress("DEPRECATION")
+        val parts = subtype.locale.split("_", "-")
+        if (parts.isEmpty() || parts[0].isBlank()) return ""
+        val locale = java.util.Locale(parts[0], parts.getOrElse(1) { "" })
+        val region = if (locale.displayCountry.length > 3) locale.country else locale.displayCountry
+        return if (region.isBlank()) locale.displayLanguage
+        else "${locale.displayLanguage} ($region)"
     }
     private fun commit(value: String, generation: Long): Boolean {
         if (!currentUiSession(generation)) return false
@@ -70,6 +82,7 @@ class KeyboardIme : InputMethodService() {
     }
     override fun onCurrentInputMethodSubtypeChanged(newSubtype: InputMethodSubtype) {
         super.onCurrentInputMethodSubtypeChanged(newSubtype)
+        currentSubtype = newSubtype
         invalidateUiSession()
         voice?.clear()
         draft?.clear(); draft = null
@@ -120,6 +133,8 @@ class KeyboardIme : InputMethodService() {
                     forceKeyEvents = currentInputEditorInfo?.inputType == InputType.TYPE_NULL) },
             editorAction = { command -> currentUiSession(generation) &&
                 EditorActions.perform(currentInputConnection, command, currentInputEditorInfo?.inputType) },
+            spaceLabel = subtypeSpaceLabel(),
+            rawField = info?.inputType == InputType.TYPE_NULL,
             openDraft = if (active && info != null && VoiceIme.safeField(info.inputType))
                 { { if (currentUiSession(generation)) showDraft() } } else null,
             backspaceSelection = backspaceSelection)
