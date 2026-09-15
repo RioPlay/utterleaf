@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Rect
 import android.os.SystemClock
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -88,45 +89,15 @@ class CompactLayerTest {
                 android.view.InputDevice.SOURCE_TOUCHSCREEN, 0)
             try { button.dispatchTouchEvent(event) } finally { event.recycle() }
         }
-        fun reveal(description: String): Button {
-            val trace = mutableListOf<String>()
-            repeat(12) {
-                val target = key(description)
-                trace += "${main { descendants(panel.view).filterIsInstance<HorizontalScrollView>().single().scrollX }}:${bounds(target)}"
-                if (fullyVisible(target)) return target
-                val more = key("More keyboard tools")
-                val before = bounds(target)
-                tap(more)
-                UiAwait.until("Tool strip did not slide toward $description") {
-                    fullyVisible(target) || bounds(target) != before
-                }
-            }
-            return key(description).also {
-                assertTrue("$description never became fully visible; ${trace.joinToString()}", fullyVisible(it))
-            }
+        fun reveal(description: String): Button = key(description).also {
+            assertTrue("$description must be visible without scrolling", fullyVisible(it))
         }
-        fun swipeTools() {
-            val strip = main { descendants(panel.view).filterIsInstance<HorizontalScrollView>().single() }
-            val before = main { strip.scrollX }
-            val startX = strip.width * .82f
-            val endX = strip.width * .18f
-            val y = strip.height / 2f
-            val down = SystemClock.uptimeMillis()
-            fun send(action: Int, x: Float) = main {
-                val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, x, y, 0).apply {
-                    source = android.view.InputDevice.SOURCE_TOUCHSCREEN
-                }
-                try { strip.dispatchTouchEvent(event) } finally { event.recycle() }
-            }
-            send(MotionEvent.ACTION_DOWN, startX)
-            repeat(6) { index ->
-                SystemClock.sleep(16)
-                val fraction = (index + 1) / 6f
-                send(MotionEvent.ACTION_MOVE, startX + (endX - startX) * fraction)
-            }
-            SystemClock.sleep(16)
-            send(MotionEvent.ACTION_UP, endX)
-            UiAwait.until("Tool strip did not respond to a real swipe") { main { strip.scrollX > before } }
+        fun cancelMenuTouch() {
+            val target = key("Keyboard layout")
+            send(target, MotionEvent.ACTION_DOWN)
+            send(target, MotionEvent.ACTION_MOVE, dx = -target.width * 2f)
+            send(target, MotionEvent.ACTION_UP, dx = -target.width * 2f)
+            instrumentation.waitForIdleSync()
         }
         fun capture(state: String) {
             val directoryName = InstrumentationRegistry.getArguments().getString("r2Screenshots") ?: return
@@ -136,6 +107,7 @@ class CompactLayerTest {
                 "edit-layer" -> listOf("Close edit actions", "Cut")
                 "terminal-functions" -> listOf("Return to terminal letters", "F1", "Space")
                 "terminal-navigation" -> listOf("Return to terminal letters", "Left arrow", "Space")
+                "tools-start", "tools-slid" -> listOf("Return to typing", "Keyboard layout", "Edit actions")
                 else -> listOf("q", "Space")
             }
             var previousScroll = -1
@@ -202,7 +174,7 @@ class CompactLayerTest {
 
     @Test fun toolsSettingsAndEditingReplaceRowsAcrossSupportedGeometry() {
         main {
-            for (width in listOf(360, 412)) for (light in listOf(false, true))
+            for (width in listOf(320, 360, 412)) for (light in listOf(false, true))
                 for (large in listOf(false, true)) for (alignment in KeyboardAlignment.entries) {
                     val options = KeyboardOptions(light = light, large = large, alignment = alignment)
                     val panel = TypingPanel(app, options, { true }, {}, {}, {}, {}, {}, {},
@@ -210,6 +182,18 @@ class CompactLayerTest {
                     panel.reset(false, false, "Done")
                     fun buttons() = descendants(panel.view).filterIsInstance<Button>()
                     fun key(label: String) = buttons().single { it.contentDescription == label }
+                    fun bounds(label: String) = key(label).let { button ->
+                        Rect(0, 0, button.width, button.height).also { panel.view.offsetDescendantRectToMyCoords(button, it) }
+                    }
+                    fun checkActions() {
+                        buttons().forEach { button ->
+                            val rect = bounds(button.contentDescription.toString())
+                            assertTrue("Action clipped at $width $alignment: ${button.contentDescription}",
+                                rect.left >= 0 && rect.right <= panel.view.width && rect.top >= 0 && rect.bottom <= panel.view.height)
+                            assertTrue("Action too small: ${button.contentDescription}",
+                                button.width >= Ui.dp(app, 48) && button.height >= Ui.dp(app, 48))
+                        }
+                    }
                     fun layout(): Int {
                         val widthPx = Ui.dp(app, width)
                         panel.view.measure(View.MeasureSpec.makeMeasureSpec(widthPx, View.MeasureSpec.EXACTLY),
@@ -219,8 +203,9 @@ class CompactLayerTest {
                     }
                     val normalHeight = layout()
                     key("Keyboard tools").performClick()
-                    assertEquals("Tools grew ${width}dp light=$light large=$large $alignment", normalHeight, layout())
-                    for (label in listOf("Return to typing", "More keyboard tools", "Select all", "q", "Space")) {
+                    assertTrue("Tools grew ${width}dp light=$light large=$large $alignment", layout() <= normalHeight)
+                    checkActions()
+                    for (label in listOf("Return to typing", "Edit actions", "Keyboard layout", "Keyboard settings", "Latin compose")) {
                         assertTrue("Missing $label in compact tools", key(label).isFocusable)
                     }
                     key("Return to typing").performClick()
@@ -241,6 +226,13 @@ class CompactLayerTest {
                     assertEquals(normalHeight, layout())
                     key("Edit actions").performClick()
                     assertTrue("Edit layer grew the keyboard", layout() <= normalHeight)
+                    checkActions()
+                    assertEquals(bounds("Move cursor up").centerX(), bounds("Select text").centerX())
+                    assertEquals(bounds("Move cursor down").centerX(), bounds("Select text").centerX())
+                    assertTrue(bounds("Move cursor up").bottom <= bounds("Select text").top)
+                    assertTrue(bounds("Move cursor down").top >= bounds("Select text").bottom)
+                    assertTrue(bounds("Move cursor left").right <= bounds("Select text").left)
+                    assertTrue(bounds("Move cursor right").left >= bounds("Select text").right)
                     assertTrue(key("Close edit actions").isFocusable)
                     assertTrue(key("Cut").isFocusable)
                     panel.dispose()
@@ -248,7 +240,7 @@ class CompactLayerTest {
         }
     }
 
-    @Test fun realTouchSlidesToolsAndCommaTapHoldCancellationRemainDistinct() {
+    @Test fun allActionsAreVisibleAndCommaTapHoldCancellationRemainDistinct() {
         val captureWidth = InstrumentationRegistry.getArguments().getString("r2WidthDp")?.toIntOrNull() ?: 360
         val captureLight = InstrumentationRegistry.getArguments().getString("r2Light") == "true"
         val captureLarge = InstrumentationRegistry.getArguments().getString("r2Large") == "true"
@@ -259,11 +251,11 @@ class CompactLayerTest {
             val normalHeight = fixture.height()
             fixture.capture("normal")
             fixture.tap(fixture.key("Keyboard tools"))
-            assertEquals(normalHeight, fixture.height())
+            assertTrue(fixture.height() <= normalHeight)
             assertTrue(fixture.fullyVisible(fixture.key("Return to typing")))
-            assertTrue(fixture.fullyVisible(fixture.key("More keyboard tools")))
+            assertTrue(fixture.fullyVisible(fixture.key("Edit actions")))
             fixture.capture("tools-start")
-            fixture.swipeTools()
+            fixture.cancelMenuTouch()
             assertTrue(fixture.has("Return to typing"))
             assertFalse(fixture.has("Close keyboard settings"))
             assertTrue("Swipe release activated an editor tool", fixture.calls.actions.isEmpty())
@@ -366,8 +358,9 @@ class CompactLayerTest {
         withPanel(KeyboardOptions(terminal = true, numberRow = true, light = captureLight,
             large = captureLarge, alignment = captureAlignment), widthDp = captureWidth) { fixture ->
             val terminalHeight = fixture.height()
+            fixture.capture("terminal-letters")
             assertTrue(fixture.has("Navigation keys"))
-            assertFalse(fixture.has("Left arrow"))
+            assertTrue(fixture.has("Left arrow"))
             fixture.tap(fixture.key("Control off"))
             fixture.tap(fixture.key("Function keys"))
             assertTrue(fixture.has("F1"))
@@ -380,11 +373,44 @@ class CompactLayerTest {
             fixture.tap(fixture.key("Navigation keys"))
             assertTrue(fixture.has("Left arrow"))
             assertFalse(fixture.has("q"))
-            assertEquals(terminalHeight, fixture.height())
+            assertTrue("Nav layer grew the keyboard", fixture.height() <= terminalHeight)
             fixture.capture("terminal-navigation")
             fixture.tap(fixture.key("Return to terminal letters"))
             assertTrue(fixture.has("q"))
-            assertFalse(fixture.has("Left arrow"))
+            assertTrue(fixture.has("Left arrow"))
+        }
+    }
+
+    @Test fun selectTapSelectsNeighboringWordAndHoldSelectsAll() {
+        withPanel { fixture ->
+            fixture.tap(fixture.key("Edit actions"))
+            val select = fixture.key("Select text")
+            assertFalse(select.isSelected)
+            fixture.tap(select)
+            assertEquals(listOf(listOf(KeyEvent.KEYCODE_DPAD_LEFT, true, false, true)), fixture.calls.special)
+            assertFalse("Select is a one-shot word action, not a mode", select.isSelected)
+            fixture.tap(fixture.key("Move cursor left"))
+            assertEquals(listOf(
+                listOf(KeyEvent.KEYCODE_DPAD_LEFT, true, false, true),
+                listOf(KeyEvent.KEYCODE_DPAD_LEFT, false, false, false)), fixture.calls.special)
+            assertTrue(main { select.performLongClick() })
+            assertEquals(listOf(EditorAction.SELECT_ALL), fixture.calls.actions)
+            assertFalse(select.isSelected)
+        }
+    }
+
+    @Test fun symbolPagesExposeTheUsPunctuationSet() {
+        withPanel { fixture ->
+            fixture.tap(fixture.key("Switch letters and symbols"))
+            val first = fixture.buttons().map { it.text.toString() }.toSet()
+            for (mark in listOf("@", "#", "$", "%", "&", "-", "+", "(", ")", "/", "*", "\"", "'", ":", ";", "!", "?", "_")) {
+                assertTrue("Missing $mark on the first symbol page", mark in first)
+            }
+            fixture.tap(fixture.key("More symbols"))
+            val second = fixture.buttons().map { it.text.toString() }.toSet()
+            for (mark in listOf("`", "~", "^", "=", "[", "]", "{", "}", "\\", "|", ",", ".", "<", ">", "±", "×", "÷", "§", "©", "®")) {
+                assertTrue("Missing $mark on the more-symbols page", mark in second)
+            }
         }
     }
 }

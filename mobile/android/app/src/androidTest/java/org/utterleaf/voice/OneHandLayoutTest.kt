@@ -102,6 +102,7 @@ class OneHandLayoutTest {
                 key("Keyboard layout").performClick()
                 assertTrue(key("Right hand layout").isSelected)
                 key("Close keyboard settings").performClick()
+                key("Keyboard tools").performClick()
                 key("Edit actions").performClick()
                 assertColumn(panel, 600, KeyboardAlignment.RIGHT)
                 assertTrue(buttons(panel.view).any { it.contentDescription == "Close edit actions" })
@@ -186,16 +187,10 @@ class OneHandLayoutTest {
             KeyboardOptions(terminal = true, holdDelayMs = 250).save(context)
             instrumentation.runOnMainSync {
                 fun key(description: String) = buttons(f.panel.view).single { it.contentDescription == description }
-                key("Keyboard tools").performClick()
-            }
-            instrumentation.waitForIdleSync()
-
-            instrumentation.runOnMainSync {
-                fun key(description: String) = buttons(f.panel.view).single { it.contentDescription == description }
                 val q = key("q"); val qDown = SystemClock.uptimeMillis()
                 assertTrue(q.width > 0 && q.height > 0)
                 send(q, MotionEvent.ACTION_DOWN, qDown)
-                key("Keyboard layout").performClick()
+                key(",").performLongClick()
                 key("Right hand layout").performClick()
                 send(q, MotionEvent.ACTION_UP, qDown)
                 key("Close keyboard settings").performClick()

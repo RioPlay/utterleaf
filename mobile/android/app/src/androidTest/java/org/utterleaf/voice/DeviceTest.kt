@@ -135,7 +135,7 @@ class DeviceTest {
             panel.reset(true, false, "Done")
             assertFalse(keys().any { it.contentDescription == "Move cursor left" })
             key("Keyboard tools").performClick()
-            for (label in listOf("Caps lock off", "Move cursor left", "Move cursor right", "Keyboard settings", "Switch keyboard")) {
+            for (label in listOf("Caps lock off", "Edit actions", "Accents and alternate characters", "Keyboard settings", "Switch keyboard")) {
                 assertTrue("Tool must be keyboard accessible: $label", key(label).isFocusable)
             }
             key("Return to typing").performClick()
@@ -200,6 +200,7 @@ class DeviceTest {
                 assertTrue("Space must remain broad: $description", bounds(key("Space")).width() >= q.width() * 4)
                 key("Keyboard tools").performClick()
                 layoutAndCheck()
+                key("Return to typing").performClick()
                 key("Switch letters and symbols").performClick()
                 layoutAndCheck()
                 val digitWidth = bounds(key("1")).width()
@@ -306,19 +307,18 @@ class DeviceTest {
             show(screen.editor)
             press("a"); press("b"); press("c")
             awaitCondition("InputConnection did not commit letters") { onMain { screen.editor.text.toString() == "abc" } }
-            press("Keyboard tools")
+            press("Edit actions")
             press("Move cursor left")
             awaitCondition("InputConnection did not move cursor") { onMain { screen.editor.selectionStart == 2 } }
-            press("Delete")
+            press("Close edit actions"); press("Delete")
             awaitCondition("InputConnection did not delete before cursor") { onMain { screen.editor.text.toString() == "ac" } }
-            press("Move cursor right"); press("d")
+            press("Edit actions"); press("Move cursor right"); press("Close edit actions"); press("d")
             awaitCondition("Cursor-right edit was incorrect") { onMain { screen.editor.text.toString() == "acd" } }
-            press("Move cursor left"); press("Delete to right")
+            press("Edit actions"); press("Move cursor left"); press("Delete to right")
             awaitCondition("Forward delete did not remove text after the cursor") { onMain { screen.editor.text.toString() == "ac" } }
-            press("d")
+            press("Close edit actions"); press("d")
             press("Done")
             awaitCondition("Editor action did not reach editor") { onMain { screen.lastEditorAction == android.view.inputmethod.EditorInfo.IME_ACTION_DONE } }
-            press("Return to typing")
 
             // Only this debug instrumentation run may expose this synthetic IME
             // window for a screenshot. Production FLAG_SECURE remains unchanged.

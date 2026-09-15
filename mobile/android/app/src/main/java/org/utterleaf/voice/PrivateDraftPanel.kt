@@ -95,7 +95,7 @@ class PrivateDraftPanel(
         move = { left -> edit { editor.navigate(if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT) }; Unit },
         dictate = {}, settings = {}, switchKeyboard = {},
         terminalKey = { code, ctrl, alt, select ->
-            !ctrl && !alt && edit { editor.navigate(code, select) }
+            !alt && edit { editor.navigate(code, select, word = ctrl) }
         },
         editorAction = { action -> edit { editor.action(action) } },
         privateEditing = true,

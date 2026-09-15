@@ -67,6 +67,14 @@ class PrivateDraftEditorTest {
         assertEquals(editor.current.text.length, editor.view.selectionEnd)
         assertTrue(changes.isNotEmpty())
         assertEquals(editor.current, changes.last())
+
+        assertTrue(editor.clearDraft())
+        assertTrue(editor.replace("alpha beta"))
+        assertEquals(10, editor.current.selectionEnd)
+        assertTrue(editor.navigate(KeyEvent.KEYCODE_DPAD_LEFT, select = true, word = true))
+        assertEquals(10, editor.current.selectionStart)
+        assertEquals(6, editor.current.selectionEnd)
+        assertEquals("alpha beta", editor.current.text)
     }
 
     @Test fun clipboardMenusPhysicalTypingAndContentImportsAreRejected() {

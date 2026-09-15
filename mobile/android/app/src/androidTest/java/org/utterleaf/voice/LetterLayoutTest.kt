@@ -204,10 +204,6 @@ class LetterLayoutTest {
             }
             instrumentation.waitForIdleSync()
             instrumentation.runOnMainSync {
-                key(panel, "Keyboard tools").performClick()
-            }
-            instrumentation.waitForIdleSync()
-            instrumentation.runOnMainSync {
                 val q = point(panel, "q", 2); val w = point(panel, "w", 3)
                 val down = SystemClock.uptimeMillis()
                 sendRoot(panel, down, MotionEvent.ACTION_DOWN, listOf(q))
@@ -215,7 +211,7 @@ class LetterLayoutTest {
                     (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), listOf(q, w))
                 sendRoot(panel, down, MotionEvent.ACTION_POINTER_UP or
                     (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), listOf(q, w))
-                key(panel, "Keyboard layout").performClick()
+                key(panel, ",").performLongClick()
                 key(panel, "QWERTZ letter layout").performClick()
                 sendRoot(panel, down, MotionEvent.ACTION_UP, listOf(q))
                 assertTrue(key(panel, "QWERTZ letter layout").isSelected)
@@ -246,15 +242,18 @@ class LetterLayoutTest {
 
                 key(panel, "Close keyboard settings").performClick()
                 key(panel, "Keyboard tools").performClick()
+                key(panel, "Edit actions").performClick()
                 key(panel, "Select text").performClick()
+                key(panel, "Close edit actions").performClick()
                 key(panel, ",").performLongClick()
                 key(panel, "QWERTZ letter layout").performClick()
                 key(panel, "Close keyboard settings").performClick()
                 key(panel, "Keyboard tools").performClick()
+                key(panel, "Edit actions").performClick()
+                assertFalse("Select stayed latched after the layout change", key(panel, "Select text").isSelected)
                 key(panel, "Move cursor left").performClick()
-                assertEquals(listOf(true), moved)
-
-                key(panel, "Return to typing").performClick()
+                assertTrue("Navigation inserted text", typed.isEmpty())
+                key(panel, "Close edit actions").performClick()
                 key(panel, "Control off").performClick()
                 key(panel, ",").performLongClick()
                 key(panel, "AZERTY letter layout").performClick()

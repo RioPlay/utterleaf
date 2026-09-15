@@ -30,18 +30,32 @@ object TerminalInput {
         return down && up
     }
 
-    /** TextView selection tracks a pressed Shift key in its editable meta state. */
-    fun select(connection: InputConnection?, keyCode: Int): Boolean {
+    /** TextView selection tracks pressed modifier keys in its editable meta state.
+     *  [word] holds Ctrl as well so Ctrl+Shift+Left selects the neighboring word. */
+    fun select(connection: InputConnection?, keyCode: Int, word: Boolean = false): Boolean {
         if (connection == null || keyCode !in listOf(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
                 KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_MOVE_HOME, KeyEvent.KEYCODE_MOVE_END)) return false
         val now = SystemClock.uptimeMillis()
-        fun shift(action: Int) = deliver(connection, KeyEvent(now, SystemClock.uptimeMillis(), action,
-            KeyEvent.KEYCODE_SHIFT_LEFT, 0, if (action == KeyEvent.ACTION_DOWN) KeyEvent.META_SHIFT_ON else 0,
-            KeyCharacterMap.VIRTUAL_KEYBOARD, 0, SOFT_FLAGS, InputDevice.SOURCE_KEYBOARD))
-        val pressed = shift(KeyEvent.ACTION_DOWN)
-        val moved = if (pressed) send(connection, keyCode, shift = true) else false
-        val released = shift(KeyEvent.ACTION_UP)
-        return pressed && moved && released
+        fun modifier(code: Int, action: Int, meta: Int) = deliver(connection, KeyEvent(now, SystemClock.uptimeMillis(),
+            action, code, 0, meta, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, SOFT_FLAGS, InputDevice.SOURCE_KEYBOARD))
+        val ctrlDown = if (word) modifier(KeyEvent.KEYCODE_CTRL_LEFT, KeyEvent.ACTION_DOWN, KeyEvent.META_CTRL_ON) else true
+        val shiftMeta = if (word) KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON else KeyEvent.META_SHIFT_ON
+        val shiftDown = if (!word || ctrlDown) modifier(KeyEvent.KEYCODE_SHIFT_LEFT, KeyEvent.ACTION_DOWN, shiftMeta) else false
+        val moved = if (shiftDown) send(connection, keyCode, ctrl = word, shift = true) else false
+        val shiftUp = if (!word || ctrlDown) modifier(KeyEvent.KEYCODE_SHIFT_LEFT, KeyEvent.ACTION_UP,
+            if (word) KeyEvent.META_CTRL_ON else 0) else true
+        val ctrlUp = if (word) modifier(KeyEvent.KEYCODE_CTRL_LEFT, KeyEvent.ACTION_UP, 0) else true
+        return ctrlDown && shiftDown && moved && shiftUp && ctrlUp
+    }
+
+    /** Shifted arrows use [select]; Ctrl+Shift selects by word. Raw fields keep unmodified key events. */
+    fun command(connection: InputConnection?, keyCode: Int, ctrl: Boolean = false, alt: Boolean = false,
+                shift: Boolean = false, raw: Boolean = false): Boolean {
+        val selecting = shift && !alt && !raw && keyCode in listOf(
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_UP,
+            KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_MOVE_HOME, KeyEvent.KEYCODE_MOVE_END)
+        return if (selecting) select(connection, keyCode, word = ctrl)
+            else send(connection, keyCode, ctrl, alt, shift)
     }
 
     fun printable(connection: InputConnection?, text: String, ctrl: Boolean = false,

@@ -92,6 +92,46 @@ class HeldModifiersTest {
         try { panel.view.dispatchTouchEvent(event) } finally { event.recycle() }
     }
 
+    @Test fun accessoryArrowsSupportHeldAndLatchedControlWithoutLeavingLetters() {
+        val f = fixture()
+        try {
+            instrumentation.runOnMainSync {
+                fun key(label: String) = buttons(f.panel.view).single { it.contentDescription == label }
+                assertTrue(key("q").isShown)
+                for (name in listOf("Escape", "Tab", "Control off", "Alt off", "Left arrow", "Down arrow", "Up arrow", "Right arrow"))
+                    assertTrue("$name must remain visible beside letters", key(name).isShown)
+                val ctrl = center(f.panel, "Control off"); val left = center(f.panel, "Left arrow")
+                val down = SystemClock.uptimeMillis()
+                dispatch(f.panel, down, MotionEvent.ACTION_DOWN, listOf(ctrl))
+                assertTrue(key("Control on").isSelected)
+                dispatch(f.panel, down, MotionEvent.ACTION_POINTER_DOWN or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), listOf(ctrl, left))
+                assertEquals("Held Ctrl+Left moves a word", 4, f.editor.selectionStart)
+                dispatch(f.panel, down, MotionEvent.ACTION_POINTER_UP or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), listOf(ctrl, left))
+                dispatch(f.panel, down, MotionEvent.ACTION_UP, listOf(ctrl))
+                key("Left arrow").performClick()
+                assertEquals("Release restores character movement", 3, f.editor.selectionStart)
+                assertTrue(!key("Control off").isSelected)
+                f.editor.setSelection(f.editor.length())
+                val tap = SystemClock.uptimeMillis()
+                dispatch(f.panel, tap, MotionEvent.ACTION_DOWN, listOf(ctrl))
+                dispatch(f.panel, tap, MotionEvent.ACTION_UP, listOf(ctrl))
+                assertTrue(key("Control on").isSelected)
+                key("Left arrow").performClick()
+                assertEquals("Tap-to-arm uses the next arrow", 4, f.editor.selectionStart)
+                assertTrue(key("Control on").isSelected)
+                key("Left arrow").performClick()
+                assertEquals("Latched Control keeps word movement", 0, f.editor.selectionStart)
+                key("Control on").performClick()
+                assertTrue(!key("Control off").isSelected)
+                f.editor.setSelection(f.editor.length())
+                key("Left arrow").performClick()
+                assertEquals("Unselecting Control restores character movement", 6, f.editor.selectionStart)
+                assertEquals("one two", f.editor.text.toString())
+                assertTrue(key("q").isShown)
+            }
+        } finally { instrumentation.runOnMainSync { f.activity.finish() } }
+    }
+
     @Test fun heldCtrlBackspaceDeletesWordsThenPlainBackspaceAfterRelease() {
         val f = fixture()
         try {

@@ -106,9 +106,9 @@ class KeyboardEditorContractTest {
                 press("Delete"); await("Unicode delete failed") { main { text.editor.text.toString() == expected } }
             }
             main { text.editor.setText("😀x"); text.editor.setSelection(0) }
-            press("Keyboard tools"); press("Delete to right")
+            press("Keyboard tools"); press("Edit actions"); press("Delete to right")
             await("Forward delete did not remove supplementary Unicode") { main { text.editor.text.toString() == "x" } }
-            press("Return to typing")
+            press("Close edit actions")
         } finally { close(text) }
         for ((options, label, expectedAction) in listOf(
             Triple(EditorInfo.IME_ACTION_GO, "Go", EditorInfo.IME_ACTION_GO), Triple(EditorInfo.IME_ACTION_SEARCH, "Search", EditorInfo.IME_ACTION_SEARCH),
@@ -129,5 +129,51 @@ class KeyboardEditorContractTest {
         val raw = launch(EditorInfo.IME_ACTION_NONE, raw = true)
         try { press("Enter"); await("TYPE_NULL did not receive raw Enter") { main { raw.rawKey == android.view.KeyEvent.KEYCODE_ENTER } } }
         finally { close(raw) }
+    }
+
+    @Test fun selectTapSelectsTheNeighboringWordThroughTheEditor() = withKeyboard {
+        val activity = launch(EditorInfo.IME_ACTION_DONE)
+        try {
+            main { activity.editor.setText("alpha beta"); activity.editor.setSelection(activity.editor.length()) }
+            press("Keyboard tools")
+            press("Edit actions")
+            press("Select text")
+            await("Neighboring word was not selected") {
+                main {
+                    val start = minOf(activity.editor.selectionStart, activity.editor.selectionEnd)
+                    val end = maxOf(activity.editor.selectionStart, activity.editor.selectionEnd)
+                    activity.editor.text.toString() == "alpha beta" && start == 6 && end == 10
+                }
+            }
+            press("Select all")
+            await("Select all did not apply") {
+                main { activity.editor.selectionStart == 0 && activity.editor.selectionEnd == 10 }
+            }
+        } finally { close(activity) }
+    }
+
+    @Test fun latchedCtrlShiftArrowsKeepSelectingWords() = withKeyboard {
+        val activity = launch(EditorInfo.IME_ACTION_DONE)
+        try {
+            main { activity.editor.setText("one two three"); activity.editor.setSelection(activity.editor.length()) }
+            press("Control off")
+            press("Shift off")
+            press("Left arrow")
+            await("First Ctrl+Shift+Left did not select the neighboring word") {
+                main {
+                    val start = minOf(activity.editor.selectionStart, activity.editor.selectionEnd)
+                    val end = maxOf(activity.editor.selectionStart, activity.editor.selectionEnd)
+                    activity.editor.text.toString() == "one two three" && start == 8 && end == 13
+                }
+            }
+            press("Left arrow")
+            await("Latched Ctrl+Shift did not keep extending the selection") {
+                main {
+                    val start = minOf(activity.editor.selectionStart, activity.editor.selectionEnd)
+                    val end = maxOf(activity.editor.selectionStart, activity.editor.selectionEnd)
+                    activity.editor.text.toString() == "one two three" && end == 13 && start < 8
+                }
+            }
+        } finally { close(activity) }
     }
 }
