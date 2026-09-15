@@ -358,7 +358,7 @@ class KeyboardGeometryTest {
                 press("Switch letters and symbols")
                 sideCapture("symbols", listOf("Keyboard tools", "Dictate", "Switch letters and symbols", "Space", "Done", "1", "0", "@", "/"))
                 press("More symbols")
-                sideCapture("more-symbols", listOf("Keyboard tools", "Dictate", "More numbers and symbols", "Space", "Done", "~", "∆"))
+                sideCapture("more-symbols", listOf("Keyboard tools", "Dictate", "More numbers and symbols", "Space", "Done", "~", "®"))
                 press("Switch letters and symbols")
                 longPress(","); press("Terminal controls off"); press("Close keyboard settings")
                 sideCapture("terminal", daily.filter { it != "Edit actions" } +

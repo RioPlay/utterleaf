@@ -207,7 +207,7 @@ class DeviceTest {
                 assertTrue("Primary symbol width differs from digits: $description", kotlin.math.abs(bounds(key("@")).width() - digitWidth) <= 2)
                 key("More symbols").performClick()
                 layoutAndCheck()
-                assertTrue("Secondary symbol rows use different widths: $description", kotlin.math.abs(bounds(key("£")).width() - bounds(key("~")).width()) <= 2)
+                assertTrue("Secondary symbol rows use different widths: $description", kotlin.math.abs(bounds(key("{")).width() - bounds(key("~")).width()) <= 2)
             }
         }
     }
