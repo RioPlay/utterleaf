@@ -666,6 +666,10 @@ class BackspaceSelectionTest {
                 manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
             }
             await("Keyboard did not return for the extra-keys panel") { key("Delete") != null }
+            // The restart rebuilds the IME asynchronously; press the expand
+            // chevron only once the post-restart panel is live, so the toggle
+            // cannot land on the pre-restart keyboard.
+            stableDelete()
             press("Extra keys")
             await("The panel did not reveal its accessory keys") {
                 key("Control off") != null && key("Left arrow") != null && key("Delete") != null
