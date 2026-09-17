@@ -37,4 +37,18 @@ internal object UiAwait {
         } while (SystemClock.uptimeMillis() < deadline)
         assertTrue(message, sample(condition))
     }
+
+    /**
+     * Cold CI emulators occasionally open the platform launcher's ANR dialog,
+     * which steals window focus from the first test activities. Recover that
+     * named fixture failure once; never dismiss an application ANR.
+     */
+    fun dismissLauncherAnrDialog(): Boolean = runCatching {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        val launcherDialog = automation.windows.firstOrNull { it.title?.toString() == "Quickstep isn't responding" }
+        val close = launcherDialog?.root
+            ?.findAccessibilityNodeInfosByText("Close app")
+            ?.firstOrNull { it.isClickable }
+        close?.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK) == true
+    }.getOrDefault(false)
 }

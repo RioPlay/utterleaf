@@ -105,9 +105,13 @@ class ComposeImeTest {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         ) as KeyboardEditorContractActivity
         await("Editor activity never acquired window focus") {
-            // A cold CI emulator can hand out window focus late; nudge the
-            // editor while waiting instead of failing on the first pass.
-            if (!main { activity.hasWindowFocus() }) main { activity.editor.requestFocus() }
+            // A cold CI emulator can hand out window focus late — the platform
+            // launcher's ANR dialog occasionally steals it; recover that named
+            // fixture failure once and keep nudging the editor.
+            if (!main { activity.hasWindowFocus() }) {
+                UiAwait.dismissLauncherAnrDialog()
+                main { activity.editor.requestFocus() }
+            }
             main { activity.hasWindowFocus() }
         }
         val manager = app.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
