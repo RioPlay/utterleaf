@@ -102,6 +102,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private val openPasswordManager: (() -> Boolean)? = null,
     private val suggest: (() -> SuggestionEngine.SuggestionState)? = null,
     private val completeWord: ((composing: String, candidate: String) -> Boolean)? = null,
+    private val requestSuggestions: (() -> Unit)? = null,
     private val backspaceSelection: BackspaceSelection? = null) {
     private val light = options.resolvedLight(context)
     private val surface = Color.parseColor(if (light) "#E8EEEB" else "#171E20")
@@ -219,6 +220,14 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private var composeError: String? = null
     private var layoutGeneration = 0
     private var suggestionRow: LinearLayout? = null
+    private val suggestionChips = mutableListOf<Button>()
+    private var suggestionEmpty: TextView? = null
+    private var renderedSuggestions = SuggestionEngine.SuggestionState.EMPTY
+
+    /** Refreshes the cache-backed strip without reading the host editor. */
+    fun refreshSuggestions() {
+        if (!disposed) refreshSuggestionsRow(request = false)
+    }
 
     private fun saveQuickOption(numberRow: Boolean? = null, extraKeys: Boolean? = null,
         alignment: KeyboardAlignment? = null, letterLayout: LetterLayout? = null) {
@@ -310,7 +319,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         disposed = true; layoutGeneration++
         clearEmoji(); cancelForGeometryChange(); view.clearOrdinaryKeys()
         view.modifiers.reset();         content.removeAllViews(); letters.clear(); actionKeys.clear()
-        suggestionRow = null
+        suggestionRow = null; suggestionChips.clear(); suggestionEmpty = null
         arrowRepeaters.clear()
         toolbarStatus = null; capsKey = null
         ctrlKey = null; altKey = null; selectKey = null
@@ -450,23 +459,55 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     /** The mockup's suggestion strip: stable height, completions of the current word. */
     private fun suggestionRow() {
         val row = row()
+        row.minimumHeight = Ui.dp(context, 40)
         suggestionRow = row
         refreshSuggestionsRow()
     }
 
-    private fun refreshSuggestionsRow() {
+    private fun refreshSuggestionsRow(request: Boolean = true) {
         val row = suggestionRow ?: return
         val provider = suggest ?: return
         if (disposed) return
-        row.removeAllViews()
         val state = runCatching { provider.invoke() }.getOrNull() ?: SuggestionEngine.SuggestionState.EMPTY
-        state.candidates.forEach { candidate ->
-            key(row, candidate, "Complete with $candidate", height = 40, compact = true,
-                chordable = false, labelSizeSp = 16) {
-                completeChip(state.composing, candidate)
+        renderedSuggestions = state
+        if (suggestionChips.isEmpty()) {
+            repeat(3) { index ->
+                suggestionChips += key(row, "", "", height = 40, compact = true,
+                    chordable = false, labelSizeSp = 16) {
+                    renderedSuggestions.candidates.getOrNull(index)?.let { candidate ->
+                        completeChip(renderedSuggestions.composing, candidate)
+                    }
+                }
             }
         }
-        if (state.candidates.size < 3) spacer(row, (3 - state.candidates.size).toFloat())
+        if (state.candidates.isEmpty()) {
+            suggestionChips.forEach { chip ->
+                chip.visibility = View.GONE
+                chip.isEnabled = false
+            }
+            val empty = suggestionEmpty ?: TextView(context).also { created ->
+                created.textSize = 13f
+                created.setTextColor(ink)
+                created.gravity = Gravity.CENTER
+                created.includeFontPadding = false
+                suggestionEmpty = created
+                row.addView(created, 0, LinearLayout.LayoutParams(0, Ui.dp(context, 40), 3f))
+            }
+            empty.text = if (state.composing.isEmpty()) "Type a word" else "No completions"
+            empty.contentDescription = empty.text
+            empty.visibility = View.VISIBLE
+        } else {
+            suggestionEmpty?.visibility = View.GONE
+            suggestionChips.forEachIndexed { index, chip ->
+                val candidate = state.candidates.getOrNull(index)
+                chip.text = candidate ?: ""
+                chip.contentDescription = candidate?.let { "Complete with $it" } ?: ""
+                chip.isEnabled = candidate != null
+                // Keep every chip's one-third slot stable as candidates vary.
+                chip.visibility = if (candidate == null) View.INVISIBLE else View.VISIBLE
+            }
+        }
+        if (request) requestSuggestions?.invoke()
     }
 
     private fun completeChip(composing: String, candidate: String) {
@@ -477,7 +518,8 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         // Re-verify the composing word at tap time: the caret may have moved
         // since this chip rendered.
         val fresh = runCatching { provider.invoke() }.getOrNull()
-        if (fresh == null || fresh.composing != composing || composing.isEmpty()) {
+        if (fresh == null || fresh.composing != composing || composing.isEmpty() ||
+            candidate !in fresh.candidates) {
             unavailable()
             return
         }
@@ -987,6 +1029,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         arrowRepeaters.forEach { it.cancel() }
         arrowRepeaters.clear()
         content.removeAllViews(); letters.clear(); actionKeys.clear()
+        suggestionRow = null; suggestionChips.clear(); suggestionEmpty = null
         shiftKeys.clear(); letterShiftKey = null; capsKey = null; ctrlKey = null; altKey = null; selectKey = null
         applyContentAlignment()
         when {
