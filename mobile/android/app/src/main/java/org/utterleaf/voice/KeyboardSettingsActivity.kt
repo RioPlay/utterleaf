@@ -159,6 +159,7 @@ class KeyboardSettingsActivity : Activity() {
                 if (staged.extraKeys) "Expand arrow on" else "Expand arrow off").joinToString(" · ")),
             Category("assistance", R.drawable.ic_typing, "Typing assistance", listOf(
                 if (staged.autoCapitalize) "Auto-capitalization on" else "Auto-capitalization off",
+                if (staged.suggestions) "Suggestions on" else "Suggestions off",
                 if (staged.secondaryHints) "Hints on" else "Hints off").joinToString(" · ")),
             Category("gestures", R.drawable.ic_gestures, "Holds & gestures", listOf(
                 if (staged.holdDelayMs == 0) "System hold" else "${staged.holdDelayMs} ms hold",
@@ -424,10 +425,13 @@ class KeyboardSettingsActivity : Activity() {
             "assistance" -> {
                 toggle("Auto-capitalization", staged.autoCapitalize) { staged = staged.copy(autoCapitalize = it) }
                 note("Arms shift after a sentence-ending period, !, ? or Enter. A tap still types the key.")
+                toggle("Suggestions", staged.suggestions) { staged = staged.copy(suggestions = it) }
+                note("Completes the word you are typing from a local public-domain English list. Tapping a " +
+                    "suggestion replaces only the word being typed; nothing is learned, corrected or sent, and " +
+                    "password and terminal fields never show suggestions.")
                 toggle("Secondary character hints", staged.secondaryHints) { staged = staged.copy(secondaryHints = it) }
                 note("Hold a letter, slide to a highlighted accent or symbol, then release; slide away to cancel. " +
                     "Hiding hints keeps the hold-to-insert and Tools routes available.")
-                note("Suggestions arrive with the planned local prediction work; nothing is learned from typing today.")
             }
             "gestures" -> {
                 fun holdDelayFromProgress(progress: Int) = if (progress == 0) 0 else 250 + ((progress - 1) * 50)

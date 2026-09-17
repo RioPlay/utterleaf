@@ -28,6 +28,21 @@ One-hand reach and visual polish can proceed alongside foundation work.
 
 ## Current status
 
+- **Suggestion strip implemented in unreleased source (R3 first slice):** the
+  mockup's suggestion row now completes the word being typed from a
+  frequency-ordered English list derived **solely from public-domain Project
+  Gutenberg texts** (two popular frequency lists were evaluated and rejected on
+  license: LDC-derived corpus data with no redistribution rights). Completion
+  only — tapping a chip replaces the verified composing run in one balanced
+  editor transaction; nothing is auto-corrected, learned, or sent, and the
+  strip never appears on password or raw fields or when the preference is off.
+  Bounded before-cursor read (≤32 code points) with re-verification at tap
+  time. Local evidence: engine/wordlist JVM tests, live-IME completion and gate
+  checks, 32 focused regression tests, lint, tooling tests. See the
+  [suggestions slice plan](plans/active/android-suggestions-slice.md).
+  Reversible correction, next-word prediction and physical/assistive
+  acceptance remain open.
+
 - **September 16 public-wants harvest recorded; password-manager key shipped in
   source:** a systematic reaction-sorted harvest of HeliBoard, Unexpected
   Keyboard and FUTO trackers (55 issues) plus Hacker News confirms correction
