@@ -3,17 +3,20 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha15 is released as a signed development preview.** It adds the
-reviewed Backspace selection gesture, sliding Tools strip, replacement
-settings/navigation layers, comma-hold Settings access and the installed name
-**Utterleaf**. See the [alpha15 release and verification record](../../docs/plans/completed/android-alpha15-snapshot.md).
+**0.1.0-alpha16 is released as a signed development preview.** It adds the
+All Actions layer, the spatial Edit pad, latched Terminal modifiers and the
+complete US punctuation pages. See the [alpha16 snapshot plan](../../docs/plans/active/android-alpha16-snapshot.md).
 
-**Prepared unpublished alpha16:** All Actions replaces the sliding Tools strip,
-Edit is a spatial pad, Terminal arrows stay beside the letters, Ctrl/Alt stay
-selected until tapped off, and Select taps the neighboring word. This source is
-not yet tagged or signed. Swipe recognition and correction are still missing.
-See the [action-organization contract](../../docs/plans/active/android-action-organization.md)
-and the [alpha16 snapshot plan](../../docs/plans/active/android-alpha16-snapshot.md).
+**Prepared alpha17:** the approved daily redesign — icon toolbar with a
+fold-out Extra keys panel and F1–F12, hinted number row, the mockup bottom
+row with emoji/hold-for-tools and a subtype-labeled space, redesigned Settings
+with search and staged Apply/Cancel, a password-manager shortcut restricted to
+password fields, and a suggestion strip that completes the current word from a
+public-domain English list. No auto-correction, learning or network; the strip
+never appears on password or raw fields. See the
+[daily redesign plan](../../docs/plans/active/android-keyboard-daily-redesign.md),
+the [community wants harvest](../../docs/mobile-keyboard-community-wants-2026-09.md)
+and the [suggestions slice plan](../../docs/plans/active/android-suggestions-slice.md).
 
 Alpha15 preserves alpha14's two-thumb rollover, letter layouts, one-hand
 alignment, local emoji, Latin composition, private drafts and visible
@@ -93,19 +96,18 @@ prediction, accessibility and device coverage remain on the
 
 ## Try it
 
-1. [Download and install Utterleaf Android alpha15](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha15/Utterleaf-Android-0.1.0-alpha15.apk)
+1. [Download and install Utterleaf Android alpha17](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha17/Utterleaf-Android-0.1.0-alpha17.apk)
    on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Use `Utterleaf-Android-0.1.0-alpha15.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha15)
-   until alpha16 is published. If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
-   then install alpha15. Uninstalling removes the imported model and other app data.
+   Use `Utterleaf-Android-0.1.0-alpha17.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha17).
+   If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
+   then install alpha17. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
    the same release identity and should be updated in place rather than uninstalled.
 2. Open **Utterleaf**. Under **Your keyboard**, enable **Utterleaf**
    in Android settings, then choose it. Setup reports which step is still needed.
    You do not need to enable the separate **Utterleaf dictation** input method to use
    the typing keyboard's dictation button.
-   Alpha15 keeps the installed package and update identity unchanged while using
-   the shorter **Utterleaf** labels and **Utterleaf dictation** for the optional voice provider.
+   Alpha17 keeps the installed package and update identity unchanged.
 3. Open a text field and type. Use **Keyboard preferences and preview** in setup to
    change sizing, theme, number row, terminal controls, vibration or repeat filtering. Reopen the keyboard to apply
    saved preferences. The private practice field lets you try the layout without
