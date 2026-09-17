@@ -100,6 +100,8 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private val spaceLabel: String? = null,
     private val rawField: Boolean = false,
     private val openPasswordManager: (() -> Boolean)? = null,
+    private val suggest: (() -> SuggestionEngine.SuggestionState)? = null,
+    private val completeWord: ((composing: String, candidate: String) -> Boolean)? = null,
     private val backspaceSelection: BackspaceSelection? = null) {
     private val light = options.resolvedLight(context)
     private val surface = Color.parseColor(if (light) "#E8EEEB" else "#171E20")
@@ -216,6 +218,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private var composeMark: LatinComposeMark? = null
     private var composeError: String? = null
     private var layoutGeneration = 0
+    private var suggestionRow: LinearLayout? = null
 
     private fun saveQuickOption(numberRow: Boolean? = null, extraKeys: Boolean? = null,
         alignment: KeyboardAlignment? = null, letterLayout: LetterLayout? = null) {
@@ -306,7 +309,8 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         if (disposed) return
         disposed = true; layoutGeneration++
         clearEmoji(); cancelForGeometryChange(); view.clearOrdinaryKeys()
-        view.modifiers.reset(); content.removeAllViews(); letters.clear(); actionKeys.clear()
+        view.modifiers.reset();         content.removeAllViews(); letters.clear(); actionKeys.clear()
+        suggestionRow = null
         arrowRepeaters.clear()
         toolbarStatus = null; capsKey = null
         ctrlKey = null; altKey = null; selectKey = null
@@ -440,6 +444,48 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             shift = false
         }
         updateCase()
+        refreshSuggestionsRow()
+    }
+
+    /** The mockup's suggestion strip: stable height, completions of the current word. */
+    private fun suggestionRow() {
+        val row = row()
+        suggestionRow = row
+        refreshSuggestionsRow()
+    }
+
+    private fun refreshSuggestionsRow() {
+        val row = suggestionRow ?: return
+        val provider = suggest ?: return
+        if (disposed) return
+        row.removeAllViews()
+        val state = runCatching { provider.invoke() }.getOrNull() ?: SuggestionEngine.SuggestionState.EMPTY
+        state.candidates.forEach { candidate ->
+            key(row, candidate, "Complete with $candidate", height = 40, compact = true,
+                chordable = false, labelSizeSp = 16) {
+                completeChip(state.composing, candidate)
+            }
+        }
+        if (state.candidates.size < 3) spacer(row, (3 - state.candidates.size).toFloat())
+    }
+
+    private fun completeChip(composing: String, candidate: String) {
+        val provider = suggest ?: return
+        val completer = completeWord ?: return
+        if (disposed) return
+        clearUnavailable()
+        // Re-verify the composing word at tap time: the caret may have moved
+        // since this chip rendered.
+        val fresh = runCatching { provider.invoke() }.getOrNull()
+        if (fresh == null || fresh.composing != composing || composing.isEmpty()) {
+            unavailable()
+            return
+        }
+        if (completer.invoke(composing, candidate)) {
+            render()
+        } else {
+            unavailable()
+        }
     }
     private fun characters(row: LinearLayout, sequence: String) {
         sequence.forEach { character ->
@@ -643,6 +689,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private fun delete() {
         clearUnavailable()
         if (ctrl || alt || shift) special(KeyEvent.KEYCODE_DEL) else erase()
+        refreshSuggestionsRow()
     }
     private fun navigate(left: Boolean) {
         clearUnavailable()
@@ -651,6 +698,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
                 ctrl, alt, selecting || shift)
             if (!accepted) unavailable()
         } else move(left)
+        refreshSuggestionsRow()
     }
 
     /** Select the word immediately before the caret using the editor's native word movement. */
@@ -958,6 +1006,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             else -> {
                 if (extraKeysOpen) extraKeyRows()
                 normalToolbar()
+                if (suggest != null && !symbols) suggestionRow()
             }
         }
         if (hubOpen) { hubRows(); updateCase(); return }
@@ -1018,7 +1067,9 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
                 else { openHub(); true }
             }
         }
-        key(bottom, spaceLabel ?: "", "Space", 5f, labelSizeSp = 14) { type(" ") }.also { space ->
+        key(bottom, spaceLabel ?: "", "Space", 5f, labelSizeSp = 14) {
+            if (type(" ")) refreshSuggestionsRow()
+        }.also { space ->
             val generation = layoutGeneration
             gestures.attachSpace(space) { left -> if (generation == layoutGeneration) navigate(left) }
             view.bindSelection(letterShiftKey, space) { left ->
@@ -1026,6 +1077,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
                     ctrl = false; alt = false; updateCase()
                     if (!terminalKey(if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT,
                             false, false, true)) unavailable()
+                    refreshSuggestionsRow()
                 }
             }
         }
@@ -1049,6 +1101,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
                 enter()
             }
             updateCase()
+            refreshSuggestionsRow()
         }
     }
     private fun updateCase() {

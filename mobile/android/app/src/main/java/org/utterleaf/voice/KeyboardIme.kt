@@ -71,6 +71,52 @@ class KeyboardIme : InputMethodService() {
         return if (region.isBlank()) locale.displayLanguage
         else "${locale.displayLanguage} ($region)"
     }
+
+    /** Bounded trailing-letter run before the caret; never a document read. */
+    private fun suggestionState(): SuggestionEngine.SuggestionState {
+        val connection = currentInputConnection ?: return SuggestionEngine.SuggestionState.EMPTY
+        val before = runCatching { connection.getTextBeforeCursor(SuggestionEngine.MAX_COMPOSING, 0) }
+            .getOrNull() ?: return SuggestionEngine.SuggestionState.EMPTY
+        val composing = buildString {
+            for (index in before.length - 1 downTo 0) {
+                val char = before[index]
+                if (!char.isLetter()) break
+                append(char)
+            }
+        }.reversed()
+        if (composing.isEmpty()) return SuggestionEngine.SuggestionState.EMPTY
+        return SuggestionEngine.SuggestionState(composing, SuggestionRepository.load(this).completions(composing))
+    }
+
+    /**
+     * One balanced editor transaction: delete the composing word, insert the
+     * candidate. The composing word is re-verified at tap time so a caret
+     * that moved since the strip rendered can never delete unrelated text.
+     */
+    private fun completeSuggestion(composing: String, candidate: String, generation: Long): Boolean {
+        if (!currentUiSession(generation)) return false
+        val connection = currentInputConnection ?: return false
+        val before = runCatching { connection.getTextBeforeCursor(SuggestionEngine.MAX_COMPOSING, 0) }
+            .getOrNull() ?: return false
+        var trailingLetters = 0
+        for (index in before.length - 1 downTo 0) {
+            val char = before[index]
+            if (!char.isLetter()) break
+            trailingLetters++
+        }
+        if (trailingLetters != composing.length) return false
+        return try {
+            connection.beginBatchEdit()
+            val deleted = connection.deleteSurroundingText(composing.length, 0) == true
+            val committed = deleted && connection.commitText(candidate, 1) == true
+            if (deleted && !committed) connection.commitText(composing, 1)
+            committed
+        } catch (_: Exception) {
+            false
+        } finally {
+            runCatching { connection.endBatchEdit() }
+        }
+    }
     private fun commit(value: String, generation: Long): Boolean {
         if (!currentUiSession(generation)) return false
         return TerminalInput.printable(currentInputConnection, value,
@@ -113,6 +159,14 @@ class KeyboardIme : InputMethodService() {
                 catch (_: Exception) { false }
             }
         }
+        // Suggestions complete the current word only: a bounded before-cursor
+        // read, no replacement, no learning, and never in restricted fields.
+        val suggestionsAllowed = options.suggestions && active && info != null &&
+            VoiceIme.safeField(info.inputType) && info.inputType != InputType.TYPE_NULL
+        val suggest = if (suggestionsAllowed) ({ suggestionState() }) else null
+        val completeWord = if (suggestionsAllowed) {
+            { composing: String, candidate: String -> completeSuggestion(composing, candidate, generation) }
+        } else null
         backspaceSelection = HostBackspaceSelection(
             current = { currentUiSession(generation) && active && info != null && VoiceIme.safeField(info.inputType) },
             connection = { currentInputConnection }, selection = { selectionStart to selectionEnd })
@@ -144,6 +198,8 @@ class KeyboardIme : InputMethodService() {
             spaceLabel = subtypeSpaceLabel(),
             rawField = info?.inputType == InputType.TYPE_NULL,
             openPasswordManager = passwordManager,
+            suggest = suggest,
+            completeWord = completeWord,
             openDraft = if (active && info != null && VoiceIme.safeField(info.inputType))
                 { { if (currentUiSession(generation)) showDraft() } } else null,
             backspaceSelection = backspaceSelection)

@@ -29,6 +29,7 @@ data class KeyboardOptions(val large: Boolean = false, val light: Boolean = fals
     val letterLayout: LetterLayout = LetterLayout.QWERTY,
     val extraKeys: Boolean = true, val autoCapitalize: Boolean = true,
     val arrowRepeat: Boolean = true, val keyBorders: Boolean = true,
+    val suggestions: Boolean = true,
     val theme: ThemeMode = ThemeMode.SYSTEM) {
     /** Panels resolve the stored theme against the system for actual colors. */
     fun resolvedLight(context: Context): Boolean = when (theme) {
@@ -48,6 +49,7 @@ data class KeyboardOptions(val large: Boolean = false, val light: Boolean = fals
             .putBoolean("autoCapitalize", autoCapitalize)
             .putBoolean("arrowRepeat", arrowRepeat)
             .putBoolean("keyBorders", keyBorders)
+            .putBoolean("suggestions", suggestions)
             .putString("theme", theme.stored)
             .putString("alignment", alignment.stored)
             .putString("letterLayout", letterLayout.stored)
@@ -87,6 +89,7 @@ data class KeyboardOptions(val large: Boolean = false, val light: Boolean = fals
                 prefs.getBoolean("autoCapitalize", true),
                 prefs.getBoolean("arrowRepeat", true),
                 prefs.getBoolean("keyBorders", true),
+                if (migrated) prefs.getBoolean("suggestions", true) else true,
                 theme)
         }
         /** Restores typing preferences only. Verified models and microphone permission stay. */
