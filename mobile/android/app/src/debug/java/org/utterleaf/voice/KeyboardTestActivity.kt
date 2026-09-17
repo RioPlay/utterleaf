@@ -11,6 +11,8 @@ import android.widget.LinearLayout
 class KeyboardTestActivity : Activity() {
     lateinit var editor: EditText
         private set
+    lateinit var email: EditText
+        private set
     lateinit var password: EditText
         private set
     lateinit var raw: EditText
@@ -29,6 +31,11 @@ class KeyboardTestActivity : Activity() {
                 true
             }
         }
+        email = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+            imeOptions = EditorInfo.IME_ACTION_DONE
+            hint = "Synthetic email test"
+        }
         password = EditText(this).apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             imeOptions = EditorInfo.IME_ACTION_DONE
@@ -41,6 +48,7 @@ class KeyboardTestActivity : Activity() {
         setContentView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(editor)
+            addView(email)
             addView(password)
             addView(raw)
             Ui.applySystemInsets(this)

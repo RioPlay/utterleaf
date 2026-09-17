@@ -111,6 +111,32 @@ class KeyboardTuningTest {
         }
     }
 
+    @Test fun passwordManagerKeyAppearsOnlyWhenOfferedAndLaunchesOnce() {
+        instrumentation.runOnMainSync {
+            val context = instrumentation.targetContext
+            val launched = mutableListOf<Boolean>()
+            fun panel(manager: (() -> Boolean)?): TypingPanel =
+                TypingPanel(context, KeyboardOptions(numberRow = false), { true }, {}, {}, {}, {}, {}, {},
+                    openPasswordManager = manager).apply { reset(true, false, "Enter") }
+            fun keyOf(view: TypingPanel, label: String) = descendants(view.view)
+                .filterIsInstance<android.widget.Button>().single { it.contentDescription == label }
+
+            val withKey = panel { launched.add(true); true }
+            assertEquals("", keyOf(withKey, "Open password manager").text.toString())
+            keyOf(withKey, "Open password manager").performClick()
+            assertEquals(listOf(true), launched)
+
+            val refusing = panel { launched.add(false); false }
+            keyOf(refusing, "Open password manager").performClick()
+            assertEquals(listOf(true, false), launched)
+
+            val withoutKey = panel(null)
+            assertTrue(descendants(withoutKey.view).filterIsInstance<android.widget.Button>()
+                .none { it.contentDescription == "Open password manager" })
+            withKey.dispose(); refusing.dispose(); withoutKey.dispose()
+        }
+    }
+
     @Test fun hubQuickToggleRefreshesUnrelatedOptionsFromSavedSnapshot() {
         val context = instrumentation.targetContext
         val original = KeyboardOptions.load(context)

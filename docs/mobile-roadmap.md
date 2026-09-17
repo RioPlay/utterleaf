@@ -28,7 +28,19 @@ One-hand reach and visual polish can proceed alongside foundation work.
 
 ## Current status
 
-- **Daily redesign to the approved mockups implemented in unreleased source:**
+- **September 16 public-wants harvest recorded; password-manager key shipped in
+  source:** a systematic reaction-sorted harvest of HeliBoard, Unexpected
+  Keyboard and FUTO trackers (55 issues) plus Hacker News confirms correction
+  quality, gesture typing, word-level deletion, floating mode and settings
+  backup as the loudest public asks, and maps each to a phase. The top FUTO
+  request (a route to the password manager, 42 reactions) is implemented as an
+  "Open password manager" key that exists **only on password fields** — never
+  on ordinary text or email fields — and merely launches the configured
+  autofill application with no data path; it is absent when none is configured.
+  See the [community wants harvest](mobile-keyboard-community-wants-2026-09.md).
+  Emulator/JVM verification and release gates remain open until CI completes.
+
+- **Daily redesign to the approved mockups merged (PR #44, main `a3c8138`):**
   the keyboard now has the mockup's icon toolbar with a fold-out Extra keys
   panel (Esc/Tab/Ctrl/Alt/Shift, Home/End/Ins/Del/PgUp/PgDn, arrows, F1–F12),
   a hinted number row on by default, symbol letter hints, the
@@ -39,9 +51,10 @@ One-hand reach and visual polish can proceed alongside foundation work.
   superseded by the Extra keys panel and the comma key moved to the period menu
   and symbols page by product decision; the mockup's suggestion strip is
   intentionally absent until real local prediction exists. Emulator evidence:
-  157 instrumented tests (one intermittent drag-timing failure under full-suite
-  load passes standalone), 8 JVM, 14 tooling tests, lint 0 errors, and 41 owned
-  captures in `artifacts/screenshots/android-daily-redesign/`. See the
+  canonical PR CI run 35030029554 passed all 157 instrumented tests (the two
+  intermittent restart-race flake sites are hardened), 8 JVM, 14 tooling tests,
+  lint 0 errors, and 41 owned captures in
+  `artifacts/screenshots/android-daily-redesign/`. See the
   [daily redesign plan](plans/active/android-keyboard-daily-redesign.md).
   Physical-phone, TalkBack/Switch Access and release gates remain open.
 

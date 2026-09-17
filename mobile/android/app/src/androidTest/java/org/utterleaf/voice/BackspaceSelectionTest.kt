@@ -87,9 +87,16 @@ class BackspaceSelectionTest {
         // focus; nudge on the main thread until the window reports it.
         val focusDeadline = android.os.SystemClock.elapsedRealtime() + 20_000
         var focused = false
+        var anrDismissed = false
         while (!focused && android.os.SystemClock.elapsedRealtime() < focusDeadline) {
             focused = main { activity.hasWindowFocus() }
-            if (!focused) main { activity.editor.requestFocus() }
+            if (!focused) {
+                if (!anrDismissed) {
+                    anrDismissed = UiAwait.dismissLauncherAnrDialog()
+                    if (anrDismissed) println("Recovered the emulator Quickstep launcher dialog before editor validation")
+                }
+                main { activity.editor.requestFocus() }
+            }
             Thread.sleep(100)
         }
         check(focused) { "editor focus" }

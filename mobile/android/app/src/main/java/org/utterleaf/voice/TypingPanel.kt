@@ -99,6 +99,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private val actionAvailable: (EditorAction) -> Boolean = { true },
     private val spaceLabel: String? = null,
     private val rawField: Boolean = false,
+    private val openPasswordManager: (() -> Boolean)? = null,
     private val backspaceSelection: BackspaceSelection? = null) {
     private val light = options.resolvedLight(context)
     private val surface = Color.parseColor(if (light) "#E8EEEB" else "#171E20")
@@ -395,7 +396,8 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
                 "Switch keyboard", "Function keys", "Hide function keys", "Caps lock off", "Caps lock on",
                 "Accents and alternate characters", "Select all text", "Select text", "Number row on",
                 "Number row off", "Extra keys on", "Extra keys off", "Latin compose", "Emoji", "Private draft",
-                "Extra keys", "Undo", "Redo", "Copy", "Cut", "Paste", "Switch letters and symbols"))
+                "Extra keys", "Undo", "Redo", "Copy", "Cut", "Paste", "Switch letters and symbols",
+                "Open password manager"))
             view.modifiers.key(button)
         if (description in listOf("Delete", "Forward delete", "Delete to right")) {
             deleteRepeater.attach(button, options.deleteRepeat && !options.repeatGuard,
@@ -759,7 +761,13 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         editorToolbarAction(toolbar, EditorAction.CUT, R.drawable.ic_cut)
         editorToolbarAction(toolbar, EditorAction.PASTE, R.drawable.ic_paste)
         spacer(toolbar, 1.2f)
-        if (openDraft != null) {
+        if (openPasswordManager != null) {
+            // Password fields carry no draft or dictation: the credential
+            // shortcut takes that slot, and only there.
+            toolbarIcon(toolbar, R.drawable.ic_key, "Open password manager") {
+                if (openPasswordManager?.invoke() != true) unavailable()
+            }
+        } else if (openDraft != null) {
             toolbarIcon(toolbar, R.drawable.ic_draft, "Private draft") { openDraft?.invoke() }
         } else spacer(toolbar, 1f)
         toolbarIcon(toolbar, R.drawable.voice_idle, "Dictate", weight = 1.1f, primary = true, pill = true,

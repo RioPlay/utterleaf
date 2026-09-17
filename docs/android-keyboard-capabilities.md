@@ -8,9 +8,12 @@ targets, not measured performance or universal human-factors limits.
 
 The September 12 [product specification](android-keyboard-product-spec.md) makes
 independent implementation and design/UX acceptance explicit, refreshes the FUTO
-feature benchmark and adds current community evidence. Its
-[rebuild plan](plans/active/android-keyboard-rebuild.md) schedules work across the
-phases below; ergonomics and visual quality are continuous, not deferred to P5.
+feature benchmark and adds current community evidence. The September 16
+[community wants harvest](mobile-keyboard-community-wants-2026-09.md) extends
+that evidence with reaction-sorted tracker data and ships the password-manager
+key. The [rebuild plan](plans/active/android-keyboard-rebuild.md) schedules work
+across the phases below; ergonomics and visual quality are continuous, not
+deferred to P5.
 
 Original capability review: September 9, 2026; product direction refreshed
 September 12 above. The objective is an independently implemented Utterleaf
