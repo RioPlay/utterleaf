@@ -55,6 +55,28 @@ class KeyboardEditorContractTest {
         }
         throw AssertionError("Could not press $label")
     }
+
+    /**
+     * Opens the extra-keys panel and waits until its keys are actually present.
+     * A setText-driven IME rebuild lands asynchronously; a toggle pressed on
+     * the pre-rebuild panel is silently lost, so retry the chevron if the
+     * accessory keys never surface.
+     */
+    private fun openExtraKeys() {
+        var attempts = 0
+        val deadline = android.os.SystemClock.elapsedRealtime() + 15_000
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            press("Extra keys")
+            attempts++
+            val openDeadline = android.os.SystemClock.elapsedRealtime() + 3_000
+            while (android.os.SystemClock.elapsedRealtime() < openDeadline) {
+                if (key("Forward delete") != null) return
+                Thread.sleep(50)
+            }
+            if (attempts >= 5) break
+        }
+        throw AssertionError("Extra keys panel did not open after $attempts attempts")
+    }
     private fun longPress(label: String) {
         await("Missing $label") { key(label)?.isEnabled == true }
         val deadline = android.os.SystemClock.elapsedRealtime() + 2_000
@@ -118,7 +140,7 @@ class KeyboardEditorContractTest {
                 press("Delete"); await("Unicode delete failed") { main { text.editor.text.toString() == expected } }
             }
             main { text.editor.setText("😀x"); text.editor.setSelection(0) }
-            press("Extra keys"); press("Forward delete")
+            openExtraKeys(); press("Forward delete")
             await("Forward delete did not remove supplementary Unicode") { main { text.editor.text.toString() == "x" } }
             press("Extra keys")
         } finally { close(text) }
@@ -167,7 +189,7 @@ class KeyboardEditorContractTest {
         val activity = launch(EditorInfo.IME_ACTION_DONE)
         try {
             main { activity.editor.setText("one two three"); activity.editor.setSelection(activity.editor.length()) }
-            press("Extra keys")
+            openExtraKeys()
             press("Control off")
             press("Shift off")
             press("Left arrow")
