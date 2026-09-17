@@ -329,6 +329,9 @@ class DeviceTest {
                 awaitCondition("Typing keyboard did not appear") { findKey("a") != null }
             }
             show(screen.editor)
+            awaitCondition("Password-manager key leaked onto an ordinary text field") {
+                findKey("Open password manager") == null
+            }
             press("a"); press("b"); press("c")
             awaitCondition("InputConnection did not commit letters") { onMain { screen.editor.text.toString() == "abc" } }
             press("Extra keys"); press("Left arrow")
@@ -584,15 +587,34 @@ class DeviceTest {
                     .any { it.root?.findAccessibilityNodeInfosByText("Utterleaf dictation")?.isNotEmpty() == true }
             }
             show(screen.password)
-            awaitCondition("Password Dictate control did not appear") { findKey("Dictate") != null }
-            assertFalse("Password field allowed dictation", findKey("Dictate")!!.isEnabled)
+            awaitCondition("Password Dictate control did not appear disabled") {
+                val dictate = findKey("Dictate")
+                dictate != null && !dictate.isEnabled
+            }
+            // The credential shortcut follows the configured autofill application:
+            // present only on password fields, only when one is configured.
+            assertEquals("Password-manager key visibility did not follow the configured autofill application",
+                PasswordManagerKey.launchIntent(app, screen.password.inputType) != null,
+                findKey("Open password manager") != null)
             press("x")
             awaitCondition("Password typing did not work") { onMain { screen.password.text.toString() == "x" } }
             onMain { manager.hideSoftInputFromWindow(screen.password.windowToken, 0) }
             awaitCondition("Keyboard did not hide") { findKey("a") == null }
             show(screen.password)
-            awaitCondition("Reopened password Dictate control did not appear") { findKey("Dictate") != null }
-            assertFalse("Reopened password field allowed dictation", findKey("Dictate")!!.isEnabled)
+            awaitCondition("Reopened password Dictate control did not appear disabled") {
+                val dictate = findKey("Dictate")
+                dictate != null && !dictate.isEnabled
+            }
+            // Email fields are credential-adjacent but never carry the shortcut.
+            show(screen.email)
+            awaitCondition("Email field keyboard did not appear") { findKey("a") != null }
+            if (findKey("Open password manager") != null) {
+                fail("Password-manager key leaked onto an email field")
+            }
+            press("y")
+            awaitCondition("Email typing did not work") { onMain { screen.email.text.toString() == "y" } }
+            show(screen.password)
+            awaitCondition("Password keyboard did not return for the terminal section") { findKey("Dictate") != null }
             press("y")
             awaitCondition("Keyboard failed after reopen") { onMain { screen.password.text.toString() == "xy" } }
             assertEquals("Password input changed the previous field", "acd", onMain { screen.editor.text.toString() })

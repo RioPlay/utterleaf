@@ -105,6 +105,14 @@ class KeyboardIme : InputMethodService() {
         } else "Enter"
         val generation = uiGeneration
         val options = KeyboardOptions.load(this)
+        // The credential shortcut exists only on password fields with a
+        // configured, launchable autofill application.
+        val passwordManager = PasswordManagerKey.launchIntent(this, info?.inputType)?.let { template ->
+            {
+                try { startActivity(Intent(template).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); true }
+                catch (_: Exception) { false }
+            }
+        }
         backspaceSelection = HostBackspaceSelection(
             current = { currentUiSession(generation) && active && info != null && VoiceIme.safeField(info.inputType) },
             connection = { currentInputConnection }, selection = { selectionStart to selectionEnd })
@@ -135,6 +143,7 @@ class KeyboardIme : InputMethodService() {
                 EditorActions.perform(currentInputConnection, command, currentInputEditorInfo?.inputType) },
             spaceLabel = subtypeSpaceLabel(),
             rawField = info?.inputType == InputType.TYPE_NULL,
+            openPasswordManager = passwordManager,
             openDraft = if (active && info != null && VoiceIme.safeField(info.inputType))
                 { { if (currentUiSession(generation)) showDraft() } } else null,
             backspaceSelection = backspaceSelection)
