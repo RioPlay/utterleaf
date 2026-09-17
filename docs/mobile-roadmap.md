@@ -28,7 +28,16 @@ One-hand reach and visual polish can proceed alongside foundation work.
 
 ## Current status
 
-- **Suggestion strip implemented in unreleased source (R3 first slice):** the
+- **Released alpha17:** the signed pre-release
+  [android-v0.1.0-alpha17](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha17)
+  ships the approved daily redesign, the password-manager key (password fields
+  only) and the suggestion strip. The protected signing run verified
+  exact-revision CI (160 instrumentation tests, 0 failures), package/version
+  metadata, signing-certificate continuity and the alpha03→alpha17 upgrade with
+  preference/model preservation. Physical-phone, TalkBack/Switch Access,
+  landscape and real Obtainium update acceptance remain open.
+
+- **Suggestion strip merged (PR #47, main `6bfbb98`; test-race follow-up PR #48, `3c3232f`):** the
   mockup's suggestion row now completes the word being typed from a
   frequency-ordered English list derived **solely from public-domain Project
   Gutenberg texts** (two popular frequency lists were evaluated and rejected on
@@ -37,9 +46,8 @@ One-hand reach and visual polish can proceed alongside foundation work.
   editor transaction; nothing is auto-corrected, learned, or sent, and the
   strip never appears on password or raw fields or when the preference is off.
   Bounded before-cursor read (≤32 code points) with re-verification at tap
-  time. Local evidence: engine/wordlist JVM tests, live-IME completion and gate
-  checks, 32 focused regression tests, lint, tooling tests. See the
-  [suggestions slice plan](plans/active/android-suggestions-slice.md).
+  time. Canonical CI run on main passed all 160 instrumented tests.
+  See the [suggestions slice plan](plans/active/android-suggestions-slice.md).
   Reversible correction, next-word prediction and physical/assistive
   acceptance remain open.
 
