@@ -3,17 +3,11 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha16 is released as a signed development preview.** It adds the
-All Actions layer, the spatial Edit pad, latched Terminal modifiers and the
-complete US punctuation pages. See the [alpha16 snapshot plan](../../docs/plans/active/android-alpha16-snapshot.md).
-
-**Prepared alpha17:** the approved daily redesign — icon toolbar with a
-fold-out Extra keys panel and F1–F12, hinted number row, the mockup bottom
-row with emoji/hold-for-tools and a subtype-labeled space, redesigned Settings
-with search and staged Apply/Cancel, a password-manager shortcut restricted to
-password fields, and a suggestion strip that completes the current word from a
-public-domain English list. No auto-correction, learning or network; the strip
-never appears on password or raw fields. See the
+**0.1.0-alpha17 is released as a signed development preview.** It ships the
+approved daily redesign — icon toolbar with a fold-out Extra keys panel and
+F1–F12, hinted number row, the redesigned Settings screen, a password-manager
+shortcut restricted to password fields, and a suggestion strip that completes
+the word you are typing from a public-domain English list. See the
 [daily redesign plan](../../docs/plans/active/android-keyboard-daily-redesign.md),
 the [community wants harvest](../../docs/mobile-keyboard-community-wants-2026-09.md)
 and the [suggestions slice plan](../../docs/plans/active/android-suggestions-slice.md).
