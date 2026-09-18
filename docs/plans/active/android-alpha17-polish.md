@@ -98,7 +98,7 @@ already listed in the mobile roadmap. A green emulator run is not phone proof.
 | Geometry | Compare empty, matching and unmatched words; space/delete; symbols return; hide/reopen; default and nonzero bottom spacing | Scoped portrait/gesture-navigation emulator checks and owned-view captures pass; landscape/three-button/phone checks open |
 | Editor compatibility | Repeat the journey in the app practice field, private draft, a messaging editor, browser text field, password field and raw terminal; record app/OS versions and unsupported behavior | Pixel 8 Pro/current stable GrapheneOS reported; exact build and external editor versions open |
 | Accessibility | Suggestions, empty states, toolbar and correction reachable with TalkBack/Switch Access; large text and landscape stay usable | Physical assistive testing open |
-| Release candidate | Exact-revision CI, signed APK continuity, install/upgrade with model/preferences retained, reviewed screenshots and accurate known limits | Not started; alpha17 remains published |
+| Release candidate | Exact-revision CI, signed APK continuity, install/upgrade with model/preferences retained, reviewed screenshots and accurate known limits | Exact-revision CI passed and merged; signed upgrade not started; alpha17 remains published |
 
 For manual reproduction, type `hello world`, move the caret back into the first
 word, select a range, return to the end, delete and retype, then type an unmatched
@@ -163,7 +163,9 @@ still re-read the bounded word before any destructive edit and can wait for a
 slow editor. Arbitrary same-position external text changes without an editor
 selection notification are not continuously monitored.
 
-This patch is locally verified and unreleased. Exact-revision CI, signed upgrade,
-Pixel 8 Pro/GrapheneOS, named editors, landscape, three-button navigation and
-assistive-technology acceptance remain open. No stable-readiness claim follows
-from this patch or the emulator count.
+This patch merged to main as PR #52 (`80bec1b`, source `d768067`). Exact-revision
+Android CI run 35290270474 on that source passed **173/173** instrumentation
+tests with 0 skips and 0 failures, plus 14 tooling tests and successful JVM/lint
+builds. Signed upgrade, Pixel 8 Pro/GrapheneOS, named editors, landscape,
+three-button navigation and assistive-technology acceptance remain open. No
+stable-readiness claim follows from this patch or the emulator count.
