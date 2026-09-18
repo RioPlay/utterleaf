@@ -88,3 +88,26 @@ def test_android_boundary_ignores_generated_dependencies_but_checks_source(tmp_p
     source.write_text("import utterleaf.forbidden", encoding="utf-8")
     with pytest.raises(AssertionError, match="Android code imported"):
         test_android_sources_do_not_import_desktop_python()
+
+
+def test_desktop_ci_ignores_android_docs_and_source():
+    text = (ROOT / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
+    required = [
+        "mobile/**",
+        "docs/mobile*.md",
+        "docs/android*.md",
+        "docs/android-next/**",
+        "docs/plans/active/android*.md",
+        "docs/plans/completed/android*.md",
+        "docs/workspaces.md",
+        ".github/workflows/android*.yml",
+    ]
+    assert text.count("paths-ignore:") == 2, (
+        "Desktop CI must skip Android-only paths on both push and pull_request. "
+        + GUIDE
+    )
+    missing = [pattern for pattern in required if f"'{pattern}'" not in text]
+    assert missing == [], (
+        "Desktop CI still runs for Android documentation. " + GUIDE
+        + " Missing: " + ", ".join(missing)
+    )

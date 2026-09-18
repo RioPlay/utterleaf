@@ -36,8 +36,12 @@ boundaries; it remains an option if ownership or release operations later requir
 
 ## CI and release isolation
 
-Desktop push/PR CI ignores changes confined to `mobile/**`, `docs/mobile*.md`, or
-an Android workflow. Other paths conservatively keep the desktop checks running.
+Desktop push/PR CI ignores changes confined to `mobile/**`, Android guides
+(`docs/mobile*.md`, `docs/android*.md`, `docs/android-next/**`), Android plans,
+`docs/workspaces.md`, or an Android workflow. Other paths keep the desktop checks
+running. An Android keyboard PR that also updates its plan or workspace table
+must not pack Windows/macOS/Linux. Shared brand/license/README changes still
+run desktop CI; dispatch Android CI if those packaged inputs changed.
 Desktop `v*` tags still run the release build regardless of changed file paths.
 Windows `desktop-v*` preview tags use a separate Windows-only build and publish as
 a prerelease with `latest=false`; they do not replace the stable desktop release.

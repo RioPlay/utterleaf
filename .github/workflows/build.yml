@@ -7,11 +7,21 @@ on:
     paths-ignore:
       - 'mobile/**'
       - 'docs/mobile*.md'
+      - 'docs/android*.md'
+      - 'docs/android-next/**'
+      - 'docs/plans/active/android*.md'
+      - 'docs/plans/completed/android*.md'
+      - 'docs/workspaces.md'
       - '.github/workflows/android*.yml'
   pull_request:
     paths-ignore:
       - 'mobile/**'
       - 'docs/mobile*.md'
+      - 'docs/android*.md'
+      - 'docs/android-next/**'
+      - 'docs/plans/active/android*.md'
+      - 'docs/plans/completed/android*.md'
+      - 'docs/workspaces.md'
       - '.github/workflows/android*.yml'
   workflow_dispatch:
 
