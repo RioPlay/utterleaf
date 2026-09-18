@@ -938,7 +938,7 @@ def test_request_deadline_closes_connection_without_retry(
     ticks = iter([100.0, 106.0])
     monkeypatch.setattr(obs_control.time, "monotonic", lambda: next(ticks))
 
-    with pytest.raises(ObsControlError, match="status request timed out"):
+    with pytest.raises(ObsControlError, match="control request timed out"):
         control.stream_status()
 
     assert len(transport.sent) == sent_before + 1

@@ -1,6 +1,19 @@
 {
   "obs_revision": "ba2f32bdf791005443988a4955e963663e16b1ed",
+  "obs_websocket_revision": "1ef34bf48110c2a18184e50e41cd0b1a855e2147",
   "resources": {
+    "frontend/api/obs-frontend-api.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/frontend/api/obs-frontend-api.h",
+      "sha256": "e6f332c0cfbb8ea3c5faf7861a170412626dd5633c3bc0de4c54e2e3921f758a",
+      "git_blob_sha1": "46713fbcbd9749f981854fdc6e9cf33ecfeb249c",
+      "bytes": 10383
+    },
+    "obs-websocket/obs-websocket-api.h": {
+      "url": "https://raw.githubusercontent.com/obsproject/obs-websocket/1ef34bf48110c2a18184e50e41cd0b1a855e2147/lib/obs-websocket-api.h",
+      "sha256": "c29e8e38ee66c36db79cae86217ab0f270aad39f97e82090809d087c281b7948",
+      "git_blob_sha1": "b7a6d5c071cf52bb78f76d7a060cf7d3c9fa2304",
+      "bytes": 7412
+    },
     "libobs/obs-module.h": {
       "url": "https://raw.githubusercontent.com/obsproject/obs-studio/ba2f32bdf791005443988a4955e963663e16b1ed/libobs/obs-module.h",
       "sha256": "e177a961500bab34b907b6bbf9261f0071fdaf97727a43095927365963a000c3",

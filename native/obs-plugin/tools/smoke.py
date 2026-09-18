@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Load the inert development module through libobs, without the OBS app or audio."""
+"""Verify headless module refusal without the OBS app, pairing writes or audio."""
 # SPDX-License-Identifier: GPL-2.0-or-later
 from __future__ import annotations
 
@@ -9,6 +9,38 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import uuid
+
+
+def consumer_metadata() -> tuple[object, ...]:
+    """Inspect only fixed store nodes; never open their content or create them."""
+    shell = ctypes.WinDLL("shell32.dll", winmode=0x800)
+    ole = ctypes.WinDLL("ole32.dll", winmode=0x800)
+    shell.SHGetKnownFolderPath.argtypes = [ctypes.c_void_p, ctypes.c_uint32,
+                                          ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+    shell.SHGetKnownFolderPath.restype = ctypes.c_long
+    ole.CoTaskMemFree.argtypes = [ctypes.c_void_p]
+    ole.CoTaskMemFree.restype = None
+    folder_id = (ctypes.c_ubyte * 16).from_buffer_copy(
+        uuid.UUID("f1b32785-6fba-4fcf-9d55-7b8e7f157091").bytes_le)
+    value = ctypes.c_void_p()
+    result = shell.SHGetKnownFolderPath(folder_id, 0, None, ctypes.byref(value))
+    try:
+        if result < 0 or not value.value:
+            raise RuntimeError("Could not inspect the fixed pairing location")
+        root = Path(ctypes.wstring_at(value)) / "Utterleaf" / "obs-plugin"
+    finally:
+        ole.CoTaskMemFree(value)
+    states = []
+    for path in (root, root / "pairing-v1.dat", root / "owner-v1.lock"):
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            states.append(None)
+        else:
+            states.append((info.st_dev, info.st_ino, info.st_mode, info.st_size,
+                           info.st_mtime_ns, info.st_ctime_ns, info.st_file_attributes))
+    return tuple(states)
 
 
 def main() -> None:
@@ -16,21 +48,32 @@ def main() -> None:
     parser.add_argument("--build", type=Path, required=True)
     args = parser.parse_args()
     build = args.build.resolve()
+    (build / "smoke-receipt.json").unlink(missing_ok=True)
     receipt_path = build / "build-receipt.json"
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
     plugin = build / "utterleaf-obs-bridge.dll"
     runtime = Path(receipt["obs_runtime"]["path"]).resolve()
+    frontend_path = Path(receipt["obs_frontend_runtime"]["path"]).resolve()
+    if frontend_path.parent != runtime.parent:
+        raise ValueError("OBS runtime and frontend must share the reviewed directory")
     for path, expected in ((plugin, receipt["generated"][plugin.name]),
                            (runtime, receipt["obs_runtime"]["sha256"]),
+                           (frontend_path, receipt["obs_frontend_runtime"]["sha256"]),
                            (Path(__file__), receipt["source"]["tools/smoke.py"])):
         if hashlib.sha256(path.read_bytes()).hexdigest() != expected:
             raise ValueError(f"The reviewed build input changed: {path.name}")
     config = build / "smoke-config"
     config.mkdir(exist_ok=True)
+    before = consumer_metadata()
     # Default DLL search excludes the current directory; only this explicitly
     # selected installed runtime supplies libobs's dependencies.
     with os.add_dll_directory(str(runtime.parent)):
         obs = ctypes.CDLL(str(runtime), winmode=0x1100)
+        frontend = ctypes.CDLL(str(frontend_path), winmode=0x1100)
+        frontend.obs_frontend_get_main_window_handle.argtypes = []
+        frontend.obs_frontend_get_main_window_handle.restype = ctypes.c_void_p
+        if frontend.obs_frontend_get_main_window_handle():
+            raise RuntimeError("The headless fixture unexpectedly has an OBS frontend")
         obs.obs_get_version.argtypes = []
         obs.obs_get_version.restype = ctypes.c_uint32
         obs.obs_startup.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_void_p]
@@ -52,18 +95,22 @@ def main() -> None:
                                          str(build).encode("utf-8"))
             if result != 0 or not module.value:
                 raise RuntimeError(f"obs_open_module failed: {result}")
-            if not obs.obs_init_module(module):
-                raise RuntimeError("obs_init_module failed")
+            if obs.obs_init_module(module):
+                raise RuntimeError("The plugin must refuse initialization without a frontend")
         finally:
             obs.obs_shutdown()
+    if consumer_metadata() != before:
+        raise RuntimeError("Fixed pairing-store metadata changed during headless verification")
     evidence = {"obs_api_version": version, "obs_open_module": result,
-                "obs_init_module": True, "obs_shutdown": "returned",
+                "obs_init_module": False, "headless_refusal": True,
+                "consumer_store_metadata_unchanged": True, "obs_shutdown": "returned",
                 "fixture": {"audio_reset": False, "sources_created": 0,
                             "obs_app_started": False},
                 "build_receipt_sha256": hashlib.sha256(receipt_path.read_bytes()).hexdigest(),
                 "smoke_script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                 "plugin_sha256": receipt["generated"][plugin.name],
-                "obs_runtime_sha256": receipt["obs_runtime"]["sha256"]}
+                "obs_runtime_sha256": receipt["obs_runtime"]["sha256"],
+                "obs_frontend_runtime_sha256": receipt["obs_frontend_runtime"]["sha256"]}
     (build / "smoke-receipt.json").write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(evidence))
 
