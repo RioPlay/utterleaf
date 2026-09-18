@@ -114,6 +114,15 @@ elif mode == "audio":
         raise SystemExit(14)
     digest = hmac.digest(secret, b"Utterleaf OBS audio server ack v1\0" + header, "sha256")
     write_all(struct.pack("<4sBBH16s32s", b"ULAH", 1, 2, 0, session_id, digest))
+    arm = read_exact(28)
+    arm_magic, arm_version, arm_kind, arm_reserved, arm_session, arm_mask, arm_status, arm_trailing = struct.unpack(
+        "<4sBBH16sBBH", arm
+    )
+    if (arm_magic, arm_version, arm_kind, arm_reserved, arm_session, arm_status, arm_trailing) != (
+        b"ULAC", 1, 1, 0, session_id, 0, 0
+    ) or arm_mask > 63:
+        raise SystemExit(17)
+    write_all(struct.pack("<4sBBH16sBBH", b"ULAC", 1, 2, 0, session_id, arm_mask, 1, 0))
     write_all(payload)
     buffer = ctypes.create_string_buffer(1)
     count = DWORD()

@@ -20,6 +20,8 @@ enum ul_admission_result {
     UL_ADMISSION_IO_ERROR = 4,
 };
 
+#define UL_ADMISSION_MAX_IO_BYTES 65585u
+
 /*
  * Create a once-only pending admission for an expected process. This must only
  * be called from an already-authenticated, bounded vendor-request context.
@@ -35,6 +37,24 @@ ul_admission *ul_admission_create(DWORD expected_pid,
  * thread and must join it before destroying the admission.
  */
 int ul_admission_authenticate(ul_admission *admission, DWORD timeout_ms);
+
+/*
+ * Exact, bounded I/O for the single admission worker after authentication.
+ * Calls must be serialized by that worker.  size must be from 1 through
+ * UL_ADMISSION_MAX_IO_BYTES and timeout_ms from 1 through 30000.  Success is
+ * UL_ADMISSION_AUTH_OK.  Any failure terminally cancels and disconnects the
+ * admission; a failed read also wipes its complete caller-supplied buffer.
+ */
+int ul_admission_read_exact(ul_admission *admission, void *buffer, DWORD size,
+                            DWORD timeout_ms);
+int ul_admission_write_all(ul_admission *admission, const void *buffer,
+                           DWORD size, DWORD timeout_ms);
+
+/*
+ * Non-consuming liveness check for the same serialized worker.  Zero available
+ * bytes is a successful live result.  Errors terminally cancel and disconnect.
+ */
+int ul_admission_probe(ul_admission *admission, DWORD *available);
 
 /*
  * May run concurrently with authenticate until the caller joins that worker.

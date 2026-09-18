@@ -27,9 +27,28 @@ typedef struct ul_plugin_snapshot {
     ul_plugin_status status;
     ul_pairing_result storage_result;
     bool owns_store;
-    /* False means no active authenticate/READY worker. Reaping is deferred. */
+    /* False means no active authentication/READY/armed worker. Reaping is deferred. */
     bool admission_pending;
 } ul_plugin_snapshot;
+
+typedef enum ul_session_phase {
+    UL_SESSION_NONE = 0, UL_SESSION_READY, UL_SESSION_ARM_PENDING,
+    UL_SESSION_ARMED, UL_SESSION_STARTING, UL_SESSION_STARTED,
+    UL_SESSION_TERMINAL
+} ul_session_phase;
+
+typedef enum ul_stream_event {
+    UL_STREAM_STARTING = 1, UL_STREAM_STARTED, UL_STREAM_STOPPING,
+    UL_STREAM_STOPPED
+} ul_stream_event;
+
+/* Pinned callback; queues nonblocking frontend work with numeric generation
+ * only. It must refuse after frontend shutdown, without calling OBS. */
+typedef bool (*ul_arm_scheduler)(uintptr_t generation);
+bool ul_plugin_set_arm_scheduler(ul_arm_scheduler scheduler);
+void ul_plugin_arm_checked(uintptr_t generation, bool idle);
+void ul_plugin_stream_event(ul_stream_event event);
+ul_session_phase ul_plugin_session_status(void);
 
 /*
  * Permanently pins this DLL generation before callbacks may be registered.

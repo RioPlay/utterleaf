@@ -6,6 +6,16 @@ Follows the reviewed
 [TCP peer identity gate](windows-obs-peer-identity.md) and
 [OBS audio design](obs-audio-design.md).
 
+September 13 follow-up: [explicit session arming](obs-session-arm.md) adds a
+separate `ObsAudioPipe.arm()` transaction after authentication. The caller supplies
+the prepared additional mix mask and deadline; the exact matching native reply
+must commit Arm before `read_frames()` accepts ULAP. Calling Arm twice, reading
+before Arm, refusal, malformed replies, cancellation or identity loss closes the
+connection. Coalesced bytes following the fixed reply remain available to the
+frame reader. This is internal source behavior; the application controller and
+live OBS audio workflow are still pending. Evidence below describes the earlier
+handshake/receiver increment unless explicitly linked to that follow-up.
+
 ## Goal and area
 
 Implement the local client side of the original OBS audio bridge: bind one named
@@ -13,7 +23,7 @@ pipe to the already verified OBS process before exchanging session credentials,
 then receive bounded binary audio for the existing protocol/session receiver.
 The audio connection must retain its own process identity so a degraded control
 connection cannot silently replace or invalidate an otherwise healthy active
-audio session. This component does not itself arm or record.
+audio session. Authentication alone does not arm or record.
 
 The source is `windows_pipe.py`, `obs_audio_pipe.py` and the process-lease additions
 to `windows_peer_identity.py`, `obs_websocket.py` and `obs_control.py`, all under
@@ -85,7 +95,7 @@ its first read and consumes a session once. The client never reconnects a failed
 session. Mutable secret/Hello construction buffers are cleared best-effort;
 Python/HMAC copies cannot be guaranteed erased.
 
-After ACK, each bounded read rechecks server PID and the independent process
+After ACK and the explicit Arm reply, each bounded read rechecks server PID and the independent process
 before and after I/O. Bytes feed the existing ULAP decoder; every frame must carry
 the same session ID. End must be the last frame, with no trailing partial frame.
 Consent, post-arm start ordering, bus selection and temporary stores remain the

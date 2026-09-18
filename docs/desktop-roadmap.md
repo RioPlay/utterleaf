@@ -150,9 +150,9 @@ binary is included in desktop or Android releases. The
 [control dependency record](desktop-obs-control-resource.md) records the pinned
 library, reviewed full license and development-wheel provenance.
 
-Continue on `feat/obs-enrollment-flow` with frontend acceptance and the desktop
-connection/controller after the pairing setup increment. Arm/PCM and live
-recognition remain later gates. No live-capture app entry point, audio endpoint, plugin binary
+Pairing setup remains in draft PR #36 on `feat/obs-enrollment-flow`; the separate
+Arm increment continues on `feat/obs-session-arm`. The desktop controller, PCM and
+live recognition remain later gates. No live-capture app entry point, audio endpoint, plugin binary
 publication or OBS capture integration exists yet.
 
 The linked native pairing Tools flow, exclusive per-user owner and strict
@@ -178,9 +178,21 @@ pass after the final status-card adjustment. Native TaskDialog activation,
 Escape, modal cleanup and zero-mutation checks also pass in an isolated fixture;
 all 29 native driver commands pass with `--ui`. Normal/compact/enlarged desktop
 renders were inspected. Independent final desktop setup review is clear, with
-29 focused and 187 related tests rerun on the final source. Its own CI remains
-pending; no existing release changes. Earlier linked checkpoint `15e1c77` passed
+29 focused and 187 related tests rerun on the final source. All five exact-source
+CI jobs pass at `e71b627` in [34760760046](https://github.com/RioPlay/utterleaf/actions/runs/34760760046).
+No existing release changes. Earlier linked checkpoint `15e1c77` passed
 all five desktop CI jobs in [34758907354](https://github.com/RioPlay/utterleaf/actions/runs/34758907354).
+
+The separate [Arm integration](plans/active/obs-session-arm.md) is active on
+`feat/obs-session-arm`. It adds a fixed authenticated-pipe command, guarded
+frontend consent, bounded native I/O and an explicit desktop Arm operation.
+The 199-test affected desktop bundle and all 34 native build/test commands pass,
+along with the linked build and headless refusal smoke. Independent source review
+is clear. Startup/started/stopping states remain busy even when public activity
+flags are false; a failed start without STOPPED requires a later actual STOPPED
+or OBS restart before fresh Arm. Visible failure/recovery controls and real OBS
+acceptance remain pending with the controller/PCM work. This is source work,
+not live OBS support or a new release.
 
 Current integrated desktop regression: **1,432 passed, 13 skipped in 39.47 seconds**,
 including the reviewed OBS control, native identity, pipe and audio handshake.

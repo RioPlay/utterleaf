@@ -25,6 +25,8 @@ _ACK = 2
 _HEADER = struct.Struct("<4sBBH16s")
 _RECORD = struct.Struct("<4sBBH16s32s")
 _ACK_DOMAIN = b"Utterleaf OBS audio server ack v1\0"
+_ARM_MAGIC = b"ULAC"
+_ARM_RECORD = struct.Struct("<4sBBH16sBBH")
 HANDSHAKE_BYTES = _RECORD.size
 
 
@@ -92,6 +94,7 @@ class ObsAudioPipe:
         self._decoder = obs_protocol.FrameDecoder()
         self._io_lock = threading.Lock()
         self._closed = threading.Event()
+        self._armed = False
 
     def __repr__(self) -> str:
         return "ObsAudioPipe()"
@@ -113,6 +116,8 @@ class ObsAudioPipe:
             with self._io_lock:
                 if self._closed.is_set():
                     raise ObsAudioPipeCancelled("OBS audio connection closed")
+                if not self._armed:
+                    raise ObsAudioPipeError("OBS audio session is not armed")
                 _verify(self._pipe, self._peer, self._cancelled, deadline)
                 data = self._pipe.read(obs_protocol.MAX_FEED_BYTES, deadline=deadline)
                 _verify(self._pipe, self._peer, self._cancelled, deadline)
@@ -133,6 +138,38 @@ class ObsAudioPipe:
             if ended:
                 self.close()
             return frames
+        except BaseException as exc:
+            self.close()
+            _failure(exc)
+
+    def arm(self, *, additional_mix_mask: int = 0, deadline: float) -> None:
+        """Commit the one-use native Arm command before accepting ULAP frames."""
+        try:
+            with self._io_lock:
+                if self._closed.is_set() or self._armed:
+                    raise ObsAudioPipeError("OBS audio session cannot be armed")
+                if (type(additional_mix_mask) is not int
+                        or not 0 <= additional_mix_mask <= 63):
+                    raise ObsAudioPipeError("Invalid OBS audio arm request")
+                record = _ARM_RECORD.pack(_ARM_MAGIC, 1, 1, 0, self._session_id,
+                                          additional_mix_mask, 0, 0)
+                _verify(self._pipe, self._peer, self._cancelled, deadline)
+                self._pipe.write_all(record, deadline=deadline)
+                _verify(self._pipe, self._peer, self._cancelled, deadline)
+                reply = _read_exact(self._pipe, _ARM_RECORD.size,
+                                    self._cancelled, deadline)
+                _verify(self._pipe, self._peer, self._cancelled, deadline)
+                magic, version, kind, reserved, session, mask, status, trailing = _ARM_RECORD.unpack(reply)
+                if (magic != _ARM_MAGIC or version != 1 or kind != 2 or reserved
+                        or session != self._session_id or mask != additional_mix_mask
+                        or status not in (1, 2) or trailing):
+                    raise ObsAudioPipeError("Invalid OBS audio arm response")
+                if status != 1:
+                    raise ObsAudioPipeError("OBS audio arm was refused")
+                _check(self._cancelled, deadline)
+                if self._closed.is_set():
+                    raise ObsAudioPipeCancelled("OBS audio connection closed")
+                self._armed = True
         except BaseException as exc:
             self.close()
             _failure(exc)

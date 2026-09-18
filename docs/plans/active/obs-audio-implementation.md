@@ -11,19 +11,25 @@ in source; its physical microphone and release gates remain separate.
 
 ## Current increment
 
-The [enrollment plan](obs-native-enrollment.md) now records the integrated private
-pairing stores and the typed desktop Issue/Prepare adapter on
-`feat/obs-enrollment-flow`. Its focused regression passes 341 tests with no skips,
-including 66 enrollment cases. Native owner, Tools and vendor dispatch are still
-pending; no app entry point or capture activation is exposed.
+The [enrollment plan](obs-native-enrollment.md) records the integrated private
+pairing stores, native owner/Tools/vendor flow and typed desktop Issue/Prepare
+adapter. The Windows [pairing setup](obs-desktop-pairing-ui.md) at `e71b627` passed
+all five desktop CI jobs in run 34760760046 and remains in draft PR #36.
+The separate [explicit Arm increment](obs-session-arm.md) on
+`feat/obs-session-arm` passes 199 desktop tests, 34 native build/test commands,
+the linked build and headless smoke, with independent source review. Its
+conservative frontend guard refuses fresh Arm after a failed start without
+STOPPED until a later actual STOPPED or OBS restart. Controller guidance and real
+frontend recovery remain acceptance gates. No live-capture app entry or audio
+activation is exposed.
 
 The bounded audio protocol, consent/session receiver and read-only loopback
 WebSocket control client are reviewed. The Windows TCP peer identity gate is now
 implemented and integrated, as recorded below. The separate original C module now
-has a verified inert build and `libobs` load/unload prerequisite; this does not
-establish the native server, vendor registration, PCM callback, Arm, or real OBS
-application workflow. Continue with the original native plugin/server and its
-authenticated audio endpoint. Root owns the integrated source,
+has a verified build and headless-refusal prerequisite, linked native enrollment
+and authenticated pipe admission. These do not establish actual OBS frontend
+load, the PCM callback or the complete application workflow. Continue the
+original mix callback and visible controller. Root owns the integrated source,
 tests and this plan after delegated handoff; assign each next component one writer
 and a separate reviewer under the repository's ownership rules.
 No runtime/UI entry is exposed until the authenticated transport can satisfy the
