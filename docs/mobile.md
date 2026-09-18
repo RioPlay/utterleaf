@@ -10,14 +10,25 @@ it does not replace or add dependencies to the desktop Python application.
 
 ## Android — typing and local dictation preview
 
-[Download the signed Android alpha15 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha15/Utterleaf-Android-0.1.0-alpha15.apk) ·
-[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha15) ·
+[Download the signed Android alpha17 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha17/Utterleaf-Android-0.1.0-alpha17.apk) ·
+[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha17) ·
 [Setup and current limits](../mobile/android/README.md)
 
-Android **0.1.0-alpha15 is released as a signed preview**. Setup
+Android **0.1.0-alpha17 is released as a signed preview**. Setup
 separates the two keyboard activation steps from optional voice setup, reports
 whether the keyboard is enabled and selected, and shows model and microphone
 permission status independently.
+
+Alpha17 adds the daily toolbar/settings redesign, a password-manager shortcut in
+password fields and local English word completions. Suggestions complete the word
+immediately before the caret; they do not predict the next word, correct spelling
+automatically, learn from typing or send text anywhere. Password/raw fields and
+disabled suggestions do not show completions. See the [current release evidence
+and remaining gates](mobile-roadmap.md#current-status).
+
+An [unreleased stabilization pass](plans/active/android-alpha17-polish.md) addresses
+reported delays and shifting suggestion geometry. Its changes are not included in
+the alpha17 download above. Physical Pixel 8 Pro/GrapheneOS verification remains open.
 
 Alpha15 adds the reviewed Backspace selection gesture, a sliding toolbar and replacement panels,
 comma-hold Settings access and the Utterleaf installed identity while retaining
@@ -59,7 +70,8 @@ vibration and repeat filtering. Terminal controls include Esc, Tab, one-shot
 Ctrl/Alt, arrows, Home/End and Page Up/Down. The Fn layer replaces letters with
 F1–F12, Insert and forward Delete. Editors can handle
 these keys differently; real-terminal and phone compatibility remain acceptance
-work. Suggestions, correction and swipe typing are still planned.
+work. Alpha05 did not include suggestions; alpha17 adds word completion.
+Automatic correction and swipe typing remain planned.
 
 Typing works without microphone permission or a speech model. For optional
 English dictation, choose **tiny.en (77.7 MB)**,
@@ -91,8 +103,8 @@ prediction and broader accessibility/device coverage remain on the
 
 Existing alpha01/alpha02 users need a one-time uninstall because those builds used
 different debug signing keys. Uninstalling removes app data and the imported model;
-install alpha15 and import the model again. Alpha03 began the persistent signing
-channel, which alpha15 retains. See [migration details](mobile-obtainium.md#migrating-from-the-old-alpha).
+install alpha17 and import the model again. Alpha03 began the persistent signing
+channel, which alpha17 retains. See [migration details](mobile-obtainium.md#migrating-from-the-old-alpha).
 
 See the [Android guide](../mobile/android/README.md) for exact implemented scope,
 setup, permissions, test evidence and remaining native-device acceptance work.

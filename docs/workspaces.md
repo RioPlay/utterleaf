@@ -6,6 +6,7 @@ source checkout stays intact. Use the following workspaces for new work.
 
 | Branch | Purpose | Next work |
 | --- | --- | --- |
+| `fix/android-alpha17-polish` | Locally verified Android alpha17 stabilization, based on `cd0a0f1` in the Android worktree | [Typing/suggestions/geometry checks](plans/active/android-alpha17-polish.md) and review complete; next are exact-revision CI, signed candidate and phone acceptance |
 | `checkpoint/mixed-work-20260912` | Preserved mixed development snapshot; not a release or PR | Recovery/reference only; leave the original source environment intact |
 | `release/desktop-0.4.6rc2` | Published Windows x64 CPU prerelease with runtime notice corrections; PR #26 merged | Preserve the immutable RC2 tag and release evidence; continue desktop work from main |
 | `feat/desktop-dictation-layout` | Compact Dictation settings and CI corrections merged through PR #31 at `03a1c9b` | Preserve source/CI evidence; not part of published RC2 |

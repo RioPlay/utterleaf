@@ -16,6 +16,7 @@ internal class ModifierChords(private val root: KeyboardSurface) {
     private var active = false
     private var cancelled = false
     private var used = false
+    private var modifierStateActive = false
     private var repeatKey: Button? = null
     private var repeatTask: Runnable? = null
     var repeatEnabled = true
@@ -31,13 +32,21 @@ internal class ModifierChords(private val root: KeyboardSurface) {
         return rect.contains(x.toInt(), y.toInt())
     }
     private fun modifier(key: Button) = key === control || key === alternate
-    private fun update() = changed(fingers.values.any { it === control }, fingers.values.any { it === alternate })
+    private fun update() {
+        val controlHeld = fingers.values.any { it === control }
+        val alternateHeld = fingers.values.any { it === alternate }
+        modifierStateActive = controlHeld || alternateHeld
+        changed(controlHeld, alternateHeld)
+    }
     private fun stopRepeat() {
         repeatTask?.let { root.removeCallbacks(it) }; repeatTask = null
         repeatKey?.isPressed = false; repeatKey = null
     }
     private fun abort() {
-        cancelled = true; stopRepeat(); fingers.clear(); changed(false, false)
+        val hadState = modifierStateActive || fingers.isNotEmpty() || repeatKey != null
+        cancelled = true; stopRepeat(); fingers.clear()
+        modifierStateActive = false
+        if (hadState) changed(false, false)
     }
     fun reset() {
         abort(); keys.clear(); control = null; alternate = null; changed = { _, _ -> }

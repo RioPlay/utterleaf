@@ -2,7 +2,7 @@
 
 [Roadmap hub](roadmap.md) · [Execution plan](execution-plan.md) · [Current mobile preview](mobile.md) · [Ideas](ideas.md)
 
-Updated September 14, 2026. Product direction: a complete, customizable Utterleaf
+Updated September 17, 2026. Product direction: a complete, customizable Utterleaf
 keyboard with integrated offline speech, its own identity, and security first.
 The design uses historical public documentation as research context, not as a
 specification, dependency or source of product identity.
@@ -27,6 +27,18 @@ correctness, daily ergonomics, language/repair and evaluated prediction/swipe.
 One-hand reach and visual polish can proceed alongside foundation work.
 
 ## Current status
+
+- **Alpha17 stabilization locally verified, unreleased:** user reports of typing
+  delays, keyboard gaps and inconsistent completions take priority over new
+  capabilities. The [stabilization contract](plans/active/android-alpha17-polish.md)
+  covers suggestion work off the typing path, exact-word/session checks,
+  cursor-driven refresh, stable useful header geometry and inset verification.
+  Ordinary touches also avoid redundant modifier-state UI updates. Local checks:
+  14 tooling, 40 JVM and 79 scoped API 35 emulator tests pass, plus lint and debug
+  builds; representative owned-view captures and independent review are complete.
+  A blocked editor read can still delay suggestions without blocking key dispatch.
+  Pixel 8 Pro/GrapheneOS acceptance, exact-revision CI and a signed release candidate
+  remain separate finishing gates.
 
 - **Released alpha17:** the signed pre-release
   [android-v0.1.0-alpha17](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha17)

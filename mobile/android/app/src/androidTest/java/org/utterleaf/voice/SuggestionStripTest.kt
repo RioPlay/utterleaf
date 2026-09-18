@@ -4,14 +4,21 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.View
+import android.view.ViewGroup
+import android.view.inputmethod.InputConnectionWrapper
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.Collections
 
 /**
  * Live-IME evidence for the suggestion strip: completions of the composing
@@ -57,6 +64,28 @@ class SuggestionStripTest {
     }
 
     private fun key(label: String) = node(label)
+
+    private fun descendants(view: View): List<View> = listOf(view) + if (view is ViewGroup)
+        (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) } else emptyList()
+
+    private fun currentService(): KeyboardIme = main {
+        android.view.inspector.WindowInspector.getGlobalWindowViews().flatMap(::descendants)
+            .filterIsInstance<android.widget.Button>().single { it.isShown && it.contentDescription == "Undo" }
+            .context as KeyboardIme
+    }
+
+    private fun complete(service: KeyboardIme, composing: String, candidate: String): Boolean {
+        val generation = KeyboardIme::class.java.getDeclaredField("uiGeneration").run {
+            isAccessible = true
+            getLong(service)
+        }
+        return KeyboardIme::class.java.getDeclaredMethod(
+            "completeSuggestion", String::class.java, String::class.java, Long::class.javaPrimitiveType
+        ).run {
+            isAccessible = true
+            invoke(service, composing, candidate, generation) as Boolean
+        }
+    }
 
     private fun shell(command: String) = android.os.ParcelFileDescriptor.AutoCloseInputStream(
         instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
@@ -159,6 +188,7 @@ class SuggestionStripTest {
                 }
             } finally {
                 close(activity)
+                previous.save(app)
             }
         }
     }
@@ -191,7 +221,197 @@ class SuggestionStripTest {
                     keyDescriptions().none { it.startsWith("Complete with ") })
             } finally {
                 activity?.let(::close)
+                previous.save(app)
             }
         }
+    }
+
+    @Test fun completionRejectsSameLengthDifferentWordAfterCaretMove() {
+        val previous = keyboardOptions()
+        KeyboardOptions().save(app)
+        withKeyboard {
+            val activity = launch()
+            try {
+                main {
+                    activity.editor.setText("cat")
+                    activity.editor.setSelection(3)
+                }
+                instrumentation.waitForIdleSync()
+                assertFalse("A chip must not replace a different same-length word",
+                    complete(currentService(), "hel", "hello"))
+                assertEquals("cat", main { activity.editor.text.toString() })
+            } finally {
+                close(activity)
+                previous.save(app)
+            }
+        }
+    }
+
+    @Test fun completionRejectsSelectedText() {
+        val unreadableSelection = object : InputConnectionWrapper(null, true) {
+            override fun getTextBeforeCursor(length: Int, flags: Int): CharSequence =
+                throw AssertionError("Selected text must be rejected before reading the editor")
+        }
+        assertFalse(completeSuggestionTransaction(unreadableSelection, "hel", "help", false))
+        val previous = keyboardOptions()
+        KeyboardOptions().save(app)
+        withKeyboard {
+            val activity = launch()
+            try {
+                main {
+                    activity.editor.setText("hel rest")
+                    activity.editor.setSelection(3, 8)
+                }
+                instrumentation.waitForIdleSync()
+                assertFalse("A chip must not replace selected text",
+                    complete(currentService(), "hel", "help"))
+                assertEquals("hel rest", main { activity.editor.text.toString() })
+            } finally {
+                close(activity)
+                previous.save(app)
+            }
+        }
+    }
+
+    @Test fun slowSuggestionReadDoesNotBlockTheCaller() {
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val completed = CountDownLatch(1)
+        val engine = SuggestionEngine(listOf("hello", "help", "world"))
+        val slow = object : InputConnectionWrapper(null, true) {
+            override fun getTextBeforeCursor(length: Int, flags: Int): CharSequence {
+                started.countDown()
+                release.await(3, TimeUnit.SECONDS)
+                return "hel"
+            }
+        }
+        val work = SuggestionWork()
+        try {
+            val returned = CountDownLatch(1)
+            Thread {
+                instrumentation.runOnMainSync {
+                    work.request(slow, 1L, engine) { completed.countDown() }
+                    returned.countDown()
+                }
+            }.start()
+            assertTrue("Suggestion read did not start", started.await(1, TimeUnit.SECONDS))
+            assertTrue("Slow suggestion read blocked the IME main thread", returned.await(1, TimeUnit.SECONDS))
+            release.countDown()
+            assertTrue("Slow suggestion result never arrived", completed.await(3, TimeUnit.SECONDS))
+        } finally {
+            release.countDown()
+            work.close()
+        }
+    }
+
+    @Test fun newerSuggestionRequestSupersedesAnOlderRead() {
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val delivered = Collections.synchronizedList(mutableListOf<Int>())
+        var calls = 0
+        val engine = SuggestionEngine(listOf("hello", "help", "world"))
+        val slow = object : InputConnectionWrapper(null, true) {
+            override fun getTextBeforeCursor(length: Int, flags: Int): CharSequence {
+                calls++
+                if (calls == 1) {
+                    started.countDown()
+                    release.await(3, TimeUnit.SECONDS)
+                }
+                return if (calls == 1) "old" else "hel"
+            }
+        }
+        val work = SuggestionWork()
+        try {
+            work.request(slow, 1L, engine) { delivered += 0 }
+            assertTrue(started.await(1, TimeUnit.SECONDS))
+            for (request in 1..20) work.request(slow, 1L, engine) { delivered += request }
+            release.countDown()
+            await("Latest suggestion request was lost") { delivered.contains(20) }
+            instrumentation.waitForIdleSync()
+            assertEquals("Only active and latest reads may run", 2, calls)
+            assertEquals("Only the newest result may be delivered", listOf(20), delivered.toList())
+        } finally {
+            release.countDown()
+            work.close()
+        }
+    }
+
+    @Test fun externalCaretUpdateRefreshesVisibleCandidates() {
+        val previous = keyboardOptions()
+        KeyboardOptions().save(app)
+        withKeyboard {
+            val activity = launch()
+            try {
+                for (letter in "hel") press(letter.toString())
+                press("Space")
+                for (letter in "wor") press(letter.toString())
+                await("Initial completion did not appear") {
+                    keyDescriptions().any { it.startsWith("Complete with wor", ignoreCase = true) }
+                }
+                val wordCandidates = keyDescriptions().filter { it.startsWith("Complete with ") }
+                main {
+                    activity.editor.setSelection(3)
+                }
+                await("External editor update did not refresh completions") {
+                    val descriptions = keyDescriptions()
+                    descriptions.any { it.startsWith("Complete with hel", ignoreCase = true) } &&
+                        descriptions.none { it in wordCandidates }
+                }
+            } finally {
+                close(activity)
+                previous.save(app)
+            }
+        }
+    }
+
+    @Test fun invalidatedOrClosedSuggestionReadsCannotDeliver() {
+        val engine = SuggestionEngine(listOf("hello", "help", "world"))
+        fun runInvalidation(close: Boolean) {
+            val started = CountDownLatch(1)
+            val release = CountDownLatch(1)
+            val delivered = CountDownLatch(1)
+            val slow = object : InputConnectionWrapper(null, true) {
+                override fun getTextBeforeCursor(length: Int, flags: Int): CharSequence {
+                    started.countDown()
+                    release.await(3, TimeUnit.SECONDS)
+                    return "hel"
+                }
+            }
+            val work = SuggestionWork()
+            try {
+                work.request(slow, 1L, engine) { delivered.countDown() }
+                assertTrue(started.await(1, TimeUnit.SECONDS))
+                if (close) work.close() else work.invalidate()
+                release.countDown()
+                assertFalse("Stale suggestion result was delivered", delivered.await(500, TimeUnit.MILLISECONDS))
+            } finally {
+                release.countDown()
+                work.close()
+            }
+        }
+        runInvalidation(close = false)
+        runInvalidation(close = true)
+    }
+
+    @Test fun failedCandidateInsertRestoresDeletedWord() {
+        var commits = 0
+        var begins = 0
+        var ends = 0
+        val connection = object : InputConnectionWrapper(null, true) {
+            override fun getTextBeforeCursor(length: Int, flags: Int): CharSequence = "hel"
+            override fun beginBatchEdit(): Boolean { begins++; return true }
+            override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean = true
+            override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
+                commits++
+                if (commits == 1) throw IllegalStateException("simulated insert failure")
+                assertEquals("hel", text?.toString())
+                return true
+            }
+            override fun endBatchEdit(): Boolean { ends++; return true }
+        }
+        assertFalse(completeSuggestionTransaction(connection, "hel", "hello", true))
+        assertEquals("delete and restore must each be attempted", 2, commits)
+        assertEquals(1, begins)
+        assertEquals("batch edit must be balanced", 1, ends)
     }
 }

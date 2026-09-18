@@ -93,7 +93,8 @@ class KeyboardGeometryTest {
         assertFalse(descendants(withoutNumbers.view).filterIsInstance<android.widget.Button>()
             .any { it.contentDescription == "1" })
 
-        for (options in listOf(KeyboardOptions(large = true, light = true), KeyboardOptions(large = true, light = false))) {
+        for (options in listOf(KeyboardOptions(large = true, theme = ThemeMode.LIGHT),
+            KeyboardOptions(large = true, theme = ThemeMode.DARK))) {
             val large = panel(options)
             large.reset(false, false, "Enter")
             val height = layout(large, 320)
@@ -334,7 +335,7 @@ class KeyboardGeometryTest {
             await("Extra keys panel did not close") { node("Escape") == null }
             for (light in listOf(false, true)) {
                 closeEditor()
-                KeyboardOptions(large = true, light = light).save(app)
+                KeyboardOptions(large = true, theme = if (light) ThemeMode.LIGHT else ThemeMode.DARK).save(app)
                 activity = launch()
                 capture(if (light) "large-light" else "large-dark",
                     listOf("Undo", "Dictate", "Space", "Done"))
