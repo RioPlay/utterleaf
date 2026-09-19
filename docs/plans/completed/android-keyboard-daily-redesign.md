@@ -1,5 +1,13 @@
 # Daily keyboard redesign to the approved mockups
 
+## Completion - September 18, 2026
+
+Merged through PR #44 (a3c8138), with restart-race follow-ups; published in alpha17. Canonical CI 35030029554 passed 157 instrumentation tests.
+
+This bounded increment is closed. The evidence below is historical; earlier
+pending/unreleased statements describe that stage, not current work. Physical,
+editor and accessibility limits remain open in the [platform roadmap](../../mobile-roadmap.md).
+
 ## Goal
 
 The approved design mockups (September 15, 2026) define a compact Utterleaf

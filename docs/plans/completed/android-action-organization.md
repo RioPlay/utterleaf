@@ -1,5 +1,13 @@
 # Android action organization
 
+## Completion - September 18, 2026
+
+Merged through PR #43 and published in alpha16; the daily redesign later superseded its surface organization.
+
+This bounded increment is closed. The evidence below is historical; earlier
+pending/unreleased statements describe that stage, not current work. Physical,
+editor and accessibility limits remain open in the [platform roadmap](../../mobile-roadmap.md).
+
 ## Goal
 
 Use FUTO as the useful-capability baseline, and JuiceSSH-style accessory keys as

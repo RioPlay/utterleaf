@@ -26,7 +26,7 @@ automatically, learn from typing or send text anywhere. Password/raw fields and
 disabled suggestions do not show completions. See the [current release evidence
 and remaining gates](mobile-roadmap.md#current-status).
 
-An [unreleased stabilization pass](plans/active/android-alpha17-polish.md) addresses
+An [unreleased stabilization pass](plans/completed/android-alpha17-polish.md) addresses
 reported delays and shifting suggestion geometry. Its changes are not included in
 the alpha17 download above. Physical Pixel 8 Pro/GrapheneOS verification remains open.
 

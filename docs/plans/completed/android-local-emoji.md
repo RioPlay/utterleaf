@@ -1,5 +1,13 @@
 # Android local emoji picker and search
 
+## Completion - September 18, 2026
+
+Released in alpha14; see the mobile roadmap for the supported scope.
+
+This bounded increment is closed. The evidence below is historical; earlier
+pending/unreleased statements describe that stage, not current work. Physical,
+editor and accessibility limits remain open in the [platform roadmap](../../mobile-roadmap.md).
+
 ## Goal and area
 
 Provide a first-class Emoji button, browsable categories, English local search,

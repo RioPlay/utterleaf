@@ -1,7 +1,15 @@
 # Suggestion strip slice — R3 first increment
 
-[Rebuild plan](android-keyboard-rebuild.md) · [Roadmap](../../mobile-roadmap.md) ·
-[Community wants](../mobile-keyboard-community-wants-2026-09.md)
+## Completion - September 18, 2026
+
+Merged through PR #47 (6bfbb98), with PR #48 test follow-up; published in alpha17. PR #52 subsequently stabilized suggestions.
+
+This bounded increment is closed. The evidence below is historical; earlier
+pending/unreleased statements describe that stage, not current work. Physical,
+editor and accessibility limits remain open in the [platform roadmap](../../mobile-roadmap.md).
+
+[Rebuild plan](../active/android-keyboard-rebuild.md) · [Roadmap](../../mobile-roadmap.md) ·
+[Community wants](../../mobile-keyboard-community-wants-2026-09.md)
 
 ## Goal
 

@@ -1,8 +1,16 @@
 # Desktop OBS pairing setup
 
+## Completion - September 18, 2026
+
+Merged through PR #36 at aa296c9. CI 35366314920 passed all five desktop jobs. Next desktop increment is draft PR #37, session arming.
+
+This bounded increment is closed. The evidence below is historical; earlier
+pending/unreleased statements describe that stage, not current work. Physical,
+editor and accessibility limits remain open in the [platform roadmap](../../desktop-roadmap.md).
+
 September 13, 2026. Continue `feat/obs-enrollment-flow` after the reviewed native
 checkpoint `15e1c77` in draft PR #36. The full OBS audio goal remains in the
-[enrollment](obs-native-enrollment.md) and [audio](obs-audio-design.md) plans.
+[enrollment](../active/obs-native-enrollment.md) and [audio](../active/obs-audio-design.md) plans.
 
 ## Goal and area
 

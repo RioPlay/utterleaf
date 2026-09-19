@@ -1,5 +1,13 @@
 # Android alpha14 snapshot — published
 
+## Completion - September 18, 2026
+
+Published as android-v0.1.0-alpha14; signed publication run 34741640577.
+
+This bounded increment is closed. The evidence below is historical; earlier
+pending/unreleased statements describe that stage, not current work. Physical,
+editor and accessibility limits remain open in the [platform roadmap](../../mobile-roadmap.md).
+
 ## Goal
 
 Prepare and publish a signed, installable alpha14 snapshot of the original Utterleaf

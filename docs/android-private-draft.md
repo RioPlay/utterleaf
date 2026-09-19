@@ -2,7 +2,7 @@
 
 Implemented in unreleased source after alpha12. The published alpha12 APK does
 not include this editor. [Mobile status](mobile-roadmap.md) ·
-[Acceptance record](plans/active/android-private-draft.md)
+[Acceptance record](plans/completed/android-private-draft.md)
 
 Open **Tools → Private draft** in an ordinary text field. The draft starts empty.
 Use Utterleaf's on-screen keys to write and revise, **Edit** for selection and undo/redo, and

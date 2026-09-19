@@ -1,5 +1,13 @@
 # Skip desktop CI on Android-only changes
 
+## Completion - September 18, 2026
+
+Merged through PR #53. The workspace-only PR #54 merged with no jobs; branch cleanup was recorded there. Android CI splitting remains a separate follow-up.
+
+This bounded increment is closed. The evidence below is historical; earlier
+pending/unreleased statements describe that stage, not current work. Physical,
+editor and accessibility limits remain open in the [platform roadmap](../../desktop-roadmap.md).
+
 ## Goal
 
 Stop Android keyboard PRs from packing the Windows/macOS/Linux matrix. Desktop
@@ -29,6 +37,6 @@ ignore list.
 ## Remaining
 
 Android `android.yml` still downloads speech models and runs the full emulator
-suite on every Android source PR. Split that only in a follow-up. Remote merged
-topic branches and stale worktrees are listed in the cleanup inventory, not
-deleted by this patch.
+suite on every Android source PR. Split that only in a follow-up. Cleanup was subsequently completed and recorded in PR #54: merged topic
+branches were removed; release receipts and the mixed checkpoint were retained.
+See [current workspaces](../../workspaces.md) for the surviving checkouts.

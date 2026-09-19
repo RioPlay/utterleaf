@@ -54,7 +54,7 @@ fully-qualified Unicode sequence once without a space or editor action. Raw
 fields disable entry. Query state clears on field/subtype change, hide, return
 and disposal, with no clipboard query, history or network access. See the
 [user guide](android-emoji.md), [resource record](android-emoji-resource.md) and
-[acceptance evidence](plans/active/android-local-emoji.md). This is reviewed API
+[acceptance evidence](plans/completed/android-local-emoji.md). This is reviewed API
 35 emulator/source behavior released in alpha14; physical phones, landscape,
 assistive technology and broad host editors remain open.
 

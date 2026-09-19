@@ -1,5 +1,13 @@
 # Compact desktop Dictation settings
 
+## Completion - September 18, 2026
+
+Merged through PR #31 (03a1c9b); all five desktop jobs passed in CI 34750749369. This source follow-up is not in the immutable RC2 binary.
+
+This bounded increment is closed. The evidence below is historical; earlier
+pending/unreleased statements describe that stage, not current work. Physical,
+editor and accessibility limits remain open in the [platform roadmap](../../desktop-roadmap.md).
+
 Status: source integrated through PR #31 at `03a1c9b`. Exact-source CI run
 [34750749369](https://github.com/RioPlay/utterleaf/actions/runs/34750749369)
 passed all five desktop jobs at `76f448c`. This source change is not in the

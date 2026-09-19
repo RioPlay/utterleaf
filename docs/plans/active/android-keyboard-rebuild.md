@@ -125,11 +125,11 @@ physical phones, keyboard accessibility and broader Unicode cases remain open.
 - R2 source slices below and the one-hand alignment flow now have named emulator
   and visual evidence. Continue physical reach and accessibility acceptance.
 - R3 now includes separately reviewed original letter-layout and local-emoji
-  source slices. The [private draft editor](android-private-draft.md) is implemented
+  source slices. The [private draft editor](../completed/android-private-draft.md) is implemented
   and independently reviewed, with 17 API 35 draft checks and a seven-test ordinary
   IME regression receipt after a controlled emulator cold boot. Its earlier
   repeated-session harness failure and physical gaps remain documented. The
-  [Latin Compose slice](android-latin-compose.md) now supplies an original explicit
+  [Latin Compose slice](../completed/android-latin-compose.md) now supplies an original explicit
   mark/letter flow with focused source/emulator checks and independent review.
   Explicit vocabulary/snippets and
   reversible correction remain separate work.
@@ -170,7 +170,7 @@ Eighteen layout/Tools captures plus empty Settings passed visual review.
 This starts R3 without claiming complete languages, dictionaries or speech
 switching. The slice shipped in alpha14; physical and external-editor gates remain open.
 
-The subsequent [local emoji slice](android-local-emoji.md) adds a reviewed
+The subsequent [local emoji slice](../completed/android-local-emoji.md) adds a reviewed
 3,944-entry fully-qualified Emoji 17 catalog, nine categories, local CLDR 48
 English search and explicit variants. Exact insertion passed the native IME
 fixture, and transient query state has lifecycle checks. Seventy-five distinct
