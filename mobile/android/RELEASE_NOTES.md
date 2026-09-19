@@ -1,8 +1,14 @@
 # Utterleaf Android 0.1.0-alpha19
 
-This preview fixes two Backspace problems reported after alpha18.
+This preview fixes Backspace interactions and improves keyboard navigation and Settings discovery.
 
 ## What changed
+
+- Hold Emoji to open full Settings directly; tap still opens Emoji. A visible
+  Tools button opens Compose, accents and quick options, even with Extra keys off.
+- Settings search finds controls such as Backspace, vibration, height and theme.
+  Backspace repeat and repeat guard now live under Holds & gestures.
+- Redrawn Cut scissors and corrected the light-theme Dictate button contrast.
 
 - Holding Backspace keeps deleting after automatic capitalization or ordinary
   letter-case Shift. Capitalization no longer turns Backspace into a single

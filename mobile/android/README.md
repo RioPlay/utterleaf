@@ -3,6 +3,9 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
+The upcoming alpha19 adds direct Settings from emoji hold, a visible **Tools**
+button, control-name Settings search, clearer Backspace preferences and corrected
+Cut/Dictate visuals. These changes remain under verification; alpha18 is published.
 **0.1.0-alpha18 is released as a signed development preview.** It includes typing
 and suggestion stability fixes, an always-reachable Apply action and consistent
 staged settings/preview controls. [Release evidence and phone QA](../../docs/mobile-roadmap.md#current-status).

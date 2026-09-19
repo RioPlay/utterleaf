@@ -56,10 +56,8 @@ class ComposePanelTest {
 
     private fun revealTool(panel: TypingPanel, description: String, widthDp: Int = 360): Button {
         if (maybeKey(panel, description) == null) {
-            // The draft opens its restricted hub with a tap; ordinary keyboards
-            // reach the same hub by holding the emoji key.
-            if (maybeKey(panel, "Keyboard tools") != null) key(panel, "Keyboard tools").performClick()
-            else key(panel, "Emoji").performLongClick()
+            // Both ordinary and private-draft keyboards expose a tap route.
+            key(panel, "Keyboard tools").performClick()
         }
         val width = Ui.dp(app, widthDp)
         fun layout() {
@@ -106,7 +104,7 @@ class ComposePanelTest {
 
         val capsAttempts = mutableListOf<String>()
         val caps = panel(capsAttempts)
-        key(caps, "Emoji").performLongClick()
+        key(caps, "Keyboard tools").performClick()
         revealTool(caps, "Caps lock off").performClick()
         revealTool(caps, "Latin compose").performClick()
         key(caps, "Acute compose mark").performClick()
@@ -128,7 +126,7 @@ class ComposePanelTest {
 
         val rawAttempts = mutableListOf<String>()
         val raw = panel(rawAttempts, rawField = true)
-        key(raw, "Emoji").performLongClick()
+        key(raw, "Keyboard tools").performClick()
         val disabled = key(raw, "Latin compose unavailable in raw input")
         assertFalse(disabled.isEnabled)
         disabled.performClick()
@@ -149,14 +147,14 @@ class ComposePanelTest {
             openCompose(fixture)
             val staleLayout = key(fixture, "e")
             key(fixture, "Return to typing").performClick()
-            key(fixture, "Emoji").performLongClick()
+            key(fixture, "Keyboard tools").performClick()
             key(fixture, "QWERTZ letter layout").performClick()
             staleLayout.performClick()
             key(fixture, "Close tools and settings").performClick()
             openCompose(fixture)
             val staleAlignment = key(fixture, "e")
             key(fixture, "Return to typing").performClick()
-            key(fixture, "Emoji").performLongClick()
+            key(fixture, "Keyboard tools").performClick()
             key(fixture, "Left hand layout").performClick()
             staleAlignment.performClick()
             key(fixture, "Close tools and settings").performClick()

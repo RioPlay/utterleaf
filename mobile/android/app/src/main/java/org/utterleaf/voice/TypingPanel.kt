@@ -375,9 +375,10 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             minWidth = 0; minimumWidth = 0; minHeight = 0; minimumHeight = 0
             setPadding(0, 0, 0, 0); includeFontPadding = false
             gravity = Gravity.CENTER
-            val selectedFill = if (compact) utilityColor else accent
-            val ordinaryFill = if (compact) surface else if (primary) accent else if (utility) utilityColor else keyColor
+            val selectedFill = if (compact && !primary) utilityColor else accent
+            val ordinaryFill = if (primary) accent else if (compact) surface else if (utility) utilityColor else keyColor
             val fill = StateListDrawable().apply {
+                if (primary) addState(intArrayOf(-android.R.attr.state_enabled), shape(surface, pill))
                 addState(intArrayOf(android.R.attr.state_selected), shape(selectedFill, pill))
                 addState(intArrayOf(android.R.attr.state_focused), shape(selectedFill, pill))
                 addState(intArrayOf(), shape(ordinaryFill, pill))
@@ -390,7 +391,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             setTextColor(ColorStateList(arrayOf(intArrayOf(-android.R.attr.state_enabled),
                 intArrayOf(android.R.attr.state_selected), intArrayOf(android.R.attr.state_focused), intArrayOf()),
                 intArrayOf(Color.parseColor(if (light) "#66766B" else "#97A79E"),
-                    if (compact) accent else accentInk, if (compact) accent else accentInk,
+                    if (compact && !primary) accent else accentInk, if (compact && !primary) accent else accentInk,
                     if (primary) accentInk else ink)))
             isSoundEffectsEnabled = false
             isHapticFeedbackEnabled = options.haptics
@@ -854,7 +855,8 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         editorToolbarAction(toolbar, EditorAction.COPY, R.drawable.ic_copy, selectAllOnLongPress = true)
         editorToolbarAction(toolbar, EditorAction.CUT, R.drawable.ic_cut)
         editorToolbarAction(toolbar, EditorAction.PASTE, R.drawable.ic_paste)
-        spacer(toolbar, 1.2f)
+        key(toolbar, "Tools", "Keyboard tools", weight = 1.2f, utility = true,
+            height = 46, chordable = false, compact = true) { openHub() }
         if (openPasswordManager != null) {
             // Password fields carry no draft or dictation: the credential
             // shortcut takes that slot, and only there.
@@ -1111,7 +1113,15 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             val emojiGeneration = layoutGeneration
             emojiKey.setOnLongClickListener {
                 if (disposed || emojiGeneration != layoutGeneration || !emojiAllowed) false
-                else { openHub(); true }
+                else { settings(); true }
+            }
+            emojiKey.accessibilityDelegate = object : View.AccessibilityDelegate() {
+                override fun onInitializeAccessibilityNodeInfo(host: View,
+                    info: android.view.accessibility.AccessibilityNodeInfo) {
+                    super.onInitializeAccessibilityNodeInfo(host, info)
+                    if (host.isEnabled) info.addAction(android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(
+                        android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK, "Open keyboard settings"))
+                }
             }
         }
         key(bottom, spaceLabel ?: "", "Space", 5f, labelSizeSp = 14) {

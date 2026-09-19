@@ -143,7 +143,7 @@ class ComposeImeTest {
     }
 
     private fun openCompose() {
-        if (findNode("Latin compose") == null) longPress("Emoji")
+        if (findNode("Latin compose") == null) press("Keyboard tools")
         press("Latin compose")
         press("Acute compose mark")
         await("Compose letter view did not appear") { findNode("Cancel compose") != null }
@@ -254,11 +254,14 @@ class ComposeImeTest {
     @Test fun rawFieldCannotEnterCompose() = withKeyboard {
         val activity = launch(raw = true)
         try {
-            // Raw fields disable the emoji/settings key, so the tools hub and
-            // Latin compose are unreachable; compose cannot commit there anyway.
+            // Raw fields disable emoji and composition even though Tools remains reachable.
             val emoji = checkNotNull(findNode("Emoji"))
             assertFalse(emoji.isEnabled)
             assertFalse(emoji.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+            press("Keyboard tools")
+            val compose = checkNotNull(findNode("Latin compose unavailable in raw input"))
+            assertFalse(compose.isEnabled)
+            assertFalse(compose.performAction(AccessibilityNodeInfo.ACTION_CLICK))
             assertEquals(android.view.KeyEvent.KEYCODE_UNKNOWN, main { activity.rawKey })
             assertEquals(null, findNode("Acute compose mark"))
         } finally {

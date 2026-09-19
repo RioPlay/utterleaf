@@ -155,12 +155,12 @@ class KeyboardTuningTest {
                     }
                     return matches.single()
                 }
-                key("Emoji").performLongClick()
+                key("Keyboard tools").performClick()
                 key("Number row off").performClick()
                 assertEquals(saved.copy(numberRow = true), KeyboardOptions.load(context))
                 key("Close tools and settings").performClick()
                 assertTrue(key("a").isHapticFeedbackEnabled)
-                key("Emoji").performLongClick()
+                key("Keyboard tools").performClick()
                 key("Extra keys on").performClick()
                 assertEquals(saved.copy(numberRow = true, extraKeys = false), KeyboardOptions.load(context))
             }
@@ -177,7 +177,7 @@ class KeyboardTuningTest {
                 openDetail(activity, "Layout & size")
                 val views = { descendants(activity.window.decorView) }
                 views().filterIsInstance<android.widget.Button>()
-                    .single { it.contentDescription == "Emoji" }.performLongClick()
+                    .single { it.contentDescription == "Keyboard tools" }.performClick()
                 views().filterIsInstance<android.widget.Button>()
                     .single { it.contentDescription == "Number row on" }.performClick()
                 // Preview quick controls stage just like the settings controls.
@@ -208,7 +208,7 @@ class KeyboardTuningTest {
                 val panel = TypingPanel(context, initial, { true }, {}, {}, {}, {}, {}, {})
                 panel.reset(true, false, "Enter")
                 fun key(description: String) = buttons(panel.view).single { it.contentDescription == description }
-                key("Emoji").performLongClick()
+                key("Keyboard tools").performClick()
                 key("Number row on").performClick()
                 assertEquals(initial.copy(numberRow = false), KeyboardOptions.load(context))
                 key("Extra keys on").performClick()

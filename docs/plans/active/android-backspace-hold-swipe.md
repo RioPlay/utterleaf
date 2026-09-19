@@ -5,6 +5,8 @@
 Fix the alpha18 report: a sustained Backspace hold should repeat, and a later
 left swipe should take over to preview deletion from the remaining caret.
 Own DeleteRepeater, its TypingPanel binding and focused Android instrumentation.
+The requested design review also covers direct Settings from emoji hold, a visible
+Tools entry, Settings search/category discovery and the malformed Cut icon.
 
 ## Constraints and acceptance
 
@@ -16,7 +18,12 @@ Own DeleteRepeater, its TypingPanel binding and focused Android instrumentation.
 - Ordinary capitalization must not turn Backspace into a single modified delete.
   Preserve explicit Extra keys modifiers, repeat-off/repeat-guard preferences,
   password/raw restrictions, editor confirmation and Unicode navigation.
-- No new permissions, text collection, dependencies, desktop work or redesign.
+- Emoji tap opens Emoji; hold opens full Settings. Tools remains reachable by tap
+  with Extra keys off. Private draft retains its restricted local Tools.
+- Settings search finds control names regardless of current values. Backspace
+  controls belong under Holds & gestures; staged Apply/Cancel/reset remain intact.
+- No new permissions, text collection, dependencies or desktop work. Defer broad
+  Setup restructuring and toolbar rearrangement to a separately verified pass.
 
 ## Verification and stop
 
@@ -47,3 +54,23 @@ Alpha19 version metadata/release notes are prepared. Exact-candidate CI, protect
 signing and independent alpha18-to-alpha19 preservation checks remain required;
 alpha18 is still published. Superseded CI 35442827839 was cancelled because its
 fixture setup had already been corrected locally.
+
+## September 19 design review
+
+Independent navigation, visual and keyboard-accessibility reviews prioritized
+the reported interaction failures plus reachable Tools, control-name search,
+correct category placement and contrast. Implementation preserves emoji tap,
+tap-only Settings access and private-draft restrictions. Regression coverage
+includes stale callbacks, Extra keys off, staged preferences and both themes.
+
+Follow-up work, outside this candidate: simplify Setup/model management with
+feedback beside each action; improve toolbar target sizes without overlapping
+letter hitboxes; make Tools selected/toggle states clearer; constrain landscape
+Settings width; give rejected editor actions specific, text-free feedback.
+Physical TalkBack/Switch Access and thumb comfort remain open.
+
+Research anchors: [Android accessibility actions](https://developer.android.com/guide/topics/ui/accessibility/views/principles-views),
+[touch targets](https://support.google.com/accessibility/android/answer/7101858?hl=en),
+[gesture cancellation](https://developer.android.com/develop/ui/views/touch-and-input/gestures/viewgroup),
+and [haptic feedback](https://developer.android.com/develop/ui/views/haptics/haptics-principles).
+These inform acceptance; they do not establish physical-phone usability.
