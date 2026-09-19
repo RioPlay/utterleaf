@@ -17,7 +17,7 @@ intended field, with understandable local processing and minimal interruption.
 ## Now
 
 - **Landed:** native pairing/vendor integration and desktop enrollment UI, PR #36 (`aa296c9`); [CI 35366314920](https://github.com/RioPlay/utterleaf/actions/runs/35366314920) passed all five desktop jobs.
-- **Next:** `desktop-obs-bridge` on `feat/obs-session-arm`, draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37), based on current `main`; green and mergeable at the September 18 check. Review and land it, then replay #38 onto the resulting `main`.
+- **Parked while Android is prioritized:** `desktop-obs-bridge` on `feat/obs-session-arm`, draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37). Its earlier green check was against `aa296c9`; refresh onto current `main` and rerun checks before review/landing, then replay #38 onto the resulting `main`.
 - **Parked:** #38 PCM, #39 disarm, #40 controller, #41 provenance, #42 timelines. Each must be rebased, retargeted and verified in order; do not merge the old stack as-is. See [workspaces](workspaces.md).
 - **Limits:** Windows RC2 remains the published preview. No released live OBS capture or plugin binary; real OBS, physical-device and accessibility acceptance remain open.
 

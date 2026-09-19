@@ -1,5 +1,18 @@
 # Android settings experience before alpha18
 
+## Completed in alpha18 — September 18, 2026
+
+[PR #56](https://github.com/RioPlay/utterleaf/pull/56) merged at `70b0cbf`.
+Exact candidate `0b8ed20` passed [CI 35416227420](https://github.com/RioPlay/utterleaf/actions/runs/35416227420):
+180 instrumentation tests, zero failures/skips, plus tooling/JVM/lint/builds.
+The signed alpha18 preview is published. Final local settings/regression checks
+passed 28/28; narrow large-text and landscape owned-view checks passed.
+
+The evidence below is historical; pending statements describe earlier stages.
+Physical/editor/accessibility acceptance remains in the
+[phone checklist](../active/android-alpha18-phone-acceptance.md) and
+[mobile roadmap](../../mobile-roadmap.md).
+
 ## Goal and area
 
 Make customization predictable and easy to use before the signed alpha18
