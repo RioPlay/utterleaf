@@ -103,7 +103,9 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private val suggest: (() -> SuggestionEngine.SuggestionState)? = null,
     private val completeWord: ((composing: String, candidate: String) -> Boolean)? = null,
     private val requestSuggestions: (() -> Unit)? = null,
-    private val backspaceSelection: BackspaceSelection? = null) {
+    private val backspaceSelection: BackspaceSelection? = null,
+    /** Settings previews stage changes; ordinary IME panels still save immediately. */
+    private val stageOptions: ((KeyboardOptions) -> Unit)? = null) {
     private val light = options.resolvedLight(context)
     private val surface = Color.parseColor(if (light) "#E8EEEB" else "#171E20")
     private val keyColor = Color.parseColor(if (light) "#FFFFFF" else "#303A3D")
@@ -232,14 +234,14 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private fun saveQuickOption(numberRow: Boolean? = null, extraKeys: Boolean? = null,
         alignment: KeyboardAlignment? = null, letterLayout: LetterLayout? = null) {
         if (privateEditing || disposed) return
-        val current = KeyboardOptions.load(context)
+        val current = if (stageOptions == null) KeyboardOptions.load(context) else options
         options = current.copy(
             numberRow = numberRow ?: current.numberRow,
             extraKeys = extraKeys ?: current.extraKeys,
             alignment = alignment ?: current.alignment,
             letterLayout = letterLayout ?: current.letterLayout,
         )
-        options.save(context)
+        if (stageOptions == null) options.save(context) else stageOptions.invoke(options)
     }
 
     private fun cancelForGeometryChange() {

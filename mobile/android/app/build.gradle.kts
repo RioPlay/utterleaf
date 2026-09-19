@@ -10,8 +10,8 @@ android {
         applicationId = "org.utterleaf.voice"
         minSdk = 26
         targetSdk = 36
-        versionCode = 17
-        versionName = "0.1.0-alpha17"
+        versionCode = 18
+        versionName = "0.1.0-alpha18"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         externalNativeBuild { cmake { arguments += "-DANDROID_STL=c++_shared" } }

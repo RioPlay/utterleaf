@@ -5,7 +5,8 @@
         android:theme="@style/AppTheme" android:allowBackup="false"
         android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules"
         android:supportsRtl="true" android:usesCleartextTraffic="false">
-        <activity android:name=".KeyboardSettingsActivity" android:exported="false" />
+        <activity android:name=".KeyboardSettingsActivity" android:exported="false"
+            android:enableOnBackInvokedCallback="true" />
         <activity android:name=".SetupActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

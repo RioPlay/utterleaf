@@ -106,6 +106,11 @@ prediction, accessibility and device coverage remain on the
    change sizing, theme, number row, terminal controls, vibration or repeat filtering. Reopen the keyboard to apply
    saved preferences. The private practice field lets you try the layout without
    entering text into another app; it clears when you leave settings.
+   In the upcoming alpha18 candidate, **Apply** stays visible while you scroll;
+   controls come before the practice preview. All changes, including voice,
+   preview quick controls and Reset, wait for Apply. **Cancel** discards them.
+   Theme/layout choices update the preview immediately. Rotating Settings keeps
+   pending preferences in memory, while practice text is cleared.
 4. For optional dictation, open **Optional · offline voice** in setup. Choose a model
    below, open its download in your browser, then return and **Import** that file.
    Allow microphone permission. The voice status shows what is still missing;

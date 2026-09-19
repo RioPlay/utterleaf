@@ -6,7 +6,9 @@ Prepare the next signed Android preview from the merged alpha17 stabilization
 patch (PR #52, `80bec1b`). Start in `android-keyboard-hardening` from current
 `main` (verified September 18 at `aa296c9`), using a dedicated Android release
 branch for implementation. Own Android version metadata, release notes and
-release documentation. Alpha17 remains the published APK.
+release documentation. Alpha17 remains the published APK. The authorized
+[settings experience pass](android-settings-experience.md) now precedes candidate
+preparation; include its reviewed usability and staging fixes with the polish.
 
 ## Constraints and non-goals
 
@@ -59,8 +61,9 @@ gh workflow run android-release.yml --ref main -f tag=android-v0.1.0-alpha18 -f 
 
 ## Current evidence, device gates and stop
 
-Planning only: no alpha18 version change, tag, candidate build, signing or
-publication has been performed. The [completed polish record](../completed/android-alpha17-polish.md)
+Version metadata and release notes are prepared at 18 / `0.1.0-alpha18`, alongside
+the settings experience pass. Final candidate build/CI, tag, signing and
+publication remain pending. The [completed polish record](../completed/android-alpha17-polish.md)
 records CI 35290270474: 173 instrumentation tests, 14 tooling tests and JVM/lint/builds.
 
 Keep Pixel 8 Pro/GrapheneOS (record exact OS build), named editors, phone latency,

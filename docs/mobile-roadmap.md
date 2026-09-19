@@ -30,7 +30,7 @@ One-hand reach and visual polish can proceed alongside foundation work.
 
 - **Checkout:** `android-keyboard-hardening` on `main`, verified at `aa296c9`.
 - **Landed:** alpha17 polish, PR #52 (`80bec1b`), with exact-source Android CI passing.
-- **Published:** signed alpha17. **Next:** prepare and verify the [signed alpha18 candidate](plans/active/android-alpha18-snapshot.md); no new keyboard features in this slice. Version metadata, candidate CI and signing are not yet started.
+- **Published:** signed alpha17. **Next:** finish the [settings experience pass](plans/active/android-settings-experience.md), then prepare and verify the [signed alpha18 candidate](plans/active/android-alpha18-snapshot.md). Android usability is the current priority; desktop remains parked. Candidate signing is not yet started.
 - **Open:** Pixel 8 Pro/GrapheneOS and named-editor QA, TalkBack/Switch Access, landscape, three-button navigation and real Obtainium updates. Emulator success does not close these gates.
 
 ## Current status
