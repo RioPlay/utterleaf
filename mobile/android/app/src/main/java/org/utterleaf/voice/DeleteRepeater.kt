@@ -81,17 +81,17 @@ internal class DeleteRepeater {
                     if (!cancelled && pointer >= 0 && event.findPointerIndex(pointer) >= 0) {
                         val index = event.findPointerIndex(pointer)
                         val x = event.getX(index); val y = event.getY(index)
-                        if (held) {
-                            if (x < 0f || x >= view.width || y < 0f || y >= view.height) stopGesture()
-                            return true
-                        }
                         val touchSlop = ViewConfiguration.get(view.context).scaledTouchSlop
-                        if (kotlin.math.abs(y - startY) > touchSlop &&
-                            kotlin.math.abs(y - startY) >= kotlin.math.abs(x - startX)) stopGesture()
-                        else if (x - startX < -touchSlop && selection != null) {
+                        val vertical = kotlin.math.abs(y - startY) > touchSlop &&
+                            kotlin.math.abs(y - startY) >= kotlin.math.abs(x - startX)
+                        if (vertical && !held) stopGesture()
+                        else if (!vertical && x - startX < -touchSlop && selection != null) {
+                            // A late swipe takes over at the remaining caret. Never let a
+                            // repeat callback delete the selection while it is previewed.
+                            held = false
+                            view.removeCallbacks(hold); view.removeCallbacks(repeat)
                             if (selection.begin()) {
                                 selecting = true; cursorX = startX
-                                view.removeCallbacks(hold); view.removeCallbacks(repeat)
                                 return moveSelection(view, event)
                             }
                             stopGesture()

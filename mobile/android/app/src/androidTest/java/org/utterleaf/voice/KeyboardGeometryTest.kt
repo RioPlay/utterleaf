@@ -320,10 +320,10 @@ class KeyboardGeometryTest {
             capture("failure-status", listOf("Undo", "Cut", "Copy", "Paste"))
             assertEquals(beforeFailure["Cut"], screenBounds("Cut"))
             assertEquals(beforeFailure["Copy"], screenBounds("Copy"))
-            longPress("Emoji"); press("Number row on")
+            press("Keyboard tools"); press("Number row on")
             press("Close tools and settings")
             await("Number row did not close") { node("1") == null }
-            longPress("Emoji"); press("Number row off")
+            press("Keyboard tools"); press("Number row off")
             press("Close tools and settings")
             await("Number row did not appear") { node("1") != null }
             capture("number", listOf("Undo", "Dictate", "Space", "Done", "1"))
@@ -363,16 +363,16 @@ class KeyboardGeometryTest {
                     capture("$side-$state", labels)
                     assertKeysInColumn("$side-$state", sideLeft, sideRight)
                 }
-                longPress("Emoji")
+                press("Keyboard tools")
                 sideCapture("tools", listOf("Close tools and settings", "Keyboard settings", "Switch keyboard", "Latin compose"))
                 assertTrue(node(if (alignment == KeyboardAlignment.LEFT) "Left hand layout" else "Right hand layout")!!.isSelected)
                 assertFalse(node("Full width layout")!!.isSelected)
                 press("Close tools and settings")
-                longPress("Emoji"); press("Number row on")
+                press("Keyboard tools"); press("Number row on")
                 press("Close tools and settings")
                 await("Number row did not close") { node("1") == null }
                 sideCapture("number", daily)
-                longPress("Emoji"); press("Number row off")
+                press("Keyboard tools"); press("Number row off")
                 press("Close tools and settings")
                 await("Number row did not appear") { node("1") != null }
                 press("Switch letters and symbols")
@@ -389,7 +389,7 @@ class KeyboardGeometryTest {
                 press("Hide function keys")
                 press("Extra keys")
                 await("Extra keys panel did not close") { node("Escape") == null }
-                longPress("Emoji")
+                press("Keyboard tools")
                 press("Full width layout")
                 capture("$side-full-return", listOf("Close tools and settings", "Full width layout"))
                 assertTrue(node("Full width layout")!!.isSelected)
@@ -412,7 +412,7 @@ class KeyboardGeometryTest {
                 for (layout in LetterLayout.entries) {
                     val state = "${layout.stored}-${alignment.stored}"
                     val choices = LetterLayout.entries.map { "${it.label} letter layout" }
-                    longPress("Emoji")
+                    press("Keyboard tools")
                     press("${layout.label} letter layout")
                     capture("$state-tools", choices + listOf("Close tools and settings", "Keyboard settings"))
                     LetterLayout.entries.forEach { choice ->

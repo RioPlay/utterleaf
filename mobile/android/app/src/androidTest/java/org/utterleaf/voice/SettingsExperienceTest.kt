@@ -96,7 +96,7 @@ class SettingsExperienceTest {
         try { main {
             category(activity, "Layout & size")
             button(activity, "Larger keys and labels").performClick()
-            key(activity, "Emoji").performLongClick()
+            key(activity, "Keyboard tools").performClick()
             val oldToggle = key(activity, "Number row on")
             oldToggle.performClick()
             assertFalse((button(activity, "Number row") as CheckBox).isChecked)
@@ -204,6 +204,71 @@ class SettingsExperienceTest {
             }
             capture("layout-practice")
         } finally { main { activity.finish() } }
+    }
+
+    @Test fun searchFindsControlsRegardlessOfCurrentPreferenceState() = isolated {
+        for (hints in listOf(false, true)) {
+            KeyboardOptions(secondaryHints = hints, haptics = hints, deleteRepeat = hints).save(context)
+            val original = KeyboardOptions.load(context)
+            val activity = open()
+            try { main {
+                val queries = mapOf("backspace" to "Holds & gestures", "repeat guard" to "Holds & gestures",
+                    "vibration" to "Holds & gestures", "height" to "Layout & size",
+                    "qwertz" to "Layout & size", "theme" to "Appearance", "borders" to "Appearance",
+                    "Key vibration (respects device settings)" to "Holds & gestures",
+                    "Hold Backspace or Delete to repeat" to "Holds & gestures",
+                    "Ignore repeated taps on the same key within 250 ms" to "Holds & gestures",
+                    "Hold the mic key to insert" to "Voice input",
+                    "Larger keys and labels" to "Layout & size",
+                    "Auto-capitalization" to "Typing assistance")
+                queries.forEach { (query, title) ->
+                    all(activity).filterIsInstance<EditText>().single().setText(query)
+                    assertTrue("Search '$query' did not expose '$title'", all(activity).any {
+                        it.contentDescription?.toString()?.startsWith("$title,") == true
+                    })
+                    category(activity, title)
+                    activity.onBackPressed()
+                    assertEquals(query, all(activity).filterIsInstance<EditText>().single().text.toString())
+                }
+                all(activity).filterIsInstance<EditText>().single().setText("")
+                val gestures = all(activity).single {
+                    it.contentDescription?.toString()?.startsWith("Holds & gestures,") == true
+                }.contentDescription.toString()
+                assertTrue(gestures.contains(if (hints) "Hints shown" else "Hints hidden"))
+                assertTrue(gestures.contains("Hold for accents"))
+                button(activity, "Cancel").performClick()
+                assertEquals(original, KeyboardOptions.load(context))
+            } } finally { main { activity.finish() } }
+        }
+    }
+
+    @Test fun deletionPreferencesInGesturesRemainStagedUntilApply() = isolated {
+        val repeatLabel = "Hold Backspace or Delete to repeat"
+        val guardLabel = "Ignore repeated taps on the same key within 250 ms"
+        for (apply in listOf(false, true)) {
+            val activity = open()
+            try { main {
+                category(activity, "Navigation & terminal")
+                assertTrue(all(activity).filterIsInstance<CheckBox>().none {
+                    it.text == repeatLabel || it.text == guardLabel
+                })
+                activity.onBackPressed()
+                category(activity, "Holds & gestures")
+                button(activity, repeatLabel).performClick()
+                button(activity, guardLabel).performClick()
+                assertEquals(KeyboardOptions(), KeyboardOptions.load(context))
+                activity.onBackPressed()
+                category(activity, "Holds & gestures")
+                assertFalse((button(activity, repeatLabel) as CheckBox).isChecked)
+                assertTrue((button(activity, guardLabel) as CheckBox).isChecked)
+                if (apply) button(activity, "Apply").performClick()
+                else { activity.onBackPressed(); button(activity, "Cancel").performClick() }
+            }
+                instrumentation.waitForIdleSync()
+                assertEquals(if (apply) KeyboardOptions(deleteRepeat = false, repeatGuard = true)
+                    else KeyboardOptions(), KeyboardOptions.load(context))
+            } finally { main { activity.finish() } }
+        }
     }
 
     @Test fun systemBackReturnsToCategoriesBeforeClosing() = isolated {

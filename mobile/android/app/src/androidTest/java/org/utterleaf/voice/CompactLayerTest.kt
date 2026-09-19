@@ -200,7 +200,7 @@ class CompactLayerTest {
                         return panel.view.height
                     }
                     val normalHeight = layout()
-                    assertTrue(key("Emoji").performLongClick())
+                    assertTrue(key("Keyboard tools").performClick())
                     assertTrue("Hub grew ${width}dp light=$light large=$large $alignment", layout() <= normalHeight)
                     checkActions()
                     for (label in listOf("Close tools and settings", "Keyboard settings", "Switch keyboard", "Latin compose",
@@ -259,16 +259,21 @@ class CompactLayerTest {
             fixture.tap(fixture.key("Return from emoji to letters"))
             assertEquals(normalHeight, fixture.height())
 
-            // The long press is the tools hub; it never inserts text.
+            // Hold opens full settings directly, with a named accessibility action.
             val emojiKey = fixture.key("Emoji")
+            val info = main { emojiKey.createAccessibilityNodeInfo() }
+            assertTrue(info.actionList.any { it.id == AccessibilityNodeInfo.ACTION_LONG_CLICK &&
+                it.label == "Open keyboard settings" })
             assertTrue(main { emojiKey.performAccessibilityAction(AccessibilityNodeInfo.ACTION_LONG_CLICK, null) })
-            assertTrue(fixture.has("Close tools and settings"))
+            assertEquals(1, fixture.calls.settings)
+            assertFalse(fixture.has("Close tools and settings"))
             assertTrue(fixture.calls.inserted.isEmpty())
+            fixture.tap(fixture.key("Keyboard tools"))
             fixture.capture("tools-hub")
             fixture.cancelMenuTouch()
             assertTrue(fixture.has("Close tools and settings"))
             assertTrue("Swipe release activated a hub tool",
-                fixture.calls.actions.isEmpty() && fixture.calls.settings == 0)
+                fixture.calls.actions.isEmpty() && fixture.calls.settings == 1)
             fixture.tap(fixture.reveal("Latin compose"))
             assertTrue(fixture.has("Cancel compose"))
             fixture.tap(fixture.key("Cancel compose"))
@@ -288,9 +293,51 @@ class CompactLayerTest {
             assertFalse(fixture.has("Escape"))
             assertEquals(normalHeight, fixture.height())
 
-            assertTrue(main { fixture.key("Emoji").performAccessibilityAction(AccessibilityNodeInfo.ACTION_LONG_CLICK, null) })
+            fixture.tap(fixture.key("Keyboard tools"))
+            fixture.tap(fixture.key("Keyboard settings"))
+            assertEquals(2, fixture.calls.settings)
+        }
+    }
+
+    @Test fun toolsRemainReachableWithoutExtraKeysAndStaleEmojiCannotOpenSettings() {
+        withPanel(KeyboardOptions(extraKeys = false)) { fixture ->
+            val oldEmoji = fixture.key("Emoji")
+            fixture.tap(fixture.key("Keyboard tools"))
+            assertTrue(fixture.has("Latin compose"))
+            assertTrue(fixture.has("Accents and alternate characters"))
+            assertFalse(main { oldEmoji.performLongClick() })
+            assertEquals(0, fixture.calls.settings)
             fixture.tap(fixture.key("Keyboard settings"))
             assertEquals(1, fixture.calls.settings)
+            fixture.tap(fixture.key("Close tools and settings"))
+            assertFalse(fixture.has("Extra keys"))
+            val emoji = fixture.key("Emoji")
+            main { fixture.panel.dispose() }
+            assertFalse(main { emoji.performLongClick() })
+            assertEquals(1, fixture.calls.settings)
+        }
+    }
+
+    @Test fun dictateHasContrastingPrimaryFillAndDistinctDisabledState() {
+        for (light in listOf(false, true)) withPanel(KeyboardOptions(
+            theme = if (light) ThemeMode.LIGHT else ThemeMode.DARK)) { fixture ->
+            for (enabled in listOf(true, false)) {
+                main { fixture.panel.reset(enabled, false, "Done") }
+                instrumentation.waitForIdleSync()
+                val button = fixture.key("Dictate")
+                main {
+                    val bitmap = Bitmap.createBitmap(button.width, button.height, Bitmap.Config.ARGB_8888)
+                    try {
+                        button.background.draw(Canvas(bitmap))
+                        val expected = if (!enabled) { if (light) "#E8EEEB" else "#171E20" }
+                            else if (light) "#25643D" else "#A2DFB3"
+                        assertEquals(android.graphics.Color.parseColor(expected),
+                            bitmap.getPixel(button.width / 2, Ui.dp(app, 8)))
+                        assertEquals(enabled, button.isEnabled)
+                    } finally { bitmap.recycle() }
+                }
+                fixture.capture("voice-${if (light) "light" else "dark"}-${if (enabled) "enabled" else "disabled"}")
+            }
         }
     }
 
@@ -338,7 +385,7 @@ class CompactLayerTest {
 
     @Test fun selectAllTapAndWordHoldStayDistinct() {
         withPanel { fixture ->
-            assertTrue(main { fixture.key("Emoji").performLongClick() })
+            assertTrue(main { fixture.key("Keyboard tools").performClick() })
             val selectAll = fixture.key("Select all text")
             assertFalse(selectAll.isSelected)
             fixture.tap(selectAll)

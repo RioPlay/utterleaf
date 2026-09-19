@@ -185,7 +185,8 @@ class KeyboardSettingsActivity : Activity() {
                 if (staged.secondaryHints) "Hints on" else "Hints off").joinToString(" · ")),
             Category("gestures", R.drawable.ic_gestures, "Holds & gestures", listOf(
                 if (staged.holdDelayMs == 0) "System hold" else "${staged.holdDelayMs} ms hold",
-                if (staged.secondaryHints) "Accents on" else "Accents by menu",
+                if (staged.secondaryHints) "Hints shown" else "Hints hidden",
+                "Hold for accents",
                 "Cursor slide on").joinToString(" · ")),
             Category("appearance", R.drawable.ic_appearance, "Appearance", listOf(
                 when (staged.theme) {
@@ -199,9 +200,18 @@ class KeyboardSettingsActivity : Activity() {
                 else "Tap to start · On-device recognition"),
             Category("privacy", R.drawable.ic_privacy, "Privacy & data",
                 "Voice only when requested · No typing history"))
+        // Search control names even when their current values are absent from the summary.
+        val keywords = mapOf(
+            "layout" to "number row fold-out extra keys larger keys and labels key height bottom space padding keyboard alignment full width left hand right hand letter layout qwerty qwertz azerty",
+            "terminal" to "arrow repeat navigation terminal esc tab ctrl alt function f1 f12",
+            "assistance" to "auto-capitalization auto capitalization suggestions completions secondary character hints accents",
+            "gestures" to "hold timing delay hold backspace or delete to repeat repeat guard ignore repeated taps on the same key within 250 ms key vibration (respects device settings) haptics cursor spacebar slide selection accents",
+            "appearance" to "theme system light dark key borders",
+            "voice" to "hold the mic key to insert microphone dictation speech recognition",
+            "privacy" to "typing history learning clipboard recording screen capture data models")
         val needle = query.trim().lowercase()
         categories.filter { needle.isEmpty() || it.title.lowercase().contains(needle) ||
-            it.summary.lowercase().contains(needle) }.forEach { category ->
+            it.summary.lowercase().contains(needle) || keywords[it.id].orEmpty().contains(needle) }.forEach { category ->
             target.addView(categoryRow(category.icon, category.title, category.summary) {
                 detail = category.id
                 render()
@@ -454,10 +464,6 @@ class KeyboardSettingsActivity : Activity() {
             }
             "terminal" -> {
                 toggle("Arrow repeat", staged.arrowRepeat) { staged = staged.copy(arrowRepeat = it) }
-                toggle("Hold Backspace or Delete to repeat", staged.deleteRepeat) { staged = staged.copy(deleteRepeat = it) }
-                toggle("Ignore repeated taps on the same key within 250 ms", staged.repeatGuard) {
-                    staged = staged.copy(repeatGuard = it)
-                }
                 note("Open the expand arrow in the toolbar for Esc, Tab, Ctrl, Alt, navigation and F1–F12. " +
                     "Ctrl and Alt apply to the next key, then release. Terminal apps decide which shortcuts they support.")
             }
@@ -473,6 +479,11 @@ class KeyboardSettingsActivity : Activity() {
                     "Hiding hints keeps the hold-to-insert and Tools routes available.")
             }
             "gestures" -> {
+                toggle("Hold Backspace or Delete to repeat", staged.deleteRepeat) { staged = staged.copy(deleteRepeat = it) }
+                toggle("Ignore repeated taps on the same key within 250 ms", staged.repeatGuard) {
+                    staged = staged.copy(repeatGuard = it)
+                }
+                note("Repeat guard also turns off held Backspace and Delete repeats.")
                 fun holdDelayFromProgress(progress: Int) = if (progress == 0) 0 else 250 + ((progress - 1) * 50)
                 fun holdDelayProgress(value: Int) = if (value <= 0) 0 else ((value - 250) / 50 + 1).coerceIn(1, 12)
                 slider(holdDelayProgress(staged.holdDelayMs), 12,

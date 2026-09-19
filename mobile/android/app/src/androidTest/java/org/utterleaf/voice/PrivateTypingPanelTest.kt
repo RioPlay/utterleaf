@@ -158,7 +158,7 @@ class PrivateTypingPanelTest {
                 }
 
             val withoutDraft = panel(privateEditing = false, draft = null)
-            key(withoutDraft, "Emoji").performLongClick()
+            key(withoutDraft, "Keyboard tools").performClick()
             assertFalse("Private draft" in descriptions(withoutDraft))
 
             var opens = 0

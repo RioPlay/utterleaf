@@ -117,7 +117,7 @@ class DeviceTest {
             panel.reset(false, false, "Done")
             assertFalse(key("Dictate").isEnabled)
             key("Shift off").performClick(); key("A").performClick(); key("a").performClick()
-            key("Emoji").performLongClick()
+            key("Keyboard tools").performClick()
             key("Caps lock off").performClick(); key("B").performClick(); key("B").performClick()
             // Caps lock shows on the shift key; tapping it exits caps and clears shift.
             buttons(panel.view).first { it.contentDescription == "Shift off" || it.contentDescription == "Shift on" }
@@ -151,7 +151,7 @@ class DeviceTest {
             fun key(label: String) = keys().single { it.contentDescription == label }
             panel.reset(true, false, "Done")
             assertFalse(keys().any { it.contentDescription == "Move cursor left" })
-            key("Emoji").performLongClick()
+            key("Keyboard tools").performClick()
             for (label in listOf("Caps lock off", "Accents and alternate characters", "Latin compose", "Keyboard settings", "Switch keyboard")) {
                 assertTrue("Tool must be keyboard accessible: $label", key(label).isFocusable)
             }
@@ -215,7 +215,7 @@ class DeviceTest {
                 assertEquals("Home row must stagger half a cell: $description", pitch / 2, a.exactCenterX() - q.exactCenterX(), 3f)
                 assertEquals("Bottom letters must follow the wide Shift key: $description", pitch * 1.5f, z.exactCenterX() - q.exactCenterX(), 3f)
                 assertTrue("Space must remain broad: $description", bounds(key("Space")).width() >= q.width() * 4)
-                key("Emoji").performLongClick()
+                key("Keyboard tools").performClick()
                 layoutAndCheck()
                 key("Close tools and settings").performClick()
                 key("Switch letters and symbols").performClick()
@@ -509,7 +509,7 @@ class DeviceTest {
                         onMain { screen.editor.text.toString() == "acdé" }
                     }
                     press("Delete")
-                    pressLong("Emoji")
+                    press("Keyboard tools")
                     press("Accents and alternate characters")
                     press("e")
                     shell("screencap -p /data/local/tmp/utterleaf-keyboard-accents.png")
@@ -519,7 +519,7 @@ class DeviceTest {
                     }
                     press("Delete")
 
-                    pressLong("Emoji")
+                    press("Keyboard tools")
                     press("Accents and alternate characters")
                     press("e")
                     val detachedAlternate = onMain {
@@ -568,7 +568,7 @@ class DeviceTest {
                     livePress("Paste")
                     awaitCondition("Live Copy/Paste did not duplicate the selected text") { onMain { screen.editor.text.toString() == "catcat" } }
                     val leftPanelPaste = onMain { findNativeKey(currentImeRoot(), "Paste") ?: error("Missing live Paste") }
-                    liveLongPress("Emoji")
+                    livePress("Keyboard tools")
                     onMain { leftPanelPaste.performClick() }
                     UiAwait.remains("Old action changed text after leaving typing") { screen.editor.text.toString() == "catcat" }
                     livePress("Close tools and settings")

@@ -169,7 +169,7 @@ class KeyboardEditorContractTest {
         val activity = launch(EditorInfo.IME_ACTION_DONE)
         try {
             main { activity.editor.setText("alpha beta"); activity.editor.setSelection(activity.editor.length()) }
-            longPress("Emoji")
+            press("Keyboard tools")
             longPress("Select all text")
             await("Neighboring word was not selected") {
                 main {
