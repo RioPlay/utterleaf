@@ -1,12 +1,45 @@
 import unittest
+import subprocess
+from unittest.mock import patch
 from pathlib import Path
 from preserve_upgrade import (
     ACTIVE, ACTIVE_BYTES, MARKER, MARKER_BYTES, PREFS, KEYBOARD_XML,
     assert_preserved, missing_after_upgrade, parse_keyboard_prefs, seed_files,
+    _ensure_root,
 )
 
 
 class PreserveUpgradeTest(unittest.TestCase):
+    @patch("preserve_upgrade.subprocess.run")
+    def test_root_restart_disconnect_requires_verified_root(self, run):
+        run.side_effect = [
+            subprocess.CompletedProcess([], 1, "", "error: closed"),
+            subprocess.CompletedProcess([], 0, "", ""),
+            subprocess.CompletedProcess([], 0, "0\n", ""),
+        ]
+        _ensure_root()
+        self.assertEqual(run.call_args.args[0], ["adb", "shell", "id", "-u"])
+
+    @patch("preserve_upgrade.subprocess.run")
+    def test_unprivileged_emulator_fails_with_root_diagnostic(self, run):
+        run.side_effect = [
+            subprocess.CompletedProcess([], 1, "adbd cannot run as root", ""),
+            subprocess.CompletedProcess([], 0, "", ""),
+            subprocess.CompletedProcess([], 0, "2000\n", ""),
+        ]
+        with self.assertRaisesRegex(RuntimeError, "adbd cannot run as root.*2000"):
+            _ensure_root()
+
+    @patch("preserve_upgrade.subprocess.run")
+    def test_missing_emulator_wait_is_bounded_and_diagnostic(self, run):
+        run.side_effect = [
+            subprocess.CompletedProcess([], 1, "", "error: closed"),
+            subprocess.TimeoutExpired(["adb", "wait-for-device"], 60),
+        ]
+        with self.assertRaisesRegex(RuntimeError, "error: closed"):
+            _ensure_root()
+        self.assertEqual(run.call_args.kwargs["timeout"], 60)
+
     def test_seeded_prefs_round_trip(self):
         values = parse_keyboard_prefs(KEYBOARD_XML.encode())
         self.assertEqual(True, values["terminal"])
