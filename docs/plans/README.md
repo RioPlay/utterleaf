@@ -5,7 +5,7 @@ previous chat. One-line fixes do not need a plan.
 
 Start with [workspaces](../workspaces.md) and the platform roadmap's **Now**
 section, not the first filename in `active/`. The next Android task is the
-[alpha18 phone acceptance](active/android-alpha18-phone-acceptance.md); alpha18 is
+[current phone acceptance](active/android-alpha18-phone-acceptance.md); alpha19 is
 published. Desktop is parked; on resumption refresh/check draft PR #37, followed
 by sequential replay of #38–42. Other active
 plans retain longer-running work or acceptance gates; they are not permission

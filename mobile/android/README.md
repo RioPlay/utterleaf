@@ -3,10 +3,9 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-The upcoming alpha19 adds direct Settings from emoji hold, a visible **Tools**
-button, control-name Settings search, clearer Backspace preferences and corrected
-Cut/Dictate visuals. These changes remain under verification; alpha18 is published.
-**0.1.0-alpha18 is released as a signed development preview.** It includes typing
+**0.1.0-alpha19 is released as a signed development preview.** It adds direct
+Settings from emoji hold, a visible **Tools** button, control-name search,
+Backspace hold-to-swipe fixes and corrected Cut/Dictate visuals. It includes typing
 and suggestion stability fixes, an always-reachable Apply action and consistent
 staged settings/preview controls. [Release evidence and phone QA](../../docs/mobile-roadmap.md#current-status).
 It retains the
@@ -96,11 +95,11 @@ prediction, accessibility and device coverage remain on the
 
 ## Try it
 
-1. [Download and install Utterleaf Android alpha18](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha18/Utterleaf-Android-0.1.0-alpha18.apk)
+1. [Download and install Utterleaf Android alpha19](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha19/Utterleaf-Android-0.1.0-alpha19.apk)
    on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Use `Utterleaf-Android-0.1.0-alpha18.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha18).
+   Use `Utterleaf-Android-0.1.0-alpha19.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha19).
    If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
-   then install alpha18. Uninstalling removes the imported model and other app data.
+   then install alpha19. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
    the same release identity and should be updated in place rather than uninstalled.
 2. Open **Utterleaf**. Under **Your keyboard**, enable **Utterleaf**
@@ -138,16 +137,16 @@ prediction, accessibility and device coverage remain on the
 ## Backspace hold and swipe
 
 With **Hold Backspace or Delete to repeat** enabled and **Ignore repeated taps on the same key within 250 ms**
-off, holding Backspace repeats after the system long-press delay. Alpha19 source
+off, holding Backspace repeats after the system long-press delay. Alpha19
 fixes repeat after capitalization and allows a later left swipe to take over:
 repeat stops, the editor previews a selection, and release deletes that selection
 once. Sliding back shrinks it; cancellation does not undo text already deleted by
-the hold. Alpha18 remains the published download until alpha19 signing completes.
+the hold.
 
 Password/raw fields and Extra keys refuse swipe selection. Editors must confirm
 the selection before deletion; an unsupported or uncertain gesture fails closed.
 Explicit Extra keys modifiers keep their separate behavior. See the
-[follow-up contract](../../docs/plans/active/android-backspace-hold-swipe.md).
+[follow-up contract](../../docs/plans/completed/android-backspace-hold-swipe.md).
 
 ## English speech models
 

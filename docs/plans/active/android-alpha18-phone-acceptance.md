@@ -1,8 +1,8 @@
-# Android alpha18 phone acceptance
+# Android phone acceptance — current candidate alpha19
 
 ## Goal and area
 
-Verify the signed alpha18 candidate on the reported Pixel 8 Pro/GrapheneOS and
+Verify the signed alpha19 candidate on the reported Pixel 8 Pro/GrapheneOS and
 named everyday editors before claiming comfortable daily use. This is the next
 Android product gate after signing; no physical phone is connected to the current
 development session. Status remains in the [mobile roadmap](../../mobile-roadmap.md).
@@ -19,13 +19,16 @@ failure with a bounded fix and regression check.
 ## Acceptance journey
 
 1. Record phone, exact OS/build, APK version/checksum, navigation mode, font/display
-   size and editor names/versions. Verify the signer and update from alpha17.
+   size and editor names/versions. Verify the signer and update from alpha18 or the installed signed preview.
    Confirm the user's existing theme/layout, voice preference and model selection.
 2. In practice, messaging and browser fields, type `hello world`, repeated letters,
    punctuation and `zzzzq`. Move the cursor into the first word, select text,
    delete/retype, tap a valid completion, switch symbols, and hide/reopen the IME.
    Check exact output, stable key positions and responsiveness. Password/raw
    fields must retain their restrictions.
+   Reproduce sustained Backspace hold after punctuation, then slide left and
+   release/cancel. Check Emoji tap versus hold-to-Settings, Tools with Extra keys
+   off, Cut geometry and Dictate contrast in both themes.
 3. Change theme, alignment and letter layout, then return to the original choice.
    Verify immediate preview updates. Try voice and preview quick controls, then
    Cancel and reopen. Confirm Reset followed by Cancel preserves preferences;

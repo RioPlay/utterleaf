@@ -28,14 +28,30 @@ One-hand reach and visual polish can proceed alongside foundation work.
 
 ## Now
 
-- **Checkout:** `android-keyboard-hardening` on `fix/android-backspace-hold-swipe` (PR #59).
-- **Released:** [signed alpha18](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha18), including typing stabilization (PR #52) and the settings experience pass (PR #56).
-- **In progress:** [Android interaction and discovery pass](plans/active/android-backspace-hold-swipe.md) (PR #59): Backspace hold-to-swipe, direct Settings from emoji hold, visible Tools, searchable settings, scissors geometry and light-theme Dictate contrast. Prepare signed alpha19 after verification.
+- **Checkout:** `android-keyboard-hardening` on current `main`.
+- **Released:** [signed alpha19](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha19), including Backspace hold-to-swipe, direct Settings, visible Tools, searchable settings and Cut/Dictate visual fixes (PR #59).
 - **Next:** [physical-phone acceptance](plans/active/android-alpha18-phone-acceptance.md) on Pixel 8 Pro/GrapheneOS and named editors. Record the exact OS/build and reproduce remaining usability problems before another feature slice. Android remains the priority; desktop is parked.
-- **Verified:** exact-candidate CI passed 180/180 emulator tests; protected signing and independent signed alpha17-to-alpha18 upgrade/reinstall checks passed with synthetic preferences and model-storage markers.
+- **Verified:** exact-candidate CI passed 186/186 emulator tests; protected signing and independent signed alpha18-to-alpha19 upgrade/reinstall preserved synthetic preferences and model-storage markers.
 - **Open:** physical typing/latency, TalkBack/Switch Access, phone landscape/three-button navigation and real Obtainium updates. Emulator success does not close these gates.
 
 ## Current status
+
+- **Released alpha19:** [PR #59](https://github.com/RioPlay/utterleaf/pull/59).
+  Immutable tag `android-v0.1.0-alpha19` identifies `599f675b46d6ad560d9f2e66bb80d6b3d3bfe6a5`.
+  [Exact-candidate CI 35462899374](https://github.com/RioPlay/utterleaf/actions/runs/35462899374)
+  passed 186 instrumentation tests, tooling/JVM/lint and builds.
+  [Protected signing 35463561268](https://github.com/RioPlay/utterleaf/actions/runs/35463561268)
+  passed package/signature/installation checks. Independent downloaded-APK checks
+  confirmed checksum, persistent signer, versionCode 19, non-debuggable state and
+  16K alignment; signed alpha18 upgrade and same-version reinstall retained exact
+  synthetic preferences and model-storage markers. Setup launched successfully.
+  APK SHA-256: `f6ab30899aad900ec0fb090f986b44f6fb54a85489541d97d28ddfe15b15119f`.
+  The [completed interaction/design pass](plans/completed/android-backspace-hold-swipe.md)
+  records focused regressions and the independent UI/UX review. Physical-phone
+  comfort, assistive technology and real Obtainium acceptance remain open.
+- **Next design pass after phone feedback:** toolbar target sizes, clearer Tools
+  toggle states, simpler Setup/model management with nearby feedback, constrained
+  landscape Settings width and action-specific editor failure messages.
 
 - **Released alpha18:** [PR #56](https://github.com/RioPlay/utterleaf/pull/56) merged at
   `70b0cbf`. Immutable tag `android-v0.1.0-alpha18` identifies `0b8ed20f62f63f5b9e44720f60ea4da19ccf05c7`.
