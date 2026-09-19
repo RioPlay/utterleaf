@@ -71,7 +71,7 @@ class BackspaceSelectionTest {
             instrumentation.uiAutomation.serviceInfo = instrumentation.uiAutomation.serviceInfo.apply {
                 this.flags = flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS }
             shell("ime enable $id"); shell("ime set $id")
-            options.copy(deleteRepeat = true, repeatGuard = false, autoCapitalize = true, extraKeys = false).save(app)
+            options.copy(deleteRepeat = true, repeatGuard = false, autoCapitalize = true, extraKeys = true).save(app)
             block()
         } finally {
             if (!previous.isNullOrBlank()) shell("ime set $previous"); if (!enabled) shell("ime disable $id")
