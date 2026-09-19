@@ -421,8 +421,9 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
                     clearUnavailable(); unavailable()
                 } }, erase = {
                 if (generation == layoutGeneration) {
-                    // Modified delete is one unit per press while Ctrl/Alt/Shift are down.
-                    if (ctrl || alt || shift) deleteRepeater.stop()
+                    // Explicit modified delete stays one unit per press. Letter-case
+                    // Shift (including auto-capitalization) must not stop Backspace.
+                    if (usesModifiedDelete()) deleteRepeater.stop()
                     action()
                 }
             })
@@ -730,9 +731,10 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         val accepted = terminalKey(code, ctrl, alt, shift)
         if (!accepted) unavailable()
     }
+    private fun usesModifiedDelete() = ctrl || alt || (shift && (extraKeysOpen || rawField))
     private fun delete() {
         clearUnavailable()
-        if (ctrl || alt || shift) special(KeyEvent.KEYCODE_DEL) else erase()
+        if (usesModifiedDelete()) special(KeyEvent.KEYCODE_DEL) else erase()
         refreshSuggestionsRow()
     }
     private fun navigate(left: Boolean) {

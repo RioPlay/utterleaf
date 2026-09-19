@@ -71,7 +71,7 @@ class BackspaceSelectionTest {
             instrumentation.uiAutomation.serviceInfo = instrumentation.uiAutomation.serviceInfo.apply {
                 this.flags = flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS }
             shell("ime enable $id"); shell("ime set $id")
-            options.copy(deleteRepeat = true, repeatGuard = false).save(app)
+            options.copy(deleteRepeat = true, repeatGuard = false, autoCapitalize = true, extraKeys = false).save(app)
             block()
         } finally {
             if (!previous.isNullOrBlank()) shell("ime set $previous"); if (!enabled) shell("ime disable $id")
@@ -100,8 +100,18 @@ class BackspaceSelectionTest {
             Thread.sleep(100)
         }
         check(focused) { "editor focus" }
-        main { activity.editor.requestFocus(); manager.showSoftInput(activity.editor, 0) }
-        await("keyboard") { key("Delete") != null }; return activity
+        try {
+            // Window focus can precede the editor connection after switching IMEs.
+            // Retry the fixture's show request until this editor actually owns input.
+            await("keyboard for the active editor") {
+                main { activity.editor.requestFocus(); manager.showSoftInput(activity.editor, 0) }
+                main { manager.isActive(activity.editor) } && key("Delete") != null
+            }
+            return activity
+        } catch (failure: Throwable) {
+            main { activity.finish() }
+            throw failure
+        }
     }
 
     private fun liveDelete(): Button = main {
@@ -379,7 +389,7 @@ class BackspaceSelectionTest {
         } } finally { main { fixture.activity.finish() } }
     }
 
-    @Test fun swipeAndHeldRepeatCannotOwnTheSameStream() {
+    @Test fun swipeTakesOverHeldRepeatWithoutConcurrentDeletion() {
         val fixture = directFixture()
         try {
             val selection = RecordingSelection()
@@ -404,16 +414,96 @@ class BackspaceSelectionTest {
                 send(button, event(MotionEvent.ACTION_DOWN, startX, startY, down))
             }
             UiAwait.until("Held repeat did not acquire the next stream") { erases.isNotEmpty() }
-            val beforeMove = erases.size
+            var beforeMove = 0
             main {
+                beforeMove = erases.size
                 val down = SystemClock.uptimeMillis()
                 send(button, event(MotionEvent.ACTION_MOVE, startX - step - 1f, startY, down))
-                send(button, event(MotionEvent.ACTION_UP, startX - step - 1f, startY, down))
             }
-            assertEquals("A held stream must never convert to selection", 1, selection.begins)
-            assertTrue(erases.size >= beforeMove)
+            assertEquals("A left swipe after holding must start a new selection", 2, selection.begins)
+            UiAwait.remains("Repeat must stop before selection begins") { erases.size == beforeMove }
+            main {
+                send(button, event(MotionEvent.ACTION_UP, startX - step - 1f, startY, SystemClock.uptimeMillis()))
+            }
+            assertEquals("Each swipe release deletes its selection once", 2, selection.finishes)
+            UiAwait.remains("Release must not restart repeat") { erases.size == beforeMove }
             assertEquals(0, clicks)
         } finally { main { fixture.activity.finish() } }
+    }
+
+    @Test fun rejectedOrCancelledLateSwipeNeverResumesRepeatOrClicks() {
+        val fixture = directFixture()
+        try {
+            val button = fixture.button
+            val x = main { button.width / 2f }; val y = main { button.height / 2f }
+            val step = main { maxOf(ViewConfiguration.get(button.context).scaledTouchSlop,
+                Ui.dp(button.context, 16)).toFloat() }
+            val repeater = DeleteRepeater()
+            for (ending in listOf("refused", "cancelled", "reversed")) {
+                val selection = RecordingSelection().apply { allowBegin = ending != "refused" }
+                var erases = 0; var clicks = 0; var stoppedAt = 0
+                val down = SystemClock.uptimeMillis()
+                main {
+                    button.setOnClickListener { clicks++ }
+                    repeater.attach(button, true, selection) { erases++ }
+                    send(button, event(MotionEvent.ACTION_DOWN, x, y, down))
+                }
+                UiAwait.until("Hold did not repeat before $ending swipe") { erases >= 2 }
+                main {
+                    stoppedAt = erases
+                    send(button, event(MotionEvent.ACTION_MOVE, x - 2 * step - 1f, y, down))
+                    when (ending) {
+                        "cancelled" -> send(button, event(MotionEvent.ACTION_CANCEL, x - 2 * step - 1f, y, down))
+                        "reversed" -> send(button, event(MotionEvent.ACTION_MOVE, x, y, down))
+                    }
+                    send(button, event(MotionEvent.ACTION_UP, x, y, down))
+                }
+                assertEquals(1, selection.begins)
+                assertEquals(0, selection.finishes)
+                assertEquals(0, clicks)
+                UiAwait.remains("A $ending swipe must never resume repeat") { erases == stoppedAt }
+            }
+        } finally { main { fixture.activity.finish() } }
+    }
+
+    @Test fun liveHoldAfterCapitalizationRepeatsThenSwipesFromTheRemainingCaret() = withKeyboard {
+        val activity = launch()
+        try {
+            val manager = app.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            val prefix = "abcdefghij".repeat(12)
+            main {
+                activity.editor.setText(prefix + "TAIL")
+                activity.editor.setSelection(prefix.length)
+                manager.restartInput(activity.editor)
+                manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
+            }
+            stableDelete()
+            press(".") // Arms automatic capitalization without an explicit modifier chord.
+            await("Period did not insert") { main { activity.editor.text.toString() == prefix + ".TAIL" } }
+            await("Automatic capitalization did not arm") { key("Shift on") != null }
+            val button = stableDelete()
+            val x = main { button.width / 2f }; val y = main { button.height / 2f }
+            val step = main { maxOf(ViewConfiguration.get(button.context).scaledTouchSlop,
+                Ui.dp(button.context, 16)).toFloat() }
+            val down = SystemClock.uptimeMillis()
+            dispatch(button, MotionEvent.ACTION_DOWN, x, y, down)
+            await("Backspace must keep repeating after automatic capitalization") { main {
+                activity.editor.length() <= prefix.length + ".TAIL".length - 4
+            } }
+            dispatch(button, MotionEvent.ACTION_MOVE, x - step * 2 - 1f, y, down)
+            await("Held Backspace did not become a confirmed two-character selection") {
+                val offsets = imeOffsets(button)
+                kotlin.math.abs(offsets.first - offsets.second) == 2 && hostSelectionSettled(button)
+            }
+            val before = main { activity.editor.text.toString() }
+            val offsets = imeOffsets(button)
+            assertTrue("Capitalized Backspace must delete backward, preserving forward text", before.endsWith("TAIL"))
+            UiAwait.remains("Selection preview must stop held deletion") { activity.editor.text.toString() == before }
+            dispatch(button, MotionEvent.ACTION_UP, x - step * 2 - 1f, y, down)
+            val expected = before.removeRange(minOf(offsets.first, offsets.second), maxOf(offsets.first, offsets.second))
+            await("Release must delete only the confirmed selection") { main { activity.editor.text.toString() == expected } }
+            UiAwait.remains("Release must stop all further deletion") { activity.editor.text.toString() == expected }
+        } finally { main { activity.finish() } }
     }
 
     @Test fun hostContractRequiresConfirmationAndRejectsStaleConnections() {

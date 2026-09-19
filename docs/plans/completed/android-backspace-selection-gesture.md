@@ -4,6 +4,10 @@
 
 Merged through PR #28 (9e389083) and released in alpha15; CI 34742852950 passed 145 instrumentation tests.
 
+The original no-transition-after-hold rule below is superseded by the
+[alpha19 follow-up](../active/android-backspace-hold-swipe.md), which stops repeat
+before beginning a new selection at the remaining caret.
+
 This bounded increment is closed. The evidence below is historical; earlier
 pending/unreleased statements describe that stage, not current work. Physical,
 editor and accessibility limits remain open in the [platform roadmap](../../mobile-roadmap.md).

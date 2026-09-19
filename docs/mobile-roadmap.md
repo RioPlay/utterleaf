@@ -2,7 +2,7 @@
 
 [Roadmap hub](roadmap.md) · [Execution plan](execution-plan.md) · [Current mobile preview](mobile.md) · [Ideas](ideas.md)
 
-Updated September 18, 2026. Product direction: a complete, customizable Utterleaf
+Updated September 19, 2026. Product direction: a complete, customizable Utterleaf
 keyboard with integrated offline speech, its own identity, and security first.
 The design uses historical public documentation as research context, not as a
 specification, dependency or source of product identity.
@@ -30,6 +30,7 @@ One-hand reach and visual polish can proceed alongside foundation work.
 
 - **Checkout:** `android-keyboard-hardening` on current `main`.
 - **Released:** [signed alpha18](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha18), including typing stabilization (PR #52) and the settings experience pass (PR #56).
+- **In progress:** [Backspace hold/swipe fix](plans/active/android-backspace-hold-swipe.md) for the alpha18 report: repeat after capitalization and switching from hold to swipe. Two focused tests reproduced the old failures; prepare signed alpha19 after verification.
 - **Next:** [physical-phone acceptance](plans/active/android-alpha18-phone-acceptance.md) on Pixel 8 Pro/GrapheneOS and named editors. Record the exact OS/build and reproduce remaining usability problems before another feature slice. Android remains the priority; desktop is parked.
 - **Verified:** exact-candidate CI passed 180/180 emulator tests; protected signing and independent signed alpha17-to-alpha18 upgrade/reinstall checks passed with synthetic preferences and model-storage markers.
 - **Open:** physical typing/latency, TalkBack/Switch Access, phone landscape/three-button navigation and real Obtainium updates. Emulator success does not close these gates.

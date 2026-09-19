@@ -132,6 +132,20 @@ prediction, accessibility and device coverage remain on the
    configuration. See [update setup and signing identity](../../docs/mobile-obtainium.md).
    Actual device import and version-to-version Obtainium updates remain unverified.
 
+## Backspace hold and swipe
+
+With **Hold Backspace or Delete to repeat** enabled and **Ignore repeated taps on the same key within 250 ms**
+off, holding Backspace repeats after the system long-press delay. Alpha19 source
+fixes repeat after capitalization and allows a later left swipe to take over:
+repeat stops, the editor previews a selection, and release deletes that selection
+once. Sliding back shrinks it; cancellation does not undo text already deleted by
+the hold. Alpha18 remains the published download until alpha19 signing completes.
+
+Password/raw fields and Extra keys refuse swipe selection. Editors must confirm
+the selection before deletion; an unsupported or uncertain gesture fails closed.
+Explicit Extra keys modifiers keep their separate behavior. See the
+[follow-up contract](../../docs/plans/active/android-backspace-hold-swipe.md).
+
 ## English speech models
 
 Keep multiple imported models and change the active one in setup with **Use
