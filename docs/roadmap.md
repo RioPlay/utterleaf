@@ -10,9 +10,9 @@ are requirements throughout development, not finishing touches.
 
 ## Now
 
-- Desktop: pairing/enrollment merged in PR #36. Next is draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37), then replay #38 onto the resulting `main`. Keep #38-42 parked until each is rebased and checked.
-- Android: polish merged in PR #52; alpha17 is still the published APK. Next is the [signed alpha18 candidate](plans/active/android-alpha18-snapshot.md), with phone QA open.
-- Start from the [workspace table](workspaces.md) and the platform roadmap below; completed plans are evidence, not next tasks. Status checked September 18 against `main` at `aa296c9`.
+- Android is the priority. [Signed alpha18](mobile.md) ships typing stabilization and predictable Settings. Next: [phone acceptance](plans/active/android-alpha18-phone-acceptance.md), including named editors, accessibility and real updates.
+- Desktop is parked. Pairing/enrollment merged in PR #36. When resumed, refresh draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37) onto current `main`, review/check it, then replay #38. Keep #38–42 parked until each is rebased and verified.
+- Start from the [workspace table](workspaces.md) and the platform roadmap below. Completed plans are historical evidence; the mobile roadmap records exact alpha18 build/signing receipts.
 
 ## Choose a workstream
 

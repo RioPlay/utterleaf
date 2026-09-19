@@ -10,11 +10,11 @@ it does not replace or add dependencies to the desktop Python application.
 
 ## Android — typing and local dictation preview
 
-[Download the signed Android alpha17 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha17/Utterleaf-Android-0.1.0-alpha17.apk) ·
-[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha17) ·
+[Download the signed Android alpha18 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha18/Utterleaf-Android-0.1.0-alpha18.apk) ·
+[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha18) ·
 [Setup and current limits](../mobile/android/README.md)
 
-Android **0.1.0-alpha17 is released as a signed preview**. Setup
+Android **0.1.0-alpha18 is released as a signed preview**. Setup
 separates the two keyboard activation steps from optional voice setup, reports
 whether the keyboard is enabled and selected, and shows model and microphone
 permission status independently.
@@ -26,9 +26,27 @@ automatically, learn from typing or send text anywhere. Password/raw fields and
 disabled suggestions do not show completions. See the [current release evidence
 and remaining gates](mobile-roadmap.md#current-status).
 
-An [unreleased stabilization pass](plans/completed/android-alpha17-polish.md) addresses
-reported delays and shifting suggestion geometry. Its changes are not included in
-the alpha17 download above. Physical Pixel 8 Pro/GrapheneOS verification remains open.
+Alpha18 includes the [typing stabilization pass](plans/completed/android-alpha17-polish.md)
+for reported delays and shifting suggestion geometry, plus the settings improvements
+below. Physical Pixel 8 Pro/GrapheneOS verification remains open.
+
+### Settings in alpha18
+
+Alpha18 keeps Apply visible while categories scroll, puts controls before
+the practice preview, and stages voice, Reset and preview quick controls until
+Apply. Cancel discards those changes. Theme and layout choices update the preview
+immediately, and rotation keeps pending preferences while clearing practice text.
+
+<img src="assets/screenshots/android-alpha18-settings.png" width="300" alt="Utterleaf settings categories with Apply and Cancel at the top" />
+<img src="assets/screenshots/android-alpha18-settings-practice.png" width="300" alt="Scrolled practice preview on a narrow emulator with large text and Apply still visible" />
+
+These are app-owned views from the released source on API 35, using synthetic
+practice text. The narrow view uses 320dp width and font scale 1.3. They do not
+establish physical phone or screen-reader usability. The
+[phone acceptance checklist](plans/active/android-alpha18-phone-acceptance.md)
+keeps the remaining journeys explicit.
+
+### Earlier releases
 
 Alpha15 adds the reviewed Backspace selection gesture, a sliding toolbar and replacement panels,
 comma-hold Settings access and the Utterleaf installed identity while retaining
@@ -103,8 +121,8 @@ prediction and broader accessibility/device coverage remain on the
 
 Existing alpha01/alpha02 users need a one-time uninstall because those builds used
 different debug signing keys. Uninstalling removes app data and the imported model;
-install alpha17 and import the model again. Alpha03 began the persistent signing
-channel, which alpha17 retains. See [migration details](mobile-obtainium.md#migrating-from-the-old-alpha).
+install alpha18 and import the model again. Alpha03 began the persistent signing
+channel, which alpha18 retains. See [migration details](mobile-obtainium.md#migrating-from-the-old-alpha).
 
 See the [Android guide](../mobile/android/README.md) for exact implemented scope,
 setup, permissions, test evidence and remaining native-device acceptance work.

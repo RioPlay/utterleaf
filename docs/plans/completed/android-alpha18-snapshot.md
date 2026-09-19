@@ -1,5 +1,30 @@
 # Android alpha18 signed candidate
 
+## Published — September 19, 2026 UTC (September 18 local)
+
+[Signed alpha18](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha18)
+is available as a preview. PR #56 merged at `70b0cbf`; immutable tag
+`android-v0.1.0-alpha18` identifies `0b8ed20f62f63f5b9e44720f60ea4da19ccf05c7`.
+
+- [Exact-candidate CI 35416227420](https://github.com/RioPlay/utterleaf/actions/runs/35416227420):
+  180 instrumentation tests, no failures/skips, and tooling/JVM/lint/builds passed.
+- [Signing 35417085075, attempt 2](https://github.com/RioPlay/utterleaf/actions/runs/35417085075):
+  package/version, signer, alignment and alpha03 upgrade/reinstall checks passed.
+  Attempt 1 failed at emulator root setup before candidate installation; retry
+  passed without changing the APK or bypassing preservation assertions.
+- Independent downloaded artifact verification: versionCode 18 / `0.1.0-alpha18`,
+  non-debuggable, 16K alignment, persistent signer and checksum passed.
+- Signed alpha17 → alpha18 update and alpha18 reinstall passed on API 35 with
+  synthetic preferences and model-storage markers preserved byte-for-byte;
+  Setup launched successfully. This does not establish real imported-model use.
+- APK SHA-256: `128c0f9e2719c5aed56f06ff83e1080da44afc360ba7fd2483be44ac318381c0`.
+- Certificate SHA-256: `a7987d44a70eed90500b5d77a555df0e18e80e79dd7cf882e1a066dbc2214be6`.
+
+Candidate work is complete. The next gate is the
+[phone acceptance checklist](../active/android-alpha18-phone-acceptance.md).
+All physical checks remain unperformed. The original contract below is historical;
+earlier pending statements do not reopen the completed release steps.
+
 ## Goal and area
 
 Prepare the next signed Android preview from the merged alpha17 stabilization
@@ -63,7 +88,7 @@ gh workflow run android-release.yml --ref main -f tag=android-v0.1.0-alpha18 -f 
 
 Version metadata and release notes are prepared at 18 / `0.1.0-alpha18`, alongside
 the settings experience pass. Final candidate build/CI, tag, signing and
-publication remain pending. The [completed polish record](../completed/android-alpha17-polish.md)
+publication remain pending. The [completed polish record](android-alpha17-polish.md)
 records CI 35290270474: 173 instrumentation tests, 14 tooling tests and JVM/lint/builds.
 
 Keep Pixel 8 Pro/GrapheneOS (record exact OS build), named editors, phone latency,

@@ -3,7 +3,10 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha17 is released as a signed development preview.** It ships the
+**0.1.0-alpha18 is released as a signed development preview.** It includes typing
+and suggestion stability fixes, an always-reachable Apply action and consistent
+staged settings/preview controls. [Release evidence and phone QA](../../docs/mobile-roadmap.md#current-status).
+It retains the
 approved daily redesign — icon toolbar with a fold-out Extra keys panel and
 F1–F12, hinted number row, the redesigned Settings screen, a password-manager
 shortcut restricted to password fields, and a suggestion strip that completes
@@ -90,23 +93,23 @@ prediction, accessibility and device coverage remain on the
 
 ## Try it
 
-1. [Download and install Utterleaf Android alpha17](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha17/Utterleaf-Android-0.1.0-alpha17.apk)
+1. [Download and install Utterleaf Android alpha18](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha18/Utterleaf-Android-0.1.0-alpha18.apk)
    on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Use `Utterleaf-Android-0.1.0-alpha17.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha17).
+   Use `Utterleaf-Android-0.1.0-alpha18.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha18).
    If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
-   then install alpha17. Uninstalling removes the imported model and other app data.
+   then install alpha18. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
    the same release identity and should be updated in place rather than uninstalled.
 2. Open **Utterleaf**. Under **Your keyboard**, enable **Utterleaf**
    in Android settings, then choose it. Setup reports which step is still needed.
    You do not need to enable the separate **Utterleaf dictation** input method to use
    the typing keyboard's dictation button.
-   Alpha17 keeps the installed package and update identity unchanged.
+   Alpha18 keeps the installed package and update identity unchanged.
 3. Open a text field and type. Use **Keyboard preferences and preview** in setup to
    change sizing, theme, number row, terminal controls, vibration or repeat filtering. Reopen the keyboard to apply
    saved preferences. The private practice field lets you try the layout without
    entering text into another app; it clears when you leave settings.
-   In the upcoming alpha18 candidate, **Apply** stays visible while you scroll;
+   In alpha18, **Apply** stays visible while you scroll;
    controls come before the practice preview. All changes, including voice,
    preview quick controls and Reset, wait for Apply. **Cancel** discards them.
    Theme/layout choices update the preview immediately. Rotating Settings keeps

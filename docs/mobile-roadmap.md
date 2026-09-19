@@ -28,14 +28,36 @@ One-hand reach and visual polish can proceed alongside foundation work.
 
 ## Now
 
-- **Checkout:** `android-keyboard-hardening` on `main`, verified at `aa296c9`.
-- **Landed:** alpha17 polish, PR #52 (`80bec1b`), with exact-source Android CI passing.
-- **Published:** signed alpha17. **Next:** finish the [settings experience pass](plans/active/android-settings-experience.md), then prepare and verify the [signed alpha18 candidate](plans/active/android-alpha18-snapshot.md). Android usability is the current priority; desktop remains parked. Candidate signing is not yet started.
-- **Open:** Pixel 8 Pro/GrapheneOS and named-editor QA, TalkBack/Switch Access, landscape, three-button navigation and real Obtainium updates. Emulator success does not close these gates.
+- **Checkout:** `android-keyboard-hardening` on current `main`.
+- **Released:** [signed alpha18](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha18), including typing stabilization (PR #52) and the settings experience pass (PR #56).
+- **Next:** [physical-phone acceptance](plans/active/android-alpha18-phone-acceptance.md) on Pixel 8 Pro/GrapheneOS and named editors. Record the exact OS/build and reproduce remaining usability problems before another feature slice. Android remains the priority; desktop is parked.
+- **Verified:** exact-candidate CI passed 180/180 emulator tests; protected signing and independent signed alpha17-to-alpha18 upgrade/reinstall checks passed with synthetic preferences and model-storage markers.
+- **Open:** physical typing/latency, TalkBack/Switch Access, phone landscape/three-button navigation and real Obtainium updates. Emulator success does not close these gates.
 
 ## Current status
 
-- **Alpha17 stabilization merged, unreleased as a new APK:** user reports of typing
+- **Released alpha18:** [PR #56](https://github.com/RioPlay/utterleaf/pull/56) merged at
+  `70b0cbf`. Immutable tag `android-v0.1.0-alpha18` identifies `0b8ed20f62f63f5b9e44720f60ea4da19ccf05c7`.
+  [Exact-candidate CI 35416227420](https://github.com/RioPlay/utterleaf/actions/runs/35416227420)
+  passed 180 instrumentation tests with zero failures/skips, tooling, JVM, lint and builds.
+  [Protected signing 35417085075, attempt 2](https://github.com/RioPlay/utterleaf/actions/runs/35417085075)
+  passed and published September 19, 2026 UTC (September 18 local). The first
+  attempt failed at emulator root setup before candidate installation; no failed
+  preservation assertion was waived. Package/version, non-debuggable state,
+  alignment, signer continuity and alpha03 upgrade/reinstall checks passed.
+  Independent downloaded-APK verification passed SHA-256, signer, versionCode 18,
+  16K alignment and signed alpha17-to-alpha18 update/reinstall on API 35 with
+  synthetic preferences and model-storage markers retained. These markers are
+  not a physical-phone or real imported-model-use result.
+  APK SHA-256: `128c0f9e2719c5aed56f06ff83e1080da44afc360ba7fd2483be44ac318381c0`.
+  Apply stays visible, all Settings changes wait for Apply, Cancel/Reset are
+  predictable, theme/layout previews are reversible, and rotation preserves
+  pending preferences without retaining practice text. See the
+  [settings record](plans/completed/android-settings-experience.md),
+  [release record](plans/completed/android-alpha18-snapshot.md) and
+  [screenshots](mobile.md#settings-in-alpha18).
+
+- **Typing stabilization released in alpha18:** user reports of typing
   delays, keyboard gaps and inconsistent completions take priority over new
   capabilities. The [stabilization contract](plans/completed/android-alpha17-polish.md)
   covers suggestion work off the typing path, exact-word/session checks,
@@ -44,9 +66,9 @@ One-hand reach and visual polish can proceed alongside foundation work.
   at `80bec1b`. Exact-revision CI run 35290270474 passed 173/173 API 35 tests,
   14 tooling tests and JVM/lint/builds. A blocked editor read can still delay
   suggestions without blocking key dispatch. Pixel 8 Pro/GrapheneOS acceptance
-  and a signed release candidate remain separate finishing gates.
+  remains a separate finishing gate; the signed alpha18 candidate is published.
 
-- **Released alpha17:** the signed pre-release
+- **Historical release alpha17 (superseded by alpha18):** the signed pre-release
   [android-v0.1.0-alpha17](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha17)
   ships the approved daily redesign, the password-manager key (password fields
   only) and the suggestion strip. The protected signing run verified
@@ -102,7 +124,7 @@ One-hand reach and visual polish can proceed alongside foundation work.
 - **Alpha16 snapshot released:** All Actions, spatial Edit pad,
   neighboring-word Select, latched Ctrl/Alt and complete US punctuation are in
   the signed `android-v0.1.0-alpha16` preview published September 15 after PR #43.
-  Alpha17 supersedes that snapshot as the current published APK. Physical-phone
+  Alpha18 supersedes that snapshot as the current published APK. Physical-phone
   and assistive-technology acceptance remain open. This does not add swipe
   decoding, correction or toolbar customization. See the
   [action organization contract](plans/completed/android-action-organization.md)

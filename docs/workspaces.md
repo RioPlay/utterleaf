@@ -8,11 +8,12 @@ tree, one desktop OBS tree, and published/unpublished release receipts.
 
 | Stream | Checkout | Next PR |
 | --- | --- | --- |
-| Android keyboard | `android-keyboard-hardening` on `main` | Signed alpha18 candidate. Phone/TalkBack/landscape acceptance remains open. No new keyboard features in this slice. |
-| Desktop OBS | `desktop-obs-bridge` on `feat/obs-session-arm` | PR #36 is merged. Next: review and land draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37), then replay #38 onto the resulting `main`. Keep #38–42 draft until each is rebased and verified. |
+| Android keyboard | `android-keyboard-hardening` on `main` | Alpha18 is published. Next: physical-phone/editor, TalkBack and update acceptance; fix reproduced usability failures before new features. |
+| Desktop OBS | `desktop-obs-bridge` on `feat/obs-session-arm` | Parked while Android is prioritized. PR #36 is merged. On resumption, refresh, review and check draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37), then replay #38 onto the resulting `main`. Keep #38–42 draft until each is rebased and verified. |
 | Android CI split | same Android tree, later | Follow-up only: stop downloading speech models and running the full emulator suite on every keyboard PR. |
 
-`main` was verified at `aa296c9` on September 18. PR #36 is merged and its
+Android PR #56 merged at `70b0cbf`; the exact alpha18 tag is `0b8ed20`.
+Use current remote `main` at session start. PR #36 is merged and its
 remote `feat/obs-enrollment-flow` branch is deleted; do not recreate or rebase it.
 PRs #38–42 still have stacked parents: PCM → disarm → controller → provenance →
 timelines. After each predecessor lands, replay only the next PR's own changes
@@ -24,8 +25,8 @@ Do not mix these in one branch. Desktop CI already skips Android-only paths.
 
 | Branch | Purpose | Next work |
 | --- | --- | --- |
-| `main` | Current Android keyboard checkout (`android-keyboard-hardening` worktree) | Prepare the [signed alpha18 candidate](plans/active/android-alpha18-snapshot.md); alpha17 polish is merged and phone acceptance remains open |
-| `feat/obs-session-arm` | Desktop OBS worktree (`desktop-obs-bridge`); draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37) | Based on `main` at `aa296c9`; CI green and mergeable at this check. Review and land #37 before replaying #38. |
+| `main` | Current Android keyboard checkout (`android-keyboard-hardening` worktree) | Run the [alpha18 phone acceptance checklist](plans/active/android-alpha18-phone-acceptance.md); the signed candidate is published |
+| `feat/obs-session-arm` | Desktop OBS worktree (`desktop-obs-bridge`); draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37) | Parked. Its earlier green check was against `aa296c9`; refresh onto current `main` and rerun checks before landing #37 and replaying #38. |
 | `checkpoint/mixed-work-20260912` | Preserved mixed development snapshot; not a release or PR | Recovery/reference only; leave the original source environment intact |
 | `release/desktop-0.4.6rc2` | Published Windows x64 CPU prerelease | Preserve the immutable RC2 tag and release evidence |
 | `release/desktop-0.4.6rc1` | Unpublished RC1 candidate retained for audit | Reference only; tag and downloaded artifact unchanged |
@@ -34,7 +35,7 @@ Do not mix these in one branch. Desktop CI already skips Android-only paths.
 
 The desktop release uses `desktop-v0.4.6-rc.2`; stable desktop `v*` and Android
 `android-v*` releases remain separate. Current published Android preview is
-[alpha17](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha17).
+[alpha18](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha18).
 Read the platform roadmap and active plan in the owning checkout. A green test
 in one checkout does not validate another.
 
