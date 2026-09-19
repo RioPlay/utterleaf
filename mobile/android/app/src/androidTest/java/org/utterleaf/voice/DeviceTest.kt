@@ -75,7 +75,14 @@ class DeviceTest {
             }
             instrumentation.runOnMainSync {
                 val content = activity.findViewById<android.view.ViewGroup>(android.R.id.content)
-                (content.getChildAt(0) as android.widget.ScrollView).fullScroll(android.view.View.FOCUS_DOWN)
+                // The persistent Apply header sits outside the scrolling content.
+                // Find the practice field's scroll ancestor instead of assuming a root type.
+                var ancestor = practice!!.parent
+                while (ancestor !is android.widget.ScrollView) {
+                    check(ancestor !== content) { "Practice field has no scrolling container" }
+                    ancestor = checkNotNull(ancestor.parent)
+                }
+                ancestor.scrollTo(0, ancestor.getChildAt(0).height)
             }
             instrumentation.waitForIdleSync()
             val screenshot = instrumentation.uiAutomation.takeScreenshot()

@@ -64,3 +64,10 @@ keyboard-engine replacement or claim that emulator success proves phone comfort.
   UI-thread predicate. Corrected the fixture; final candidate verification and
   canonical CI remain required. No production test failure was hidden or waived.
 - Version metadata is now 18 / `0.1.0-alpha18`; signing and publication remain pending.
+- Final local candidate passed 28 focused instrumentation tests, 40 JVM tests,
+  14 tooling tests and lint/debug/release/test APK builds. Full CI 35415294078
+  ran 180 tests: 179 passed and one existing privacy fixture failed because it
+  cast the new Settings root to ScrollView. The fixture now finds the practice
+  field's scroll ancestor; its protection, transient-text and stale-key assertions
+  remain intact. The corrected privacy fixture plus all seven new settings tests
+  passed locally (8/8). A new exact-revision CI run is required before signing.
