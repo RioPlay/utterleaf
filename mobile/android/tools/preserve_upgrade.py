@@ -75,8 +75,26 @@ def seed_files() -> dict[str, bytes]:
 
 
 def _run(args: list[str]) -> str:
-    result = subprocess.run(args, check=True, capture_output=True, text=True)
+    result = subprocess.run(args, capture_output=True, text=True, timeout=60)
+    if result.returncode:
+        raise RuntimeError(f"{args!r} failed ({result.returncode}): {result.stdout}{result.stderr}")
     return result.stdout
+
+
+def _ensure_root() -> None:
+    # Restarting adbd can close the initiating connection. Check the resulting
+    # identity before touching the fixture instead of trusting that exit code.
+    root = subprocess.run(["adb", "root"], capture_output=True, text=True, timeout=30)
+    try:
+        _run(["adb", "wait-for-device"])
+        uid = _run(["adb", "shell", "id", "-u"]).strip()
+        if uid != "0":
+            raise RuntimeError(f"Emulator adbd has uid {uid!r}, expected root")
+    except (RuntimeError, subprocess.TimeoutExpired) as error:
+        raise RuntimeError(
+            f"Upgrade fixture requires a root-capable emulator. "
+            f"adb root exited {root.returncode}: {root.stdout}{root.stderr}; {error}"
+        ) from error
 
 
 def _package_uid() -> str:
@@ -113,16 +131,14 @@ def _read_remote(path: str) -> bytes:
 
 
 def seed_via_adb() -> None:
-    _run(["adb", "root"])
-    _run(["adb", "wait-for-device"])
+    _ensure_root()
     uid = _package_uid()
     for path, data in seed_files().items():
         _write_remote(path, data, uid)
 
 
 def verify_via_adb() -> None:
-    _run(["adb", "root"])
-    _run(["adb", "wait-for-device"])
+    _ensure_root()
     after = {path: _read_remote(path) for path in seed_files()}
     assert_preserved(seed_files(), after)
 
