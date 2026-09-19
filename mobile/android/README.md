@@ -8,9 +8,9 @@ approved daily redesign — icon toolbar with a fold-out Extra keys panel and
 F1–F12, hinted number row, the redesigned Settings screen, a password-manager
 shortcut restricted to password fields, and a suggestion strip that completes
 the word you are typing from a public-domain English list. See the
-[daily redesign plan](../../docs/plans/active/android-keyboard-daily-redesign.md),
+[daily redesign plan](../../docs/plans/completed/android-keyboard-daily-redesign.md),
 the [community wants harvest](../../docs/mobile-keyboard-community-wants-2026-09.md)
-and the [suggestions slice plan](../../docs/plans/active/android-suggestions-slice.md).
+and the [suggestions slice plan](../../docs/plans/completed/android-suggestions-slice.md).
 
 Alpha15 preserves alpha14's two-thumb rollover, letter layouts, one-hand
 alignment, local emoji, Latin composition, private drafts and visible

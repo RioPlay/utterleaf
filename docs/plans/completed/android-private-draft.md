@@ -1,5 +1,13 @@
 # Android private draft editor
 
+## Completion - September 18, 2026
+
+Released in alpha14; retained evidence below includes the post-release CI checks.
+
+This bounded increment is closed. The evidence below is historical; earlier
+pending/unreleased statements describe that stage, not current work. Physical,
+editor and accessibility limits remain open in the [platform roadmap](../../mobile-roadmap.md).
+
 ## Goal
 
 The user requested an editor inside the keyboard on September 12, 2026: type and

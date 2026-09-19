@@ -1,5 +1,13 @@
 # Android alpha17 everyday typing stabilization
 
+## Completion - September 18, 2026
+
+Merged through PR #52 (80bec1b); exact-source CI 35290270474 passed 173 instrumentation tests. The signed candidate is now owned by the active alpha18 snapshot plan.
+
+This bounded increment is closed. The evidence below is historical; earlier
+pending/unreleased statements describe that stage, not current work. Physical,
+editor and accessibility limits remain open in the [platform roadmap](../../mobile-roadmap.md).
+
 ## Goal
 
 Resolve the reported typing stalls, unexplained keyboard gaps and inconsistent
@@ -98,7 +106,7 @@ already listed in the mobile roadmap. A green emulator run is not phone proof.
 | Geometry | Compare empty, matching and unmatched words; space/delete; symbols return; hide/reopen; default and nonzero bottom spacing | Scoped portrait/gesture-navigation emulator checks and owned-view captures pass; landscape/three-button/phone checks open |
 | Editor compatibility | Repeat the journey in the app practice field, private draft, a messaging editor, browser text field, password field and raw terminal; record app/OS versions and unsupported behavior | Pixel 8 Pro/current stable GrapheneOS reported; exact build and external editor versions open |
 | Accessibility | Suggestions, empty states, toolbar and correction reachable with TalkBack/Switch Access; large text and landscape stay usable | Physical assistive testing open |
-| Release candidate | Exact-revision CI, signed APK continuity, install/upgrade with model/preferences retained, reviewed screenshots and accurate known limits | Exact-revision CI passed and merged; signed upgrade not started; alpha17 remains published |
+| Release candidate | Exact-revision CI, signed APK continuity, install/upgrade with model/preferences retained, reviewed screenshots and accurate known limits | Exact-revision CI passed and merged; signed alpha18 candidate tracked in [the active snapshot plan](../active/android-alpha18-snapshot.md); alpha17 remains published |
 
 For manual reproduction, type `hello world`, move the caret back into the first
 word, select a range, return to the end, delete and retype, then type an unmatched

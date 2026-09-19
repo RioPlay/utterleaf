@@ -40,6 +40,6 @@ in terminal/raw mode, which keeps literal key behavior. Changing fields, hiding
 the keyboard or switching modes clears the pending mark. Compose does not read
 surrounding text or the clipboard, save text, or learn from typing.
 
-See the [implementation and acceptance record](plans/active/android-latin-compose.md).
+See the [implementation and acceptance record](plans/completed/android-latin-compose.md).
 Current tests and owned views use an API 35 emulator. Physical-phone comfort,
 landscape, assistive-technology and broad-editor acceptance remain open.

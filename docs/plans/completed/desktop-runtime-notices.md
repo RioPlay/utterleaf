@@ -1,5 +1,13 @@
 # Windows preview runtime notices
 
+## Completion - September 18, 2026
+
+Completed in published Windows RC2; exact-tag CI 34740809768 passed.
+
+This bounded increment is closed. The evidence below is historical; earlier
+pending/unreleased statements describe that stage, not current work. Physical,
+editor and accessibility limits remain open in the [platform roadmap](../../desktop-roadmap.md).
+
 ## Goal and area
 
 Produce an auditable Windows 0.4.6 RC2 package with complete license texts for

@@ -4,9 +4,15 @@
 
 [Documentation](README.md) · [Development boundaries](development-boundaries.md) · [Execution plan](execution-plan.md)
 
-Updated September 9, 2026. This is the planning hub, not a list of released features.
+Updated September 18, 2026. This is the planning hub, not a list of released features.
 **Security first, privacy second, convenience third.** Accessibility and reliability
 are requirements throughout development, not finishing touches.
+
+## Now
+
+- Desktop: pairing/enrollment merged in PR #36. Next is draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37), then replay #38 onto the resulting `main`. Keep #38-42 parked until each is rebased and checked.
+- Android: polish merged in PR #52; alpha17 is still the published APK. Next is the [signed alpha18 candidate](plans/active/android-alpha18-snapshot.md), with phone QA open.
+- Start from the [workspace table](workspaces.md) and the platform roadmap below; completed plans are evidence, not next tasks. Status checked September 18 against `main` at `aa296c9`.
 
 ## Choose a workstream
 

@@ -4,7 +4,7 @@
 
 Scope: Windows, macOS, and Linux desktop application only.
 
-Updated September 13, 2026. Priorities follow the
+Updated September 18, 2026. Priorities follow the
 [offline STT user research](offline-stt-user-research-2026-09-08.md).
 This is an ordered development plan, not a promise of release dates.
 
@@ -14,11 +14,21 @@ the real-device checklist, including macOS testing.
 The product goal is simple: press a key, speak, and get dependable text in the
 intended field, with understandable local processing and minimal interruption.
 
-## Planned follow-up
+## Now
+
+- **Landed:** native pairing/vendor integration and desktop enrollment UI, PR #36 (`aa296c9`); [CI 35366314920](https://github.com/RioPlay/utterleaf/actions/runs/35366314920) passed all five desktop jobs.
+- **Next:** `desktop-obs-bridge` on `feat/obs-session-arm`, draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37), based on current `main`; green and mergeable at the September 18 check. Review and land it, then replay #38 onto the resulting `main`.
+- **Parked:** #38 PCM, #39 disarm, #40 controller, #41 provenance, #42 timelines. Each must be rebased, retargeted and verified in order; do not merge the old stack as-is. See [workspaces](workspaces.md).
+- **Limits:** Windows RC2 remains the published preview. No released live OBS capture or plugin binary; real OBS, physical-device and accessibility acceptance remain open.
+
+## Evidence and follow-up
+
+The receipts below retain their original test scope and chronology. Use the Now
+section for the next increment; historical test counts are not current-head proof.
 
 ### Published preview: Windows 0.4.6 RC2
 
-The [Windows prerelease plan](plans/active/desktop-prerelease.md) records the
+The [Windows prerelease plan](plans/completed/desktop-prerelease.md) records the
 completed dictation, long-file, speech-end, Markdown and delivery improvements
 in the [published unsigned Windows x64 CPU preview](https://github.com/RioPlay/utterleaf/releases/tag/desktop-v0.4.6-rc.2).
 Version `0.4.6rc2` was published on September 13 from immutable tag revision
@@ -32,7 +42,7 @@ passes 1,445 tests with 14 explicit skips; frozen diagnostics and an offline
 passed **1,446 tests with 13 skips**. Independent verification of the downloaded
 artifact passed archive, executable, dependency and retained-notice checks,
 frozen diagnostics and offline 88-second transcription. See the
-[runtime notice record](plans/active/desktop-runtime-notices.md), the
+[runtime notice record](plans/completed/desktop-runtime-notices.md), the
 [completed CI integration plan](plans/completed/desktop-ci-platform-integration.md),
 and the [completed backup compact-layout plan](plans/completed/desktop-backup-compact.md).
 
@@ -55,7 +65,7 @@ acceptance. PR #26 merged into main at `bf4dfda`.
 
 ### Integrated source: compact Dictation settings
 
-The [compact Dictation plan](plans/active/desktop-dictation-layout.md) groups
+The [compact Dictation plan](plans/completed/desktop-dictation-layout.md) groups
 shortcut, activation and microphone controls near the top, moves Output style
 to Dictation, and places speech-end stopping before secondary recording options.
 The two input groups stack when text needs more width. This is a source follow-up
@@ -104,9 +114,10 @@ audio delivery after TCP loss and wrong-process rejection with zero secret bytes
 received. This checks the originally attributed process and current path/file
 identity; it is not historical loaded-image attestation.
 
-There is no live-capture app entry point. Actual OBS enrollment, the original server plugin's
-restrictive DACL/client authentication, atomic arming/start coordination,
-controller/UI, live recognition and streaming-load acceptance remain open.
+There is no live-capture app entry point on `main`. Pairing/enrollment and native
+DACL/client admission components have landed as described below. Real OBS
+acceptance, atomic arming/start coordination, controller/UI, live recognition
+and streaming-load acceptance remain open.
 The original C-only [development module](../native/obs-plugin/README.md) first
 established the inert build/load prerequisite through PR #32 at `e61c7dd`.
 The current linked module builds against 41 pinned OBS/frontend/vendor public
@@ -140,8 +151,8 @@ store state/fault groups, including an actual junction. Exact-head CI
 passes all five desktop jobs; release publication was skipped. Independent
 source/test and final receipt review is clear. Three known warnings remain
 isolated to the test heap shim.
-The enrollment plan distinguishes these
-storage results from pending UI, live revocation, vendor and audio integration.
+These historical storage results preceded the UI/vendor integration now merged
+in PR #36. Real OBS revocation and audio acceptance remain separate gates.
 Cross-user/logon, remote clients, forced PID reuse and kernel
 completion failure are not established by these fixtures. The installed toolchain
 is not fully pinned and native redistribution review remains open; no plugin
@@ -150,9 +161,9 @@ binary is included in desktop or Android releases. The
 [control dependency record](desktop-obs-control-resource.md) records the pinned
 library, reviewed full license and development-wheel provenance.
 
-Continue on `feat/obs-enrollment-flow` with frontend acceptance and the desktop
-connection/controller after the pairing setup increment. Arm/PCM and live
-recognition remain later gates. No live-capture app entry point, audio endpoint, plugin binary
+The pairing setup increment merged in PR #36; its remote branch is deleted.
+Continue with PR #37 on `feat/obs-session-arm`; PCM, controller and live
+recognition follow through the ordered stack. No live-capture app entry point, audio endpoint, plugin binary
 publication or OBS capture integration exists yet.
 
 The linked native pairing Tools flow, exclusive per-user owner and strict
@@ -170,7 +181,7 @@ in that new exchange fixture. This prepares a session ID and does not connect
 the audio pipe or arm capture. Native owner/UI/vendor integration remains
 unverified for real OBS/device acceptance.
 
-The [desktop pairing dialog](plans/active/obs-desktop-pairing-ui.md) now opens from
+The [desktop pairing dialog](plans/completed/obs-desktop-pairing-ui.md) now opens from
 Speech & privacy on Windows, with explicit import/replace/forget, a separate
 per-user store owner and asynchronous cancellation/teardown. Saved status never
 claims an OBS connection. The related bundle passes 204 tests; all 23 UI cases
@@ -178,8 +189,8 @@ pass after the final status-card adjustment. Native TaskDialog activation,
 Escape, modal cleanup and zero-mutation checks also pass in an isolated fixture;
 all 29 native driver commands pass with `--ui`. Normal/compact/enlarged desktop
 renders were inspected. Independent final desktop setup review is clear, with
-29 focused and 187 related tests rerun on the final source. Its own CI remains
-pending; no existing release changes. Earlier linked checkpoint `15e1c77` passed
+29 focused and 187 related tests rerun on the final source. Its final CI passed all five desktop jobs in run 35366314920 and PR #36
+merged at `aa296c9`; no existing release changes. Earlier linked checkpoint `15e1c77` passed
 all five desktop CI jobs in [34758907354](https://github.com/RioPlay/utterleaf/actions/runs/34758907354).
 
 Current integrated desktop regression: **1,432 passed, 13 skipped in 39.47 seconds**,

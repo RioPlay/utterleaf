@@ -1,5 +1,13 @@
 # Windows desktop prerelease
 
+## Completion - September 18, 2026
+
+Windows RC2 published September 13; PR #26 integrated the evidence. Preserve the immutable desktop-v0.4.6-rc.2 artifact.
+
+This bounded increment is closed. The evidence below is historical; earlier
+pending/unreleased statements describe that stage, not current work. Physical,
+editor and accessibility limits remain open in the [platform roadmap](../../desktop-roadmap.md).
+
 ## Goal
 
 Ship a Windows x64 CPU preview of the completed desktop dictation improvements,

@@ -2,7 +2,7 @@
 
 [Roadmap hub](roadmap.md) · [Execution plan](execution-plan.md) · [Current mobile preview](mobile.md) · [Ideas](ideas.md)
 
-Updated September 17, 2026. Product direction: a complete, customizable Utterleaf
+Updated September 18, 2026. Product direction: a complete, customizable Utterleaf
 keyboard with integrated offline speech, its own identity, and security first.
 The design uses historical public documentation as research context, not as a
 specification, dependency or source of product identity.
@@ -26,11 +26,18 @@ The [rebuild plan](plans/active/android-keyboard-rebuild.md) sequences touch/edi
 correctness, daily ergonomics, language/repair and evaluated prediction/swipe.
 One-hand reach and visual polish can proceed alongside foundation work.
 
+## Now
+
+- **Checkout:** `android-keyboard-hardening` on `main`, verified at `aa296c9`.
+- **Landed:** alpha17 polish, PR #52 (`80bec1b`), with exact-source Android CI passing.
+- **Published:** signed alpha17. **Next:** prepare and verify the [signed alpha18 candidate](plans/active/android-alpha18-snapshot.md); no new keyboard features in this slice. Version metadata, candidate CI and signing are not yet started.
+- **Open:** Pixel 8 Pro/GrapheneOS and named-editor QA, TalkBack/Switch Access, landscape, three-button navigation and real Obtainium updates. Emulator success does not close these gates.
+
 ## Current status
 
 - **Alpha17 stabilization merged, unreleased as a new APK:** user reports of typing
   delays, keyboard gaps and inconsistent completions take priority over new
-  capabilities. The [stabilization contract](plans/active/android-alpha17-polish.md)
+  capabilities. The [stabilization contract](plans/completed/android-alpha17-polish.md)
   covers suggestion work off the typing path, exact-word/session checks,
   cursor-driven refresh, stable useful header geometry and inset verification.
   Ordinary touches also avoid redundant modifier-state UI updates. PR #52 merged
@@ -58,7 +65,7 @@ One-hand reach and visual polish can proceed alongside foundation work.
   strip never appears on password or raw fields or when the preference is off.
   Bounded before-cursor read (≤32 code points) with re-verification at tap
   time. Canonical CI run on main passed all 160 instrumented tests.
-  See the [suggestions slice plan](plans/active/android-suggestions-slice.md).
+  See the [suggestions slice plan](plans/completed/android-suggestions-slice.md).
   Reversible correction, next-word prediction and physical/assistive
   acceptance remain open.
 
@@ -72,7 +79,7 @@ One-hand reach and visual polish can proceed alongside foundation work.
   on ordinary text or email fields — and merely launches the configured
   autofill application with no data path; it is absent when none is configured.
   See the [community wants harvest](mobile-keyboard-community-wants-2026-09.md).
-  Emulator/JVM verification and release gates remain open until CI completes.
+  This shipped in alpha17 with its recorded CI/signing evidence; physical acceptance remains open.
 
 - **Daily redesign to the approved mockups merged (PR #44, main `a3c8138`):**
   the keyboard now has the mockup's icon toolbar with a fold-out Extra keys
@@ -83,23 +90,23 @@ One-hand reach and visual polish can proceed alongside foundation work.
   Settings is the mockup's category list with search, staged Apply/Cancel and a
   practice message with live preview. The terminal-controls preference is
   superseded by the Extra keys panel and the comma key moved to the period menu
-  and symbols page by product decision; the mockup's suggestion strip is
-  intentionally absent until real local prediction exists. Emulator evidence:
+  and symbols page by product decision. The suggestion strip subsequently landed
+  in PR #47 and shipped in alpha17. Emulator evidence:
   canonical PR CI run 35030029554 passed all 157 instrumented tests (the two
   intermittent restart-race flake sites are hardened), 8 JVM, 14 tooling tests,
   lint 0 errors, and 41 owned captures in
   `artifacts/screenshots/android-daily-redesign/`. See the
-  [daily redesign plan](plans/active/android-keyboard-daily-redesign.md).
-  Physical-phone, TalkBack/Switch Access and release gates remain open.
+  [daily redesign plan](plans/completed/android-keyboard-daily-redesign.md).
+  Published in alpha17; physical-phone and TalkBack/Switch Access gates remain open.
 
-- **Alpha16 snapshot prepared, unpublished:** All Actions, spatial Edit pad,
+- **Alpha16 snapshot released:** All Actions, spatial Edit pad,
   neighboring-word Select, latched Ctrl/Alt and complete US punctuation are in
-  source at versionCode 16 / `0.1.0-alpha16`. Alpha15 remains the current signed
-  APK. Canonical CI, merge, tag and protected signing have not run. Physical-phone
+  the signed `android-v0.1.0-alpha16` preview published September 15 after PR #43.
+  Alpha17 supersedes that snapshot as the current published APK. Physical-phone
   and assistive-technology acceptance remain open. This does not add swipe
   decoding, correction or toolbar customization. See the
-  [action organization contract](plans/active/android-action-organization.md)
-  and the [alpha16 snapshot plan](plans/active/android-alpha16-snapshot.md).
+  [action organization contract](plans/completed/android-action-organization.md)
+  and the [alpha16 snapshot plan](plans/completed/android-alpha16-snapshot.md).
 
 - **Backspace selection gesture released in alpha15:**
   dragging left from Backspace previews a bounded editor-native or private-draft
@@ -113,7 +120,7 @@ One-hand reach and visual polish can proceed alongside foundation work.
   acceptance remain open. Existing text highlighting also retains the
   tested two-finger Shift+Space chord; tapping Shift and later swiping Space is
   not claimed. See the
-  [implementation contract](plans/active/android-backspace-selection-gesture.md).
+  [implementation contract](plans/completed/android-backspace-selection-gesture.md).
 
 - **Long-press hint default released in alpha14:** holding a letter
   preselects the same positional symbol or digit shown as its secondary hint.
@@ -124,7 +131,7 @@ One-hand reach and visual polish can proceed alongside foundation work.
   Eight focused JVM catalog/layout tests and 16 focused API 35 gesture/layout
   tests pass. The debug and Android test APKs build, and independent test review
   is complete; exact local evidence is recorded in the
-  [alpha14 snapshot record](plans/active/android-alpha14-snapshot.md); physical-phone
+  [alpha14 snapshot record](plans/completed/android-alpha14-snapshot.md); physical-phone
   and assistive-technology acceptance remain open.
 
 - **Accent composition released in alpha14:** **Tools → Compose**
@@ -134,14 +141,14 @@ One-hand reach and visual polish can proceed alongside foundation work.
   stays literal. Independent review resolved detach/reattach callback invalidation
   and unsupported Unicode case mappings. Eight focused API 35 checks and all
   31 project JVM tests pass; lint has 0 errors and 54 warnings. The
-  [Compose acceptance record](plans/active/android-latin-compose.md) records the
+  [Compose acceptance record](plans/completed/android-latin-compose.md) records the
   18 owned theme/alignment/stage views and existing-panel regression evidence,
   including repeated-session emulator uncertainty. See the
   [accent composition guide](android-latin-compose.md). Dictionaries, reversible
   correction, full language/complex-script support and physical acceptance remain.
 
 - **Local emoji released in alpha14:** the reviewed
-  [picker and acceptance record](plans/active/android-local-emoji.md) provides
+  [picker and acceptance record](plans/completed/android-local-emoji.md) provides
   3,944 fully-qualified Emoji 17 sequences, nine categories, bounded paging,
   local CLDR 48 English search and explicit tone variants. Exact selection
   replacement passed the native IME fixture; raw fields disable the picker and
@@ -164,7 +171,7 @@ One-hand reach and visual polish can proceed alongside foundation work.
   stale API 34+ UIAutomation state and confirms the Tools view generation before
   opening a draft; three consecutive five-test class runs and an 18-test mixed IME
   regression pass on API 35. Broader long-session reliability remains monitored. The
-  [acceptance record](plans/active/android-private-draft.md) holds exact evidence.
+  [acceptance record](plans/completed/android-private-draft.md) holds exact evidence.
   See the [private draft guide](android-private-draft.md). Physical, assistive-tech,
   landscape and broad-editor gates remain open.
 

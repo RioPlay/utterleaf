@@ -1,5 +1,13 @@
 # Android alpha16 snapshot
 
+## Completion - September 18, 2026
+
+Published as android-v0.1.0-alpha16 on September 15; implementation merged through PR #43.
+
+This bounded increment is closed. The evidence below is historical; earlier
+pending/unreleased statements describe that stage, not current work. Physical,
+editor and accessibility limits remain open in the [platform roadmap](../../mobile-roadmap.md).
+
 ## Goal and area
 
 Publish the next signed Android preview with All Actions, the spatial Edit pad,

@@ -1,5 +1,13 @@
 # Explicit Latin Compose
 
+## Completion - September 18, 2026
+
+Released in alpha14; see the mobile roadmap for the supported scope.
+
+This bounded increment is closed. The evidence below is historical; earlier
+pending/unreleased statements describe that stage, not current work. Physical,
+editor and accessibility limits remain open in the [platform roadmap](../../mobile-roadmap.md).
+
 ## Goal and area
 
 Add a small, original, tap-accessible Latin Compose flow to the Android keyboard.

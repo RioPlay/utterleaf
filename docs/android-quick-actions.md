@@ -16,7 +16,7 @@ the letters and Esc/Tab/Ctrl/Alt; Edit and Emoji are available through Tools.
 Enabling Terminal from All Actions immediately reveals the accessory keys.
 Ctrl and Alt stay selected until tapped off; Shift stays selected for arrows so
 Ctrl+Shift+Left can keep selecting words. Field and layer changes still clear
-them. See the [action/accessory contract](plans/active/android-action-organization.md).
+them. See the [action/accessory contract](plans/completed/android-action-organization.md).
 
 Commands go to the current editor through Android's context-menu API. Utterleaf
 does not read or retain clipboard contents, listen for clipboard changes, or

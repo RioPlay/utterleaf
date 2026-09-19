@@ -79,7 +79,7 @@ and visible; a copied package remains usable by its Windows user until plugin
 revocation. Forget pairing is separate from Reset defaults. The storage component
 below implements persistence; the desktop import/replace/forget flow is now
 exposed in the development source through the separate
-[pairing setup dialog](obs-desktop-pairing-ui.md).
+[pairing setup dialog](../completed/obs-desktop-pairing-ui.md).
 
 The capability proves possession, not executable identity. It does not protect
 against a compromised process under the same Windows user. DPAPI normally binds
@@ -358,7 +358,7 @@ inputs, native/client sources, dispatch inputs and all test artifacts/logs again
 the current files. All five desktop CI jobs passed for the linked native checkpoint `15e1c77` in
 [34758907354](https://github.com/RioPlay/utterleaf/actions/runs/34758907354).
 The draft PR does not establish actual OBS frontend or live-audio acceptance.
-The [desktop pairing setup follow-up](obs-desktop-pairing-ui.md) records its own
+The [desktop pairing setup follow-up](../completed/obs-desktop-pairing-ui.md) records its own
 new source, owner/UI checks and isolated native TaskDialog acceptance; that later
 work is not covered by the earlier CI run.
 

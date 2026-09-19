@@ -35,5 +35,5 @@ fields disable Emoji because they require key events rather than Unicode text.
 
 The images are keyboard-only renders from the dedicated API 35 emulator with
 synthetic input. Source and automated editor checks are recorded in the
-[acceptance plan](plans/active/android-local-emoji.md). Physical-phone comfort,
+[acceptance plan](plans/completed/android-local-emoji.md). Physical-phone comfort,
 landscape, TalkBack/Switch Access and broad host-editor acceptance remain open.
