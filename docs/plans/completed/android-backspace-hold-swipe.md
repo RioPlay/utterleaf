@@ -1,4 +1,4 @@
-﻿# Android Backspace hold and swipe follow-up
+# Android keyboard interactions and discovery — completed alpha19
 
 ## Goal and area
 
@@ -50,9 +50,10 @@ keyboard and closes the activity on failure. Local animation settings now match
 CI (disabled). The final 12-test Backspace class passed with no failures/skips.
 No deletion or restricted-field assertion was weakened.
 
-Alpha19 version metadata/release notes are prepared. Exact-candidate CI, protected
-signing and independent alpha18-to-alpha19 preservation checks remain required;
-alpha18 is still published. Superseded CI 35442827839 was cancelled because its
+Alpha19 is published. Exact-candidate CI 35462899374 passed 186 tests;
+protected signing 35463561268 and independent signed alpha18-to-alpha19
+upgrade/reinstall preservation checks passed. See the mobile roadmap for receipts.
+Superseded CI 35442827839 was cancelled because its
 fixture setup had already been corrected locally.
 
 ## September 19 design review
@@ -74,3 +75,11 @@ Research anchors: [Android accessibility actions](https://developer.android.com/
 [gesture cancellation](https://developer.android.com/develop/ui/views/touch-and-input/gestures/viewgroup),
 and [haptic feedback](https://developer.android.com/develop/ui/views/haptics/haptics-principles).
 These inform acceptance; they do not establish physical-phone usability.
+
+Local UI/UX integration: 59 unique focused instrumentation tests pass, including
+9 Settings and 7 compact-layer tests; compact-layer tests also pass at 320dp with
+large labels and left alignment. All 17 tooling and 40 JVM tests pass; lint has
+0 errors/56 warnings; release build passes. Native light/dark, enabled/disabled
+and narrow renders were independently reviewed. The initial Tools autosize error
+was fixed before final validation; exact-label search coverage was strengthened.
+Physical acceptance remains in the active phone plan.

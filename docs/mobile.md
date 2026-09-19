@@ -10,11 +10,11 @@ it does not replace or add dependencies to the desktop Python application.
 
 ## Android — typing and local dictation preview
 
-[Download the signed Android alpha18 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha18/Utterleaf-Android-0.1.0-alpha18.apk) ·
-[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha18) ·
+[Download the signed Android alpha19 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha19/Utterleaf-Android-0.1.0-alpha19.apk) ·
+[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha19) ·
 [Setup and current limits](../mobile/android/README.md)
 
-Android **0.1.0-alpha18 is released as a signed preview**. Setup
+Android **0.1.0-alpha19 is released as a signed preview**. Setup
 separates the two keyboard activation steps from optional voice setup, reports
 whether the keyboard is enabled and selected, and shows model and microphone
 permission status independently.
@@ -29,6 +29,15 @@ and remaining gates](mobile-roadmap.md#current-status).
 Alpha18 includes the [typing stabilization pass](plans/completed/android-alpha17-polish.md)
 for reported delays and shifting suggestion geometry, plus the settings improvements
 below. Physical Pixel 8 Pro/GrapheneOS verification remains open.
+
+### Keyboard interactions in alpha19
+
+Hold Emoji to open full Settings directly, or tap the visible Tools button for
+Compose, accents and quick options. Backspace continues repeating after
+capitalization and can transition from a hold into swipe selection. Settings
+search finds control names; Backspace repeat controls live in Holds & gestures.
+Cut scissors and light-theme Dictate contrast are corrected.
+See the [release evidence and remaining phone gates](mobile-roadmap.md#current-status).
 
 ### Settings in alpha18
 

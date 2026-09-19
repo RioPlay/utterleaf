@@ -4,15 +4,15 @@
 
 [Documentation](README.md) · [Development boundaries](development-boundaries.md) · [Execution plan](execution-plan.md)
 
-Updated September 18, 2026. This is the planning hub, not a list of released features.
+Updated September 19, 2026. This is the planning hub, not a list of released features.
 **Security first, privacy second, convenience third.** Accessibility and reliability
 are requirements throughout development, not finishing touches.
 
 ## Now
 
-- Android is the priority. [Signed alpha18](mobile.md) ships typing stabilization and predictable Settings. Next: [phone acceptance](plans/active/android-alpha18-phone-acceptance.md), including named editors, accessibility and real updates.
+- Android is the priority. [Signed alpha19](mobile.md) ships Backspace interaction fixes, direct Settings, visible Tools and visual corrections. Next: [phone acceptance](plans/active/android-alpha18-phone-acceptance.md), including named editors, accessibility and real updates.
 - Desktop is parked. Pairing/enrollment merged in PR #36. When resumed, refresh draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37) onto current `main`, review/check it, then replay #38. Keep #38–42 parked until each is rebased and verified.
-- Start from the [workspace table](workspaces.md) and the platform roadmap below. Completed plans are historical evidence; the mobile roadmap records exact alpha18 build/signing receipts.
+- Start from the [workspace table](workspaces.md) and the platform roadmap below. Completed plans are historical evidence; the mobile roadmap records exact alpha19 build/signing receipts.
 
 ## Choose a workstream
 
