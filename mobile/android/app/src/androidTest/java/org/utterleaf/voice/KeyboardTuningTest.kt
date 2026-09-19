@@ -180,13 +180,14 @@ class KeyboardTuningTest {
                     .single { it.contentDescription == "Emoji" }.performLongClick()
                 views().filterIsInstance<android.widget.Button>()
                     .single { it.contentDescription == "Number row on" }.performClick()
-                // The hub saved directly; the staged controls re-render from the saved snapshot.
+                // Preview quick controls stage just like the settings controls.
                 assertFalse(views().filterIsInstance<android.widget.CheckBox>()
                     .single { it.text == "Number row" }.isChecked)
+                assertTrue(KeyboardOptions.load(context).numberRow)
                 views().filterIsInstance<android.widget.CheckBox>()
                     .single { it.text == "Number row" }.performClick()
-                // Staged only: the hub's save stays until Apply commits the staged value.
-                assertFalse(KeyboardOptions.load(context).numberRow)
+                // No preview action persists until Apply.
+                assertTrue(KeyboardOptions.load(context).numberRow)
                 views().filterIsInstance<android.widget.Button>().single { it.text == "Apply" }.performClick()
             }
             instrumentation.waitForIdleSync()

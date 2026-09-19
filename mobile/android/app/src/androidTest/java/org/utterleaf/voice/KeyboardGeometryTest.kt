@@ -462,10 +462,12 @@ class KeyboardGeometryTest {
                             .performClick()
                     }
                     instrumentation.waitForIdleSync()
-                    // Alignment radios sit below the practice preview; scroll to them.
+                    // Controls precede the preview; scroll the alignment group into view.
                     main {
-                        (descendants(preferences.window.decorView)
-                            .filterIsInstance<android.widget.ScrollView>().first()).fullScroll(View.FOCUS_DOWN)
+                        val views = descendants(preferences.window.decorView)
+                        val alignment = views.filterIsInstance<android.widget.RadioButton>()
+                            .single { it.text == "Full width" }.parent as View
+                        views.filterIsInstance<android.widget.ScrollView>().first().scrollTo(0, alignment.top)
                     }
                     instrumentation.waitForIdleSync()
                     val bitmap = main {

@@ -32,16 +32,24 @@ import android.widget.TextView
  */
 class KeyboardSettingsActivity : Activity() {
     private var staged = KeyboardOptions()
+    private var stagedVoiceHold = false
+    private var previewPanel: TypingPanel? = null
     private lateinit var practiceEditor: EditText
     private var practiceActive = false
     private var practiceGeneration = 0
     private var previewContainer: LinearLayout? = null
     private var detail: String? = null
     private var query = ""
+    private data class Draft(val options: KeyboardOptions, val voiceHold: Boolean,
+        val detail: String?, val query: String)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT) { navigateBack() }
+        }
         practiceEditor = EditText(this).apply {
             hint = "Practice typing here"
             setText("Let's meet tomorrow at six. Bring the notes.")
@@ -53,7 +61,15 @@ class KeyboardSettingsActivity : Activity() {
             setTextIsSelectable(true)
         }
         staged = KeyboardOptions.load(this)
+        stagedVoiceHold = getSharedPreferences("keyboard", Context.MODE_PRIVATE)
+            .getBoolean("voiceHoldToInsert", false)
+        (lastNonConfigurationInstance as? Draft)?.let {
+            staged = it.options; stagedVoiceHold = it.voiceHold
+            detail = it.detail; query = it.query
+        }
     }
+    // Configuration changes retain explicit choices in memory, never practice input.
+    override fun onRetainNonConfigurationInstance(): Any = Draft(staged, stagedVoiceHold, detail, query)
     override fun onStart() { super.onStart(); practiceActive = true; render() }
     private fun practiceConnection(generation: Int): android.view.inputmethod.InputConnection? {
         if (!practiceActive || isFinishing || isDestroyed || generation != practiceGeneration) return null
@@ -81,8 +97,9 @@ class KeyboardSettingsActivity : Activity() {
         val parts = subtype.locale.split("_", "-")
         if (parts.isEmpty()) return ""
         val locale = java.util.Locale(parts[0], parts.getOrElse(1) { "" })
-        return if (locale.displayCountry.isBlank()) locale.displayLanguage
-        else "${locale.displayLanguage} (${locale.displayCountry})"
+        val region = if (locale.displayCountry.length > 3) locale.country else locale.displayCountry
+        return if (region.isBlank()) locale.displayLanguage
+        else "${locale.displayLanguage} ($region)"
     }
 
     private fun header(title: String, leftLabel: String, leftAction: () -> Unit): View {
@@ -100,7 +117,12 @@ class KeyboardSettingsActivity : Activity() {
             text = title; textSize = 18f; setTextColor(Ui.ink); setTypeface(typeface, Typeface.BOLD)
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        row.addView(Ui.button(this, "Apply") { staged.save(this@KeyboardSettingsActivity); finish() }.apply {
+        row.addView(Ui.button(this, "Apply") {
+            staged.save(this@KeyboardSettingsActivity)
+            getSharedPreferences("keyboard", Context.MODE_PRIVATE).edit()
+                .putBoolean("voiceHoldToInsert", stagedVoiceHold).apply()
+            finish()
+        }.apply {
             minHeight = Ui.dp(this@KeyboardSettingsActivity, 44)
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         return row
@@ -173,11 +195,10 @@ class KeyboardSettingsActivity : Activity() {
                 },
                 if (staged.keyBorders) "Key borders on" else "Key borders off").joinToString(" · ")),
             Category("voice", R.drawable.ic_mic, "Voice input",
-                if (context.getSharedPreferences("keyboard", Context.MODE_PRIVATE)
-                        .getBoolean("voiceHoldToInsert", false)) "Hold to start · On-device recognition"
+                if (stagedVoiceHold) "Hold to start · On-device recognition"
                 else "Tap to start · On-device recognition"),
             Category("privacy", R.drawable.ic_privacy, "Privacy & data",
-                "No connected microphone · No passive learning"))
+                "Voice only when requested · No typing history"))
         val needle = query.trim().lowercase()
         categories.filter { needle.isEmpty() || it.title.lowercase().contains(needle) ||
             it.summary.lowercase().contains(needle) }.forEach { category ->
@@ -192,15 +213,23 @@ class KeyboardSettingsActivity : Activity() {
     }
 
     private fun render() {
+        disposePreview()
+        val root = Ui.column(this).apply { setPadding(0, 0, 0, 0) }
+        val heading = Ui.column(this).apply { setPadding(Ui.dp(context, 18), 0, Ui.dp(context, 18), 0) }
+        heading.addView(if (detail == null) header("Settings", "Cancel") { finish() }
+        else header("Settings", "‹ Back") { detail = null; render() })
+        root.addView(heading)
         val column = Ui.column(this)
-        column.addView(if (detail == null) header("Settings", "Cancel") { finish() }
-        else header(detailTitle(), "‹ Back") { detail = null; render() })
         if (detail == null) {
             val search = EditText(this).apply {
                 hint = "Search settings"
                 textSize = 15f; setTextColor(Ui.ink)
                 setHintTextColor(Color.parseColor("#71897B"))
                 setSingleLine()
+                setText(query)
+                setSelection(text.length)
+                isSaveEnabled = false
+                importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
                 background = GradientDrawable().apply {
                     setColor(Color.parseColor("#242E2B"))
                     cornerRadius = Ui.dp(this@KeyboardSettingsActivity, 12).toFloat()
@@ -225,12 +254,17 @@ class KeyboardSettingsActivity : Activity() {
                 "Changes apply when you choose Apply; Cancel leaves everything unchanged. " +
                     "Reset restores defaults and keeps your models and microphone permission."))
         } else {
+            column.addView(Ui.title(this, detailTitle()))
             column.addView(Ui.text(this, detailSummary(), 14f))
-            column.addView(practiceSection())
-            column.addView(Ui.text(this, detailTitle(), 20f))
             detailControls(column)
+            column.addView(practiceSection())
         }
-        setContentView(ScrollView(this).apply { addView(column); Ui.applySystemInsets(this) })
+        root.addView(ScrollView(this).apply {
+            isFillViewport = true
+            addView(column)
+        }, LinearLayout.LayoutParams(-1, 0, 1f))
+        Ui.applySystemInsets(root)
+        setContentView(root)
     }
 
     private fun detailTitle() = when (detail) {
@@ -246,7 +280,7 @@ class KeyboardSettingsActivity : Activity() {
     private fun detailSummary() = when (detail) {
         "layout" -> "Rows, alignment and key sizing for the keyboard."
         "terminal" -> "Navigation keys, F-keys and repeat behavior."
-        "assistance" -> "Automatic capitalization and visible character hints."
+        "assistance" -> "Capitalization, word completions and character hints."
         "gestures" -> "Hold timing, vibration and gesture notes."
         "appearance" -> "Theme and key borders."
         "voice" -> "How dictation starts, and where recognition runs."
@@ -257,6 +291,7 @@ class KeyboardSettingsActivity : Activity() {
         val context = this
         val section = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         section.addView(Ui.text(context, "Practice message", 16f))
+        section.addView(Ui.text(context, "Try your changes here before applying. This text is never saved.", 13f))
         val card = GradientDrawable().apply {
             setColor(Color.parseColor("#242E2B"))
             cornerRadius = Ui.dp(context, 10).toFloat()
@@ -279,8 +314,9 @@ class KeyboardSettingsActivity : Activity() {
     private fun updatePreview() {
         val generation = ++practiceGeneration
         val preview = previewContainer ?: return
+        previewPanel?.dispose()
         preview.removeAllViews()
-        preview.addView(TypingPanel(this, staged,
+        previewPanel = TypingPanel(this, staged,
             { value -> TerminalInput.printable(practiceConnection(generation), value) },
             { TerminalInput.send(practiceConnection(generation), android.view.KeyEvent.KEYCODE_DEL) },
             { TerminalInput.printable(practiceConnection(generation), "\n") },
@@ -290,11 +326,13 @@ class KeyboardSettingsActivity : Activity() {
             { code, ctrl, alt, shift ->
                 TerminalInput.command(practiceConnection(generation), code, ctrl, alt, shift) },
             { value, ctrl, alt -> TerminalInput.printable(practiceConnection(generation), value, ctrl, alt) },
-            quickOptionsChanged = { staged = KeyboardOptions.load(this); render() },
+            quickOptionsChanged = { render() },
             editorAction = { command -> EditorActions.perform(practiceConnection(generation), command, practiceEditor.inputType) },
-            spaceLabel = subtypeSpaceLabel().ifBlank { null }).apply {
+            spaceLabel = subtypeSpaceLabel().ifBlank { null },
+            stageOptions = { staged = it }).apply {
             reset(false, false, "Enter")
-        }.view)
+        }
+        preview.addView(previewPanel!!.view)
     }
 
     private fun resetRow(): View {
@@ -319,10 +357,11 @@ class KeyboardSettingsActivity : Activity() {
             AlertDialog.Builder(this).setTitle("Reset preferences?")
                 .setMessage("Restore the redesigned defaults: number row on, extra keys on, system theme, " +
                     "auto-capitalization on, arrow repeat on, key borders on, QWERTY, Full width, standard key " +
-                    "size, 320 ms hold and no repeat filtering. Your models and microphone permission stay unchanged.")
+                    "size, 320 ms hold and no repeat filtering. Choose Apply to save the reset, or Cancel to keep " +
+                    "your preferences. Your models and microphone permission stay unchanged.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Reset") { _, _ ->
-                    KeyboardOptions.resetPreferences(this)
-                    staged = KeyboardOptions.load(this)
+                    staged = KeyboardOptions()
+                    stagedVoiceHold = false
                     render()
                 }.show()
         }
@@ -352,7 +391,7 @@ class KeyboardSettingsActivity : Activity() {
                     this.text = text; textSize = 16f; setTextColor(Ui.ink)
                     minHeight = Ui.dp(context, 44)
                     isChecked = checked
-                    setOnClickListener { if (!checked) pick(index) }
+                    setOnClickListener { pick(index); updatePreview() }
                 })
             }
         })
@@ -455,15 +494,14 @@ class KeyboardSettingsActivity : Activity() {
                 toggle("Key borders", staged.keyBorders) { staged = staged.copy(keyBorders = it) }
             }
             "voice" -> {
-                val prefs = getSharedPreferences("keyboard", Context.MODE_PRIVATE)
-                toggle("Hold the mic key to insert", prefs.getBoolean("voiceHoldToInsert", false)) { value ->
-                    prefs.edit().putBoolean("voiceHoldToInsert", value).apply()
+                toggle("Hold the mic key to insert", stagedVoiceHold) { value ->
+                    stagedVoiceHold = value
                 }
                 note("Recognition runs on this device with imported models. Import or switch models in Utterleaf Setup. " +
                     "Nothing is sent anywhere and dictation is unavailable in password fields.")
             }
             else -> {
-                note("No connected microphone — voice needs explicit permission and stays off until you allow it.")
+                note("Voice only when requested — microphone permission alone never starts recording.")
                 note("No passive learning — the keyboard never learns from what you type.")
                 note("No typing history — practice input is cleared when this screen closes and is never saved.")
                 note("No clipboard monitoring — paste only reads the clipboard when you tap Paste.")
@@ -474,9 +512,27 @@ class KeyboardSettingsActivity : Activity() {
         controlsColumn = null
     }
 
+    private fun disposePreview() {
+        practiceGeneration++
+        previewPanel?.dispose()
+        previewPanel = null
+        previewContainer?.removeAllViews()
+        previewContainer = null
+    }
+
+    @Suppress("DEPRECATION")
+    @android.annotation.SuppressLint("GestureBackNavigation") // API 33+ uses the platform callback above.
+    override fun onBackPressed() {
+        navigateBack()
+    }
+
+    private fun navigateBack() {
+        if (detail != null) { detail = null; render() } else finish()
+    }
+
     private fun clearPractice() {
         practiceActive = false; practiceGeneration++
-        previewContainer?.removeAllViews()
+        disposePreview()
         if (::practiceEditor.isInitialized) practiceEditor.setText("")
     }
     override fun finish() { clearPractice(); super.finish() }
