@@ -114,6 +114,25 @@ Local candidate evidence on 2026-09-19:
   redesign its grouping and pagination after capturing portrait and landscape
   evidence; do not silently remove characters to make the page look cleaner.
 
+## Voice-state indicator slice
+
+The explicit mic action uses a compact, untinted Utterling holding a microphone.
+The opened Voice surface uses the repository's official Utterling derivatives for
+Listening, Processing, Transcript ready, Editing and Needs attention. Every image
+is paired with visible state text; the illustration is supplementary and does not
+replace Stop, Insert, Discard, recovery copy, timer or local-processing status.
+
+Acceptance evidence on the visible API 35 emulator:
+
+- Voice workflow controls: 13/13 passed, including the six state labels and OLED
+  true-black rendering.
+- Compact toolbar mic treatment passed enabled/disabled contrast checks in Light
+  and Dark; screenshots confirm branded art remains full-color while other action
+  icons retain the normal palette tint.
+- The generated `utterling_mic.png` is a transparent, non-destructive derivative
+  of the official `utterling_default.png`; the other five states reuse existing
+  official repository assets.
+
 ## Stop
 
 For Slice 0, stop after the daily action contract, Select semantics, portrait and

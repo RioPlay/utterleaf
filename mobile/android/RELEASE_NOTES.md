@@ -16,6 +16,10 @@ complete dark appearance choices, and shortens routine Android CI feedback.
   true-black **OLED** modes.
 - A normal mic tap preserves the review-and-correct flow before **Insert**.
   **Hold mic to insert after recognition** remains an explicit opt-in shortcut.
+- The mic action now uses an Utterling holding a microphone. The Voice surface
+  pairs distinct Utterling states with explicit **Listening**, **Processing
+  locally**, **Transcript ready**, **Editing transcript**, and **Needs attention**
+  labels; controls and text remain authoritative for accessibility.
 - Protected drafts omit voice, password-manager routes, host settings, keyboard
   switching, and preference toggles. Opening Extra keys no longer changes its
   saved preference.

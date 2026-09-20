@@ -32,6 +32,9 @@ class VoicePanelControlsTest {
     }
     private inner class Fixture(val activity: android.app.Activity, val panel: VoicePanel, val fake: Fake, val results: MutableList<(String) -> Unit>, val inserted: MutableList<String>) {
         fun key(label: String): Button = main { descendants(panel.view).filterIsInstance<Button>().single { it.text == label } }
+        fun hasText(label: String) = main {
+            descendants(panel.view).filterIsInstance<android.widget.TextView>().any { it.text == label }
+        }
         fun click(label: String) = main { key(label).performClick() }
         fun holdMode() = main { descendants(panel.view).filterIsInstance<CheckBox>().single().isChecked = true }
         fun touch(button: Button, action: Int, outside: Boolean = false) = main {
@@ -45,7 +48,8 @@ class VoicePanelControlsTest {
             assertEquals(1, main { fake.started }); return button
         }
         fun capture(name: String) {
-            require(name in setOf("voice-review", "voice-edit"))
+            require(name in setOf("voice-available", "voice-listening", "voice-processing",
+                "voice-review", "voice-edit", "voice-problem", "voice-oled-available"))
             assertTrue(instrumentation.targetContext.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0)
             val flags = main { activity.window.attributes.flags }
             try {
@@ -66,8 +70,10 @@ class VoicePanelControlsTest {
             try { button.dispatchTouchEvent(event) } finally { event.recycle() }
         }
     }
-    private fun withPanel(accept: Boolean = true, test: (Fixture) -> Unit) {
+    private fun withPanel(accept: Boolean = true, theme: ThemeMode? = null, test: (Fixture) -> Unit) {
         val context = instrumentation.targetContext
+        val oldOptions = KeyboardOptions.load(context)
+        if (theme != null) oldOptions.copy(theme = theme).save(context)
         val prefs = context.getSharedPreferences("keyboard", 0)
         val old = prefs.getBoolean("voiceHoldToInsert", false)
         prefs.edit().putBoolean("voiceHoldToInsert", false).commit()
@@ -86,7 +92,10 @@ class VoicePanelControlsTest {
             }
             assertTrue(laidOut.await(5, java.util.concurrent.TimeUnit.SECONDS)); instrumentation.waitForIdleSync()
             test(fixture)
-        } finally { main { activity.finish() }; instrumentation.waitForIdleSync(); prefs.edit().putBoolean("voiceHoldToInsert", old).commit() }
+        } finally {
+            main { activity.finish() }; instrumentation.waitForIdleSync()
+            oldOptions.save(context); prefs.edit().putBoolean("voiceHoldToInsert", old).commit()
+        }
     }
     @Test fun captureLimitTransitionsToProcessingAndRejectsLateStatus() = withPanel { f ->
         f.click("Speak")
@@ -103,6 +112,23 @@ class VoicePanelControlsTest {
         main { callback(CaptureStatus(CapturePhase.PROCESSING, "Previous take")) }
         assertTrue(main { f.key("Stop").isEnabled })
     }
+    @Test fun utterlingStateLabelsTrackTheVoiceWorkflow() = withPanel { f ->
+        assertTrue(f.hasText("Voice available")); f.capture("voice-available")
+        f.click("Speak"); assertTrue(f.hasText("Listening")); f.capture("voice-listening")
+        f.click("Stop"); assertTrue(f.hasText("Processing locally")); f.capture("voice-processing")
+        main { f.results.single()("draft") }; assertTrue(f.hasText("Transcript ready")); f.capture("voice-review")
+        f.click("Edit transcript"); assertTrue(f.hasText("Editing transcript")); f.capture("voice-edit")
+        f.click("Use edits"); assertTrue(f.hasText("Transcript ready"))
+        f.click("Discard"); assertTrue(f.hasText("Voice available"))
+        f.click("Speak"); f.click("Stop"); main { f.results.last()(" ") }
+        assertTrue(f.hasText("Needs attention")); f.capture("voice-problem")
+    }
+    @Test fun utterlingAvailableStateRemainsReadableOnOledBlack() =
+        withPanel(theme = ThemeMode.OLED) { f ->
+            val background = main { f.panel.view.background as android.graphics.drawable.ColorDrawable }
+            assertEquals(android.graphics.Color.BLACK, background.color)
+            assertTrue(f.hasText("Voice available")); f.capture("voice-oled-available")
+        }
     @Test fun micEntryStartsOneReviewTakeAndNeverRestartsOnClear() = withPanel { f ->
         f.holdMode()
         main { f.panel.startFromMicTap(); f.panel.startFromMicTap() }

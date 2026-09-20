@@ -17,11 +17,13 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     private val createSession: ((CaptureStatus) -> Unit, (String) -> Unit, (String) -> Unit) -> CaptureSession =
         { state, result, error -> VoiceSession(context.applicationContext, state, result, error) }) {
     private enum class Mode { IDLE, CAPTURE, PROCESSING, REVIEW, EDIT }
+    private enum class VisualState { AVAILABLE, LISTENING, PROCESSING, READY, EDITING, PROBLEM }
     private val colors = Ui.palette(context)
     val view = Ui.column(context)
     private val handler = Handler(Looper.getMainLooper())
     private val gate = TakeGate()
     private var mode = Mode.IDLE
+    private var visualState = VisualState.AVAILABLE
     private var session: CaptureSession? = null
     private var autoInsert = false
     private var released = false
@@ -38,6 +40,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         scaleType = ImageView.ScaleType.FIT_CENTER
     }
+    private val stateLabel = Ui.text(context, "Voice available", 14f)
     private val status = Ui.text(context, "Microphone off · English · local processing")
     private val preview = EditText(context).apply {
         hint = "Your transcript"
@@ -66,7 +69,10 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
             Mode.IDLE -> begin(false)
             Mode.CAPTURE -> stopCapture()
             Mode.REVIEW -> insertReview()
-            Mode.EDIT -> { editingGeneration++; editingKeys.removeAllViews(); mode = Mode.REVIEW; updateControls() }
+            Mode.EDIT -> {
+                editingGeneration++; editingKeys.removeAllViews(); mode = Mode.REVIEW
+                visualState = VisualState.READY; updateControls()
+            }
             Mode.PROCESSING -> Unit
         }
     }
@@ -99,10 +105,14 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
 
     init {
         val heading = LinearLayout(context).apply { gravity = android.view.Gravity.CENTER_VERTICAL }
-        heading.addView(stateIcon, LinearLayout.LayoutParams(Ui.dp(context, 32), Ui.dp(context, 32)).apply {
+        heading.addView(stateIcon, LinearLayout.LayoutParams(Ui.dp(context, 56), Ui.dp(context, 56)).apply {
             marginEnd = Ui.dp(context, 8)
         })
-        heading.addView(Ui.text(context, context.getString(R.string.dictation_name), 20f))
+        heading.addView(LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(Ui.text(context, context.getString(R.string.dictation_name), 20f))
+            addView(stateLabel)
+        })
         view.addView(heading); view.addView(status); view.addView(modelChoice); view.addView(modelOptions)
         view.addView(preview, LinearLayout.LayoutParams(-1, Ui.dp(context, 96)))
         val reviewActions = LinearLayout(context)
@@ -171,27 +181,32 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     private fun begin(automatic: Boolean) {
         if (disposed || mode != Mode.IDLE) return
         val token = gate.next()
-        autoInsert = automatic; released = false; mode = Mode.CAPTURE; updateControls()
+        autoInsert = automatic; released = false; mode = Mode.CAPTURE
+        visualState = VisualState.LISTENING; updateControls()
         val candidate = createSession(
             { update -> if (gate.accepts(token) && (mode == Mode.CAPTURE || mode == Mode.PROCESSING)) {
                 // Capture can end at its limit without a Stop tap. Never infer phase from UI copy.
                 if (update.phase == CapturePhase.PROCESSING) {
-                    mode = Mode.PROCESSING; updateControls(); status.text = update.message
+                    mode = Mode.PROCESSING; visualState = VisualState.PROCESSING
+                    updateControls(); status.text = update.message
                 } else if (mode == Mode.CAPTURE) status.text = update.message
             } },
             { text -> if (gate.accepts(token) && (mode == Mode.CAPTURE || mode == Mode.PROCESSING)) {
                 session = null
                 if (text.length > 16000 || text.isBlank()) {
                     cancelHold(); mode = Mode.IDLE; autoInsert = false
+                    visualState = VisualState.PROBLEM
                     status.text = "No usable transcript. Try a shorter take."; updateControls()
                 } else {
                     preview.setText(text); preview.setSelection(preview.length()); transcriptExpanded = false
-                    mode = Mode.REVIEW; updateControls(); scheduleExpiry()
+                    mode = Mode.REVIEW; visualState = VisualState.READY
+                    updateControls(); scheduleExpiry()
                     if (autoInsert && released) insertReview()
                 }
             } },
             { message -> if (gate.accepts(token)) {
                 cancelHold(); autoInsert = false; session = null; mode = Mode.IDLE
+                visualState = VisualState.PROBLEM
                 status.text = message; updateControls()
             } })
         if (gate.accepts(token) && mode == Mode.CAPTURE) { session = candidate; candidate.start() }
@@ -199,7 +214,8 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     }
     private fun stopCapture() {
         if (mode != Mode.CAPTURE) return
-        mode = Mode.PROCESSING; updateControls(); session?.stop()
+        mode = Mode.PROCESSING; visualState = VisualState.PROCESSING
+        updateControls(); session?.stop()
     }
     private fun insertReview() {
         if (disposed || mode != Mode.REVIEW) return
@@ -207,16 +223,21 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         if (text.isBlank()) { status.text = "The transcript is empty. Edit it or discard this take."; return }
         autoInsert = false // A rejected automatic insertion requires an explicit retry.
         if (insert(text)) {
-            clear(); status.text = "Inserted · microphone off"
+            clear(); visualState = VisualState.AVAILABLE; status.text = "Inserted · microphone off"
             inhibitUntil = android.os.SystemClock.uptimeMillis() + 400
             val token = gate.next()
             rearm = Runnable { if (gate.accepts(token) && !disposed) updateControls() }.also { handler.postDelayed(it, 400) }
             updateControls()
-        } else { status.text = "Could not insert into this field. Edit, retry, or discard this preview."; updateControls() }
+        } else {
+            visualState = VisualState.PROBLEM
+            status.text = "Could not insert into this field. Edit, retry, or discard this preview."
+            updateControls()
+        }
     }
     private fun beginEditing() {
         if (disposed || mode != Mode.REVIEW) return
-        autoInsert = false; cancelHold(); transcriptExpanded = false; mode = Mode.EDIT; scheduleExpiry()
+        autoInsert = false; cancelHold(); transcriptExpanded = false; mode = Mode.EDIT
+        visualState = VisualState.EDITING; scheduleExpiry()
         val token = ++editingGeneration
         fun current() = !disposed && mode == Mode.EDIT && editingGeneration == token
         val panel = TypingPanel(context, KeyboardOptions.load(context),
@@ -238,11 +259,22 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         modelChoice.isEnabled = mode == Mode.IDLE && !disposed
         if (mode != Mode.IDLE) modelOptions.removeAllViews()
         modelChoice.text = "Model · ${ModelStore.installed(context.noBackupFilesDir)?.id ?: "choose"}"
-        stateIcon.setImageResource(when (mode) {
-            Mode.CAPTURE -> R.drawable.voice_recording
-            Mode.PROCESSING -> R.drawable.voice_busy
-            else -> R.drawable.voice_idle
+        stateIcon.setImageResource(when (visualState) {
+            VisualState.AVAILABLE -> R.drawable.utterling_mic
+            VisualState.LISTENING -> R.drawable.utterling_listening
+            VisualState.PROCESSING -> R.drawable.utterling_thinking
+            VisualState.READY -> R.drawable.utterling_success
+            VisualState.EDITING -> R.drawable.utterling_typing
+            VisualState.PROBLEM -> R.drawable.utterling_error
         })
+        stateLabel.text = when (visualState) {
+            VisualState.AVAILABLE -> "Voice available"
+            VisualState.LISTENING -> "Listening"
+            VisualState.PROCESSING -> "Processing locally"
+            VisualState.READY -> "Transcript ready"
+            VisualState.EDITING -> "Editing transcript"
+            VisualState.PROBLEM -> "Needs attention"
+        }
         primary.text = when (mode) { Mode.IDLE -> if (holdMode.isChecked) "Hold to speak" else "Speak"; Mode.CAPTURE -> "Stop"; Mode.PROCESSING -> "Transcribing…"; Mode.REVIEW -> "Insert"; Mode.EDIT -> "Use edits" }
         primary.contentDescription = primary.text
         primary.isEnabled = !disposed && mode != Mode.PROCESSING && android.os.SystemClock.uptimeMillis() >= inhibitUntil
@@ -298,6 +330,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         gate.invalidate(); cancelHold(); autoInsert = false; released = false
         session?.cancel(); session = null; editingGeneration++; editingKeys.removeAllViews()
         preview.setText(""); transcriptExpanded = false; mode = Mode.IDLE
+        visualState = VisualState.AVAILABLE
         handler.removeCallbacks(warning); handler.removeCallbacks(expire)
         status.text = "Microphone off · English · local processing"; updateControls()
     }

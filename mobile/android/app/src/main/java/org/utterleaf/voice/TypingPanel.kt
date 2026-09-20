@@ -28,6 +28,8 @@ import android.widget.Toast
 /** Secondary hints are visual; the button keeps its primary spoken key label. */
 internal class HintedKey(context: Context) : Button(context) {
     var primaryIcon: android.graphics.drawable.Drawable? = null
+    var primaryIconSizeDp: Int = 24
+    var tintPrimaryIcon: Boolean = true
     var bottomIcon: android.graphics.drawable.Drawable? = null
     var secondaryHint: String? = null
         set(value) { field = value; invalidate() }
@@ -38,11 +40,11 @@ internal class HintedKey(context: Context) : Button(context) {
     override fun onDraw(canvas: Canvas) {
         primaryIcon?.let { icon ->
             super.onDraw(canvas)
-            val size = minOf(Ui.dp(context, 24), width, height)
+            val size = minOf(Ui.dp(context, primaryIconSizeDp), width, height)
             val lift = if (bottomIcon != null) Ui.dp(context, 5) else 0
             val left = (width - size) / 2; val top = (height - size) / 2 - lift
             icon.setBounds(left, top, left + size, top + size)
-            icon.setTint(currentTextColor)
+            if (tintPrimaryIcon) icon.setTint(currentTextColor) else icon.clearColorFilter()
             icon.alpha = if (isEnabled) 255 else 90
             icon.draw(canvas)
             bottomIcon?.let { glyph ->
@@ -814,10 +816,13 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
 
     private fun toolbarIcon(row: LinearLayout, icon: Int, description: String, weight: Float = 1f,
         primary: Boolean = false, pill: Boolean = false, enabled: Boolean = true,
+        iconSizeDp: Int = 24, tintIcon: Boolean = true,
         action: () -> Unit): Button =
         key(row, "", description, weight = weight, utility = !primary, primary = primary, height = 48,
             chordable = false, compact = true, pill = pill, action = action).apply {
             (this as HintedKey).primaryIcon = context.getDrawable(icon)?.mutate()
+            this.primaryIconSizeDp = iconSizeDp
+            this.tintPrimaryIcon = tintIcon
             isEnabled = enabled
         }
 
@@ -895,8 +900,8 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             toolbarIcon(destinations, R.drawable.ic_draft, "Private draft") { openDraft?.invoke() }
         } else spacer(destinations, 1f)
         if (!privateEditing) {
-            toolbarIcon(destinations, R.drawable.voice_idle, "Dictate", primary = true, pill = true,
-                enabled = voiceAllowed) { dictate() }
+            toolbarIcon(destinations, R.drawable.utterling_mic, "Dictate", primary = true, pill = true,
+                enabled = voiceAllowed, iconSizeDp = 34, tintIcon = false) { dictate() }
         } else {
             spacer(destinations, 1f)
         }
