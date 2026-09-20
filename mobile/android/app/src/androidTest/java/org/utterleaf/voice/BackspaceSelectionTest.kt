@@ -536,9 +536,21 @@ class BackspaceSelectionTest {
         selection = HostBackspaceSelection({ current }, { connection }, { offsets })
         assertTrue(selection.begin()); assertTrue(selection.move(true)); selection.update(2, 3)
         assertTrue(selection.move(true))
-        assertFalse("An earlier confirmation must not authorize a later pending move", selection.finish())
-        selection.cancel()
+        assertTrue("Release must wait for a pending editor confirmation", selection.finish())
         assertEquals(0, delayed.calls.count { it.first == "commitText" })
+        selection.update(1, 3)
+        assertEquals("The confirmed queued selection must delete exactly once", 1,
+            delayed.calls.count { it.first == "commitText" })
+
+        val boundary = connectionSpy()
+        connection = boundary.value; offsets = 3 to 3
+        selection = HostBackspaceSelection({ current }, { connection }, { offsets })
+        assertTrue(selection.begin())
+        repeat(6) { assertTrue(selection.move(true)) }
+        assertTrue("Release beyond offset zero must remain accepted", selection.finish())
+        selection.update(2, 3); selection.update(1, 3); selection.update(0, 3)
+        assertEquals("Reaching the first character must delete the complete selection", 1,
+            boundary.calls.count { it.first == "commitText" })
 
         val pendingOld = connectionSpy()
         val pendingReplacement = connectionSpy()

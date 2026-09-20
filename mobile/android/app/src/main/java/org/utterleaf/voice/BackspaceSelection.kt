@@ -35,6 +35,7 @@ internal class HostBackspaceSelection(
     private var desiredUnits = 0
     private var confirmedUnits = 0
     private var pendingLeft: Boolean? = null
+    private var finishRequested = false
 
     fun update(start: Int, end: Int) {
         if (!active) return
@@ -73,6 +74,7 @@ internal class HostBackspaceSelection(
         pendingLeft = null
         if (!invalid) pump()
         confirmed = !invalid && pendingLeft == null && desiredUnits == confirmedUnits && extent < origin
+        if (finishRequested && confirmed) commitConfirmed()
     }
 
     override fun begin(): Boolean {
@@ -81,13 +83,13 @@ internal class HostBackspaceSelection(
         val input = connection() ?: return false
         if (start < 0 || start != end) return false
         captured = input; origin = start; extent = start; active = true; confirmed = false; invalid = false
-        desiredUnits = 0; confirmedUnits = 0; pendingLeft = null
+        desiredUnits = 0; confirmedUnits = 0; pendingLeft = null; finishRequested = false
         return true
     }
 
     override fun move(left: Boolean): Boolean {
         val input = captured ?: return false
-        if (!active || invalid || !current() || input !== connection()) return false
+        if (!active || invalid || finishRequested || !current() || input !== connection()) return false
         desiredUnits = if (left) desiredUnits + 1 else maxOf(0, desiredUnits - 1)
         confirmed = false
         if (!left && pendingLeft == true && desiredUnits <= confirmedUnits) {
@@ -101,10 +103,21 @@ internal class HostBackspaceSelection(
 
     override fun finish(): Boolean {
         val input = captured ?: return false
+        if (!active || invalid || !current() || desiredUnits <= 0 || input !== connection()) return false
+        finishRequested = true
+        // A long swipe can be released while the editor is still confirming its queued
+        // Shift+Left steps. Accept that release and commit only after the final selection
+        // callback; requiring synchronous confirmation drops the first character in slower apps.
+        if (!confirmed || pendingLeft != null || desiredUnits != confirmedUnits) return true
+        return commitConfirmed()
+    }
+
+    private fun commitConfirmed(): Boolean {
+        val input = captured ?: return false
         if (!active || invalid || !current() || !confirmed || pendingLeft != null ||
             desiredUnits != confirmedUnits || input !== connection()) return false
         val committed = try { input.commitText("", 1) } catch (_: RuntimeException) { false }
-        if (committed) reset()
+        if (committed) reset() else cancel()
         return committed
     }
 
@@ -118,7 +131,7 @@ internal class HostBackspaceSelection(
 
     private fun reset() {
         active = false; confirmed = false; invalid = false; captured = null; origin = -1; extent = -1
-        desiredUnits = 0; confirmedUnits = 0; pendingLeft = null
+        desiredUnits = 0; confirmedUnits = 0; pendingLeft = null; finishRequested = false
     }
 
     /** Keeps one native navigation request in flight so confirmations cannot be mistaken for later moves. */

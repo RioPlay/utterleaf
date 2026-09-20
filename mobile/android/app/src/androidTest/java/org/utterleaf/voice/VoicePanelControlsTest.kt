@@ -43,7 +43,7 @@ class VoicePanelControlsTest {
             try { button.dispatchTouchEvent(event) } finally { event.recycle() }
         }
         fun hold(): Button {
-            holdMode(); val button = key("Hold to speak"); touch(button, MotionEvent.ACTION_DOWN)
+            holdMode(); val button = key("Hold to dictate"); touch(button, MotionEvent.ACTION_DOWN)
             UiAwait.until("Hold did not start capture") { fake.started == 1 }
             assertEquals(1, main { fake.started }); return button
         }
@@ -98,29 +98,29 @@ class VoicePanelControlsTest {
         }
     }
     @Test fun captureLimitTransitionsToProcessingAndRejectsLateStatus() = withPanel { f ->
-        f.click("Speak")
+        f.click("Start dictation")
         val callback = f.fake.status
         main { callback(CaptureStatus(CapturePhase.PROCESSING, "Microphone off")) }
-        assertFalse(main { f.key("Transcribing…").isEnabled })
+        assertFalse(main { f.key("Transcribing locally…").isEnabled })
         assertEquals(0, main { f.fake.stopped }) // No manual Stop needed at the capture limit.
         main { callback(CaptureStatus(CapturePhase.RECORDING, "Late recording update")) }
-        assertFalse(main { f.key("Transcribing…").isEnabled })
+        assertFalse(main { f.key("Transcribing locally…").isEnabled })
         main { f.results.single()("finished") }
         main { callback(CaptureStatus(CapturePhase.PROCESSING, "Late processing update")) }
-        assertTrue(main { f.key("Insert").isEnabled })
-        f.click("Discard"); f.click("Speak")
+        assertTrue(main { f.key("Insert text").isEnabled })
+        f.click("Retake")
         main { callback(CaptureStatus(CapturePhase.PROCESSING, "Previous take")) }
-        assertTrue(main { f.key("Stop").isEnabled })
+        assertTrue(main { f.key("Stop & transcribe").isEnabled })
     }
     @Test fun utterlingStateLabelsTrackTheVoiceWorkflow() = withPanel { f ->
         assertTrue(f.hasText("Voice available")); f.capture("voice-available")
-        f.click("Speak"); assertTrue(f.hasText("Listening")); f.capture("voice-listening")
-        f.click("Stop"); assertTrue(f.hasText("Processing locally")); f.capture("voice-processing")
+        f.click("Start dictation"); assertTrue(f.hasText("Listening")); f.capture("voice-listening")
+        f.click("Stop & transcribe"); assertTrue(f.hasText("Processing locally")); f.capture("voice-processing")
         main { f.results.single()("draft") }; assertTrue(f.hasText("Transcript ready")); f.capture("voice-review")
-        f.click("Edit transcript"); assertTrue(f.hasText("Editing transcript")); f.capture("voice-edit")
-        f.click("Use edits"); assertTrue(f.hasText("Transcript ready"))
-        f.click("Discard"); assertTrue(f.hasText("Voice available"))
-        f.click("Speak"); f.click("Stop"); main { f.results.last()(" ") }
+        f.click("Fix transcript"); assertTrue(f.hasText("Editing transcript")); f.capture("voice-edit")
+        f.click("Done editing"); assertTrue(f.hasText("Transcript ready"))
+        f.click("Retake"); assertTrue(f.hasText("Listening"))
+        f.click("Stop & transcribe"); main { f.results.last()(" ") }
         assertTrue(f.hasText("Needs attention")); f.capture("voice-problem")
     }
     @Test fun utterlingAvailableStateRemainsReadableOnOledBlack() =
@@ -129,24 +129,24 @@ class VoicePanelControlsTest {
             assertEquals(android.graphics.Color.BLACK, background.color)
             assertTrue(f.hasText("Voice available")); f.capture("voice-oled-available")
         }
-    @Test fun micEntryStartsOneReviewTakeAndNeverRestartsOnClear() = withPanel { f ->
+    @Test fun micEntryStartsOnceUnlessTheUserExplicitlyRetakes() = withPanel { f ->
         f.holdMode()
         main { f.panel.startFromMicTap(); f.panel.startFromMicTap() }
         assertEquals(1, main { f.fake.started })
-        f.click("Stop"); main { f.results.single()("review first") }
+        f.click("Stop & transcribe"); main { f.results.single()("review first") }
         assertTrue(f.inserted.isEmpty())
-        f.click("Discard"); main { f.panel.startFromMicTap() }
-        assertEquals(1, main { f.fake.started })
+        f.click("Retake"); main { f.panel.startFromMicTap() }
+        assertEquals(2, main { f.fake.started })
         main { (f.panel.view.parent as ViewGroup).removeView(f.panel.view); f.panel.startFromMicTap() }
-        assertEquals(1, main { f.fake.started })
+        assertEquals(2, main { f.fake.started })
     }
     @Test fun primaryControlAndLocalEditingInsertExactlyOnce() = withPanel { f ->
-        val primary = f.key("Speak"); f.click("Speak"); assertSame(primary, f.key("Stop"))
-        f.click("Stop"); assertEquals(1, main { f.fake.stopped })
-        main { f.results.single()("cat") }; assertSame(primary, f.key("Insert"))
-        f.click("Edit transcript"); f.click("s"); f.capture("voice-edit"); f.click("Use edits"); f.capture("voice-review")
+        val primary = f.key("Start dictation"); f.click("Start dictation"); assertSame(primary, f.key("Stop & transcribe"))
+        f.click("Stop & transcribe"); assertEquals(1, main { f.fake.stopped })
+        main { f.results.single()("cat") }; assertSame(primary, f.key("Insert text"))
+        f.click("Fix transcript"); f.click("s"); f.capture("voice-edit"); f.click("Done editing"); f.capture("voice-review")
         assertTrue(f.inserted.isEmpty())
-        f.click("Insert"); main { primary.performClick() }
+        f.click("Insert text"); main { primary.performClick() }
         assertEquals(listOf("cats"), f.inserted); assertEquals(1, main { f.fake.started })
     }
     @Test fun holdReleaseThenResultInsertsOnce() = withPanel { f ->
@@ -172,7 +172,7 @@ class VoicePanelControlsTest {
         assertTrue(f.inserted.isEmpty()); assertEquals(1, main { f.fake.cancelled })
     }
     @Test fun transcriptExpandsAndEditsWithoutRecordingPreferences() = withPanel { f ->
-        f.click("Speak"); f.click("Stop")
+        f.click("Start dictation"); f.click("Stop & transcribe")
         val transcript = (1..30).joinToString("\n") { "Line $it of the transcript." }
         main { f.results.single()(transcript) }
         val preview = main { descendants(f.panel.view).filterIsInstance<android.widget.EditText>().single() }
@@ -182,15 +182,15 @@ class VoicePanelControlsTest {
         f.click("Expand transcript")
         assertTrue(main { preview.layoutParams.height > collapsed })
         assertEquals(transcript, main { preview.text.toString() })
-        f.click("Edit transcript")
+        f.click("Fix transcript")
         assertEquals(collapsed, main { preview.layoutParams.height })
         assertNotNull(main { preview.keyListener })
         main { preview.setSelection(preview.length()) }
-        f.click("s"); f.click("Use edits"); f.click("Insert")
+        f.click("s"); f.click("Done editing"); f.click("Insert text")
         assertEquals(listOf(transcript + "s"), f.inserted)
     }
     @Test fun shortTapDoesNotCaptureAndExtraFingerCancelsHold() = withPanel { f ->
-        f.holdMode(); val primary = f.key("Hold to speak")
+        f.holdMode(); val primary = f.key("Hold to dictate")
         f.touch(primary, MotionEvent.ACTION_DOWN); f.touch(primary, MotionEvent.ACTION_UP)
         UiAwait.remains("Short tap must not start capture") { f.fake.started == 0 }
         val held = f.hold(); f.extraFinger(held); f.touch(held, MotionEvent.ACTION_UP)
@@ -201,7 +201,7 @@ class VoicePanelControlsTest {
         val button = f.hold(); main { f.results.single()("original") }
         f.touch(button, MotionEvent.ACTION_UP)
         assertEquals(listOf("original"), f.inserted)
-        f.click("Edit transcript"); f.click("."); f.click("Use edits"); f.click("Insert")
+        f.click("Fix transcript"); f.click("."); f.click("Done editing"); f.click("Insert text")
         assertEquals(listOf("original", "original."), f.inserted)
     }
 
@@ -230,7 +230,7 @@ class VoicePanelControlsTest {
             }
             assertTrue(laidOut.await(5, java.util.concurrent.TimeUnit.SECONDS)); instrumentation.waitForIdleSync()
             fun button(text: String) = main { descendants(panel.view).filterIsInstance<Button>().single { it.text == text } }
-            main { button("Model · tiny.en").performClick() }
+            main { button("Voice options").performClick(); button("Model · tiny.en").performClick() }
             val baseChoice = button("Balanced · base.en")
             main { assertTrue(WorkLease.acquire()) }
             try { main { baseChoice.performClick() } }

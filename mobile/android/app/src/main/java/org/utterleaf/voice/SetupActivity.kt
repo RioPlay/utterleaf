@@ -6,6 +6,8 @@ import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -37,33 +39,59 @@ class SetupActivity : Activity() {
             ?: ModelStore.installed(noBackupFilesDir) ?: ModelStore.catalog.first()
         importPending = savedInstanceState?.getBoolean("importPending") ?: false
         val column = Ui.column(this)
-        column.addView(Ui.mascot(this))
-        column.addView(Ui.title(this, "Make yourself at home."))
-        column.addView(Ui.text(this, "Utterleaf · Android preview", 18f))
-        column.addView(Ui.text(this, "Start typing in two steps. Add offline English dictation whenever you want. No Internet permission, accounts, or saved recordings."))
-        column.addView(Ui.title(this, "Your keyboard"))
+        column.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            addView(LinearLayout(this@SetupActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(Ui.text(this@SetupActivity, "WELCOME", 12f).apply {
+                    setTextColor(colors.accent); setTypeface(typeface, Typeface.BOLD)
+                })
+                addView(Ui.title(this@SetupActivity, "Make yourself at home."))
+                addView(Ui.text(this@SetupActivity, "Utterleaf for Android", 16f))
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(Ui.mascot(this@SetupActivity))
+        })
+        column.addView(Ui.text(this,
+            "Typing takes two quick steps. Offline voice is optional and can be added whenever you want."))
+        column.addView(Ui.text(this, "No account · No Internet permission · No saved recordings", 13f).apply {
+            setTextColor(colors.accent); setTypeface(typeface, Typeface.BOLD)
+        })
+
+        val keyboardCard = setupCard()
+        keyboardCard.addView(Ui.title(this, "Your keyboard"))
         keyboardStatus = Ui.text(this, "")
-        column.addView(keyboardStatus)
+        keyboardCard.addView(keyboardStatus)
         enableKeyboard = Ui.button(this, "1 · Enable Utterleaf") {
             startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
         }
-        column.addView(enableKeyboard)
+        keyboardCard.addView(enableKeyboard)
         chooseKeyboard = Ui.button(this, "2 · Choose Utterleaf") {
             (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
         }
-        column.addView(chooseKeyboard)
-        column.addView(Ui.text(this, "Then open any app and tap a text field. Typing needs neither a speech model nor microphone permission."))
-        column.addView(Ui.button(this, "Keyboard preferences and preview") { startActivity(Intent(this, KeyboardSettingsActivity::class.java)) })
+        keyboardCard.addView(chooseKeyboard)
+        keyboardCard.addView(Ui.text(this, "Then open any app and tap a text field. Typing never needs a speech model or microphone permission.", 14f))
+        keyboardCard.addView(Ui.button(this, "Keyboard preferences and preview") { startActivity(Intent(this, KeyboardSettingsActivity::class.java)) })
+        column.addView(keyboardCard, spacedCard())
         status = Ui.text(this, "")
         status.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         column.addView(status)
 
-        column.addView(Ui.title(this, "Optional · offline voice"))
+        val voiceCard = setupCard()
+        voiceCard.addView(Ui.title(this, "Optional · offline voice"))
         voiceStatus = Ui.text(this, "")
-        column.addView(voiceStatus)
-        column.addView(Ui.text(this, "Choose an English model, import its verified file, then allow your microphone. Use the keyboard's Voice button to dictate; no extra keyboard is required."))
-        column.addView(Ui.text(this, "1 · Add a speech model", 19f))
-        column.addView(Ui.text(this, "Keep multiple models and switch between takes. Tiny is the fast option, Base balances size and processing, and Small offers more capacity at a higher cost in memory and time. Larger does not guarantee accuracy. All three options are English only."))
+        voiceCard.addView(voiceStatus)
+        voiceCard.addView(Ui.text(this, "Choose a verified English model and allow the microphone only when you are ready to dictate.", 14f))
+        val voiceDetails = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        lateinit var voiceToggle: Button
+        voiceToggle = Ui.button(this, "Set up offline voice") {
+            val expanding = voiceDetails.visibility != View.VISIBLE
+            voiceDetails.visibility = if (expanding) View.VISIBLE else View.GONE
+            voiceToggle.text = if (expanding) "Hide voice setup" else "Set up offline voice"
+        }
+        voiceCard.addView(voiceToggle)
+        voiceDetails.addView(Ui.text(this, "1 · Add a speech model", 19f))
+        voiceDetails.addView(Ui.text(this, "Tiny is fast, Base balances size and processing, and Small offers more capacity at a higher cost in memory and time. Larger does not guarantee accuracy. Models are English only."))
         importModel = Ui.button(this, "Import a model") {
             importPending = true
             try { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -73,8 +101,8 @@ class SetupActivity : Activity() {
                 status.text = "No document picker is available."
             }
         }
-        column.addView(importModel)
-        column.addView(Ui.text(this, "Already downloaded a model? Import identifies tiny.en, base.en or small.en automatically and verifies the file. Need a download? Choose an option below; this only changes the browser link."))
+        voiceDetails.addView(importModel)
+        voiceDetails.addView(Ui.text(this, "Already downloaded a model? Import identifies tiny.en, base.en or small.en automatically and verifies the file. Need a download? Choose an option below; this only changes the browser link."))
         val choices = RadioGroup(this)
         ModelStore.catalog.forEach { spec ->
             choices.addView(RadioButton(this).apply {
@@ -91,9 +119,9 @@ class SetupActivity : Activity() {
                 }
             })
         }
-        column.addView(choices)
+        voiceDetails.addView(choices)
         modelDetails = Ui.text(this, "")
-        column.addView(modelDetails)
+        voiceDetails.addView(modelDetails)
         useModel = Ui.button(this, "Use selected model") {
             if (WorkLease.acquire()) {
                 try { status.text = if (ModelStore.select(noBackupFilesDir, selectedModel))
@@ -103,7 +131,7 @@ class SetupActivity : Activity() {
                 refreshReadiness(); refreshModelChoice()
             } else status.text = "Wait for the current take or import to finish."
         }
-        column.addView(useModel)
+        voiceDetails.addView(useModel)
         downloadModel = Ui.button(this, "") {
             val spec = selectedModel
             AlertDialog.Builder(this).setTitle("Download ${spec.id} in your browser?")
@@ -113,18 +141,18 @@ class SetupActivity : Activity() {
                     catch (_: android.content.ActivityNotFoundException) { status.text = "No browser available. Transfer ${spec.filename} from another device, then import it here." }
                 }.show()
         }
-        column.addView(downloadModel)
+        voiceDetails.addView(downloadModel)
         refreshModelChoice()
-        column.addView(Ui.text(this, "2 · Allow your microphone", 19f))
-        column.addView(Ui.button(this, "Allow microphone") {
-            if (microphoneAllowed()) status.text = "Microphone permission is already allowed. Recording starts only after you tap Speak."
+        voiceDetails.addView(Ui.text(this, "2 · Allow your microphone", 19f))
+        voiceDetails.addView(Ui.button(this, "Allow microphone") {
+            if (microphoneAllowed()) status.text = "Microphone permission is already allowed. Recording starts only after you tap Start dictation."
             else requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 11)
         })
-        column.addView(Ui.button(this, "Open app permissions") {
+        voiceDetails.addView(Ui.button(this, "Open app permissions") {
             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
         })
-        column.addView(Ui.text(this, "3 · Try it in a text field", 19f))
-        column.addView(Ui.text(this, "Tap Dictate on Utterleaf to start recording, then Stop to review. In the separate voice provider, tap Speak first. Edit transcript lets you make changes before Insert. Optional hold mode inserts after release and recognition. Each take has a 120-second limit. Preview clears after two minutes unless you choose Keep reviewing, and immediately when you leave or change fields. Password typing works; dictation is disabled in password fields."))
+        voiceDetails.addView(Ui.text(this, "3 · Try it in a text field", 19f))
+        voiceDetails.addView(Ui.text(this, "Tap Dictate, then Stop & transcribe. Review the result, use Fix transcript when needed, and tap Insert text. Each take has a 120-second limit. Dictation stays unavailable in password fields."))
         removeModel = Ui.button(this, "Delete selected model") {
             val deleting = selectedModel
             AlertDialog.Builder(this).setTitle("Delete ${deleting.id}?").setMessage("Only this imported model is removed. Typing will still work. You can select another installed model or import it again later.")
@@ -137,7 +165,9 @@ class SetupActivity : Activity() {
                     } else status.text = "Wait for the current take or import to finish."
                 }.show()
         }
-        column.addView(removeModel)
+        voiceDetails.addView(removeModel)
+        voiceCard.addView(voiceDetails)
+        column.addView(voiceCard, spacedCard())
         val companion = Ui.column(this).apply { visibility = View.GONE }
         column.addView(Ui.button(this, "Advanced · voice with another keyboard") {
             companion.visibility = if (companion.visibility == View.VISIBLE) View.GONE else View.VISIBLE
@@ -167,6 +197,21 @@ class SetupActivity : Activity() {
         })
         setContentView(ScrollView(this).apply { addView(column); Ui.applySystemInsets(this) })
         refreshReadiness()
+    }
+    private fun setupCard() = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        val colors = Ui.palette(this@SetupActivity)
+        background = GradientDrawable().apply {
+            setColor(colors.key)
+            setStroke(Ui.dp(this@SetupActivity, 1), colors.utility)
+            cornerRadius = Ui.dp(this@SetupActivity, 18).toFloat()
+        }
+        val padding = Ui.dp(this@SetupActivity, 14)
+        setPadding(padding, padding, padding, padding)
+    }
+    private fun spacedCard() = LinearLayout.LayoutParams(-1, -2).apply {
+        topMargin = Ui.dp(this@SetupActivity, 12)
+        bottomMargin = Ui.dp(this@SetupActivity, 4)
     }
     private fun megabytes(size: Long) = String.format(Locale.US, "%.1f", size / 1_000_000.0)
     private fun refreshModelChoice() {
@@ -250,7 +295,7 @@ class SetupActivity : Activity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode != 11) return
-        status.text = if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) "Microphone permission allowed. Recording starts only after you tap Speak."
+        status.text = if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) "Microphone permission allowed. Recording starts only after you tap Start dictation."
                       else "Microphone permission is off. Typing still works. Use Open app permissions if Android no longer shows the prompt."
         refreshReadiness()
     }

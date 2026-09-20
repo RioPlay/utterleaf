@@ -36,12 +36,13 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     private var rearm: Runnable? = null
     private var micEntryUsed = false
     private var transcriptExpanded = false
+    private var optionsExpanded = false
     private val stateIcon = ImageView(context).apply {
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         scaleType = ImageView.ScaleType.FIT_CENTER
     }
     private val stateLabel = Ui.text(context, "Voice available", 14f)
-    private val status = Ui.text(context, "Microphone off · English · local processing")
+    private val status = Ui.text(context, "Microphone off · processed only on this device")
     private val preview = EditText(context).apply {
         hint = "Your transcript"
         inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
@@ -64,7 +65,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         }
     }
     private val editingKeys = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-    private val primary = Ui.button(context, "Speak") {
+    private val primary = Ui.button(context, "Start dictation") {
         if (!disposed && android.os.SystemClock.uptimeMillis() >= inhibitUntil) when (mode) {
             Mode.IDLE -> begin(false)
             Mode.CAPTURE -> stopCapture()
@@ -76,7 +77,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
             Mode.PROCESSING -> Unit
         }
     }
-    private val edit = Ui.button(context, "Edit transcript") { beginEditing() }
+    private val edit = Ui.button(context, "Fix transcript") { beginEditing() }
     private val transcriptSize = Ui.button(context, "Expand transcript") {
         if (!disposed && (mode == Mode.REVIEW || mode == Mode.EDIT)) {
             transcriptExpanded = !transcriptExpanded
@@ -85,6 +86,13 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     }
     private val modelChoice = Ui.button(context, "Speech model") { chooseModel() }
     private val modelOptions = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+    private val optionsPanel = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+    private val optionsToggle = Ui.button(context, "Voice options") {
+        if (!disposed && mode == Mode.IDLE) {
+            optionsExpanded = !optionsExpanded
+            updateControls()
+        }
+    }
     private val keep = Ui.button(context, "Keep reviewing") { if (mode == Mode.REVIEW || mode == Mode.EDIT) scheduleExpiry() }
     private val holdMode = CheckBox(context).apply {
         text = "Hold mic to insert after recognition"; setTextColor(colors.ink); minHeight = Ui.dp(context, 48)
@@ -94,6 +102,14 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
             updateControls()
         }
     }
+    private val secondaryAction = Ui.button(context, "Cancel take") {
+        when (mode) {
+            Mode.CAPTURE, Mode.PROCESSING -> clear()
+            Mode.REVIEW, Mode.EDIT -> { clear(); begin(false) }
+            Mode.IDLE -> Unit
+        }
+    }
+    private val keyboard = Ui.button(context, "Keyboard") { clear(); leave() }
     private val warning = Runnable {
         if (mode == Mode.REVIEW || mode == Mode.EDIT) {
             status.text = "Preview clears in 30 seconds. Tap Keep reviewing for more time."
@@ -113,7 +129,9 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
             addView(Ui.text(context, context.getString(R.string.dictation_name), 20f))
             addView(stateLabel)
         })
-        view.addView(heading); view.addView(status); view.addView(modelChoice); view.addView(modelOptions)
+        view.addView(heading); view.addView(status)
+        optionsPanel.addView(modelChoice); optionsPanel.addView(modelOptions); optionsPanel.addView(holdMode)
+        view.addView(optionsPanel)
         view.addView(preview, LinearLayout.LayoutParams(-1, Ui.dp(context, 96)))
         val reviewActions = LinearLayout(context)
         reviewActions.addView(transcriptSize, LinearLayout.LayoutParams(0, -2, 1f))
@@ -122,10 +140,10 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         view.addView(editingKeys); view.addView(keep)
         // Keep the primary action the same distance above the bottom of the panel.
         view.addView(primary, LinearLayout.LayoutParams(-1, Ui.dp(context, 56)))
-        view.addView(holdMode)
         val secondary = LinearLayout(context)
-        secondary.addView(Ui.button(context, "Discard") { clear(); status.text = "Discarded · microphone off" }, LinearLayout.LayoutParams(0, -2, 1f))
-        secondary.addView(Ui.button(context, "Back to keyboard") { clear(); leave() }, LinearLayout.LayoutParams(0, -2, 1f))
+        secondary.addView(optionsToggle, LinearLayout.LayoutParams(0, -2, 1f))
+        secondary.addView(secondaryAction, LinearLayout.LayoutParams(0, -2, 1f))
+        secondary.addView(keyboard, LinearLayout.LayoutParams(0, -2, 1f))
         view.addView(secondary)
         primary.setOnTouchListener { _, event -> handleHold(event) }
         view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
@@ -180,6 +198,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
 
     private fun begin(automatic: Boolean) {
         if (disposed || mode != Mode.IDLE) return
+        optionsExpanded = false
         val token = gate.next()
         autoInsert = automatic; released = false; mode = Mode.CAPTURE
         visualState = VisualState.LISTENING; updateControls()
@@ -255,9 +274,12 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     }
     private fun updateControls() {
         val models = ModelStore.available(context.noBackupFilesDir)
-        modelChoice.visibility = if (mode == Mode.IDLE && models.size > 1) View.VISIBLE else View.GONE
-        modelChoice.isEnabled = mode == Mode.IDLE && !disposed
-        if (mode != Mode.IDLE) modelOptions.removeAllViews()
+        optionsToggle.visibility = if (mode == Mode.IDLE && !disposed) View.VISIBLE else View.GONE
+        optionsToggle.text = if (optionsExpanded) "Hide voice options" else "Voice options"
+        optionsPanel.visibility = if (mode == Mode.IDLE && optionsExpanded && !disposed) View.VISIBLE else View.GONE
+        modelChoice.visibility = if (mode == Mode.IDLE && optionsExpanded && models.size > 1) View.VISIBLE else View.GONE
+        modelChoice.isEnabled = mode == Mode.IDLE && optionsExpanded && !disposed
+        if (mode != Mode.IDLE || !optionsExpanded) modelOptions.removeAllViews()
         modelChoice.text = "Model · ${ModelStore.installed(context.noBackupFilesDir)?.id ?: "choose"}"
         stateIcon.setImageResource(when (visualState) {
             VisualState.AVAILABLE -> R.drawable.utterling_mic
@@ -275,7 +297,13 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
             VisualState.EDITING -> "Editing transcript"
             VisualState.PROBLEM -> "Needs attention"
         }
-        primary.text = when (mode) { Mode.IDLE -> if (holdMode.isChecked) "Hold to speak" else "Speak"; Mode.CAPTURE -> "Stop"; Mode.PROCESSING -> "Transcribing…"; Mode.REVIEW -> "Insert"; Mode.EDIT -> "Use edits" }
+        primary.text = when (mode) {
+            Mode.IDLE -> if (holdMode.isChecked) "Hold to dictate" else "Start dictation"
+            Mode.CAPTURE -> "Stop & transcribe"
+            Mode.PROCESSING -> "Transcribing locally…"
+            Mode.REVIEW -> "Insert text"
+            Mode.EDIT -> "Done editing"
+        }
         primary.contentDescription = primary.text
         primary.isEnabled = !disposed && mode != Mode.PROCESSING && android.os.SystemClock.uptimeMillis() >= inhibitUntil
         preview.visibility = if (mode == Mode.REVIEW || mode == Mode.EDIT) View.VISIBLE else View.GONE
@@ -292,8 +320,14 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         }
         edit.visibility = if (mode == Mode.REVIEW && !activeHold) View.VISIBLE else View.GONE
         if (mode != Mode.REVIEW && mode != Mode.EDIT) keep.visibility = View.GONE
-        holdMode.visibility = if (mode == Mode.IDLE && !disposed) View.VISIBLE else View.GONE
-        holdMode.isEnabled = mode == Mode.IDLE && !disposed
+        holdMode.visibility = if (mode == Mode.IDLE && optionsExpanded && !disposed) View.VISIBLE else View.GONE
+        holdMode.isEnabled = mode == Mode.IDLE && optionsExpanded && !disposed
+        secondaryAction.visibility = if (mode == Mode.IDLE) View.GONE else View.VISIBLE
+        secondaryAction.text = when (mode) {
+            Mode.CAPTURE, Mode.PROCESSING -> "Cancel take"
+            Mode.REVIEW, Mode.EDIT -> "Retake"
+            Mode.IDLE -> "Cancel take"
+        }
     }
     private fun scheduleExpiry() {
         handler.removeCallbacks(warning); handler.removeCallbacks(expire)
@@ -332,6 +366,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         preview.setText(""); transcriptExpanded = false; mode = Mode.IDLE
         visualState = VisualState.AVAILABLE
         handler.removeCallbacks(warning); handler.removeCallbacks(expire)
-        status.text = "Microphone off · English · local processing"; updateControls()
+        optionsExpanded = false
+        status.text = "Microphone off · processed only on this device"; updateControls()
     }
 }

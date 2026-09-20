@@ -1,5 +1,17 @@
 # Utterleaf Android 0.1.0-alpha20
 
+- Long Backspace drags now wait for the editor's final selection confirmation,
+  so releasing at the first character deletes the complete preview even in
+  slower host editors.
+- Tapping a word completion adds the expected typing space without doubling an
+  existing space or inserting one before punctuation.
+- Dictation now presents one clear action for each state: Stop & transcribe,
+  Insert text, Fix transcript, Done editing, or Retake. Model and optional
+  hold-to-insert controls stay collapsed under Voice options.
+- Setup is now a readiness dashboard: the two steps required for typing are
+  prominent, privacy guarantees stay visible, and optional offline voice details
+  expand only when requested.
+
 This preview polishes the daily keyboard, makes editing easier to reach, adds
 complete dark appearance choices, and shortens routine Android CI feedback.
 

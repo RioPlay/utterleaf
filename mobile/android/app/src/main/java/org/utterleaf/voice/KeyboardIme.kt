@@ -93,7 +93,7 @@ class KeyboardIme : InputMethodService() {
 
     /**
      * One balanced editor transaction: delete the composing word, insert the
-     * candidate. The composing word is re-verified at tap time so a caret
+     * candidate and the expected typing space. The composing word is re-verified at tap time so a caret
      * that moved since the strip rendered can never delete unrelated text.
      */
     private fun completeSuggestion(composing: String, candidate: String, generation: Long): Boolean {
@@ -294,11 +294,13 @@ internal fun completeSuggestionTransaction(
         trailingLetters++
     }
     if (trailingLetters != composing.length || before.takeLast(trailingLetters) != composing) return false
+    val after = runCatching { connection.getTextAfterCursor(1, 0) }.getOrNull()
+    val completion = candidate + if (after.isNullOrEmpty() || !after.first().blocksCompletionSpace()) " " else ""
     var deleted = false
     return try {
         connection.beginBatchEdit()
         deleted = connection.deleteSurroundingText(composing.length, 0) == true
-        val committed = deleted && runCatching { connection.commitText(candidate, 1) }.getOrDefault(false)
+        val committed = deleted && runCatching { connection.commitText(completion, 1) }.getOrDefault(false)
         if (deleted && !committed) runCatching { connection.commitText(composing, 1) }
         committed
     } catch (_: Exception) {
@@ -307,6 +309,14 @@ internal fun completeSuggestionTransaction(
     } finally {
         runCatching { connection.endBatchEdit() }
     }
+}
+
+private fun Char.blocksCompletionSpace(): Boolean = isWhitespace() || when (Character.getType(this)) {
+    Character.CONNECTOR_PUNCTUATION.toInt(), Character.DASH_PUNCTUATION.toInt(),
+    Character.START_PUNCTUATION.toInt(), Character.END_PUNCTUATION.toInt(),
+    Character.INITIAL_QUOTE_PUNCTUATION.toInt(), Character.FINAL_QUOTE_PUNCTUATION.toInt(),
+    Character.OTHER_PUNCTUATION.toInt() -> true
+    else -> false
 }
 
 /**

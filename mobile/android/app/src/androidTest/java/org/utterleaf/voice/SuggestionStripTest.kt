@@ -184,7 +184,7 @@ class SuggestionStripTest {
                 }
                 press(candidate)
                 await("Tapping the completion did not commit through the editor") {
-                    main { activity.editor.text.toString() } == candidate.removePrefix("Complete with ")
+                    main { activity.editor.text.toString() } == candidate.removePrefix("Complete with ") + " "
                 }
             } finally {
                 close(activity)
@@ -413,5 +413,27 @@ class SuggestionStripTest {
         assertEquals("delete and restore must each be attempted", 2, commits)
         assertEquals(1, begins)
         assertEquals("batch edit must be balanced", 1, ends)
+    }
+
+    @Test fun completionAddsOneTypingSpaceUnlessPunctuationAlreadyFollows() {
+        fun complete(after: String): String {
+            var committed = ""
+            val connection = object : InputConnectionWrapper(null, true) {
+                override fun getTextBeforeCursor(length: Int, flags: Int): CharSequence = "hel"
+                override fun getTextAfterCursor(length: Int, flags: Int): CharSequence = after
+                override fun beginBatchEdit(): Boolean = true
+                override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean = true
+                override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
+                    committed = text.toString(); return true
+                }
+                override fun endBatchEdit(): Boolean = true
+            }
+            assertTrue(completeSuggestionTransaction(connection, "hel", "hello", true))
+            return committed
+        }
+        assertEquals("hello ", complete(""))
+        assertEquals("hello ", complete("world"))
+        assertEquals("hello", complete(" "))
+        assertEquals("hello", complete("."))
     }
 }

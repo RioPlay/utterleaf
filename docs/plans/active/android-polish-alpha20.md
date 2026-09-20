@@ -158,3 +158,41 @@ For Slice 0, stop after the daily action contract, Select semantics, portrait an
 landscape geometry, visible-emulator screenshots and focused checks pass. Do not
 claim physical-phone usability. Later slices own any broader Tools/Edit
 restructuring.
+
+## Final interaction blockers
+
+Publication remains paused until the reported editing and dictation friction is
+included in the exact candidate. Long Backspace releases now remain pending while
+the host confirms queued Shift+Left selection steps, including offset zero. Word
+completion inserts one typing space unless whitespace or punctuation already
+follows. Voice keeps configuration behind a collapsed Voice options control and
+uses state-specific Start dictation, Stop & transcribe, Insert text, Fix transcript,
+Done editing, Cancel take and Retake actions.
+
+Focused visible-emulator evidence on 2026-09-20:
+
+- Backspace selection: 12/12 passed, including the first-character boundary and
+  Unicode preview/deletion.
+- Suggestion strip: 10/10 passed, including live-editor replacement plus the
+  end-of-word, following-word, existing-space and punctuation spacing matrix.
+- Voice controls: 13/13 passed across capture, processing, review, editing,
+  cancellation, retake, explicit insertion and OLED state rendering.
+- JVM tests, lint, Android-test compilation and the debug build passed.
+- Setup now presents keyboard readiness and optional offline voice as two calm
+  cards. The full verified-model workflow is progressively disclosed instead of
+  competing with the two actions required to start typing.
+- The cohesive setup/editing/voice/geometry group passed 42/42 on the visible
+  API 35 emulator in true portrait and landscape orientations. Emulator evidence
+  is not a physical-phone usability claim.
+- The actual Voice IME was inspected in portrait and true `ROTATION_90` landscape;
+  emulator inspection is not a physical-device usability claim.
+
+## Cohesive experience slice
+
+The approved interaction direction now covers the whole path rather than a
+keyboard-only restyle: Daily stays stable, Tools and specialist keys disclose
+power temporarily, Voice follows one Start → Listen → Review → Correct → Insert
+journey, Setup leads with readiness, and Settings remains categorized and staged.
+Light, Dark and OLED keep the same geometry. Existing privacy, terminal, draft,
+model and clipboard boundaries remain authoritative; the redesign does not invent
+clipboard history or streaming text insertion.

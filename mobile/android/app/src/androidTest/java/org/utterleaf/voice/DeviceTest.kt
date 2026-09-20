@@ -680,7 +680,7 @@ class DeviceTest {
                 is android.view.ViewGroup -> (0 until view.childCount).flatMap { buttons(view.getChildAt(it)) }
                 else -> emptyList()
             }
-            val speak = buttons(panel.view).first { it.text == "Speak" }
+            val speak = buttons(panel.view).first { it.text == "Start dictation" }
             val insert = speak // The same primary control changes action in place.
             panel.view.measure(android.view.View.MeasureSpec.makeMeasureSpec(Ui.dp(app, 360), android.view.View.MeasureSpec.EXACTLY),
                 android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED))
@@ -688,7 +688,7 @@ class DeviceTest {
             speak.performClick()
             panel.clear() // Same path used by input-field changes and hiding the IME.
             callbacks[0]("stale speech")
-            assertEquals("Speak", insert.text.toString())
+            assertEquals("Start dictation", insert.text.toString())
             assertEquals(1, cancellations)
             speak.performClick()
             callbacks[1]("fresh speech")
