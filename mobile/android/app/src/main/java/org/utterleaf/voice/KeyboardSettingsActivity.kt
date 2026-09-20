@@ -103,21 +103,22 @@ class KeyboardSettingsActivity : Activity() {
     }
 
     private fun header(title: String, leftLabel: String, leftAction: () -> Unit): View {
+        val colors = Ui.palette(this, staged)
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, Ui.dp(this@KeyboardSettingsActivity, 8), 0, Ui.dp(this@KeyboardSettingsActivity, 12))
         }
-        row.addView(Ui.button(this, leftLabel) { leftAction() }.apply {
+        row.addView(Ui.button(this, leftLabel, staged) { leftAction() }.apply {
             background = null
             setPadding(0, Ui.dp(this@KeyboardSettingsActivity, 12), Ui.dp(this@KeyboardSettingsActivity, 8),
                 Ui.dp(this@KeyboardSettingsActivity, 12))
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         row.addView(TextView(this).apply {
-            text = title; textSize = 18f; setTextColor(Ui.ink); setTypeface(typeface, Typeface.BOLD)
+            text = title; textSize = 18f; setTextColor(colors.ink); setTypeface(typeface, Typeface.BOLD)
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        row.addView(Ui.button(this, "Apply") {
+        row.addView(Ui.button(this, "Apply", staged) {
             staged.save(this@KeyboardSettingsActivity)
             getSharedPreferences("keyboard", Context.MODE_PRIVATE).edit()
                 .putBoolean("voiceHoldToInsert", stagedVoiceHold).apply()
@@ -130,6 +131,7 @@ class KeyboardSettingsActivity : Activity() {
 
     private fun categoryRow(icon: Int, title: String, summary: String, open: () -> Unit): View {
         val context = this
+        val colors = Ui.palette(context, staged)
         val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -139,22 +141,22 @@ class KeyboardSettingsActivity : Activity() {
             setOnClickListener { open() }
             contentDescription = "$title, $summary"
         }
-        fun label(size: Float, value: String, bold: Boolean = false, color: Int = Ui.ink) = TextView(context).apply {
+        fun label(size: Float, value: String, bold: Boolean = false, color: Int = colors.ink) = TextView(context).apply {
             text = value; textSize = size; setTextColor(color)
             if (bold) setTypeface(typeface, Typeface.BOLD)
         }
         row.addView(ImageView(context).apply {
             setImageResource(icon)
-            colorFilter = android.graphics.PorterDuffColorFilter(Ui.ink, android.graphics.PorterDuff.Mode.SRC_IN)
+            colorFilter = android.graphics.PorterDuffColorFilter(colors.ink, android.graphics.PorterDuff.Mode.SRC_IN)
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }, LinearLayout.LayoutParams(Ui.dp(context, 22), Ui.dp(context, 22)).apply {
             marginEnd = Ui.dp(context, 16)
         })
         val text = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         text.addView(label(16f, title, bold = true))
-        text.addView(label(12f, summary, color = Color.parseColor("#97A79E")))
+        text.addView(label(12f, summary, color = colors.muted))
         row.addView(text, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        row.addView(label(20f, "›", color = Color.parseColor("#97A79E")))
+        row.addView(label(20f, "›", color = colors.muted))
         return row
     }
 
@@ -193,11 +195,12 @@ class KeyboardSettingsActivity : Activity() {
                     ThemeMode.SYSTEM -> "System"
                     ThemeMode.LIGHT -> "Light"
                     ThemeMode.DARK -> "Dark"
+                    ThemeMode.OLED -> "OLED"
                 },
                 if (staged.keyBorders) "Key borders on" else "Key borders off").joinToString(" · ")),
             Category("voice", R.drawable.ic_mic, "Voice input",
-                if (stagedVoiceHold) "Hold to start · On-device recognition"
-                else "Tap to start · On-device recognition"),
+                if (stagedVoiceHold) "Review on tap · hold to insert"
+                else "Review before insert"),
             Category("privacy", R.drawable.ic_privacy, "Privacy & data",
                 "Voice only when requested · No typing history"))
         // Search control names even when their current values are absent from the summary.
@@ -206,8 +209,8 @@ class KeyboardSettingsActivity : Activity() {
             "terminal" to "arrow repeat navigation terminal esc tab ctrl alt function f1 f12",
             "assistance" to "auto-capitalization auto capitalization suggestions completions secondary character hints accents",
             "gestures" to "hold timing delay hold backspace or delete to repeat repeat guard ignore repeated taps on the same key within 250 ms key vibration (respects device settings) haptics cursor spacebar slide selection accents",
-            "appearance" to "theme system light dark key borders",
-            "voice" to "hold the mic key to insert microphone dictation speech recognition",
+            "appearance" to "theme system light dark oled true black key borders",
+            "voice" to "review transcript editor hold mic to insert after recognition hold the mic key direct insert microphone dictation speech recognition",
             "privacy" to "typing history learning clipboard recording screen capture data models")
         val needle = query.trim().lowercase()
         categories.filter { needle.isEmpty() || it.title.lowercase().contains(needle) ||
@@ -218,30 +221,31 @@ class KeyboardSettingsActivity : Activity() {
             })
         }
         if (target.childCount == 0) {
-            target.addView(Ui.text(context, "No settings match \"$query\""))
+            target.addView(Ui.text(context, "No settings match \"$query\"", options = staged))
         }
     }
 
     private fun render() {
         disposePreview()
-        val root = Ui.column(this).apply { setPadding(0, 0, 0, 0) }
-        val heading = Ui.column(this).apply { setPadding(Ui.dp(context, 18), 0, Ui.dp(context, 18), 0) }
+        val colors = Ui.palette(this, staged)
+        val root = Ui.column(this, staged).apply { setPadding(0, 0, 0, 0) }
+        val heading = Ui.column(this, staged).apply { setPadding(Ui.dp(context, 18), 0, Ui.dp(context, 18), 0) }
         heading.addView(if (detail == null) header("Settings", "Cancel") { finish() }
         else header("Settings", "‹ Back") { detail = null; render() })
         root.addView(heading)
-        val column = Ui.column(this)
+        val column = Ui.column(this, staged)
         if (detail == null) {
             val search = EditText(this).apply {
                 hint = "Search settings"
-                textSize = 15f; setTextColor(Ui.ink)
-                setHintTextColor(Color.parseColor("#71897B"))
+                textSize = 15f; setTextColor(colors.ink)
+                setHintTextColor(colors.muted)
                 setSingleLine()
                 setText(query)
                 setSelection(text.length)
                 isSaveEnabled = false
                 importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
                 background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#242E2B"))
+                    setColor(colors.key)
                     cornerRadius = Ui.dp(this@KeyboardSettingsActivity, 12).toFloat()
                 }
                 setPadding(Ui.dp(this@KeyboardSettingsActivity, 14), Ui.dp(this@KeyboardSettingsActivity, 12),
@@ -262,10 +266,10 @@ class KeyboardSettingsActivity : Activity() {
             column.addView(resetRow())
             column.addView(Ui.text(this,
                 "Changes apply when you choose Apply; Cancel leaves everything unchanged. " +
-                    "Reset restores defaults and keeps your models and microphone permission."))
+                    "Reset restores defaults and keeps your models and microphone permission.", options = staged))
         } else {
-            column.addView(Ui.title(this, detailTitle()))
-            column.addView(Ui.text(this, detailSummary(), 14f))
+            column.addView(Ui.title(this, detailTitle(), staged))
+            column.addView(Ui.text(this, detailSummary(), 14f, staged))
             detailControls(column)
             column.addView(practiceSection())
         }
@@ -300,22 +304,23 @@ class KeyboardSettingsActivity : Activity() {
     private fun practiceSection(): View {
         val context = this
         val section = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        section.addView(Ui.text(context, "Practice message", 16f))
-        section.addView(Ui.text(context, "Try your changes here before applying. This text is never saved.", 13f))
+        val colors = Ui.palette(context, staged)
+        section.addView(Ui.text(context, "Practice message", 16f, staged))
+        section.addView(Ui.text(context, "Try your changes here before applying. This text is never saved.", 13f, staged))
         val card = GradientDrawable().apply {
-            setColor(Color.parseColor("#242E2B"))
+            setColor(colors.key)
             cornerRadius = Ui.dp(context, 10).toFloat()
         }
         (practiceEditor.parent as? android.view.ViewGroup)?.removeView(practiceEditor)
         practiceEditor.background = card
         practiceEditor.setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
-        practiceEditor.setTextColor(Ui.ink)
-        practiceEditor.setHintTextColor(Color.parseColor("#71897B"))
+        practiceEditor.setTextColor(colors.ink)
+        practiceEditor.setHintTextColor(colors.muted)
         section.addView(practiceEditor, LinearLayout.LayoutParams(-1, Ui.dp(context, 88)).apply {
             topMargin = Ui.dp(context, 6)
         })
         previewContainer = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        section.addView(Ui.text(context, "Keyboard preview", 14f))
+        section.addView(Ui.text(context, "Keyboard preview", 14f, staged))
         section.addView(previewContainer)
         updatePreview()
         return section
@@ -356,12 +361,14 @@ class KeyboardSettingsActivity : Activity() {
         }
         row.addView(ImageView(this).apply {
             setImageResource(R.drawable.ic_undo)
-            colorFilter = android.graphics.PorterDuffColorFilter(Ui.ink, android.graphics.PorterDuff.Mode.SRC_IN)
+            colorFilter = android.graphics.PorterDuffColorFilter(
+                Ui.palette(this@KeyboardSettingsActivity, staged).ink,
+                android.graphics.PorterDuff.Mode.SRC_IN)
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }, LinearLayout.LayoutParams(Ui.dp(this, 20), Ui.dp(this, 20)).apply {
             marginEnd = Ui.dp(this@KeyboardSettingsActivity, 16)
         })
-        row.addView(Ui.text(this, "Reset preferences", 16f))
+        row.addView(Ui.text(this, "Reset preferences", 16f, staged))
         row.contentDescription = "Reset preferences"
         row.setOnClickListener {
             AlertDialog.Builder(this).setTitle("Reset preferences?")
@@ -381,7 +388,7 @@ class KeyboardSettingsActivity : Activity() {
     private fun toggle(label: String, checked: Boolean, update: (Boolean) -> Unit) {
         val context = this
         column2().addView(CheckBox(context).apply {
-            text = label; textSize = 16f; setTextColor(Ui.ink); minHeight = Ui.dp(context, 48)
+            text = label; textSize = 16f; setTextColor(Ui.palette(context, staged).ink); minHeight = Ui.dp(context, 48)
             isChecked = checked
             setOnCheckedChangeListener { _, value ->
                 update(value)
@@ -398,7 +405,7 @@ class KeyboardSettingsActivity : Activity() {
             orientation = RadioGroup.VERTICAL
             options.forEachIndexed { index, (text, checked) ->
                 addView(RadioButton(context).apply {
-                    this.text = text; textSize = 16f; setTextColor(Ui.ink)
+                    this.text = text; textSize = 16f; setTextColor(Ui.palette(context, staged).ink)
                     minHeight = Ui.dp(context, 44)
                     isChecked = checked
                     setOnClickListener { pick(index); updatePreview() }
@@ -409,7 +416,7 @@ class KeyboardSettingsActivity : Activity() {
 
     private fun slider(value: Int, max: Int, display: (Int) -> String, update: (Int) -> Unit) {
         val context = this
-        val labelView = Ui.text(context, display(value), 14f)
+        val labelView = Ui.text(context, display(value), 14f, staged)
         column2().addView(labelView)
         column2().addView(SeekBar(context).apply {
             this.max = max; progress = value
@@ -430,8 +437,8 @@ class KeyboardSettingsActivity : Activity() {
     }
 
     private fun note(value: String) {
-        column2().addView(Ui.text(this, value, 13f).apply {
-            setTextColor(Color.parseColor("#97A79E"))
+        column2().addView(Ui.text(this, value, 13f, staged).apply {
+            setTextColor(Ui.palette(this@KeyboardSettingsActivity, staged).muted)
         })
     }
 
@@ -448,7 +455,7 @@ class KeyboardSettingsActivity : Activity() {
                 slider(staged.bottomPaddingDp, 80,
                     { progress -> "Bottom space: $progress dp" },
                     { progress -> staged = staged.copy(bottomPaddingDp = progress) })
-                Ui.text(this, "Keyboard alignment", 16f).let { controls.addView(it) }
+                Ui.text(this, "Keyboard alignment", 16f, staged).let { controls.addView(it) }
                 choice("alignment", listOf(
                     "Full width" to (staged.alignment == KeyboardAlignment.FULL),
                     "Left hand" to (staged.alignment == KeyboardAlignment.LEFT),
@@ -456,7 +463,7 @@ class KeyboardSettingsActivity : Activity() {
                     staged = staged.copy(alignment = KeyboardAlignment.entries[index])
                 }
                 note("Left and Right keep every key in a narrower column on wider screens.")
-                Ui.text(this, "Letter layout", 16f).let { controls.addView(it) }
+                Ui.text(this, "Letter layout", 16f, staged).let { controls.addView(it) }
                 choice("letters", LetterLayout.entries.map { it.label to (staged.letterLayout == it) }) { index ->
                     staged = staged.copy(letterLayout = LetterLayout.entries[index])
                 }
@@ -464,7 +471,7 @@ class KeyboardSettingsActivity : Activity() {
             }
             "terminal" -> {
                 toggle("Arrow repeat", staged.arrowRepeat) { staged = staged.copy(arrowRepeat = it) }
-                note("Open the expand arrow in the toolbar for Esc, Tab, Ctrl, Alt, navigation and F1–F12. " +
+                note("Open Edit, then Extra keys for Esc, Tab, Ctrl, Alt, navigation and F1–F12. " +
                     "Ctrl and Alt apply to the next key, then release. Terminal apps decide which shortcuts they support.")
             }
             "assistance" -> {
@@ -493,21 +500,25 @@ class KeyboardSettingsActivity : Activity() {
                     "System default uses the device long-press timeout.")
                 toggle("Key vibration (respects device settings)", staged.haptics) { staged = staged.copy(haptics = it) }
                 note("Slide the spacebar to move the cursor. Hold Shift first, then slide the spacebar with another " +
-                    "finger to select text. For taps, use Select all in Tools and the arrows in Extra keys.")
+                    "finger to select text. For taps, use Select all in Edit and the arrows in Extra keys.")
             }
             "appearance" -> {
                 choice("theme", listOf(
                     "System" to (staged.theme == ThemeMode.SYSTEM),
                     "Light" to (staged.theme == ThemeMode.LIGHT),
-                    "Dark" to (staged.theme == ThemeMode.DARK))) { index ->
+                    "Dark" to (staged.theme == ThemeMode.DARK),
+                    "OLED · true black" to (staged.theme == ThemeMode.OLED))) { index ->
                     staged = staged.copy(theme = ThemeMode.entries[index])
                 }
+                note("OLED uses true-black primary surfaces and near-black controls. Contrast and focus states stay visible.")
                 toggle("Key borders", staged.keyBorders) { staged = staged.copy(keyBorders = it) }
             }
             "voice" -> {
-                toggle("Hold the mic key to insert", stagedVoiceHold) { value ->
+                toggle("Hold mic to insert after recognition", stagedVoiceHold) { value ->
                     stagedVoiceHold = value
                 }
+                note("A normal mic tap always opens the transcript for review and editing before Insert. " +
+                    "Enable the hold shortcut only when you want release to insert directly.")
                 note("Recognition runs on this device with imported models. Import or switch models in Utterleaf Setup. " +
                     "Nothing is sent anywhere and dictation is unavailable in password fields.")
             }

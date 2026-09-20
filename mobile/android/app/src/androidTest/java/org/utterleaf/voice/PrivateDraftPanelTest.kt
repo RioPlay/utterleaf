@@ -68,11 +68,13 @@ class PrivateDraftPanelTest {
                 key(panel, "b").performClick()
                 key(panel, "Extra keys").performClick()
                 key(panel, "Left arrow").performClick()
-                key(panel, "Extra keys").performClick()
+                key(panel, "Close extra keys").performClick()
                 key(panel, "Delete").performClick()
+                key(panel, "Editing tools").performClick()
                 key(panel, "Undo").performClick()
                 assertEquals("ab", editor(panel).text.toString())
                 assertTrue(attempts.isEmpty())
+                key(panel, "Close editing tools").performClick()
                 key(panel, "Emoji").performClick()
             }
 
@@ -145,6 +147,7 @@ class PrivateDraftPanelTest {
             assertFalse(key(panel, "Insert private draft").isEnabled)
             key(panel, "Keyboard tools").performClick()
             key(panel, "Close tools and settings").performClick()
+            key(panel, "Editing tools").performClick()
             assertFalse(key(panel, "Undo").isEnabled)
             staleLetter.performClick()
             val discard = key(panel, "Discard private draft")

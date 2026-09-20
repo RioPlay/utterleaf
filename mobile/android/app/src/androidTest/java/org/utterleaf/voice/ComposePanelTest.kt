@@ -236,7 +236,9 @@ class ComposePanelTest {
                     }
                 }
             }
+            key(panel, "Keyboard tools").performClick()
             assertNotNull(key(panel, "Private draft"))
+            key(panel, "Close tools and settings").performClick()
             revealTool(panel, "Latin compose", 412).performClick()
             validateAndCapture("marks")
             key(panel, "Acute compose mark").performClick()

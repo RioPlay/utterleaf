@@ -3,16 +3,16 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha19 is released as a signed development preview.** It adds direct
-Settings from emoji hold, a visible **Tools** button, control-name search,
-Backspace hold-to-swipe fixes and corrected Cut/Dictate visuals. It includes typing
-and suggestion stability fixes, an always-reachable Apply action and consistent
-staged settings/preview controls. [Release evidence and phone QA](../../docs/mobile-roadmap.md#current-status).
-It retains the
-approved daily redesign — icon toolbar with a fold-out Extra keys panel and
-F1–F12, hinted number row, the redesigned Settings screen, a password-manager
-shortcut restricted to password fields, and a suggestion strip that completes
-the word you are typing from a public-domain English list. See the
+**0.1.0-alpha20 is released as a signed development preview.** Its stable daily
+toolbar exposes **Tools**, **Edit**, **Emoji**, and **Voice** without crowding the
+letter rows. Edit groups review and correction controls; less-common controls
+remain one shallow layer away. System, Light, Dark, and true-black OLED themes now
+apply across the keyboard, Settings, setup, emoji, private draft, and voice review.
+A mic tap keeps the transcript review-and-correct flow; direct insertion remains an
+explicit hold option. [Release evidence and phone QA](../../docs/mobile-roadmap.md#current-status).
+It retains F1–F12, the hinted number row, the redesigned Settings screen, a
+password-manager shortcut restricted to password fields, and a suggestion strip
+that completes the word you are typing from a public-domain English list. See the
 [daily redesign plan](../../docs/plans/completed/android-keyboard-daily-redesign.md),
 the [community wants harvest](../../docs/mobile-keyboard-community-wants-2026-09.md)
 and the [suggestions slice plan](../../docs/plans/completed/android-suggestions-slice.md).
@@ -95,11 +95,11 @@ prediction, accessibility and device coverage remain on the
 
 ## Try it
 
-1. [Download and install Utterleaf Android alpha19](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha19/Utterleaf-Android-0.1.0-alpha19.apk)
+1. [Download and install Utterleaf Android alpha20](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha20/Utterleaf-Android-0.1.0-alpha20.apk)
    on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Use `Utterleaf-Android-0.1.0-alpha19.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha19).
+   Use `Utterleaf-Android-0.1.0-alpha20.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha20).
    If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
-   then install alpha19. Uninstalling removes the imported model and other app data.
+   then install alpha20. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
    the same release identity and should be updated in place rather than uninstalled.
 2. Open **Utterleaf**. Under **Your keyboard**, enable **Utterleaf**

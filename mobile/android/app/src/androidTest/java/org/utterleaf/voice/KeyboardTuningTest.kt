@@ -160,9 +160,6 @@ class KeyboardTuningTest {
                 assertEquals(saved.copy(numberRow = true), KeyboardOptions.load(context))
                 key("Close tools and settings").performClick()
                 assertTrue(key("a").isHapticFeedbackEnabled)
-                key("Keyboard tools").performClick()
-                key("Extra keys on").performClick()
-                assertEquals(saved.copy(numberRow = true, extraKeys = false), KeyboardOptions.load(context))
             }
         } finally { original.save(context) }
     }
@@ -211,26 +208,24 @@ class KeyboardTuningTest {
                 key("Keyboard tools").performClick()
                 key("Number row on").performClick()
                 assertEquals(initial.copy(numberRow = false), KeyboardOptions.load(context))
-                key("Extra keys on").performClick()
-                assertEquals(initial.copy(numberRow = false, extraKeys = false), KeyboardOptions.load(context))
                 key("Number row off").performClick()
-                assertEquals(initial.copy(numberRow = true, extraKeys = false), KeyboardOptions.load(context))
+                assertEquals(initial.copy(numberRow = true), KeyboardOptions.load(context))
                 key("Left hand layout").performClick()
-                assertEquals(initial.copy(numberRow = true, extraKeys = false,
+                assertEquals(initial.copy(numberRow = true,
                     alignment = KeyboardAlignment.LEFT), KeyboardOptions.load(context))
                 assertTrue(key("Left hand layout").isSelected)
                 key("Right hand layout").performClick()
-                assertEquals(initial.copy(numberRow = true, extraKeys = false,
+                assertEquals(initial.copy(numberRow = true,
                     alignment = KeyboardAlignment.RIGHT), KeyboardOptions.load(context))
                 key("AZERTY letter layout").performClick()
-                assertEquals(initial.copy(numberRow = true, extraKeys = false, alignment = KeyboardAlignment.RIGHT,
+                assertEquals(initial.copy(numberRow = true, alignment = KeyboardAlignment.RIGHT,
                     letterLayout = LetterLayout.AZERTY), KeyboardOptions.load(context))
                 assertTrue(key("AZERTY letter layout").isSelected)
                 key("Full width layout").performClick()
-                assertEquals(initial.copy(numberRow = true, extraKeys = false,
+                assertEquals(initial.copy(numberRow = true,
                     letterLayout = LetterLayout.AZERTY), KeyboardOptions.load(context))
                 key("QWERTY letter layout").performClick()
-                assertEquals(initial.copy(numberRow = true, extraKeys = false), KeyboardOptions.load(context))
+                assertEquals(initial.copy(numberRow = true), KeyboardOptions.load(context))
                 key("Close tools and settings").performClick()
                 assertEquals("", key("Dictate").text.toString())
                 assertTrue(key("Dictate").isEnabled)

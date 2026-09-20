@@ -56,6 +56,26 @@ class KeyboardEditorContractTest {
         throw AssertionError("Could not press $label")
     }
 
+    /** Retry across the asynchronous IME rebuild triggered by editor text changes. */
+    private fun openEditingTools() {
+        var attempts = 0
+        val deadline = android.os.SystemClock.elapsedRealtime() + 15_000
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            if (key("Select all text") != null) return
+            val edit = key("Editing tools")
+            if (edit?.isEnabled == true && edit.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                attempts++
+                instrumentation.waitForIdleSync()
+            }
+            val openDeadline = android.os.SystemClock.elapsedRealtime() + 2_000
+            while (android.os.SystemClock.elapsedRealtime() < openDeadline) {
+                if (key("Select all text") != null) return
+                Thread.sleep(50)
+            }
+        }
+        throw AssertionError("Editing tools did not open after $attempts attempts")
+    }
+
     /**
      * Opens the extra-keys panel and waits until its keys are actually present.
      * A setText-driven IME rebuild lands asynchronously; a toggle pressed on
@@ -66,6 +86,7 @@ class KeyboardEditorContractTest {
         var attempts = 0
         val deadline = android.os.SystemClock.elapsedRealtime() + 15_000
         while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            if (key("Extra keys") == null) press("Editing tools")
             press("Extra keys")
             attempts++
             val openDeadline = android.os.SystemClock.elapsedRealtime() + 3_000
@@ -142,7 +163,7 @@ class KeyboardEditorContractTest {
             main { text.editor.setText("😀x"); text.editor.setSelection(0) }
             openExtraKeys(); press("Forward delete")
             await("Forward delete did not remove supplementary Unicode") { main { text.editor.text.toString() == "x" } }
-            press("Extra keys")
+            press("Close extra keys")
         } finally { close(text) }
         for ((options, label, expectedAction) in listOf(
             Triple(EditorInfo.IME_ACTION_GO, "Go", EditorInfo.IME_ACTION_GO), Triple(EditorInfo.IME_ACTION_SEARCH, "Search", EditorInfo.IME_ACTION_SEARCH),
@@ -169,7 +190,7 @@ class KeyboardEditorContractTest {
         val activity = launch(EditorInfo.IME_ACTION_DONE)
         try {
             main { activity.editor.setText("alpha beta"); activity.editor.setSelection(activity.editor.length()) }
-            press("Keyboard tools")
+            openEditingTools()
             longPress("Select all text")
             await("Neighboring word was not selected") {
                 main {

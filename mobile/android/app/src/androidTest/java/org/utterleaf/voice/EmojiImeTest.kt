@@ -120,7 +120,7 @@ class EmojiImeTest {
         await("Editor never became active") { main { manager.isActive(activity.editor) } }
         main { manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT) }
         await("Typing keyboard did not appear") {
-            findNode("Undo") != null
+            findNode("Editing tools") != null
         }
         return activity
     }
@@ -128,7 +128,7 @@ class EmojiImeTest {
     private fun close(activity: KeyboardEditorContractActivity) {
         main { activity.finish() }
         await("Previous IME session did not close") {
-            findNode("Undo") == null && findNode("Return from emoji to letters") == null
+            findNode("Editing tools") == null && findNode("Return from emoji to letters") == null
         }
     }
 
@@ -210,6 +210,7 @@ class EmojiImeTest {
             await("ABC did not return to ordinary typing") {
                 main { activity.editor.text.toString() == "before ${emoji}x after" }
             }
+            press("Editing tools")
             press("Paste")
 
             await("Explicit Paste did not use the unchanged synthetic clipboard") {

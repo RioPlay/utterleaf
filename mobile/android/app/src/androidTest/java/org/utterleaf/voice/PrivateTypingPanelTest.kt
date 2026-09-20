@@ -82,7 +82,7 @@ class PrivateTypingPanelTest {
             key(panel, "Forward delete").performClick()
             key(panel, "Home").performClick()
             key(panel, "End").performClick()
-            key(panel, "Extra keys").performClick()
+            key(panel, "Close extra keys").performClick()
             key(panel, "Keyboard tools").performClick()
             key(panel, "Caps lock off").performClick()
             key(panel, "A").performClick()
@@ -93,14 +93,15 @@ class PrivateTypingPanelTest {
             key(panel, "Accents and alternate characters").performClick()
             key(panel, "a").performClick()
             key(panel, alternate).performClick()
-            key(panel, "Keyboard tools").performClick()
+            key(panel, "Editing tools").performClick()
             key(panel, "Select all text").performLongClick()
-            key(panel, "Close tools and settings").performClick()
+            key(panel, "Close editing tools").performClick()
             key(panel, "Extra keys").performClick()
             buttons(panel).first { it.contentDescription == "Shift off" }.performClick()
             key(panel, "Left arrow").performClick()
-            key(panel, "Extra keys").performClick()
+            key(panel, "Close extra keys").performClick()
             assertFalse(descriptions(panel).any { it in setOf("Cut", "Copy", "Paste") })
+            key(panel, "Editing tools").performClick()
             val undo = key(panel, "Undo")
             val redo = key(panel, "Redo")
             assertFalse(undo.isEnabled)
@@ -108,13 +109,13 @@ class PrivateTypingPanelTest {
             touch(undo, MotionEvent.ACTION_DOWN)
             touch(undo, MotionEvent.ACTION_UP)
             assertTrue(actions.isEmpty())
-            key(panel, "Keyboard tools").performClick()
             val selectAll = key(panel, "Select all text")
             assertTrue(selectAll.isEnabled)
             selectAll.performClick()
             available += EditorAction.UNDO
             available += EditorAction.REDO
-            key(panel, "Close tools and settings").performClick()
+            key(panel, "Close editing tools").performClick()
+            key(panel, "Editing tools").performClick()
             assertTrue(key(panel, "Undo").isEnabled)
             assertTrue(key(panel, "Redo").isEnabled)
             key(panel, "Undo").performClick()
@@ -163,6 +164,7 @@ class PrivateTypingPanelTest {
 
             var opens = 0
             val ordinary = panel(privateEditing = false, draft = { opens++ })
+            key(ordinary, "Keyboard tools").performClick()
             key(ordinary, "Private draft").performClick()
             assertEquals(1, opens)
 
@@ -241,7 +243,7 @@ class PrivateTypingPanelTest {
 
     private fun assertForbiddenControlsAbsent(labels: Set<String>) {
         val forbidden = setOf("Dictate", "Keyboard settings", "Switch keyboard", "Private draft",
-            "Number row on", "Number row off", "Extra keys on", "Extra keys off",
+            "Number row on", "Number row off",
             "Full width layout", "Left hand layout", "Right hand layout",
             "QWERTY letter layout", "QWERTZ letter layout", "AZERTY letter layout",
             "Escape", "Tab", "Control off", "Alt off", "Function keys", "Cut", "Copy", "Paste")

@@ -767,6 +767,7 @@ class BackspaceSelectionTest {
             // chevron only once the post-restart panel is live, so the toggle
             // cannot land on the pre-restart keyboard.
             stableDelete()
+            press("Editing tools")
             press("Extra keys")
             await("The panel did not reveal its accessory keys") {
                 key("Control off") != null && key("Left arrow") != null && key("Delete") != null

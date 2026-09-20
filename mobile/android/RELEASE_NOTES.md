@@ -1,54 +1,57 @@
-# Utterleaf Android 0.1.0-alpha19
+# Utterleaf Android 0.1.0-alpha20
 
-This preview fixes Backspace interactions and improves keyboard navigation and Settings discovery.
+This preview polishes the daily keyboard, makes editing easier to reach, adds
+complete dark appearance choices, and shortens routine Android CI feedback.
 
 ## What changed
 
-- Hold Emoji to open full Settings directly; tap still opens Emoji. A visible
-  Tools button opens Compose, accents and quick options, even with Extra keys off.
-- Settings search finds controls such as Backspace, vibration, height and theme.
-  Backspace repeat and repeat guard now live under Holds & gestures.
-- Redrawn Cut scissors and corrected the light-theme Dictate button contrast.
+- The stable toolbar now has four clear daily destinations: **Tools**, **Edit**,
+  **Emoji**, and **Voice**. Less-common controls remain one shallow layer away
+  without crowding the letter rows.
+- **Edit** groups Undo, Redo, Select all, Cut, Copy, Paste, cursor movement, and
+  Extra keys. The Extra keys panel keeps terminal/navigation controls available
+  without making them permanent keyboard chrome.
+- Settings, setup, keyboard, emoji, private draft, and voice surfaces share the
+  selected palette. Appearance now offers **System**, **Light**, **Dark**, and
+  true-black **OLED** modes.
+- A normal mic tap preserves the review-and-correct flow before **Insert**.
+  **Hold mic to insert after recognition** remains an explicit opt-in shortcut.
+- Protected drafts omit voice, password-manager routes, host settings, keyboard
+  switching, and preference toggles. Opening Extra keys no longer changes its
+  saved preference.
+- Superseded pull-request runs cancel automatically. Pull requests perform the
+  fast compile, unit-test, lint, and debug-build path; the full emulator,
+  privacy/inference, release build, and packaging gates still run on the exact
+  main/manual release candidate.
 
-- Holding Backspace keeps deleting after automatic capitalization or ordinary
-  letter-case Shift. Capitalization no longer turns Backspace into a single
-  modified delete or changes its backward direction.
-- You can start holding Backspace and then slide left to select more text.
-  Repeat stops before selection begins. Release deletes the highlighted range
-  once; sliding back shrinks it. Text already removed by the hold stays removed.
-- Cancelling, reversing to the origin or an editor refusing the swipe does not
-  restart repeat or produce an extra Backspace tap. Password/raw fields and
-  Extra keys retain their restrictions; explicit modifier behavior is preserved.
-
-Held repeat remains controlled by **Hold Backspace or Delete to repeat** and
-**Ignore repeated taps on the same key within 250 ms**. Swipe selection depends on the editor confirming native
-selection movement. It is refused in password/raw fields and with Extra keys open.
-
-Alpha18's typing/suggestion stability fixes and staged Settings remain included.
-No new permissions, dependencies, recording, text history or network access.
+No new permissions, dependencies, ambient recording, text history, clipboard
+automation, or network access are added. Live partial transcription into the
+receiving editor is intentionally deferred: rewriting host text while speech is
+still changing needs a separate editor-compatibility and privacy design.
 
 ## Install and updates
 
-Use **Utterleaf-Android-0.1.0-alpha19.apk**, version code **19**. The package remains
+Use **Utterleaf-Android-0.1.0-alpha20.apk**, version code **20**. The package remains
 `org.utterleaf.voice` with the persistent alpha03-and-later signing identity.
-Update a signed alpha18 or earlier preview in place; do not uninstall first.
+Update a signed alpha19 or earlier preview in place; do not uninstall first.
 Alpha01/02 used different debug signers and require a one-time reinstall that
 removes their app data. The experimental foundation package is a separate channel.
 
-The release includes SHA-256 checksums, signing-certificate information and version
-metadata. Use the signed APK, not an unsigned or CI debug build.
+The release includes SHA-256 checksums, signing-certificate information, and
+version metadata. Use the signed APK, not an unsigned or CI debug build.
 
 ## Verification and limits
 
 Android 8+ ARM64/x86_64 development preview. Exact-candidate Android CI and the
-protected signing/install/upgrade checks are required before publication. Regression
-coverage includes sustained hold, late swipe, cancellation/refusal/reversal,
-capitalization, editor-confirmed deletion, modifiers and repeat preferences.
+protected signing/install/upgrade checks are required before publication. Emulator
+coverage exercises appearance persistence, OLED black backgrounds, daily layers,
+private-mode isolation, editing, terminal controls, voice review, and settings.
 
-Pixel 8 Pro/GrapheneOS confirmation of the reported gesture remains open, as do
-broader editor, TalkBack/Switch Access, phone layout/latency and real Obtainium
-acceptance. Emulator success does not establish physical-phone comfort.
+Emulator success does not establish physical-phone comfort. Pixel 8 Pro/GrapheneOS,
+broader editor, TalkBack/Switch Access, phone layout/latency, and real Obtainium
+acceptance remain explicit follow-up work.
 
-No automatic correction, next-word prediction, swipe typing or language expansion
-is added. Typing needs no model or microphone permission. Dictation remains explicit
-and unavailable in password fields. Screenshot protection remains enabled.
+No automatic correction, next-word prediction, swipe typing, streaming partial
+dictation, or language expansion is added. Typing needs no model or microphone
+permission. Dictation remains explicit and unavailable in password fields.
+Screenshot protection remains enabled.

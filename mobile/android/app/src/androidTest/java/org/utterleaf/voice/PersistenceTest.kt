@@ -101,4 +101,19 @@ class PersistenceTest {
             original.save(context)
         }
     }
+
+    @Test fun everyThemeRoundTripsAndOledUsesTrueBlack() {
+        val context = instrumentation.targetContext
+        val original = KeyboardOptions.load(context)
+        try {
+            ThemeMode.entries.forEach { theme ->
+                original.copy(theme = theme).save(context)
+                assertEquals(theme, KeyboardOptions.load(context).theme)
+            }
+            assertEquals(android.graphics.Color.BLACK,
+                Ui.palette(context, KeyboardOptions(theme = ThemeMode.OLED)).background)
+            assertNotEquals(android.graphics.Color.BLACK,
+                Ui.palette(context, KeyboardOptions(theme = ThemeMode.DARK)).background)
+        } finally { original.save(context) }
+    }
 }

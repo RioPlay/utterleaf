@@ -94,16 +94,16 @@ class OneHandLayoutTest {
                 key("Switch letters and symbols").performClick()
                 assertColumn(panel, 600, KeyboardAlignment.RIGHT)
                 key("Switch letters and symbols").performClick()
-                key("Extra keys").performClick()
+                key("Editing tools").performClick(); key("Extra keys").performClick()
                 key("Function keys").performClick()
                 assertColumn(panel, 600, KeyboardAlignment.RIGHT)
                 key("Hide function keys").performClick()
-                key("Extra keys").performClick()
+                key("Close extra keys").performClick()
                 key("Keyboard tools").performClick()
                 assertColumn(panel, 600, KeyboardAlignment.RIGHT)
                 assertTrue(key("Right hand layout").isSelected)
                 key("Close tools and settings").performClick()
-                key("Keyboard tools").performClick()
+                key("Editing tools").performClick()
                 assertColumn(panel, 600, KeyboardAlignment.RIGHT)
                 assertTrue(buttons(panel.view).any { it.contentDescription == "Select all text" })
             }
@@ -244,13 +244,13 @@ class OneHandLayoutTest {
 
             instrumentation.runOnMainSync {
                 fun key(description: String) = buttons(f.panel.view).single { it.contentDescription == description }
-                key("Extra keys").performClick()
+                key("Editing tools").performClick(); key("Extra keys").performClick()
                 key("Control off").performClick()
                 assertTrue(key("Control on").isSelected)
-                key("Keyboard tools").performClick()
+                key("Close extra keys").performClick(); key("Keyboard tools").performClick()
                 key("Right hand layout").performClick()
                 key("Close tools and settings").performClick()
-                key("Extra keys").performClick()
+                key("Editing tools").performClick(); key("Extra keys").performClick()
                 key("Tab").performClick()
             }
             assertTrue(f.typed.isEmpty())

@@ -32,6 +32,7 @@ class SetupActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val colors = Ui.palette(this)
         selectedModel = ModelStore.catalog.firstOrNull { it.id == savedInstanceState?.getString("model") }
             ?: ModelStore.installed(noBackupFilesDir) ?: ModelStore.catalog.first()
         importPending = savedInstanceState?.getBoolean("importPending") ?: false
@@ -80,8 +81,8 @@ class SetupActivity : Activity() {
                 modelChoices[spec] = this
                 id = View.generateViewId()
                 text = "${spec.id} · ${megabytes(spec.size)} MB\n${spec.description}"
-                setTextColor(Ui.ink)
-                buttonTintList = android.content.res.ColorStateList.valueOf(Ui.green)
+                setTextColor(colors.ink)
+                buttonTintList = android.content.res.ColorStateList.valueOf(colors.accent)
                 minHeight = Ui.dp(this@SetupActivity, 56)
                 setPadding(0, Ui.dp(this@SetupActivity, 4), 0, Ui.dp(this@SetupActivity, 4))
                 isChecked = spec == selectedModel

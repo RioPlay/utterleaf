@@ -341,15 +341,15 @@ class DeviceTest {
             }
             press("a"); press("b"); press("c")
             awaitCondition("InputConnection did not commit letters") { onMain { screen.editor.text.toString() == "abc" } }
-            press("Extra keys"); press("Left arrow")
+            press("Editing tools"); press("Extra keys"); press("Left arrow")
             awaitCondition("InputConnection did not move cursor") { onMain { screen.editor.selectionStart == 2 } }
-            press("Extra keys"); press("Delete")
+            press("Close extra keys"); press("Delete")
             awaitCondition("InputConnection did not delete before cursor") { onMain { screen.editor.text.toString() == "ac" } }
-            press("Extra keys"); press("Right arrow"); press("Extra keys"); press("d")
+            press("Editing tools"); press("Extra keys"); press("Right arrow"); press("Close extra keys"); press("d")
             awaitCondition("Cursor-right edit was incorrect") { onMain { screen.editor.text.toString() == "acd" } }
-            press("Extra keys"); press("Left arrow"); press("Forward delete")
+            press("Editing tools"); press("Extra keys"); press("Left arrow"); press("Forward delete")
             awaitCondition("Forward delete did not remove text after the cursor") { onMain { screen.editor.text.toString() == "ac" } }
-            press("Extra keys"); press("d")
+            press("Close extra keys"); press("d")
             press("Done")
             awaitCondition("Editor action did not reach editor") { onMain { screen.lastEditorAction == android.view.inputmethod.EditorInfo.IME_ACTION_DONE } }
 
@@ -557,9 +557,10 @@ class DeviceTest {
                     UiAwait.until("Editor restart did not replace the IME panel") { !beforeRestart.isAttachedToWindow }
                     livePress("s")
                     awaitCondition("Live action fixture did not type") { onMain { screen.editor.text.toString() == "cats" } }
+                    livePress("Editing tools")
                     livePress("Undo")
                     awaitCondition("Live Undo did not reach editor history") { onMain { screen.editor.text.toString() == "cat" } }
-                    liveLongPress("Copy")
+                    livePress("Select all text")
                     awaitCondition("Live Select all did not select the editor") { onMain {
                         screen.editor.selectionStart == 0 && screen.editor.selectionEnd == 3
                     } }
@@ -568,10 +569,12 @@ class DeviceTest {
                     livePress("Paste")
                     awaitCondition("Live Copy/Paste did not duplicate the selected text") { onMain { screen.editor.text.toString() == "catcat" } }
                     val leftPanelPaste = onMain { findNativeKey(currentImeRoot(), "Paste") ?: error("Missing live Paste") }
+                    livePress("Close editing tools")
                     livePress("Keyboard tools")
                     onMain { leftPanelPaste.performClick() }
                     UiAwait.remains("Old action changed text after leaving typing") { screen.editor.text.toString() == "catcat" }
                     livePress("Close tools and settings")
+                    livePress("Editing tools")
                     val oldFieldPaste = onMain { findNativeKey(currentImeRoot(), "Paste") ?: error("Missing live Paste") }
                     show(screen.password)
                     onMain { oldFieldPaste.performClick() }
@@ -630,7 +633,7 @@ class DeviceTest {
             awaitCondition("TYPE_NULL terminal field did not receive raw ASCII key events") {
                 onMain { screen.raw.text.toString() == "ls" }
             }
-            press("Extra keys")
+            press("Editing tools"); press("Extra keys")
             press("Control off")
             press("c")
             awaitCondition("Ctrl+C inserted a letter into the TYPE_NULL terminal field") {

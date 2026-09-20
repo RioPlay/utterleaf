@@ -12,7 +12,7 @@ enum class KeyboardAlignment(val stored: String) {
 }
 
 enum class ThemeMode(val stored: String) {
-    SYSTEM("system"), LIGHT("light"), DARK("dark");
+    SYSTEM("system"), LIGHT("light"), DARK("dark"), OLED("oled");
 
     companion object {
         fun fromStored(value: String?) = entries.firstOrNull { it.stored == value } ?: SYSTEM
@@ -34,7 +34,7 @@ data class KeyboardOptions(val large: Boolean = false, val light: Boolean = fals
     /** Panels resolve the stored theme against the system for actual colors. */
     fun resolvedLight(context: Context): Boolean = when (theme) {
         ThemeMode.LIGHT -> true
-        ThemeMode.DARK -> false
+        ThemeMode.DARK, ThemeMode.OLED -> false
         ThemeMode.SYSTEM -> (context.resources.configuration.uiMode and
             Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_NO
     }

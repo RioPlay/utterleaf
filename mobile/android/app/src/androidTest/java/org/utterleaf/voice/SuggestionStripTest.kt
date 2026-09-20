@@ -70,7 +70,7 @@ class SuggestionStripTest {
 
     private fun currentService(): KeyboardIme = main {
         android.view.inspector.WindowInspector.getGlobalWindowViews().flatMap(::descendants)
-            .filterIsInstance<android.widget.Button>().single { it.isShown && it.contentDescription == "Undo" }
+            .filterIsInstance<android.widget.Button>().single { it.isShown && it.contentDescription == "Editing tools" }
             .context as KeyboardIme
     }
 
@@ -136,7 +136,7 @@ class SuggestionStripTest {
                 manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
             }
             try {
-                await("Typing keyboard did not appear") { key("Undo") != null }
+                await("Typing keyboard did not appear") { key("Editing tools") != null }
                 shown = true
             } catch (retry: AssertionError) {
                 Thread.sleep(250)
@@ -148,7 +148,7 @@ class SuggestionStripTest {
 
     private fun close(activity: KeyboardEditorContractActivity) {
         main { activity.finish() }
-        await("Previous IME session did not close") { key("Undo") == null }
+        await("Previous IME session did not close") { key("Editing tools") == null }
     }
 
     private fun keyboardOptions(): KeyboardOptions = KeyboardOptions.load(app)
@@ -208,7 +208,7 @@ class SuggestionStripTest {
 
                 KeyboardOptions().save(app)
                 activity = launch(password = true)
-                await("Password keyboard did not appear") { key("Undo") != null }
+                await("Password keyboard did not appear") { key("Editing tools") != null }
                 for (letter in "hel") press(letter.toString())
                 instrumentation.waitForIdleSync()
                 assertTrue("Strip rendered on a password field",
@@ -216,7 +216,7 @@ class SuggestionStripTest {
                 close(activity!!)
 
                 activity = launch(raw = true)
-                await("Raw keyboard did not appear") { key("Undo") != null }
+                await("Raw keyboard did not appear") { key("Editing tools") != null }
                 assertTrue("Strip rendered on a raw field",
                     keyDescriptions().none { it.startsWith("Complete with ") })
             } finally {

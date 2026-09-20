@@ -17,6 +17,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     private val createSession: ((CaptureStatus) -> Unit, (String) -> Unit, (String) -> Unit) -> CaptureSession =
         { state, result, error -> VoiceSession(context.applicationContext, state, result, error) }) {
     private enum class Mode { IDLE, CAPTURE, PROCESSING, REVIEW, EDIT }
+    private val colors = Ui.palette(context)
     val view = Ui.column(context)
     private val handler = Handler(Looper.getMainLooper())
     private val gate = TakeGate()
@@ -45,7 +46,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         isSaveEnabled = false; showSoftInputOnFocus = false
         isVerticalScrollBarEnabled = true
         importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
-        setTextColor(Ui.ink); setHintTextColor(Ui.ink)
+        setTextColor(colors.ink); setHintTextColor(colors.muted)
         gravity = android.view.Gravity.TOP
     }
     private val transcriptKeyListener = preview.keyListener
@@ -80,7 +81,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     private val modelOptions = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val keep = Ui.button(context, "Keep reviewing") { if (mode == Mode.REVIEW || mode == Mode.EDIT) scheduleExpiry() }
     private val holdMode = CheckBox(context).apply {
-        text = "Hold to speak and insert on release"; setTextColor(Ui.ink); minHeight = Ui.dp(context, 48)
+        text = "Hold mic to insert after recognition"; setTextColor(colors.ink); minHeight = Ui.dp(context, 48)
         isChecked = context.getSharedPreferences("keyboard", Context.MODE_PRIVATE).getBoolean("voiceHoldToInsert", false)
         setOnCheckedChangeListener { _, value ->
             context.getSharedPreferences("keyboard", Context.MODE_PRIVATE).edit().putBoolean("voiceHoldToInsert", value).apply()

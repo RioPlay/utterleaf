@@ -95,7 +95,7 @@ class ComposeImeTest {
             .filterIsInstance<Button>().single { it.isShown && it.contentDescription == description }
     }
 
-    private fun currentService(): KeyboardIme = currentButton("Undo").context as KeyboardIme
+    private fun currentService(): KeyboardIme = currentButton("Editing tools").context as KeyboardIme
 
     private fun launch(raw: Boolean = false): KeyboardEditorContractActivity {
         val activity = instrumentation.startActivitySync(
@@ -127,7 +127,7 @@ class ComposeImeTest {
                 manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
             }
             try {
-                await("Typing keyboard did not appear") { findNode("Undo") != null }
+                await("Typing keyboard did not appear") { findNode("Editing tools") != null }
                 shown = true
             } catch (retry: AssertionError) {
                 Thread.sleep(250)
@@ -139,7 +139,7 @@ class ComposeImeTest {
 
     private fun close(activity: KeyboardEditorContractActivity) {
         main { activity.finish() }
-        await("Previous IME session did not close") { findNode("Undo") == null }
+        await("Previous IME session did not close") { findNode("Editing tools") == null }
     }
 
     private fun openCompose() {

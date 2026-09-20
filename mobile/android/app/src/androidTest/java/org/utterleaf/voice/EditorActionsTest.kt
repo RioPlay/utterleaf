@@ -64,18 +64,19 @@ class EditorActionsTest {
                 editor.setText("cat"); editor.setSelection(3)
                 key("s").performClick()
                 assertEquals("cats", editor.text.toString())
+                key("Editing tools").performClick()
                 key("Undo").performClick(); assertEquals("cat", editor.text.toString())
                 key("Redo").performClick(); assertEquals("cats", editor.text.toString())
-                key("Copy").performLongClick()
+                key("Select all text").performClick()
                 assertEquals(0, editor.selectionStart); assertEquals(4, editor.selectionEnd)
-                key("Copy").performClick(); key("Copy").performLongClick(); key("Cut").performClick()
+                key("Copy").performClick(); key("Select all text").performClick(); key("Cut").performClick()
                 assertEquals("", editor.text.toString())
                 key("Paste").performClick(); assertEquals("cats", editor.text.toString())
                 val stale = key("Cut")
                 key("Extra keys").performClick()
                 editor.selectAll(); stale.performClick()
                 assertEquals("cats", editor.text.toString())
-                key("Extra keys").performClick()
+                key("Close extra keys").performClick()
                 check(context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0)
                 activity.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
             }
@@ -110,15 +111,17 @@ class EditorActionsTest {
                 return panel.view.measuredHeight
             }
             panel.reset(false, false, "Enter"); val typingHeight = height()
+            key("Editing tools").performClick(); val editHeight = height()
+            assertTrue("Edit tools should replace letters without growing the keyboard", editHeight <= typingHeight)
             key("Undo").performClick()
-            assertEquals("A refused action must not change the layout", typingHeight, height())
+            assertEquals("A refused action must not change the layout", editHeight, height())
             assertFalse("Refused actions must not add a status row",
                 descendants(panel.view).filterIsInstance<android.widget.TextView>()
                     .any { it.text == "Key unavailable" && it.visibility == View.VISIBLE })
             assertEquals(1, attempts.size)
             val stale = key("Paste")
             panel.reset(false, true, "Next"); stale.performClick()
-            assertEquals("A stale toolbar button must not act after reset", 1, attempts.size)
+            assertEquals("A stale edit button must not act after reset", 1, attempts.size)
         }
     }
 }

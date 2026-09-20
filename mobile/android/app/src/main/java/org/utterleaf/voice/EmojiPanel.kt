@@ -91,11 +91,12 @@ internal class EmojiPanel(private val context: Context, private val options: Key
         layoutDirection = View.LAYOUT_DIRECTION_LTR
     }
     private val light = options.resolvedLight(context)
-    private val keyColor = Color.parseColor(if (light) "#FFFFFF" else "#303A3D")
-    private val utility = Color.parseColor(if (light) "#D1DFD6" else "#24322D")
-    private val ink = Color.parseColor(if (light) "#17251D" else "#F0F5F2")
-    private val accent = Color.parseColor(if (light) "#25643D" else "#A2DFB3")
-    private val accentInk = Color.parseColor(if (light) "#FFFFFF" else "#10291B")
+    private val palette = Ui.palette(context, options)
+    private val keyColor = palette.key
+    private val utility = palette.utility
+    private val ink = palette.ink
+    private val accent = palette.accent
+    private val accentInk = palette.accentInk
     private val keyHeight = if (options.keyHeightDp == 0) { if (options.large) 66 else 54 }
         else options.keyHeightDp.coerceIn(48, 80)
     private var disposed = false

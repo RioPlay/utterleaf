@@ -130,7 +130,7 @@ class PrivateDraftImeTest {
                 manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
             }
             try {
-                await("Typing keyboard did not appear") { findNode("Undo") != null }
+                await("Typing keyboard did not appear") { findNode("Editing tools") != null }
                 shown = true
             } catch (retry: AssertionError) {
                 Thread.sleep(250)
@@ -143,11 +143,12 @@ class PrivateDraftImeTest {
     private fun close(activity: KeyboardEditorContractActivity) {
         main { activity.finish() }
         await("Previous IME session did not close") {
-            findNode("Undo") == null && findNode("Insert private draft") == null
+            findNode("Editing tools") == null && findNode("Insert private draft") == null
         }
     }
 
     private fun openDraft() {
+        if (findNode("Private draft") == null) press("Keyboard tools")
         press("Private draft")
         await("Private draft panel did not appear") { findNode("Insert private draft") != null }
     }

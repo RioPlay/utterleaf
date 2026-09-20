@@ -205,7 +205,7 @@ class CompactLayerTest {
                     checkActions()
                     for (label in listOf("Close tools and settings", "Keyboard settings", "Switch keyboard", "Latin compose",
                         "Full width layout", "Left hand layout", "Right hand layout", "QWERTY letter layout",
-                        "QWERTZ letter layout", "AZERTY letter layout", "Number row on", "Extra keys on")) {
+                        "QWERTZ letter layout", "AZERTY letter layout", "Number row on", "Extra keys")) {
                         val button = key(label)
                         assertTrue("Missing $label in the hub", button.isFocusable)
                         val rect = bounds(label)
@@ -214,6 +214,7 @@ class CompactLayerTest {
                     }
                     key("Close tools and settings").performClick()
                     assertEquals(normalHeight, layout())
+                    key("Editing tools").performClick()
                     key("Extra keys").performClick()
                     val panelHeight = layout()
                     assertTrue("The fold-out panel must add its rows", panelHeight > normalHeight)
@@ -234,7 +235,7 @@ class CompactLayerTest {
                     }
                     key("Hide function keys").performClick()
                     assertEquals(panelHeight, layout())
-                    key("Extra keys").performClick()
+                    key("Close extra keys").performClick()
                     assertEquals(normalHeight, layout())
                     panel.dispose()
                 }
@@ -259,14 +260,13 @@ class CompactLayerTest {
             fixture.tap(fixture.key("Return from emoji to letters"))
             assertEquals(normalHeight, fixture.height())
 
-            // Hold opens full settings directly, with a named accessibility action.
+            // Hidden long-press navigation is gone; Settings stays visible in Tools.
             val emojiKey = fixture.key("Emoji")
-            val info = main { emojiKey.createAccessibilityNodeInfo() }
-            assertTrue(info.actionList.any { it.id == AccessibilityNodeInfo.ACTION_LONG_CLICK &&
-                it.label == "Open keyboard settings" })
-            assertTrue(main { emojiKey.performAccessibilityAction(AccessibilityNodeInfo.ACTION_LONG_CLICK, null) })
+            assertFalse(main { emojiKey.performLongClick() })
+            fixture.tap(fixture.key("Keyboard tools"))
+            fixture.tap(fixture.key("Keyboard settings"))
             assertEquals(1, fixture.calls.settings)
-            assertFalse(fixture.has("Close tools and settings"))
+            fixture.tap(fixture.key("Close tools and settings"))
             assertTrue(fixture.calls.inserted.isEmpty())
             fixture.tap(fixture.key("Keyboard tools"))
             fixture.capture("tools-hub")
@@ -280,6 +280,7 @@ class CompactLayerTest {
             assertEquals(normalHeight, fixture.height())
 
             // Panel open and close keep the everyday keyboard intact.
+            fixture.tap(fixture.key("Editing tools"))
             fixture.tap(fixture.key("Extra keys"))
             assertTrue(fixture.has("Escape"))
             assertTrue(fixture.height() > normalHeight)
@@ -289,7 +290,7 @@ class CompactLayerTest {
             fixture.capture("extra-functions")
             fixture.tap(fixture.key("Hide function keys"))
             assertFalse(fixture.has("F1"))
-            fixture.tap(fixture.key("Extra keys"))
+            fixture.tap(fixture.key("Close extra keys"))
             assertFalse(fixture.has("Escape"))
             assertEquals(normalHeight, fixture.height())
 
@@ -362,6 +363,7 @@ class CompactLayerTest {
         withPanel(KeyboardOptions(numberRow = true, light = captureLight,
             large = captureLarge, alignment = captureAlignment), widthDp = captureWidth) { fixture ->
             val normalHeight = fixture.height()
+            fixture.tap(fixture.key("Editing tools"))
             fixture.tap(fixture.key("Extra keys"))
             assertTrue(fixture.has("Escape"))
             assertTrue(fixture.has("Left arrow"))
@@ -377,7 +379,7 @@ class CompactLayerTest {
             assertTrue("The panel keeps letters visible", fixture.has("q"))
             assertTrue(fixture.has("Left arrow"))
             fixture.capture("extra-keys")
-            fixture.tap(fixture.key("Extra keys"))
+            fixture.tap(fixture.key("Close extra keys"))
             assertTrue(fixture.has("q"))
             assertFalse(fixture.has("Left arrow"))
         }
@@ -385,7 +387,7 @@ class CompactLayerTest {
 
     @Test fun selectAllTapAndWordHoldStayDistinct() {
         withPanel { fixture ->
-            assertTrue(main { fixture.key("Keyboard tools").performClick() })
+            assertTrue(main { fixture.key("Editing tools").performClick() })
             val selectAll = fixture.key("Select all text")
             assertFalse(selectAll.isSelected)
             fixture.tap(selectAll)
