@@ -9,6 +9,10 @@ Emoji, Private Draft, Voice, and Extra Keys directly reachable. Portrait uses
 two rows; landscape uses one row to protect vertical typing space. System,
 Light, Dark, and true-black OLED themes now
 apply across the keyboard, Settings, setup, emoji, private draft, and voice review.
+A grouped Accessory/F-key strip keeps specialist controls to one row, preserves
+held modifier-arrow chords, and responsively replaces the toolbar in landscape so
+Space and Enter remain visible. The complete additional-symbol set is split across
+readable rows instead of being compressed into one line.
 A mic tap keeps the transcript review-and-correct flow; direct insertion remains an
 explicit hold option. The mic and Voice surface use official Utterling states with
 visible labels for availability, listening, local processing, transcript review,

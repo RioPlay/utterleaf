@@ -396,10 +396,13 @@ class KeyboardGeometryTest {
                 press("Editing tools"); press("Extra keys")
                 await("Extra keys panel did not open") { node("Escape") != null }
                 sideCapture("terminal", listOf("Close extra keys", "Space", "Done", "q", "p",
-                    "Escape", "Function keys", "Left arrow", "Down arrow", "Up arrow", "Right arrow"))
+                    "Escape", "Accessory keys", "Function keys"))
+                press("Accessory keys")
+                sideCapture("navigation", listOf("Close extra keys", "Space", "Done", "q", "p",
+                    "Left arrow"))
                 press("Function keys")
-                sideCapture("functions", listOf("Hide function keys", "F1", "F12", "Insert", "Forward delete", "Space", "Done"))
-                press("Hide function keys")
+                sideCapture("functions", listOf("Function keys", "F1", "Space", "Done"))
+                press("Accessory keys")
                 press("Close extra keys")
                 await("Extra keys panel did not close") { node("Escape") == null }
                 press("Keyboard tools")
@@ -495,6 +498,9 @@ class KeyboardGeometryTest {
                                 bounds.width() == radio.width && bounds.height() == radio.height)
                             assertEquals(label == "Full width", radio.isChecked)
                         }
+                        val layoutGroup = views.filterIsInstance<android.widget.RadioButton>()
+                            .single { it.text == LetterLayout.QWERTY.label }.parent as View
+                        views.filterIsInstance<android.widget.ScrollView>().first().scrollTo(0, layoutGroup.top)
                         for (choice in LetterLayout.entries) {
                             val radio = views.filterIsInstance<android.widget.RadioButton>().single { it.text == choice.label }
                             val bounds = Rect()

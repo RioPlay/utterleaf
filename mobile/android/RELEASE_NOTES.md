@@ -23,6 +23,12 @@ complete dark appearance choices, and shortens routine Android CI feedback.
 - Protected drafts omit voice, password-manager routes, host settings, keyboard
   switching, and preference toggles. Opening Extra keys no longer changes its
   saved preference.
+- Extra Keys is now a single grouped, horizontally scrollable Accessory/F-key
+  strip. Portrait retains the daily toolbar above it; landscape uses the same
+  row as a compact specialist header so Space and Enter remain full-sized in
+  full and one-hand layouts. Held modifier-arrow chords remain supported.
+- The complete additional-symbol inventory is distributed across balanced rows
+  instead of squeezing the final set into one line.
 - Superseded pull-request runs cancel automatically. Pull requests perform the
   fast compile, unit-test, lint, and debug-build path; the full emulator,
   privacy/inference, release build, and packaging gates still run on the exact
@@ -55,9 +61,9 @@ Emulator success does not establish physical-phone comfort. Pixel 8 Pro/Graphene
 broader editor, TalkBack/Switch Access, phone layout/latency, and real Obtainium
 acceptance remain explicit follow-up work.
 
-Split keyboard is not implemented in this candidate. Visible-emulator review also
-found that the additional-symbol row and the current multi-row Extra Keys panel
-need a responsive landscape pass before alpha20 publication.
+Split keyboard is not implemented in this candidate. The responsive symbols and
+Extra Keys landscape pass is complete on the visible API 35 emulator; physical
+phone reach and comfort remain unverified.
 
 No automatic correction, next-word prediction, swipe typing, streaming partial
 dictation, or language expansion is added. Typing needs no model or microphone

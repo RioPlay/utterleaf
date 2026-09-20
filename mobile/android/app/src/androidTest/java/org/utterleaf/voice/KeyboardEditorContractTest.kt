@@ -91,7 +91,7 @@ class KeyboardEditorContractTest {
             attempts++
             val openDeadline = android.os.SystemClock.elapsedRealtime() + 3_000
             while (android.os.SystemClock.elapsedRealtime() < openDeadline) {
-                if (key("Forward delete") != null) return
+                if (key("Accessory keys") != null && key("Close extra keys") != null) return
                 Thread.sleep(50)
             }
             if (attempts >= 5) break
@@ -161,7 +161,7 @@ class KeyboardEditorContractTest {
                 press("Delete"); await("Unicode delete failed") { main { text.editor.text.toString() == expected } }
             }
             main { text.editor.setText("😀x"); text.editor.setSelection(0) }
-            openExtraKeys(); press("Forward delete")
+            openExtraKeys(); press("Accessory keys"); press("Forward delete")
             await("Forward delete did not remove supplementary Unicode") { main { text.editor.text.toString() == "x" } }
             press("Close extra keys")
         } finally { close(text) }
@@ -213,6 +213,7 @@ class KeyboardEditorContractTest {
             openExtraKeys()
             press("Control off")
             press("Shift off")
+            press("Accessory keys")
             press("Left arrow")
             await("First Ctrl+Shift+Left did not select the neighboring word") {
                 main {

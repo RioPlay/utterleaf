@@ -97,7 +97,7 @@ class OneHandLayoutTest {
                 key("Editing tools").performClick(); key("Extra keys").performClick()
                 key("Function keys").performClick()
                 assertColumn(panel, 600, KeyboardAlignment.RIGHT)
-                key("Hide function keys").performClick()
+                key("Accessory keys").performClick()
                 key("Close extra keys").performClick()
                 key("Keyboard tools").performClick()
                 assertColumn(panel, 600, KeyboardAlignment.RIGHT)

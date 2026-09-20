@@ -104,8 +104,8 @@ class CompactLayerTest {
             require(directoryName.matches(Regex("[a-zA-Z0-9_-]{1,32}")))
             val anchors = when (state) {
                 "tools-hub" -> listOf("Close tools and settings", "Keyboard settings", "Latin compose")
-                "extra-keys" -> listOf("Escape", "Left arrow", "Space")
-                "extra-functions" -> listOf("Hide function keys", "F1", "Space")
+                "extra-keys" -> listOf("Accessory keys", "Escape", "Space")
+                "extra-functions" -> listOf("Function keys", "F1", "Space")
                 else -> listOf("q", "Space")
             }
             var previousScroll = -1
@@ -217,23 +217,35 @@ class CompactLayerTest {
                     key("Editing tools").performClick()
                     key("Extra keys").performClick()
                     val panelHeight = layout()
-                    assertTrue("The fold-out panel must add its rows", panelHeight > normalHeight)
-                    for (label in listOf("Function keys", "Escape", "Tab", "Control off", "Alt off",
-                        "Home", "End", "Insert", "Forward delete", "Page up", "Page down",
-                        "Left arrow", "Down arrow", "Up arrow", "Right arrow", "q", "Space")) {
+                    if (app.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
+                        assertEquals("Landscape specialist controls must share the bottom row", normalHeight, panelHeight)
+                    else assertTrue("The specialist panel must add one row", panelHeight > normalHeight)
+                    for (label in listOf("Accessory keys", "Function keys",
+                        "Escape", "Control off", "Left arrow", "q", "Space")) {
                         val rect = bounds(label)
                         assertTrue("$label clipped at ${width}dp light=$light large=$large $alignment: $rect",
                             rect.left >= 0 && rect.right <= panel.view.width && rect.top >= 0 && rect.bottom <= panel.view.height)
                     }
+                    for (label in listOf("Control off", "Alt off", "Shift off"))
+                        assertTrue("Modifier control must remain focusable: $label",
+                            buttons().any { it.contentDescription == label && it.isFocusable })
+                    key("Accessory keys").performClick()
+                    assertEquals("Specialist groups must not change height", panelHeight, layout())
+                    for (label in listOf("Home", "End", "Insert", "Forward delete", "Page up", "Page down",
+                        "Left arrow", "Down arrow", "Up arrow", "Right arrow"))
+                        assertTrue("Navigation control must remain focusable: $label", key(label).isFocusable)
+                    val left = bounds("Left arrow")
+                    assertTrue("First navigation key clipped at ${width}dp: $left",
+                        left.left >= 0 && left.right <= panel.view.width)
                     key("Function keys").performClick()
                     val functionsHeight = layout()
-                    assertTrue("F-keys must add their rows", functionsHeight > panelHeight)
-                    for (label in listOf("Hide function keys", "F1", "F12", "q")) {
-                        val rect = bounds(label)
-                        assertTrue("$label clipped at ${width}dp: $rect",
-                            rect.left >= 0 && rect.right <= panel.view.width && rect.top >= 0 && rect.bottom <= panel.view.height)
-                    }
-                    key("Hide function keys").performClick()
+                    assertEquals("F-keys must reuse the specialist row", panelHeight, functionsHeight)
+                    for (number in 1..12)
+                        assertTrue("F$number must remain focusable", key("F$number").isFocusable)
+                    val f1 = bounds("F1")
+                    assertTrue("First function key clipped at ${width}dp: $f1",
+                        f1.left >= 0 && f1.right <= panel.view.width)
+                    key("Accessory keys").performClick()
                     assertEquals(panelHeight, layout())
                     key("Close extra keys").performClick()
                     assertEquals(normalHeight, layout())
@@ -288,7 +300,7 @@ class CompactLayerTest {
             fixture.tap(fixture.key("Function keys"))
             assertTrue(fixture.has("F1"))
             fixture.capture("extra-functions")
-            fixture.tap(fixture.key("Hide function keys"))
+            fixture.tap(fixture.key("Accessory keys"))
             assertFalse(fixture.has("F1"))
             fixture.tap(fixture.key("Close extra keys"))
             assertFalse(fixture.has("Escape"))
@@ -366,18 +378,18 @@ class CompactLayerTest {
             fixture.tap(fixture.key("Editing tools"))
             fixture.tap(fixture.key("Extra keys"))
             assertTrue(fixture.has("Escape"))
-            assertTrue(fixture.has("Left arrow"))
             fixture.tap(fixture.key("Control off"))
             fixture.tap(fixture.key("Function keys"))
             assertTrue(fixture.has("F1"))
-            assertTrue(fixture.has("Hide function keys"))
             assertTrue(fixture.height() > normalHeight)
             fixture.capture("extra-functions")
-            fixture.tap(fixture.key("Hide function keys"))
+            fixture.tap(fixture.key("Accessory keys"))
             assertTrue(fixture.has("Control on"))
             assertFalse(fixture.has("F1"))
             assertTrue("The panel keeps letters visible", fixture.has("q"))
+            fixture.tap(fixture.key("Accessory keys"))
             assertTrue(fixture.has("Left arrow"))
+            fixture.tap(fixture.key("Accessory keys"))
             fixture.capture("extra-keys")
             fixture.tap(fixture.key("Close extra keys"))
             assertTrue(fixture.has("q"))
@@ -410,6 +422,9 @@ class CompactLayerTest {
             for (mark in listOf("`", "~", "^", "=", "[", "]", "{", "}", "\\", "|", ",", ".", "<", ">", "±", "×", "÷", "§", "©", "®")) {
                 assertTrue("Missing $mark on the more-symbols page", mark in second)
             }
+            assertTrue("Extended symbols must be split across readable rows", main {
+                fixture.key("\\").parent !== fixture.key("±").parent
+            })
         }
     }
 }

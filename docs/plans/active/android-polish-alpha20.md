@@ -86,12 +86,19 @@ Local candidate evidence on 2026-09-19:
 - API 35 emulator suite: 187/187 passed after the final timing-hardening change.
 - Generated live-keyboard, Settings-preview and editor-action screenshots were
   inspected; emulator visuals are not physical-device acceptance.
-- Slice 0 portrait API 35 suite: 189/189 passed on the visible emulator.
+- Final portrait API 35 suite: 191/191 passed on the visible emulator after the
+  responsive Extra Keys and symbol-density changes.
 - True landscape (`ROTATION_90`, 914dp by 411dp) daily contract: 2/2 passed.
-  The live geometry run intentionally remains red because Extra Keys clips Space
-  and Done in landscape. Correctly oriented normal, symbols, more-symbols and
-  failing Extra Keys captures were inspected and saved locally; the second
-  symbol page visibly compresses twenty characters into its final row.
+- The responsive Extra Keys and symbol-density slice passed the complete live
+  landscape geometry run. Portrait keeps the daily toolbar and adds one grouped,
+  horizontally scrollable Accessory/F-key row. Landscape reuses the toolbar row
+  as the specialist header so the keyboard does not grow; Space, Enter, letters,
+  the number row, one-hand alignment and all terminal callbacks remain reachable.
+  Ctrl/Alt plus arrow multi-touch remains supported. The additional-symbol page
+  now distributes its complete inventory across two readable lower rows.
+- Correctly oriented full-, left- and right-aligned normal, symbols,
+  more-symbols, accessory and F-key captures were inspected on the visible
+  emulator. Emulator evidence is not physical-phone acceptance.
 
 ## Non-goals
 
@@ -109,10 +116,9 @@ Local candidate evidence on 2026-09-19:
   separately bounded landscape slice with preference persistence, Settings and
   practice-preview parity, safe center-gap touch routing, rotation/resize
   behavior and portrait fallback; one-handed alignment is not a substitute.
-- The symbols page, especially the additional-symbol row, places too many keys
-  on one line at phone widths. Preserve complete punctuation coverage, but
-  redesign its grouping and pagination after capturing portrait and landscape
-  evidence; do not silently remove characters to make the page look cleaner.
+- Split layout remains the only confirmed layout feature gap from this review.
+  Symbol density and responsive Extra Keys geometry are implemented and covered;
+  do not regress by dropping characters or breaking held modifier chords.
 
 ## Voice-state indicator slice
 
@@ -137,5 +143,5 @@ Acceptance evidence on the visible API 35 emulator:
 
 For Slice 0, stop after the daily action contract, Select semantics, portrait and
 landscape geometry, visible-emulator screenshots and focused checks pass. Do not
-claim physical-phone usability. Later slices own split layout, symbol density,
-Tools/Edit structure and the flyout.
+claim physical-phone usability. Later slices own split layout and any broader
+Tools/Edit restructuring.

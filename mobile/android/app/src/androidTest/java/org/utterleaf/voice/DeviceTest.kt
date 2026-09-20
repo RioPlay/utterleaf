@@ -341,13 +341,13 @@ class DeviceTest {
             }
             press("a"); press("b"); press("c")
             awaitCondition("InputConnection did not commit letters") { onMain { screen.editor.text.toString() == "abc" } }
-            press("Editing tools"); press("Extra keys"); press("Left arrow")
+            press("Editing tools"); press("Extra keys"); press("Accessory keys"); press("Left arrow")
             awaitCondition("InputConnection did not move cursor") { onMain { screen.editor.selectionStart == 2 } }
             press("Close extra keys"); press("Delete")
             awaitCondition("InputConnection did not delete before cursor") { onMain { screen.editor.text.toString() == "ac" } }
-            press("Editing tools"); press("Extra keys"); press("Right arrow"); press("Close extra keys"); press("d")
+            press("Editing tools"); press("Extra keys"); press("Accessory keys"); press("Right arrow"); press("Close extra keys"); press("d")
             awaitCondition("Cursor-right edit was incorrect") { onMain { screen.editor.text.toString() == "acd" } }
-            press("Editing tools"); press("Extra keys"); press("Left arrow"); press("Forward delete")
+            press("Editing tools"); press("Extra keys"); press("Accessory keys"); press("Left arrow"); press("Forward delete")
             awaitCondition("Forward delete did not remove text after the cursor") { onMain { screen.editor.text.toString() == "ac" } }
             press("Close extra keys"); press("d")
             press("Done")

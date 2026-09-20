@@ -321,12 +321,13 @@ class TerminalInputTest {
             key("Function keys").performClick()
             assertTrue(buttons(terminal.view).any { it.contentDescription == "1" })
             key("F1").performClick(); key("F12").performClick()
+            key("Accessory keys").performClick()
             key("Forward delete").performClick(); key("Insert").performClick()
             key("Page up").performClick(); key("Left arrow").performClick()
             assertEquals(listOf(KeyEvent.KEYCODE_F1, KeyEvent.KEYCODE_F12, KeyEvent.KEYCODE_FORWARD_DEL,
                 KeyEvent.KEYCODE_INSERT, KeyEvent.KEYCODE_PAGE_UP, KeyEvent.KEYCODE_DPAD_LEFT), codes)
             assertTrue(buttons(terminal.view).all { !it.contentDescription.isNullOrBlank() && it.isFocusable })
-            key("Hide function keys").performClick()
+            key("Accessory keys").performClick()
             assertTrue(buttons(terminal.view).any { it.contentDescription == "1" })
             assertFalse(buttons(terminal.view).any { it.contentDescription == "F1" })
             key("Close extra keys").performClick()
@@ -352,12 +353,25 @@ class TerminalInputTest {
                     check(matches.isNotEmpty()) { "Missing key $label" }
                     return matches.first()
                 }
+                fun insideHorizontalScroll(view: View): Boolean {
+                    var parent = view.parent
+                    while (parent is View) {
+                        if (parent is android.widget.HorizontalScrollView) return true
+                        parent = parent.parent
+                    }
+                    return false
+                }
                 fun layout(): Int {
                     val width = Ui.dp(context, widthDp)
                     panel.view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                         View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
                     panel.view.layout(0, 0, width, panel.view.measuredHeight)
                     for (button in buttons(panel.view)) {
+                        if (insideHorizontalScroll(button)) {
+                            assertTrue("Scrollable control lost its target: ${button.contentDescription}",
+                                button.width > 0 && button.height > 0 && button.isFocusable)
+                            continue
+                        }
                         val rect = android.graphics.Rect(0, 0, button.width, button.height)
                         panel.view.offsetDescendantRectToMyCoords(button, rect)
                         assertTrue("Panel control outside ${widthDp}dp large=$large: ${button.contentDescription}",
@@ -370,17 +384,18 @@ class TerminalInputTest {
                 val typingHeight = layout()
                 key("Editing tools").performClick(); key("Extra keys").performClick()
                 val panelHeight = layout()
-                assertTrue("Opening the fold-out panel must add its rows", panelHeight > typingHeight)
+                if (context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
+                    assertEquals("Landscape specialist controls must share the bottom row", typingHeight, panelHeight)
+                else assertTrue("Opening the specialist row must add one row", panelHeight > typingHeight)
                 assertTrue(buttons(panel.view).any { it.contentDescription == "q" })
                 key("Function keys").performClick()
                 val functionsHeight = layout()
-                assertTrue("F-keys must add their rows", functionsHeight > panelHeight)
+                assertEquals("Switching specialist groups must keep a stable height", panelHeight, functionsHeight)
                 assertTrue(buttons(panel.view).any { it.contentDescription == "q" })
-                for (label in listOf("F1", "F12", "Shift off", "Insert", "Forward delete",
-                        "Hide function keys", "Delete")) {
+                for (label in listOf("F1", "F12", "Function keys", "Accessory keys", "Delete")) {
                     assertTrue("Function control must remain focusable: $label", key(label).isFocusable)
                 }
-                key("Hide function keys").performClick()
+                key("Accessory keys").performClick()
                 assertEquals(panelHeight, layout())
                 key("Close extra keys").performClick()
                 assertEquals(typingHeight, layout())

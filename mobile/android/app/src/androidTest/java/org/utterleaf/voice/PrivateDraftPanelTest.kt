@@ -67,6 +67,7 @@ class PrivateDraftPanelTest {
                 key(panel, "a").performClick()
                 key(panel, "b").performClick()
                 key(panel, "Extra keys").performClick()
+                key(panel, "Accessory keys").performClick()
                 key(panel, "Left arrow").performClick()
                 key(panel, "Close extra keys").performClick()
                 key(panel, "Delete").performClick()
