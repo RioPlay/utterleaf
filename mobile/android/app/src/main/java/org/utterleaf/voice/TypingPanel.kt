@@ -238,7 +238,8 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     }
 
     private fun saveQuickOption(numberRow: Boolean? = null, extraKeys: Boolean? = null,
-        alignment: KeyboardAlignment? = null, letterLayout: LetterLayout? = null) {
+        alignment: KeyboardAlignment? = null, letterLayout: LetterLayout? = null,
+        splitLandscape: Boolean? = null) {
         if (privateEditing || disposed) return
         val current = if (stageOptions == null) KeyboardOptions.load(context) else options
         options = current.copy(
@@ -246,6 +247,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             extraKeys = extraKeys ?: current.extraKeys,
             alignment = alignment ?: current.alignment,
             letterLayout = letterLayout ?: current.letterLayout,
+            splitLandscape = splitLandscape ?: current.splitLandscape,
         )
         if (stageOptions == null) options.save(context) else stageOptions.invoke(options)
     }
@@ -265,12 +267,23 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     }
 
     private fun chooseAlignment(alignment: KeyboardAlignment) {
-        if (options.alignment == alignment) return
+        if (options.alignment == alignment && !(options.splitLandscape && alignment != KeyboardAlignment.FULL)) return
         cancelForGeometryChange()
-        saveQuickOption(alignment = alignment)
+        saveQuickOption(alignment = alignment,
+            splitLandscape = options.splitLandscape && alignment == KeyboardAlignment.FULL)
         render()
         quickOptionsChanged()
     }
+
+    private fun chooseSplitLandscape() {
+        cancelForGeometryChange()
+        saveQuickOption(alignment = KeyboardAlignment.FULL, splitLandscape = !options.splitLandscape)
+        render()
+        quickOptionsChanged()
+    }
+
+    private fun splitLandscape() = options.splitLandscape &&
+        context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     private fun chooseLetterLayout(letterLayout: LetterLayout) {
         if (options.letterLayout == letterLayout) return
@@ -283,14 +296,14 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
 
     @SuppressLint("RtlHardcoded") // Left/right are explicit physical one-hand choices.
     private fun alignmentGravity() = Gravity.TOP or when (options.alignment) {
-        KeyboardAlignment.RIGHT -> Gravity.RIGHT
+        KeyboardAlignment.RIGHT -> if (splitLandscape()) Gravity.LEFT else Gravity.RIGHT
         else -> Gravity.LEFT
     }
 
     private fun alignedContentWidth(available: Int): Int {
         val minimum = Ui.dp(context, 320)
         val maximum = Ui.dp(context, 360)
-        return if (options.alignment == KeyboardAlignment.FULL || available <= minimum) {
+        return if (splitLandscape() || options.alignment == KeyboardAlignment.FULL || available <= minimum) {
             available
         } else {
             ((available.toLong() * 82L) / 100L).toInt()
@@ -776,6 +789,24 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         render()
         view.announceForAccessibility(if (privateEditing) "Keyboard tools" else "Keyboard tools and settings")
     }
+    private fun splitGap(row: LinearLayout) {
+        row.addView(View(context).apply {
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            isClickable = false
+            isFocusable = false
+        }, LinearLayout.LayoutParams(Ui.dp(context, 72), 1))
+    }
+    private fun characterRow(sequence: String) {
+        val line = row()
+        if (!splitLandscape()) {
+            characters(line, sequence)
+            return
+        }
+        val split = (sequence.length + 1) / 2
+        characters(line, sequence.take(split))
+        splitGap(line)
+        characters(line, sequence.drop(split))
+    }
 
     private fun openEdit() {
         cancelForGeometryChange()
@@ -996,6 +1027,9 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         key(alignment, "Right", "Right hand layout", utility = true, height = 48, chordable = false) {
             chooseAlignment(KeyboardAlignment.RIGHT)
         }.apply { isSelected = options.alignment == KeyboardAlignment.RIGHT }
+        key(alignment, "Split", "Split keyboard in landscape", utility = true, height = 48, chordable = false) {
+            chooseSplitLandscape()
+        }.apply { isSelected = options.splitLandscape }
         val layouts = row()
         LetterLayout.entries.forEach { layout ->
             key(layouts, layout.label, "${layout.label} letter layout", utility = true, height = 48, chordable = false) {
@@ -1143,32 +1177,42 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         if (composeChoosingMark) { composeMarkRows(); updateCase(); return }
         if (composeMark != null) { composeLetterRows(); updateCase(); return }
         alternateKey?.let { alternateRows(it); updateCase(); return }
-        if (options.numberRow && !symbols) characters(row(), "1234567890")
+        if (options.numberRow && !symbols) characterRow("1234567890")
         if (symbols) {
-            characters(row(), if (moreSymbols) "`~!@#$%^&*" else "1234567890")
-            characters(row(), if (moreSymbols) "()-_=+[]{}" else "@#$%&-+()/")
+            characterRow(if (moreSymbols) "`~!@#$%^&*" else "1234567890")
+            characterRow(if (moreSymbols) "()-_=+[]{}" else "@#$%&-+()/")
             if (moreSymbols) {
-                characters(row(), "\\|;:\"',<>./?")
+                characterRow("\\|;:\"',<>./?")
                 val last = row()
                 key(last, "?123", "More numbers and symbols", 1.5f, utility = true) {
                     moreSymbols = false; render()
                 }
-                characters(last, "±×÷§©®")
+                characters(last, "±×÷")
+                if (splitLandscape()) splitGap(last)
+                characters(last, "§©®")
                 key(last, "⌫", "Delete", 1.5f, utility = true) { delete() }
             } else {
                 val third = row()
                 key(third, "=\\<", "More symbols", 1.5f, utility = true) {
                     moreSymbols = true; render()
                 }
-                characters(third, "*\"':;!?_")
+                characters(third, "*\"':")
+                if (splitLandscape()) splitGap(third)
+                characters(third, ";!?_")
                 key(third, "⌫", "Delete", 1.5f, utility = true) { delete() }
             }
         } else {
             val layout = options.letterLayout
-            characters(row(), layout.top)
+            characterRow(layout.top)
             val home = row()
             val homeEdge = (10 - layout.home.length) / 2f
-            spacer(home, homeEdge); characters(home, layout.home); spacer(home, homeEdge)
+            spacer(home, homeEdge)
+            if (splitLandscape()) {
+                val split = (layout.home.length + 1) / 2
+                characters(home, layout.home.take(split)); splitGap(home); characters(home, layout.home.drop(split))
+                if (layout.home.length % 2 != 0) spacer(home, 1f)
+            } else characters(home, layout.home)
+            spacer(home, homeEdge)
             val third = row()
             val bottomEdge = (10 - layout.bottom.length) / 2f
             val shiftButton = key(third, "⇧", "Shift off", bottomEdge, utility = true) { tapShift() }
@@ -1176,7 +1220,11 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             shiftKeys.add(shiftButton)
             letterShiftKey = shiftButton
             attachCapsLock(shiftButton)
-            characters(third, layout.bottom)
+            if (splitLandscape()) {
+                val split = (layout.bottom.length + 1) / 2
+                characters(third, layout.bottom.take(split)); splitGap(third); characters(third, layout.bottom.drop(split))
+                if (layout.bottom.length % 2 != 0) spacer(third, 1f)
+            } else characters(third, layout.bottom)
             key(third, "⌫", "Delete", bottomEdge, utility = true) { delete() }
         }
         renderBottomRow()
@@ -1192,20 +1240,22 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             cancelCompose(); alternateMode = false; alternateKey = null; render()
         }
         // Daily destinations live in the stable toolbar; keep this row focused on typing.
-        spacer(bottom, 1.5f)
-        key(bottom, spaceLabel ?: "", "Space", 5f, labelSizeSp = 14) {
+        val spaces = mutableListOf<Button>()
+        fun addSpace(weight: Float) = key(bottom, spaceLabel ?: "", "Space", weight, labelSizeSp = 14) {
             if (type(" ")) refreshSuggestionsRow()
         }.also { space ->
+            spaces += space
             val generation = layoutGeneration
             gestures.attachSpace(space) { left -> if (generation == layoutGeneration) navigate(left) }
-            view.bindSelection(letterShiftKey, space) { left ->
-                if (generation == layoutGeneration) {
-                    ctrl = false; alt = false; updateCase()
-                    if (!terminalKey(if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT,
-                            false, false, true)) unavailable()
-                    refreshSuggestionsRow()
-                }
-            }
+        }
+        if (splitLandscape()) {
+            spacer(bottom, 1f)
+            addSpace(2.5f)
+            splitGap(bottom)
+            addSpace(2.5f)
+        } else {
+            spacer(bottom, 1.5f)
+            addSpace(5f)
         }
         key(bottom, ".") { if (alternateMode) openAlternates('.') else if (type(".")) afterCommit(".") }.also { period ->
             view.registerOrdinaryKey(period)
@@ -1228,6 +1278,15 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             }
             updateCase()
             refreshSuggestionsRow()
+        }
+        val generation = layoutGeneration
+        view.bindSelection(letterShiftKey, spaces.last()) { left ->
+            if (generation == layoutGeneration) {
+                ctrl = false; alt = false; updateCase()
+                if (!terminalKey(if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT,
+                        false, false, true)) unavailable()
+                refreshSuggestionsRow()
+            }
         }
     }
     private fun updateCase() {

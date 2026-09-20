@@ -99,6 +99,21 @@ Local candidate evidence on 2026-09-19:
 - Correctly oriented full-, left- and right-aligned normal, symbols,
   more-symbols, accessory and F-key captures were inspected on the visible
   emulator. Emulator evidence is not physical-phone acceptance.
+- Split keyboard is a separate persisted landscape option with normal portrait
+  fallback. Number, letter, symbol and dual-Space rows keep their full inventory
+  around a 72dp non-clickable center channel. Enabling split selects Full width;
+  choosing Left or Right hand alignment turns split off.
+- Split persistence/reset, portrait fallback, center-gap routing, inventory and
+  mode-exclusion checks pass 3/3. The wider persistence/one-hand group passes
+  11/11, and the true `ROTATION_90` Settings preview was inspected on the visible
+  API 35 emulator. Emulator evidence is not physical-phone acceptance.
+- Final clean-state visible-emulator instrumentation: 194/194 passed with no
+  skips or failures. Three IME-session timeouts from an earlier run after manual
+  Setup/Settings inspection all passed after reboot; the complete clean rerun is
+  the candidate evidence.
+- After the final immediate Split/Full/Left/Right indicator-sync fix, the affected
+  Settings experience class passed 10/10, including staged Cancel, Apply, reopen
+  and one-hand mode exclusion.
 
 ## Non-goals
 
@@ -109,16 +124,14 @@ Local candidate evidence on 2026-09-19:
 - Claims about physical-phone comfort or assistive-technology behavior that were
   not directly observed.
 
-## Layout follow-ups found during visible-emulator review
+## Split landscape slice
 
-- The shipping source has Full, Left hand and Right hand alignment only. It has
-  no split-keyboard preference or split renderer. A real split layout needs a
-  separately bounded landscape slice with preference persistence, Settings and
-  practice-preview parity, safe center-gap touch routing, rotation/resize
-  behavior and portrait fallback; one-handed alignment is not a substitute.
-- Split layout remains the only confirmed layout feature gap from this review.
-  Symbol density and responsive Extra Keys geometry are implemented and covered;
-  do not regress by dropping characters or breaking held modifier chords.
+Split is implemented independently from Full/Left/Right alignment so portrait
+and one-hand behavior remain predictable. The preference is local, staged behind
+Settings Apply/Cancel, included in Reset, and also reachable from Tools. It does
+not alter voice, clipboard, suggestions, language support or private-field rules.
+Do not regress its inactive center channel, complete character inventory, portrait
+fallback, or the existing held modifier chords.
 
 ## Voice-state indicator slice
 
@@ -143,5 +156,5 @@ Acceptance evidence on the visible API 35 emulator:
 
 For Slice 0, stop after the daily action contract, Select semantics, portrait and
 landscape geometry, visible-emulator screenshots and focused checks pass. Do not
-claim physical-phone usability. Later slices own split layout and any broader
-Tools/Edit restructuring.
+claim physical-phone usability. Later slices own any broader Tools/Edit
+restructuring.

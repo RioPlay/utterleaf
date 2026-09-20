@@ -177,7 +177,8 @@ class KeyboardSettingsActivity : Activity() {
                     KeyboardAlignment.FULL -> "Full width"
                     KeyboardAlignment.LEFT -> "Left hand"
                     KeyboardAlignment.RIGHT -> "Right hand"
-                }).joinToString(" · ")),
+                },
+                if (staged.splitLandscape) "Split landscape" else "Standard landscape").joinToString(" · ")),
             Category("terminal", R.drawable.ic_nav, "Navigation & terminal", listOf(
                 if (staged.arrowRepeat) "Arrow repeat on" else "Arrow repeat off",
                 if (staged.extraKeys) "Expand arrow on" else "Expand arrow off").joinToString(" · ")),
@@ -205,7 +206,7 @@ class KeyboardSettingsActivity : Activity() {
                 "Voice only when requested · No typing history"))
         // Search control names even when their current values are absent from the summary.
         val keywords = mapOf(
-            "layout" to "number row fold-out extra keys larger keys and labels key height bottom space padding keyboard alignment full width left hand right hand letter layout qwerty qwertz azerty",
+            "layout" to "number row fold-out extra keys larger keys and labels key height bottom space padding keyboard alignment full width left hand right hand split landscape letter layout qwerty qwertz azerty",
             "terminal" to "arrow repeat navigation terminal esc tab ctrl alt function f1 f12",
             "assistance" to "auto-capitalization auto capitalization suggestions completions secondary character hints accents",
             "gestures" to "hold timing delay hold backspace or delete to repeat repeat guard ignore repeated taps on the same key within 250 ms key vibration (respects device settings) haptics cursor spacebar slide selection accents",
@@ -374,7 +375,7 @@ class KeyboardSettingsActivity : Activity() {
             AlertDialog.Builder(this).setTitle("Reset preferences?")
                 .setMessage("Restore the redesigned defaults: number row on, extra keys on, system theme, " +
                     "auto-capitalization on, arrow repeat on, key borders on, QWERTY, Full width, standard key " +
-                    "size, 320 ms hold and no repeat filtering. Choose Apply to save the reset, or Cancel to keep " +
+                    "size, standard landscape, 320 ms hold and no repeat filtering. Choose Apply to save the reset, or Cancel to keep " +
                     "your preferences. Your models and microphone permission stay unchanged.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Reset") { _, _ ->
                     staged = KeyboardOptions()
@@ -385,23 +386,25 @@ class KeyboardSettingsActivity : Activity() {
         return row
     }
 
-    private fun toggle(label: String, checked: Boolean, update: (Boolean) -> Unit) {
+    private fun toggle(label: String, checked: Boolean, update: (Boolean) -> Unit): CheckBox {
         val context = this
-        column2().addView(CheckBox(context).apply {
+        val control = CheckBox(context).apply {
             text = label; textSize = 16f; setTextColor(Ui.palette(context, staged).ink); minHeight = Ui.dp(context, 48)
             isChecked = checked
             setOnCheckedChangeListener { _, value ->
                 update(value)
                 updatePreview()
             }
-        })
+        }
+        column2().addView(control)
+        return control
     }
     private var controlsColumn: LinearLayout? = null
     private fun column2(): LinearLayout = controlsColumn!!
 
-    private fun choice(label: String, options: List<Pair<String, Boolean>>, pick: (Int) -> Unit) {
+    private fun choice(label: String, options: List<Pair<String, Boolean>>, pick: (Int) -> Unit): RadioGroup {
         val context = this
-        column2().addView(RadioGroup(context).apply {
+        val group = RadioGroup(context).apply {
             orientation = RadioGroup.VERTICAL
             options.forEachIndexed { index, (text, checked) ->
                 addView(RadioButton(context).apply {
@@ -411,7 +414,9 @@ class KeyboardSettingsActivity : Activity() {
                     setOnClickListener { pick(index); updatePreview() }
                 })
             }
-        })
+        }
+        column2().addView(group)
+        return group
     }
 
     private fun slider(value: Int, max: Int, display: (Int) -> String, update: (Int) -> Unit) {
@@ -456,13 +461,23 @@ class KeyboardSettingsActivity : Activity() {
                     { progress -> "Bottom space: $progress dp" },
                     { progress -> staged = staged.copy(bottomPaddingDp = progress) })
                 Ui.text(this, "Keyboard alignment", 16f, staged).let { controls.addView(it) }
-                choice("alignment", listOf(
+                lateinit var splitToggle: CheckBox
+                val alignmentGroup = choice("alignment", listOf(
                     "Full width" to (staged.alignment == KeyboardAlignment.FULL),
                     "Left hand" to (staged.alignment == KeyboardAlignment.LEFT),
                     "Right hand" to (staged.alignment == KeyboardAlignment.RIGHT))) { index ->
-                    staged = staged.copy(alignment = KeyboardAlignment.entries[index])
+                    val alignment = KeyboardAlignment.entries[index]
+                    staged = staged.copy(alignment = alignment,
+                        splitLandscape = staged.splitLandscape && alignment == KeyboardAlignment.FULL)
+                    if (alignment != KeyboardAlignment.FULL) splitToggle.isChecked = false
                 }
                 note("Left and Right keep every key in a narrower column on wider screens.")
+                splitToggle = toggle("Split keyboard in landscape", staged.splitLandscape) { enabled ->
+                    staged = staged.copy(splitLandscape = enabled,
+                        alignment = if (enabled) KeyboardAlignment.FULL else staged.alignment)
+                    if (enabled) (alignmentGroup.getChildAt(0) as RadioButton).isChecked = true
+                }
+                note("Adds a touch-safe center gap on wide landscape typing rows. Portrait stays standard; choosing Left or Right turns split off.")
                 Ui.text(this, "Letter layout", 16f, staged).let { controls.addView(it) }
                 choice("letters", LetterLayout.entries.map { it.label to (staged.letterLayout == it) }) { index ->
                     staged = staged.copy(letterLayout = LetterLayout.entries[index])

@@ -13,6 +13,10 @@ A grouped Accessory/F-key strip keeps specialist controls to one row, preserves
 held modifier-arrow chords, and responsively replaces the toolbar in landscape so
 Space and Enter remain visible. The complete additional-symbol set is split across
 readable rows instead of being compressed into one line.
+An optional **Split keyboard in landscape** layout adds a non-interactive center
+channel across number, letter, symbol, and dual-Space rows. It falls back to the
+standard layout in portrait; choosing Left or Right hand alignment turns split
+off so the modes never conflict.
 A mic tap keeps the transcript review-and-correct flow; direct insertion remains an
 explicit hold option. The mic and Voice surface use official Utterling states with
 visible labels for availability, listening, local processing, transcript review,

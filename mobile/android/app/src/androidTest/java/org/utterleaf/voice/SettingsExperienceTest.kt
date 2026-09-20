@@ -115,6 +115,37 @@ class SettingsExperienceTest {
         } finally { main { activity.finish() } }
     }
 
+    @Test fun splitLandscapeChoiceStagesCancelsAppliesAndYieldsToOneHand() = isolated {
+        val label = "Split keyboard in landscape"
+        for (apply in listOf(false, true)) {
+            val activity = open()
+            try { main {
+                category(activity, "Layout & size")
+                button(activity, label).performClick()
+                assertTrue((button(activity, label) as CheckBox).isChecked)
+                assertFalse(KeyboardOptions.load(context).splitLandscape)
+                if (apply) button(activity, "Apply").performClick()
+                else { activity.onBackPressed(); button(activity, "Cancel").performClick() }
+            }
+                instrumentation.waitForIdleSync()
+                assertEquals(apply, KeyboardOptions.load(context).splitLandscape)
+            } finally { main { activity.finish() } }
+        }
+
+        val activity = open()
+        try { main {
+            category(activity, "Layout & size")
+            assertTrue((button(activity, label) as CheckBox).isChecked)
+            button(activity, "Left hand").performClick()
+            assertFalse((button(activity, label) as CheckBox).isChecked)
+            button(activity, "Apply").performClick()
+        }
+            instrumentation.waitForIdleSync()
+            assertEquals(KeyboardAlignment.LEFT, KeyboardOptions.load(context).alignment)
+            assertFalse(KeyboardOptions.load(context).splitLandscape)
+        } finally { main { activity.finish() } }
+    }
+
     @androidx.test.filters.SdkSuppress(minSdkVersion = 29)
     @Test fun confirmedResetIsStagedCancelableAndKeepsModelStorage() = isolated {
         val custom = KeyboardOptions(numberRow = false, theme = ThemeMode.DARK, holdDelayMs = 600)

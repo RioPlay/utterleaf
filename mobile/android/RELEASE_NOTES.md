@@ -29,6 +29,10 @@ complete dark appearance choices, and shortens routine Android CI feedback.
   full and one-hand layouts. Held modifier-arrow chords remain supported.
 - The complete additional-symbol inventory is distributed across balanced rows
   instead of squeezing the final set into one line.
+- Layout & size now offers **Split keyboard in landscape**. It preserves the
+  complete typing and symbol inventory around a non-clickable center channel,
+  divides Space into two equivalent thumb targets, and automatically uses the
+  standard layout in portrait. Left/Right hand choices turn split off.
 - Superseded pull-request runs cancel automatically. Pull requests perform the
   fast compile, unit-test, lint, and debug-build path; the full emulator,
   privacy/inference, release build, and packaging gates still run on the exact
@@ -61,9 +65,8 @@ Emulator success does not establish physical-phone comfort. Pixel 8 Pro/Graphene
 broader editor, TalkBack/Switch Access, phone layout/latency, and real Obtainium
 acceptance remain explicit follow-up work.
 
-Split keyboard is not implemented in this candidate. The responsive symbols and
-Extra Keys landscape pass is complete on the visible API 35 emulator; physical
-phone reach and comfort remain unverified.
+Split, responsive symbols, and Extra Keys landscape geometry are covered on the
+visible API 35 emulator. Physical-phone reach and comfort remain unverified.
 
 No automatic correction, next-word prediction, swipe typing, streaming partial
 dictation, or language expansion is added. Typing needs no model or microphone
