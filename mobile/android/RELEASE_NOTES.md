@@ -5,12 +5,12 @@ complete dark appearance choices, and shortens routine Android CI feedback.
 
 ## What changed
 
-- The stable toolbar now has four clear daily destinations: **Tools**, **Edit**,
-  **Emoji**, and **Voice**. Less-common controls remain one shallow layer away
-  without crowding the letter rows.
-- **Edit** groups Undo, Redo, Select all, Cut, Copy, Paste, cursor movement, and
-  Extra keys. The Extra keys panel keeps terminal/navigation controls available
-  without making them permanent keyboard chrome.
+- The stable daily strip keeps Undo, Redo, Cut, Copy, Paste, Select, **Tools**,
+  **Edit**, **Emoji**, Private Draft, **Voice**, and Extra Keys directly
+  reachable. It uses two rows in portrait and one in landscape.
+- Select now follows the documented gesture contract: tap selects the neighboring
+  word and long-press selects all. Restricted actions remain visibly unavailable
+  or absent in password, raw, and private fields.
 - Settings, setup, keyboard, emoji, private draft, and voice surfaces share the
   selected palette. Appearance now offers **System**, **Light**, **Dark**, and
   true-black **OLED** modes.
@@ -50,6 +50,10 @@ private-mode isolation, editing, terminal controls, voice review, and settings.
 Emulator success does not establish physical-phone comfort. Pixel 8 Pro/GrapheneOS,
 broader editor, TalkBack/Switch Access, phone layout/latency, and real Obtainium
 acceptance remain explicit follow-up work.
+
+Split keyboard is not implemented in this candidate. Visible-emulator review also
+found that the additional-symbol row and the current multi-row Extra Keys panel
+need a responsive landscape pass before alpha20 publication.
 
 No automatic correction, next-word prediction, swipe typing, streaming partial
 dictation, or language expansion is added. Typing needs no model or microphone

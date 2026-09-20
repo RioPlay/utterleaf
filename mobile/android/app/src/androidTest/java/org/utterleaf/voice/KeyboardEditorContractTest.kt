@@ -61,7 +61,7 @@ class KeyboardEditorContractTest {
         var attempts = 0
         val deadline = android.os.SystemClock.elapsedRealtime() + 15_000
         while (android.os.SystemClock.elapsedRealtime() < deadline) {
-            if (key("Select all text") != null) return
+            if (key("Select neighboring word") != null) return
             val edit = key("Editing tools")
             if (edit?.isEnabled == true && edit.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
                 attempts++
@@ -69,7 +69,7 @@ class KeyboardEditorContractTest {
             }
             val openDeadline = android.os.SystemClock.elapsedRealtime() + 2_000
             while (android.os.SystemClock.elapsedRealtime() < openDeadline) {
-                if (key("Select all text") != null) return
+                if (key("Select neighboring word") != null) return
                 Thread.sleep(50)
             }
         }
@@ -191,7 +191,7 @@ class KeyboardEditorContractTest {
         try {
             main { activity.editor.setText("alpha beta"); activity.editor.setSelection(activity.editor.length()) }
             openEditingTools()
-            longPress("Select all text")
+            press("Select neighboring word")
             await("Neighboring word was not selected") {
                 main {
                     val start = minOf(activity.editor.selectionStart, activity.editor.selectionEnd)
@@ -199,7 +199,7 @@ class KeyboardEditorContractTest {
                     activity.editor.text.toString() == "alpha beta" && start == 6 && end == 10
                 }
             }
-            press("Select all text")
+            longPress("Select neighboring word")
             await("Select all did not apply") {
                 main { activity.editor.selectionStart == 0 && activity.editor.selectionEnd == 10 }
             }

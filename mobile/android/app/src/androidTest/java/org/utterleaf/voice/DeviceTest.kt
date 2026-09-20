@@ -560,7 +560,7 @@ class DeviceTest {
                     livePress("Editing tools")
                     livePress("Undo")
                     awaitCondition("Live Undo did not reach editor history") { onMain { screen.editor.text.toString() == "cat" } }
-                    livePress("Select all text")
+                    liveLongPress("Select neighboring word")
                     awaitCondition("Live Select all did not select the editor") { onMain {
                         screen.editor.selectionStart == 0 && screen.editor.selectionEnd == 3
                     } }

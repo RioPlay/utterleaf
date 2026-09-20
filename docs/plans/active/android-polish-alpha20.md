@@ -2,9 +2,10 @@
 
 ## Goal
 
-Ship a calmer, faster Utterleaf Android preview with four stable daily keyboard
-destinations, complete System/Light/Dark/OLED appearance choices, clearer voice
-review-versus-direct-insert behavior, and much faster routine pull-request CI.
+Ship a calmer, faster Utterleaf Android preview while preserving the source-derived
+daily productivity contract. The default keyboard keeps editor actions and core
+destinations directly reachable, adds complete System/Light/Dark/OLED appearance
+choices, clarifies voice review versus direct insert, and shortens routine CI.
 
 ## Area
 
@@ -25,19 +26,40 @@ review-versus-direct-insert behavior, and much faster routine pull-request CI.
 - OLED means true-black primary surfaces with readable controls; it is not a
   battery-life claim.
 
-## Selected layout
+## Source-derived capability inventory
 
-The approved fixed-layout wireframes use four stable daily destinations:
-**Tools**, **Edit**, **Emoji**, and **Voice**. Editing actions move behind the
-single Edit destination; settings, layout and power controls remain under Tools.
-Every secondary surface has one obvious return to typing.
+| Capability | Current owner | Slice 0 destination |
+| --- | --- | --- |
+| Undo / Redo | `EditorActions` through `KeyboardIme` or private editor | Anchored action row |
+| Cut / Copy / Paste | Explicit context-menu actions; no passive clipboard read | Anchored action row outside Private Draft |
+| Select | Native word-selection chord and explicit Select all action | Tap Select for neighboring word; hold for Select all |
+| Tools / Edit / Emoji | Existing `TypingPanel` surfaces | Anchored destination row |
+| Private Draft | Safe-field callback owned by `KeyboardIme` | Stable destination slot; absent in restricted/private fields |
+| Voice | Explicit `showVoice` callback | Stable mic slot; visibly disabled in restricted fields |
+| Password manager | Password-field-only callback | Reuses the Draft slot only in password fields |
+| Extra keys | Existing preference and terminal callbacks | Stable specialist slot when enabled |
+
+There is no separate clipboard-history or clipboard-browser callback in the shipping
+source. Paste is the only explicit clipboard command. Slice 0 does not invent a
+clipboard reader or passive history surface.
+
+## Approved Slice 0 layout
+
+Daily uses two fixed rows of six equal positions. The first row anchors Undo, Redo,
+Cut, Copy, Paste and Select. The second anchors Tools, Edit, Emoji, Draft/password
+manager, Voice and Extra keys. Restricted actions stay in position and visibly
+disable where safe; private editing omits host and clipboard capabilities. Tools,
+Edit and Extra Keys keep their existing secondary rendering for this slice.
 
 ## Acceptance
 
-- Daily toolbar exposes no more than the four selected destinations and keeps
-  touch targets at least 48dp.
-- Edit exposes undo/redo, selection, cut/copy/paste and navigation without
-  putting those controls on the daily toolbar.
+- Daily exposes every existing productivity callback without scrolling; six
+  stable positions per row remain at least 48dp at 320, 360 and 411dp portrait
+  widths and 600 and 800dp landscape widths.
+- Tap Select selects the neighboring word. Long-press Select invokes Select all,
+  with an explicitly named accessibility action.
+- Ordinary, password, raw and private profiles have an enumerated parity test.
+  Restricted actions are absent or visibly disabled rather than silently active.
 - Theme choice includes System, Light, Dark and OLED, persists across restart,
   previews before Apply, and Reset returns to System without deleting models.
 - Mic tap always records for review; the optional hold gesture is clearly named
@@ -64,15 +86,37 @@ Local candidate evidence on 2026-09-19:
 - API 35 emulator suite: 187/187 passed after the final timing-hardening change.
 - Generated live-keyboard, Settings-preview and editor-action screenshots were
   inspected; emulator visuals are not physical-device acceptance.
+- Slice 0 portrait API 35 suite: 189/189 passed on the visible emulator.
+- True landscape (`ROTATION_90`, 914dp by 411dp) daily contract: 2/2 passed.
+  The live geometry run intentionally remains red because Extra Keys clips Space
+  and Done in landscape. Correctly oriented normal, symbols, more-symbols and
+  failing Extra Keys captures were inspected and saved locally; the second
+  symbol page visibly compresses twenty characters into its final row.
 
 ## Non-goals
 
 - Streaming or partial speech recognition, live host-field rewriting, prediction,
   clipboard history, new language models, or a stable-channel release.
+- Restructuring Tools, the spatial Edit pad, the Extra Keys flyout, Voice, Emoji,
+  Private Draft chrome, Setup or Settings information architecture in Slice 0.
 - Claims about physical-phone comfort or assistive-technology behavior that were
   not directly observed.
 
+## Layout follow-ups found during visible-emulator review
+
+- The shipping source has Full, Left hand and Right hand alignment only. It has
+  no split-keyboard preference or split renderer. A real split layout needs a
+  separately bounded landscape slice with preference persistence, Settings and
+  practice-preview parity, safe center-gap touch routing, rotation/resize
+  behavior and portrait fallback; one-handed alignment is not a substitute.
+- The symbols page, especially the additional-symbol row, places too many keys
+  on one line at phone widths. Preserve complete punctuation coverage, but
+  redesign its grouping and pagination after capturing portrait and landscape
+  evidence; do not silently remove characters to make the page look cleaner.
+
 ## Stop
 
-Stop after the alpha20 prerelease is published with recorded checks and known
-device/editor limitations remain explicit.
+For Slice 0, stop after the daily action contract, Select semantics, portrait and
+landscape geometry, visible-emulator screenshots and focused checks pass. Do not
+claim physical-phone usability. Later slices own split layout, symbol density,
+Tools/Edit structure and the flyout.

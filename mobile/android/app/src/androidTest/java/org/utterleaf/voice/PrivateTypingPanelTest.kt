@@ -94,7 +94,7 @@ class PrivateTypingPanelTest {
             key(panel, "a").performClick()
             key(panel, alternate).performClick()
             key(panel, "Editing tools").performClick()
-            key(panel, "Select all text").performLongClick()
+            key(panel, "Select neighboring word").performClick()
             key(panel, "Close editing tools").performClick()
             key(panel, "Extra keys").performClick()
             buttons(panel).first { it.contentDescription == "Shift off" }.performClick()
@@ -109,9 +109,9 @@ class PrivateTypingPanelTest {
             touch(undo, MotionEvent.ACTION_DOWN)
             touch(undo, MotionEvent.ACTION_UP)
             assertTrue(actions.isEmpty())
-            val selectAll = key(panel, "Select all text")
+            val selectAll = key(panel, "Select neighboring word")
             assertTrue(selectAll.isEnabled)
-            selectAll.performClick()
+            selectAll.performLongClick()
             available += EditorAction.UNDO
             available += EditorAction.REDO
             key(panel, "Close editing tools").performClick()

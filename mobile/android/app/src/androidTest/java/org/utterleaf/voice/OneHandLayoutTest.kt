@@ -105,7 +105,7 @@ class OneHandLayoutTest {
                 key("Close tools and settings").performClick()
                 key("Editing tools").performClick()
                 assertColumn(panel, 600, KeyboardAlignment.RIGHT)
-                assertTrue(buttons(panel.view).any { it.contentDescription == "Select all text" })
+                assertTrue(buttons(panel.view).any { it.contentDescription == "Select neighboring word" })
             }
         }
     }

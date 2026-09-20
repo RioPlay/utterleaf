@@ -385,16 +385,16 @@ class CompactLayerTest {
         }
     }
 
-    @Test fun selectAllTapAndWordHoldStayDistinct() {
+    @Test fun selectTapAndSelectAllHoldStayDistinct() {
         withPanel { fixture ->
             assertTrue(main { fixture.key("Editing tools").performClick() })
-            val selectAll = fixture.key("Select all text")
-            assertFalse(selectAll.isSelected)
-            fixture.tap(selectAll)
-            assertEquals(listOf(EditorAction.SELECT_ALL), fixture.calls.actions)
-            assertFalse("Select all is a one-shot action, not a mode", selectAll.isSelected)
-            assertTrue(main { selectAll.performLongClick() })
+            val select = fixture.key("Select neighboring word")
+            assertFalse(select.isSelected)
+            fixture.tap(select)
             assertEquals(listOf(listOf(KeyEvent.KEYCODE_DPAD_LEFT, true, false, true)), fixture.calls.special)
+            assertFalse("Select is a one-shot action, not a mode", select.isSelected)
+            assertTrue(main { select.performLongClick() })
+            assertEquals(listOf(EditorAction.SELECT_ALL), fixture.calls.actions)
         }
     }
 

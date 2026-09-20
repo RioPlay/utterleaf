@@ -1,0 +1,110 @@
+package org.utterleaf.voice
+
+import android.content.Context
+import android.content.res.Configuration
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Button
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class DailyToolbarContractTest {
+    private val instrumentation = InstrumentationRegistry.getInstrumentation()
+    private val context: Context = instrumentation.targetContext
+
+    private fun buttons(view: View): List<Button> = when (view) {
+        is Button -> listOf(view)
+        is ViewGroup -> (0 until view.childCount).flatMap { buttons(view.getChildAt(it)) }
+        else -> emptyList()
+    }
+
+    private fun descriptions(panel: TypingPanel) = buttons(panel.view)
+        .mapNotNull { it.contentDescription?.toString() }.toSet()
+
+    private fun panel(
+        panelContext: Context = context,
+        privateEditing: Boolean = false,
+        allowVoice: Boolean = true,
+        raw: Boolean = false,
+        draft: (() -> Unit)? = {},
+        password: (() -> Boolean)? = null,
+        available: (EditorAction) -> Boolean = { true },
+    ) = TypingPanel(panelContext, KeyboardOptions(extraKeys = true), { true }, {}, {}, {}, {}, {}, {},
+        editorAction = { true }, privateEditing = privateEditing, openDraft = draft,
+        actionAvailable = available, rawField = raw, openPasswordManager = password).also {
+        it.reset(allowVoice, numeric = false, action = "Enter")
+    }
+
+    @Test fun dailyActionsHaveExplicitFieldProfileContracts() {
+        instrumentation.runOnMainSync {
+            val common = setOf("Undo", "Redo", "Select neighboring word", "Keyboard tools",
+                "Editing tools", "Emoji", "Extra keys")
+
+            val ordinary = panel()
+            assertTrue(descriptions(ordinary).containsAll(
+                common + setOf("Cut", "Copy", "Paste", "Private draft", "Dictate")))
+
+            val password = panel(allowVoice = false, draft = null, password = { true }) { action ->
+                action !in setOf(EditorAction.CUT, EditorAction.COPY)
+            }
+            val passwordActions = descriptions(password)
+            assertTrue(passwordActions.containsAll(
+                common + setOf("Cut", "Copy", "Paste", "Open password manager", "Dictate")))
+            assertFalse(buttons(password.view).single { it.contentDescription == "Cut" }.isEnabled)
+            assertFalse(buttons(password.view).single { it.contentDescription == "Copy" }.isEnabled)
+            assertFalse(buttons(password.view).single { it.contentDescription == "Dictate" }.isEnabled)
+            assertFalse("Private draft" in passwordActions)
+
+            val raw = panel(allowVoice = false, raw = true, draft = null) { false }
+            assertTrue(descriptions(raw).containsAll(common + setOf("Cut", "Copy", "Paste", "Dictate")))
+            for (action in listOf("Undo", "Redo", "Cut", "Copy", "Paste", "Select neighboring word")) {
+                assertFalse("$action must explain unavailability by being disabled in raw input",
+                    buttons(raw.view).single { it.contentDescription == action }.isEnabled)
+            }
+
+            val private = panel(privateEditing = true, draft = null) { action ->
+                action in setOf(EditorAction.UNDO, EditorAction.REDO, EditorAction.SELECT_ALL)
+            }
+            val privateActions = descriptions(private)
+            assertTrue(privateActions.containsAll(common))
+            assertTrue(privateActions.intersect(setOf("Cut", "Copy", "Paste", "Private draft", "Dictate",
+                "Open password manager")).isEmpty())
+
+            listOf(ordinary, password, raw, private).forEach { it.dispose() }
+        }
+    }
+
+    @Test fun sixStableActionsKeepAtLeastFortyEightDpInPortraitAndLandscapeWidths() {
+        instrumentation.runOnMainSync {
+            val configurations = listOf(
+                Configuration.ORIENTATION_PORTRAIT to listOf(320, 360, 411),
+                Configuration.ORIENTATION_LANDSCAPE to listOf(600, 800),
+            )
+            for ((orientation, widths) in configurations) for (widthDp in widths) {
+                val configured = Configuration(context.resources.configuration).apply {
+                    this.orientation = orientation
+                }
+                val panelContext = context.createConfigurationContext(configured)
+                val panel = panel(panelContext = panelContext)
+                val width = Ui.dp(panelContext, widthDp)
+                panel.view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+                panel.view.layout(0, 0, width, panel.view.measuredHeight)
+                for (description in listOf("Undo", "Redo", "Cut", "Copy", "Paste", "Select neighboring word",
+                    "Keyboard tools", "Editing tools", "Emoji", "Private draft", "Dictate", "Extra keys")) {
+                    val button = buttons(panel.view).single { it.contentDescription == description }
+                    assertTrue("$description was narrower than 48dp at ${widthDp}dp width",
+                        button.measuredWidth >= Ui.dp(panelContext, 48))
+                    assertTrue("$description lost its 48dp touch height",
+                        button.measuredHeight >= Ui.dp(panelContext, 48))
+                }
+                panel.dispose()
+            }
+        }
+    }
+}

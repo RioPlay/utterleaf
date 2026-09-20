@@ -3,10 +3,11 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha20 is released as a signed development preview.** Its stable daily
-toolbar exposes **Tools**, **Edit**, **Emoji**, and **Voice** without crowding the
-letter rows. Edit groups review and correction controls; less-common controls
-remain one shallow layer away. System, Light, Dark, and true-black OLED themes now
+**0.1.0-alpha20 is an unreleased development candidate.** Its stable daily
+productivity strip keeps Undo, Redo, Cut, Copy, Paste, Select, Tools, Edit,
+Emoji, Private Draft, Voice, and Extra Keys directly reachable. Portrait uses
+two rows; landscape uses one row to protect vertical typing space. System,
+Light, Dark, and true-black OLED themes now
 apply across the keyboard, Settings, setup, emoji, private draft, and voice review.
 A mic tap keeps the transcript review-and-correct flow; direct insertion remains an
 explicit hold option. [Release evidence and phone QA](../../docs/mobile-roadmap.md#current-status).

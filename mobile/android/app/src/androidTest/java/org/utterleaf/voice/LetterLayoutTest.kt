@@ -244,7 +244,7 @@ class LetterLayoutTest {
 
                 key(panel, "Close tools and settings").performClick()
                 key(panel, "Editing tools").performClick()
-                key(panel, "Select all text").performLongClick()
+                key(panel, "Select neighboring word").performClick()
                 key(panel, "Close editing tools").performClick()
                 key(panel, "Keyboard tools").performClick()
                 key(panel, "QWERTZ letter layout").performClick()

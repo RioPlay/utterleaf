@@ -2,6 +2,7 @@
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Configuration
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Canvas
@@ -814,47 +815,93 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private fun toolbarIcon(row: LinearLayout, icon: Int, description: String, weight: Float = 1f,
         primary: Boolean = false, pill: Boolean = false, enabled: Boolean = true,
         action: () -> Unit): Button =
-        key(row, "", description, weight = weight, utility = !primary, primary = primary, height = 46,
+        key(row, "", description, weight = weight, utility = !primary, primary = primary, height = 48,
             chordable = false, compact = true, pill = pill, action = action).apply {
             (this as HintedKey).primaryIcon = context.getDrawable(icon)?.mutate()
             isEnabled = enabled
         }
 
-    private fun editorActionKey(row: LinearLayout, action: EditorAction, label: String = action.label) {
-        val generation = layoutGeneration
-        val description = if (action == EditorAction.SELECT_ALL) "Select all text" else action.label
-        val button = key(row, label, description, utility = true, height = 48, chordable = false) {
+    private fun toolbarEditorAction(row: LinearLayout, action: EditorAction, icon: Int) {
+        val button = toolbarIcon(row, icon, action.label) {
             val accepted = editorAction(action)
             selecting = false
             if (!accepted) unavailable()
         }
         actionKeys[action] = button
         button.isEnabled = actionAvailable(action)
-        if (action == EditorAction.SELECT_ALL) button.setOnLongClickListener {
+    }
+
+    private fun editorActionKey(row: LinearLayout, action: EditorAction, label: String = action.label) {
+        val button = key(row, label, action.label, utility = true, height = 48, chordable = false) {
+            val accepted = editorAction(action)
+            selecting = false
+            if (!accepted) unavailable()
+        }
+        actionKeys[action] = button
+        button.isEnabled = actionAvailable(action)
+    }
+
+    private fun selectActionKey(row: LinearLayout, height: Int = 48) {
+        val generation = layoutGeneration
+        val button = key(row, "Select", "Select neighboring word", utility = true, height = height,
+            chordable = false, compact = true) { selectNeighboringWord() }
+        actionKeys[EditorAction.SELECT_ALL] = button
+        button.isEnabled = actionAvailable(EditorAction.SELECT_ALL)
+        button.setOnLongClickListener {
             if (disposed || generation != layoutGeneration) false else {
-                selectNeighboringWord(); true
+                val accepted = editorAction(EditorAction.SELECT_ALL)
+                selecting = false
+                if (!accepted) unavailable() else view.announceForAccessibility("Selected all text")
+                true
+            }
+        }
+        button.accessibilityDelegate = object : View.AccessibilityDelegate() {
+            override fun onInitializeAccessibilityNodeInfo(host: View,
+                info: android.view.accessibility.AccessibilityNodeInfo) {
+                super.onInitializeAccessibilityNodeInfo(host, info)
+                if (host.isEnabled) info.addAction(android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(
+                    android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK, "Select all text"))
             }
         }
     }
 
     private fun normalToolbar() {
-        val toolbar = row()
-        key(toolbar, "Tools", "Keyboard tools", utility = true, height = 48,
-            chordable = false, compact = true) { openHub() }
-        key(toolbar, "Edit", "Editing tools", utility = true, height = 48,
-            chordable = false, compact = true) { openEdit() }
-        toolbarIcon(toolbar, R.drawable.ic_emoji, "Emoji", enabled = emojiAllowed) { showEmoji() }
+        val actions = row()
+        toolbarEditorAction(actions, EditorAction.UNDO, R.drawable.ic_undo)
+        toolbarEditorAction(actions, EditorAction.REDO, R.drawable.ic_redo)
         if (privateEditing) {
-            if (options.extraKeys) toolbarIcon(toolbar, R.drawable.ic_expand_open, "Extra keys") { openExtraKeys() }
-            else spacer(toolbar, 1f)
-        } else if (openPasswordManager != null) {
-            toolbarIcon(toolbar, R.drawable.ic_key, "Open password manager", primary = true, pill = true) {
+            repeat(3) { spacer(actions, 1f) }
+        } else {
+            toolbarEditorAction(actions, EditorAction.CUT, R.drawable.ic_cut)
+            toolbarEditorAction(actions, EditorAction.COPY, R.drawable.ic_copy)
+            toolbarEditorAction(actions, EditorAction.PASTE, R.drawable.ic_paste)
+        }
+        selectActionKey(actions)
+
+        // A single 12-position strip keeps the typing rows visible in landscape.
+        // Portrait retains two rows so every target stays at least 48dp wide.
+        val destinations = if (context.resources.configuration.orientation ==
+            Configuration.ORIENTATION_LANDSCAPE) actions else row()
+        key(destinations, "Tools", "Keyboard tools", utility = true, height = 48,
+            chordable = false, compact = true) { openHub() }
+        key(destinations, "Edit", "Editing tools", utility = true, height = 48,
+            chordable = false, compact = true) { openEdit() }
+        toolbarIcon(destinations, R.drawable.ic_emoji, "Emoji", enabled = emojiAllowed) { showEmoji() }
+        if (!privateEditing && openPasswordManager != null) {
+            toolbarIcon(destinations, R.drawable.ic_key, "Open password manager") {
                 if (openPasswordManager?.invoke() != true) unavailable()
             }
-        } else {
-            toolbarIcon(toolbar, R.drawable.voice_idle, "Dictate", primary = true, pill = true,
+        } else if (!privateEditing && openDraft != null) {
+            toolbarIcon(destinations, R.drawable.ic_draft, "Private draft") { openDraft?.invoke() }
+        } else spacer(destinations, 1f)
+        if (!privateEditing) {
+            toolbarIcon(destinations, R.drawable.voice_idle, "Dictate", primary = true, pill = true,
                 enabled = voiceAllowed) { dictate() }
+        } else {
+            spacer(destinations, 1f)
         }
+        if (options.extraKeys) toolbarIcon(destinations, R.drawable.ic_expand_open, "Extra keys") { openExtraKeys() }
+        else spacer(destinations, 1f)
         toolbarStatus = null
     }
 
@@ -862,7 +909,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         val history = row()
         editorActionKey(history, EditorAction.UNDO)
         editorActionKey(history, EditorAction.REDO)
-        editorActionKey(history, EditorAction.SELECT_ALL, "Select all")
+        selectActionKey(history)
         val clipboard = row()
         editorActionKey(clipboard, EditorAction.CUT)
         editorActionKey(clipboard, EditorAction.COPY)
