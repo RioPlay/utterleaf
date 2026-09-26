@@ -27,12 +27,13 @@ class PrivateDraftPanel(
     private val exit: () -> Unit,
 ) {
     private val light = options.resolvedLight(context)
-    private val surface = Color.parseColor(if (light) "#E8EEEB" else "#171E20")
-    private val paper = Color.parseColor(if (light) "#FFFFFF" else "#303A3D")
-    private val ink = Color.parseColor(if (light) "#17251D" else "#F0F5F2")
-    private val muted = Color.parseColor(if (light) "#486052" else "#B2C5B9")
-    private val accent = Color.parseColor(if (light) "#25643D" else "#A2DFB3")
-    private val accentInk = Color.parseColor(if (light) "#FFFFFF" else "#10291B")
+    private val palette = Ui.palette(context, options)
+    private val surface = palette.background
+    private val paper = palette.key
+    private val ink = palette.ink
+    private val muted = palette.muted
+    private val accent = palette.accent
+    private val accentInk = palette.accentInk
     private var disposed = false
     private var inserting = false
     private var unconfirmed = false

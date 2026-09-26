@@ -8,6 +8,9 @@ on:
     paths: ['mobile/android/**', '!mobile/android/**/*.md', '.github/workflows/android.yml']
 permissions:
   contents: read
+concurrency:
+  group: android-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -30,10 +33,17 @@ jobs:
       - name: Install build tools
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.0.13004108' 'cmake;3.22.1'
       - name: Build, unit tests, and lint
-        run: bash gradlew --no-daemon testDebugUnitTest lintDebug compileDebugAndroidTestKotlin assembleDebug assembleRelease
+        shell: bash
+        run: |
+          tasks='testDebugUnitTest lintDebug compileDebugAndroidTestKotlin assembleDebug'
+          if [[ '${{ github.event_name }}' != 'pull_request' ]]; then tasks="$tasks assembleRelease"; fi
+          bash gradlew --no-daemon --build-cache --parallel $tasks
+      - name: Compile isolated lifecycle fixtures
+        run: bash gradlew --no-daemon -PincludeLifecycleHost=true :lifecycleHost:assembleDebug :lifecycleHost:assembleDebugAndroidTest :lifecycleHost:lintDebug
       - name: Release contract tests
         run: python3 -m unittest discover -s tools -p 'test_*.py'
       - name: Prepare reviewed inference fixtures (test APK only)
+        if: github.event_name != 'pull_request'
         run: |
           mkdir -p app/src/androidTest/assets
           curl --fail --location --retry 3 https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin -o app/src/androidTest/assets/ggml-tiny.en.bin
@@ -41,13 +51,16 @@ jobs:
           curl --fail --location --retry 3 https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin -o app/src/androidTest/assets/ggml-base.en.bin
           echo 'a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002  app/src/androidTest/assets/ggml-base.en.bin' | sha256sum --check
           curl --fail --location --retry 3 https://raw.githubusercontent.com/ggml-org/whisper.cpp/2eeeba56e9edd762b4b38467bab96c2517163158/samples/jfk.wav -o app/src/androidTest/assets/jfk.wav
+          echo '59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e  app/src/androidTest/assets/jfk.wav' | sha256sum --check
       - name: Enable KVM
+        if: github.event_name != 'pull_request'
         working-directory: .
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Emulator inference and privacy checks
+        if: github.event_name != 'pull_request'
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -63,11 +76,13 @@ jobs:
             adb pull /data/local/tmp/utterleaf-keyboard-hold.png mobile/android/app/build/reports/keyboard-hold.png
             adb pull /data/local/tmp/utterleaf-voice-review.png mobile/android/app/build/reports/voice-review.png
             adb pull /data/local/tmp/utterleaf-voice-edit.png mobile/android/app/build/reports/voice-edit.png
+            cd mobile/android && bash gradlew --no-daemon -PincludeLifecycleHost=true :app:installDebug :lifecycleHost:connectedDebugAndroidTest
             adb install -r mobile/android/app/build/outputs/apk/debug/app-debug.apk
             adb shell am start -n org.utterleaf.voice/.SetupActivity
             sleep 3
             adb exec-out screencap -p > mobile/android/app/build/reports/setup-emulator.png
       - name: Verify and package installable APK
+        if: github.event_name != 'pull_request'
         run: |
           set -euo pipefail
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/debug/app-debug.apk
@@ -77,13 +92,17 @@ jobs:
           cp app/build/outputs/apk/debug/app-debug.apk "preview/Utterleaf-Voice-$version-debug.apk"
           cd preview && sha256sum *.apk > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && github.event_name != 'pull_request'
         with:
           name: Android-voice-preview
           path: |
             mobile/android/preview/
             mobile/android/app/build/reports/
+            mobile/android/app/build/outputs/androidTest-results/
+            mobile/android/lifecycleHost/build/reports/
+            mobile/android/lifecycleHost/build/outputs/androidTest-results/
       - name: Preserve unsigned input for isolated release signing
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: Android-release-input

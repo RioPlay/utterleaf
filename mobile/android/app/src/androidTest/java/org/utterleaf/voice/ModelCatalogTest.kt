@@ -7,6 +7,7 @@ import android.os.Build
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
+import android.widget.Button
 import android.widget.RadioButton
 import android.widget.TextView
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -20,12 +21,29 @@ import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.nio.file.attribute.FileTime
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 @RunWith(AndroidJUnit4::class)
 class ModelCatalogTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val app = instrumentation.targetContext
     private fun temporaryDirectory() = Files.createTempDirectory(app.cacheDir.toPath(), "model-catalog-").toFile()
+    private fun awaitReadiness(directory: File, expected: (ModelStore.Readiness) -> Boolean): ModelStore.Readiness {
+        val result = AtomicReference<ModelStore.Readiness>()
+        val ready = CountDownLatch(1)
+        val observation = ModelStore.observe(directory) { value ->
+            result.set(value)
+            if (expected(value)) ready.countDown()
+        }
+        try {
+            assertTrue("Model verification did not finish", ready.await(30, TimeUnit.SECONDS))
+            return result.get()
+        } finally { observation.close() }
+    }
 
     @Suppress("DEPRECATION")
     @Test fun systemInsetsPreservePaddingWithoutAccumulation() {
@@ -92,7 +110,7 @@ class ModelCatalogTest {
         }
     }
 
-    @Test fun catalogIdentifiesLegacyPathAndEveryReviewedSize() {
+    @Test fun catalogMetadataNeverTreatsSameSizeBytesAsReady() {
         val directory = temporaryDirectory()
         try {
             assertEquals(listOf("tiny.en", "base.en", "small.en"), ModelStore.catalog.map { it.id })
@@ -101,15 +119,98 @@ class ModelCatalogTest {
             assertEquals(ModelStore.SIZE, ModelStore.catalog.first().size)
             assertEquals("tiny.en.bin", ModelStore.file(directory).name)
             assertNull(ModelStore.installed(directory))
-            for (spec in ModelStore.catalog) {
-                // Identification only: sparse files are never passed to native code.
-                RandomAccessFile(ModelStore.file(directory), "rw").use { it.setLength(spec.size) }
-                assertEquals(spec, ModelStore.installed(directory))
-                assertTrue(ModelStore.ready(directory))
-                assertTrue(spec.url.startsWith("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-"))
-            }
+            val tiny = ModelStore.catalog.first()
+            RandomAccessFile(ModelStore.file(directory), "rw").use { it.setLength(tiny.size) }
+            assertTrue(ModelStore.hasStoredFile(directory, tiny))
+            assertTrue(ModelStore.readiness(directory) is ModelStore.Readiness.Checking)
+            assertTrue(awaitReadiness(directory) { it is ModelStore.Readiness.Invalid } is ModelStore.Readiness.Invalid)
+            assertNull(ModelStore.verifiedFile(directory))
+            assertFalse(ModelStore.available(directory).contains(tiny))
+            assertFalse(ModelStore.select(directory, tiny))
+            assertTrue(ModelStore.catalog.all {
+                it.url.startsWith("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-")
+            })
             RandomAccessFile(ModelStore.file(directory), "rw").use { it.setLength(123) }
             assertFalse(ModelStore.ready(directory))
+        } finally { directory.deleteRecursively() }
+    }
+
+    @Test fun verifiedImportIsReadyImmediatelyAndColdLegacyPathIsReverified() {
+        val directory = temporaryDirectory()
+        val tiny = ModelStore.catalog.first()
+        try {
+            instrumentation.context.assets.open("ggml-tiny.en.bin").use { ModelStore.install(it, directory) }
+            val imported = ModelStore.readiness(directory)
+            assertTrue(imported is ModelStore.Readiness.Ready)
+            assertEquals(tiny, (imported as ModelStore.Readiness.Ready).spec)
+
+            val legacy = File(directory, "tiny.en.bin")
+            Files.move(imported.file.toPath(), legacy.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            File(directory, "active-model").delete()
+            assertTrue(ModelStore.readiness(directory) is ModelStore.Readiness.Checking)
+            val verified = awaitReadiness(directory) { it is ModelStore.Readiness.Ready }
+            assertEquals(legacy.canonicalFile, (verified as ModelStore.Readiness.Ready).file.canonicalFile)
+            assertEquals(tiny, verified.spec)
+            var callbacks = 0
+            val closed = ModelStore.observe(directory) { callbacks++ }
+            assertEquals(1, callbacks)
+            closed.close()
+            assertTrue(ModelStore.select(directory, tiny))
+            assertEquals("Closed observers must not receive selection events", 1, callbacks)
+
+            // A broken observer neither escapes a successful selection nor starves later observers.
+            ModelStore.observe(directory) { throw IllegalStateException("Synthetic initial observer failure") }.close()
+            var brokenCallbacks = 0
+            val broken = ModelStore.observe(directory) {
+                brokenCallbacks++
+                if (brokenCallbacks > 1) throw IllegalStateException("Synthetic later observer failure")
+            }
+            var healthyCallbacks = 0
+            val healthy = ModelStore.observe(directory) { healthyCallbacks++ }
+            assertTrue(ModelStore.select(directory, tiny))
+            assertEquals(2, brokenCallbacks)
+            assertEquals(2, healthyCallbacks)
+            assertTrue(ModelStore.select(directory, tiny))
+            assertEquals("Throwing observer was not removed", 2, brokenCallbacks)
+            assertEquals(3, healthyCallbacks)
+            broken.close(); healthy.close()
+
+            // Observer A changes state during an outer Ready notification. Its nested Missing
+            // notification reaches B before the outer notification resumes; B must not then
+            // receive the outer call's stale Ready snapshot.
+            var removeWhenReady = false
+            val observerA = ModelStore.observe(directory) { value ->
+                if (removeWhenReady && value is ModelStore.Readiness.Ready) {
+                    removeWhenReady = false
+                    assertTrue(ModelStore.remove(directory, tiny))
+                }
+            }
+            val observerBStates = mutableListOf<String>()
+            val observerB = ModelStore.observe(directory) { value ->
+                observerBStates += if (value is ModelStore.Readiness.Ready) "ready" else "missing"
+            }
+            removeWhenReady = true
+            assertTrue(ModelStore.select(directory, tiny))
+            assertEquals("ready", observerBStates.first())
+            assertTrue(observerBStates.drop(1).isNotEmpty())
+            assertTrue("Observer regressed to stale Ready", observerBStates.drop(1).all { it == "missing" })
+            observerA.close(); observerB.close()
+        } finally { directory.deleteRecursively() }
+    }
+
+    @Test fun mutationInvalidatesTheProcessCacheAndCannotReachNativeCode() {
+        val directory = temporaryDirectory()
+        try {
+            instrumentation.context.assets.open("ggml-tiny.en.bin").use { ModelStore.install(it, directory) }
+            val ready = ModelStore.readiness(directory) as ModelStore.Readiness.Ready
+            val previousModified = ready.file.lastModified()
+            RandomAccessFile(ready.file, "rw").use { bytes ->
+                bytes.seek(0); val first = bytes.read(); bytes.seek(0); bytes.write(first xor 0xff)
+            }
+            Files.setLastModifiedTime(ready.file.toPath(), FileTime.fromMillis(maxOf(System.currentTimeMillis(), previousModified + 2000)))
+            assertTrue(ModelStore.readiness(directory) is ModelStore.Readiness.Checking)
+            assertTrue(awaitReadiness(directory) { it is ModelStore.Readiness.Invalid } is ModelStore.Readiness.Invalid)
+            assertNull(ModelStore.verifiedFile(directory))
         } finally { directory.deleteRecursively() }
     }
 
@@ -168,6 +269,8 @@ class ModelCatalogTest {
             }
             try { ModelStore.install(broken, directory); fail("Broken input accepted") }
             catch (_: java.io.IOException) { }
+            assertEquals("tiny.en", ModelStore.installed(directory)?.id)
+            assertEquals(original.canonicalFile, ModelStore.verifiedFile(directory)?.canonicalFile)
             val digest = java.security.MessageDigest.getInstance("SHA-256")
             original.inputStream().use { input ->
                 val buffer = ByteArray(65536)
@@ -210,7 +313,7 @@ class ModelCatalogTest {
             }
             assertTrue(audio.size > 16000)
             NativeEngine.reset()
-            result = NativeEngine.decode(ModelStore.file(directory).absolutePath, audio)
+            result = NativeEngine.decode(requireNotNull(ModelStore.verifiedFile(directory)).absolutePath, audio)
             assertNotNull(result)
             assertTrue("Known speech was not recognized by base.en", result!!.toString(Charsets.UTF_8).lowercase().contains("country"))
         } finally {
@@ -247,30 +350,29 @@ class ModelCatalogTest {
         } finally { directory.deleteRecursively() }
     }
 
-    @Test fun legacyReviewedSizeIsSelectableButNeverNativeAndDeletionCannotFallback() {
+    @Test fun unverifiedLegacyBytesStayRecoverableButCannotBeSelected() {
         val directory = temporaryDirectory()
         val base = ModelStore.catalog.single { it.id == "base.en" }
         val tiny = ModelStore.catalog.single { it.id == "tiny.en" }
         try {
             RandomAccessFile(File(directory, "tiny.en.bin"), "rw").use { it.setLength(base.size) }
-            assertTrue(ModelStore.available(directory).any { it.id == base.id })
-            assertTrue(ModelStore.select(directory, base))
-            assertEquals(base, ModelStore.installed(directory))
-            assertEquals("tiny.en.bin", ModelStore.file(directory).name)
-
-            instrumentation.context.assets.open("ggml-tiny.en.bin").use { ModelStore.install(it, directory) }
-            assertEquals(tiny, ModelStore.installed(directory))
-            assertTrue(ModelStore.available(directory).map { it.id }.containsAll(listOf("tiny.en", "base.en")))
-            assertTrue(ModelStore.select(directory, tiny))
-            assertTrue(ModelStore.remove(directory, base))
-            assertFalse(ModelStore.available(directory).any { it.id == base.id })
-
-            assertTrue(ModelStore.remove(directory, tiny))
-            assertNull(ModelStore.installed(directory))
-            assertFalse(ModelStore.ready(directory))
-            assertEquals("ggml-tiny.en.bin", ModelStore.file(directory).name)
+            assertTrue(ModelStore.hasStoredFile(directory, base))
             assertFalse(ModelStore.select(directory, base))
             assertNull(ModelStore.installed(directory))
+            ModelStore.verifyAvailableAsync(directory)
+            awaitReadiness(directory) { ModelStore.storedReadiness(directory, base) is ModelStore.Readiness.Invalid }
+            assertFalse(ModelStore.available(directory).any { it.id == base.id })
+            assertTrue(ModelStore.remove(directory, base))
+            assertFalse(ModelStore.hasStoredFile(directory, base))
+            assertFalse(ModelStore.hasStoredFile(directory, tiny))
+
+            val preservation = File(directory, "preserve").apply { mkdirs() }
+            val legacyTiny = File(preservation, "tiny.en.bin")
+            RandomAccessFile(legacyTiny, "rw").use { it.setLength(tiny.size) }
+            File(preservation, "active-model").writeText(base.id)
+            assertTrue(ModelStore.remove(preservation, base))
+            assertTrue("Removing active base must preserve legacy tiny", legacyTiny.isFile)
+            assertEquals(tiny.size, legacyTiny.length())
         } finally { directory.deleteRecursively() }
     }
 
@@ -303,14 +405,36 @@ class ModelCatalogTest {
                 assertEquals("Utterleaf", keyboardLabel)
                 assertEquals("Utterleaf dictation", dictationLabel)
                 assertNotEquals(keyboardLabel, dictationLabel)
+                texts.filterIsInstance<Button>().single { it.text == "Set up offline voice" }.performClick()
                 val choices = texts.filterIsInstance<RadioButton>()
                 assertEquals(3, choices.size)
+                assertTrue(choices.all { it.isShown })
                 for (spec in ModelStore.catalog) {
-                    choices.single { it.text.contains("· ${spec.id} ·") }.performClick()
-                    assertTrue(texts.any { it.text.toString() == "Download ${spec.id} in browser" })
+                    val presentation = ModelPresentation.forSpec(spec)
+                    val choice = choices.single { it.text.contains(presentation.name) }
+                    assertTrue(choice.text.contains(ModelPresentation.sizeLabel(spec.size)))
+                    assertTrue(choice.text.contains(presentation.tradeoff))
+                    assertFalse(choice.text.contains(spec.id))
+                    choice.performClick()
+                    assertTrue(texts.any { it.text.toString() == "Download ${presentation.name} in browser" })
                     assertTrue(texts.any { it.text.toString() == "Import a model" })
                     assertEquals(1, choices.count { it.isChecked })
                 }
+                assertFalse(texts.any { label ->
+                    label.isShown && ModelStore.catalog.any { spec -> label.text.contains(spec.id) }
+                })
+                val beforeDetails = WorkLease.acquire()
+                assertTrue(beforeDetails); WorkLease.release()
+                texts.filterIsInstance<Button>().single { it.text == "Show technical model details" }.performClick()
+                assertTrue(ModelStore.catalog.any { spec ->
+                    texts.any { it.isShown && it.text.contains("Technical identifier: ${spec.id}") }
+                })
+                texts.filterIsInstance<Button>().single { it.text == "Hide technical model details" }.performClick()
+                assertFalse(texts.any { label ->
+                    label.isShown && ModelStore.catalog.any { spec ->
+                        label.text.contains("Technical identifier: ${spec.id}")
+                    }
+                })
                 // Merely choosing an option must not request permission, download or import.
                 assertTrue(WorkLease.acquire()); WorkLease.release()
             }

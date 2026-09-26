@@ -60,7 +60,8 @@ class HeldModifiersTest {
                 { connection()?.deleteSurroundingText(1, 0) }, {}, {}, {}, {}, {},
                 { code, ctrl, alt, shift -> TerminalInput.send(connection(), code, ctrl, alt, shift) })
             panel.reset(false, false, "Enter")
-            // The mockup's fold-out panel keeps modifier and arrow keys beside letters.
+            // Editing keeps modifier and arrow keys one predictable layer from letters.
+            buttons(panel.view).single { it.contentDescription == "Editing tools" }.performClick()
             buttons(panel.view).single { it.contentDescription == "Extra keys" }.performClick()
             panel.view.addOnLayoutChangeListener { _, left, top, right, bottom, _, _, _, _ ->
                 if (right > left && bottom > top) laidOut.countDown()

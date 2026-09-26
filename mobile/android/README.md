@@ -3,19 +3,50 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha19 is released as a signed development preview.** It adds direct
-Settings from emoji hold, a visible **Tools** button, control-name search,
-Backspace hold-to-swipe fixes and corrected Cut/Dictate visuals. It includes typing
-and suggestion stability fixes, an always-reachable Apply action and consistent
-staged settings/preview controls. [Release evidence and phone QA](../../docs/mobile-roadmap.md#current-status).
-It retains the
-approved daily redesign — icon toolbar with a fold-out Extra keys panel and
-F1–F12, hinted number row, the redesigned Settings screen, a password-manager
-shortcut restricted to password fields, and a suggestion strip that completes
-the word you are typing from a public-domain English list. See the
+**0.1.0-alpha20 is an unreleased development candidate.** Its stable daily
+productivity strip in ordinary fields keeps Undo, Redo, Cut, Copy, Paste, Select, Tools, Edit,
+Emoji, Private Draft, Voice, and Extra Keys directly reachable. Portrait uses
+two rows; landscape uses one row to protect vertical typing space. System,
+Light, Dark, and true-black OLED themes now
+apply across the keyboard, Settings, setup, emoji, private draft, and voice review.
+A grouped Accessory/F-key strip keeps specialist controls to one row, preserves
+held modifier-arrow chords, and responsively replaces the toolbar in landscape so
+Space and Enter remain visible. The complete additional-symbol set is split across
+readable rows instead of being compressed into one line.
+An optional **Split keyboard in landscape** layout adds a non-interactive center
+channel across number, letter, symbol, and dual-Space rows. It falls back to the
+standard layout in portrait; choosing Left or Right hand alignment turns split
+off so the modes never conflict.
+A mic tap keeps the transcript review-and-correct flow; direct insertion remains an
+explicit hold option. The mic and Voice surface use official Utterling states with
+visible labels for availability, listening, local processing, transcript review,
+editing, and problems. [Release evidence and phone QA](../../docs/mobile-roadmap.md#current-status).
+It retains F1–F12, the hinted number row, the redesigned Settings screen, a
+password-manager shortcut restricted to password fields, and a suggestion strip
+that completes the word you are typing from a public-domain English list. See the
 [daily redesign plan](../../docs/plans/completed/android-keyboard-daily-redesign.md),
 the [community wants harvest](../../docs/mobile-keyboard-community-wants-2026-09.md)
 and the [suggestions slice plan](../../docs/plans/completed/android-suggestions-slice.md).
+
+Fields Android identifies as passwords use a minimal sensitive-input surface:
+typing, symbols and held-letter accents, manual Shift/Caps, Backspace, the field's
+action key, explicit Paste, keyboard switching and the configured password-manager
+shortcut. Tools, editing layers, emoji browsing, suggestions, draft and dictation
+are absent. Cursor/selection gestures are refused without inspecting host text.
+Automatic capitalization and repeat filtering are bypassed there so password
+entry stays literal and no last-key cache retains a typed character; saved
+preferences are unchanged. Paste dispatches one host action without reading the
+clipboard in the keyboard. Leaving an input session disposes its panel and clears
+transient state. These protections depend on accurate editor metadata; they do not
+identify every potentially sensitive field. Current evidence and lifecycle limits
+are recorded in the [capability plan](../../docs/plans/active/android-experience-refresh.md).
+
+Detaching and reattaching the same typing panel now returns it to its field's
+letter or numeric baseline: Tools, editing/Fn layers, Caps/modifiers, compose,
+alternates and pending gestures/repeats reset. Old controls cannot re-arm Caps or
+type into the rebuilt surface. Explicit preferences and the owning local editor's
+text are not reset by this panel boundary; private-draft clearing remains the
+draft owner's responsibility.
 
 Alpha15 preserves alpha14's two-thumb rollover, letter layouts, one-hand
 alignment, local emoji, Latin composition, private drafts and visible
@@ -95,11 +126,12 @@ prediction, accessibility and device coverage remain on the
 
 ## Try it
 
-1. [Download and install Utterleaf Android alpha19](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha19/Utterleaf-Android-0.1.0-alpha19.apk)
-   on Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Use `Utterleaf-Android-0.1.0-alpha19.apk` from the [signed release](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha19).
+1. Choose an Android APK from a [published signed preview](https://github.com/RioPlay/utterleaf/releases)
+   for Android 8.0 or newer with a 64-bit ARM processor (ARM64).
+   Alpha20 described here is an unreleased development candidate; use the build
+   instructions below to test this working tree, not a presumed alpha20 release link.
    If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
-   then install alpha19. Uninstalling removes the imported model and other app data.
+   then install the signed preview. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
    the same release identity and should be updated in place rather than uninstalled.
 2. Open **Utterleaf**. Under **Your keyboard**, enable **Utterleaf**
@@ -116,6 +148,10 @@ prediction, accessibility and device coverage remain on the
    preview quick controls and Reset, wait for Apply. **Cancel** discards them.
    Theme/layout choices update the preview immediately. Rotating Settings keeps
    pending preferences in memory, while practice text is cleared.
+   In the alpha20 candidate, **Customized** marks values that differ from defaults,
+   not merely unsaved edits. Individual **Reset** and **Reset category** actions
+   also wait for Apply; Cancel discards them. They leave unrelated settings and
+   installed models untouched. Search accepts terms such as `reset number row`.
 4. For optional dictation, open **Optional · offline voice** in setup. Choose a model
    below, open its download in your browser, then return and **Import** that file.
    Allow microphone permission. The voice status shows what is still missing;
@@ -151,17 +187,23 @@ Explicit Extra keys modifiers keep their separate behavior. See the
 ## English speech models
 
 Keep multiple imported models and change the active one in setup with **Use
-tiny.en**, **Use base.en** or **Use small.en**. Their rows show **Active**,
-**Installed** or **Not installed**. In an idle voice panel, the **Model** control
+Compact English**, **Use Medium English** or **Use Large English**. Their rows show
+**Active**, **Installed**, **Not verified** or **Not installed**. In an idle voice panel, the **Model** control
 offers the installed choices when there is more than one. Switching is allowed
 between takes, not during recording, processing or import.
 
-**Fast** uses tiny.en, **Balanced** uses base.en, and **Larger** uses small.en.
-These describe the intended tradeoff, not measured phone performance or a promise
-of correctness. **Delete selected model** removes only that import. If you delete
-the active model, select another installed model before dictating again.
+The alpha20 candidate presents **Compact English** (77.7 MB, lowest resource use),
+**Medium English** (148.0 MB, moderate resource use), and **Large English**
+(487.6 MB, highest resource use). These names do not promise accuracy or measured
+phone speed. **Show technical model details** reveals the stable identifier, original
+filename, GGML format, exact size, checksum and private-storage description.
+Opening or closing details does not import, switch models or request microphone
+access. **Delete selected model** removes only that import. If you delete the
+active model, select another installed model before dictating again.
 
-Start with tiny.en for the smallest download. Larger models require more RAM and
+Compact English uses tiny.en, Medium English uses base.en, and Large English uses
+small.en; the accepted file identities and existing selections are unchanged.
+Compact English has the smallest download. Larger models require more RAM and
 processing time; accuracy and speed depend on your phone and speech. The native
 engine currently uses English for all three choices. These are reviewed file
 identities, not a claim of equal testing or measured phone performance.
@@ -306,6 +348,72 @@ Preference and imported-model preservation were not exercised; physical updates
 and real Obtainium acceptance remain open. See [validation limits](../../docs/mobile.md#android-validation--september-9-2026).
 
 ## Acceptance work before a stable mobile release
+
+### Independent lifecycle host
+
+The opt-in `lifecycleHost` module is a disposable, test-only application in a
+separate process. Its instrumentation survives killing the exact verified debug
+IME PID and exercises a real second-package editor transition. It is excluded
+from ordinary builds and cannot produce a release variant. Only the debug product
+manifest exposes its synthetic editor, guarded by a signature permission shared
+with the fixture; release components and permissions are unchanged.
+
+Run on a disposable API 35 emulator from this directory:
+
+```powershell
+.\gradlew.bat -PincludeLifecycleHost=true :app:installDebug :lifecycleHost:connectedDebugAndroidTest :lifecycleHost:lintDebug --no-daemon
+```
+
+The host's connected-debug task explicitly depends on product installation;
+command-line task order alone is not an ordering guarantee with parallel Gradle
+projects. Run this fixture separately from the ordinary app instrumentation suite
+on the same emulator. Its prerequisite also works from an absent test installation.
+
+The driver restores selected/enabled input methods, preserves the independent
+host's text and selection, and never records audio or force-stops other apps.
+Its claims are limited to the two owned synthetic packages, not third-party
+compatibility. The ordinary app suite separately exercises auxiliary voice
+hide/reopen and real `uinput` external-keyboard add/remove with explicit soft-keyboard
+hide/reopen. The emulator already has an internal alphabetic keyboard, so this
+does not establish a no-hardware-to-hardware configuration transition or physical
+USB/Bluetooth behavior. No test should substitute injected keypresses for an
+observed device-add/remove event.
+
+### Isolated performance observations
+
+The ordinary instrumentation run excludes `KeyboardPerformanceTest`. Run it
+separately on a disposable API 35 emulator launched with `-no-audio`, with the
+same checksum-verified model and JFK test assets used by CI:
+
+```powershell
+.\gradlew.bat connectedDebugAndroidTest -PutterleafPerformance=true --no-daemon
+```
+
+This measures synthetic typing, first-draw feedback, candidate work, Tools,
+capture startup, local fixture decoding, memory and sustained frame behavior.
+The result-insertion metric is explicitly a local `EditText` callback proxy,
+not host `InputConnection` or physical display latency. Capture startup uses
+the emulator's disabled audio input, not a microphone or user speech. No
+production logging, telemetry, model downloads or performance thresholds are
+introduced. The fixture restores preferences, selected/enabled keyboards,
+temporary permission identity and model state, preserving the original failure.
+
+Archive the raw connected-test output before another run replaces it. Parse the
+single test's `logcat-org.utterleaf.voice.KeyboardPerformanceTest-recordApi35EmulatorBaseline.txt`
+with `tools/android_performance.py`. Supply `--input`, `--output`, `--apk`, `--repo`,
+`--adb`, `--serial` and `--command`; the latter records the actual emulator launch
+and Gradle commands (including `-no-audio` and `-PutterleafPerformance=true`). The
+parser rejects incomplete measurement/cleanup records and missing provenance,
+and writes raw JSONL, metadata, summaries, median and nearest-rank p95. Run its
+tests with `python -m unittest discover -s tools -p test_*.py`.
+
+Compare only matched environments/options/model identities. First versus later
+decode samples describe order and cache conditions, not a retained native model.
+Emulator observations do not establish phone responsiveness, heat, battery,
+physical touch comfort or live third-party compatibility. Record accepted runs
+and limitations in the [compatibility evidence](../../docs/android-keyboard-compatibility.md).
+
+### Remaining device acceptance
 
 - Actual Pixel/GrapheneOS and other Android phones: mic permission denial/revocation,
   another recorder, Bluetooth, rotation, lock, incoming calls, interruptions, and

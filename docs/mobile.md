@@ -37,7 +37,7 @@ Compose, accents and quick options. Backspace continues repeating after
 capitalization and can transition from a hold into swipe selection. Settings
 search finds control names; Backspace repeat controls live in Holds & gestures.
 Cut scissors and light-theme Dictate contrast are corrected.
-See the [release evidence and remaining phone gates](mobile-roadmap.md#current-status).
+See the [release evidence and manual feedback policy](mobile-roadmap.md#current-status).
 
 ### Settings in alpha18
 
@@ -52,8 +52,8 @@ immediately, and rotation keeps pending preferences while clearing practice text
 These are app-owned views from the released source on API 35, using synthetic
 practice text. The narrow view uses 320dp width and font scale 1.3. They do not
 establish physical phone or screen-reader usability. The
-[phone acceptance checklist](plans/active/android-alpha18-phone-acceptance.md)
-keeps the remaining journeys explicit.
+[manual reporting policy](plans/completed/android-alpha18-phone-acceptance.md)
+replaces mandatory physical testing; users report observed issues manually.
 
 ### Earlier releases
 
@@ -198,8 +198,9 @@ hosted emulator runs. These times include model import/verification/loading and
 are **not a controlled benchmark or a prediction of phone dictation latency**.
 Physical ARM64 speed, battery use, real-editor keyboard interoperability, TalkBack,
 Switch Access and interruption tests remain open. Real Obtainium import/updates
-and an independently protected offline signing-key backup are separate acceptance
-gates. See the
+and physical-device work are unverified follow-up under the routine-preview
+policy, not evidence supplied by emulator success. An independently protected
+offline signing-key backup remains a required release prerequisite. See the
 [Android CI reports](https://github.com/RioPlay/utterleaf/actions/workflows/android.yml).
 
 ## iOS — feasibility gate before promising keyboard dictation

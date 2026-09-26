@@ -26,13 +26,15 @@ class PersistenceTest {
             KeyboardOptions(extraKeys = false, numberRow = true, holdDelayMs = 500,
                 alignment = KeyboardAlignment.RIGHT, autoCapitalize = false, arrowRepeat = false,
                 keyBorders = false, theme = ThemeMode.LIGHT,
-                deleteRepeat = false, large = true, letterLayout = LetterLayout.AZERTY).save(context)
+                deleteRepeat = false, large = true, letterLayout = LetterLayout.AZERTY,
+                splitLandscape = true).save(context)
             prefs.edit().putBoolean("voiceHoldToInsert", true).commit()
             assertFalse(KeyboardOptions.load(context).extraKeys)
             assertFalse(KeyboardOptions.load(context).autoCapitalize)
             assertEquals(ThemeMode.LIGHT, KeyboardOptions.load(context).theme)
             assertEquals(KeyboardAlignment.RIGHT, KeyboardOptions.load(context).alignment)
             assertEquals(LetterLayout.AZERTY, KeyboardOptions.load(context).letterLayout)
+            assertTrue(KeyboardOptions.load(context).splitLandscape)
             KeyboardOptions.resetPreferences(context)
             val reset = KeyboardOptions.load(context)
             assertTrue(reset.numberRow && reset.extraKeys && reset.autoCapitalize)
@@ -41,6 +43,7 @@ class PersistenceTest {
             assertEquals(ThemeMode.SYSTEM, reset.theme)
             assertEquals(KeyboardAlignment.FULL, reset.alignment)
             assertEquals(LetterLayout.QWERTY, reset.letterLayout)
+            assertFalse(reset.splitLandscape)
             assertFalse(prefs.getBoolean("voiceHoldToInsert", false))
             assertEquals("keep", marker.readText())
             assertEquals(installed, ModelStore.installed(directory))
@@ -100,5 +103,20 @@ class PersistenceTest {
         } finally {
             original.save(context)
         }
+    }
+
+    @Test fun everyThemeRoundTripsAndOledUsesTrueBlack() {
+        val context = instrumentation.targetContext
+        val original = KeyboardOptions.load(context)
+        try {
+            ThemeMode.entries.forEach { theme ->
+                original.copy(theme = theme).save(context)
+                assertEquals(theme, KeyboardOptions.load(context).theme)
+            }
+            assertEquals(android.graphics.Color.BLACK,
+                Ui.palette(context, KeyboardOptions(theme = ThemeMode.OLED)).background)
+            assertNotEquals(android.graphics.Color.BLACK,
+                Ui.palette(context, KeyboardOptions(theme = ThemeMode.DARK)).background)
+        } finally { original.save(context) }
     }
 }

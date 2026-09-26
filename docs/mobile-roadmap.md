@@ -2,7 +2,7 @@
 
 [Roadmap hub](roadmap.md) · [Execution plan](execution-plan.md) · [Current mobile preview](mobile.md) · [Ideas](ideas.md)
 
-Updated September 19, 2026. Product direction: a complete, customizable Utterleaf
+Updated September 26, 2026. Product direction: a complete, customizable Utterleaf
 keyboard with integrated offline speech, its own identity, and security first.
 The design uses historical public documentation as research context, not as a
 specification, dependency or source of product identity.
@@ -24,17 +24,161 @@ evidence and complete interaction flows. Design, accessibility, correctness,
 privacy and responsiveness are acceptance requirements for each increment.
 The [rebuild plan](plans/active/android-keyboard-rebuild.md) sequences touch/editor
 correctness, daily ergonomics, language/repair and evaluated prediction/swipe.
-One-hand reach and visual polish can proceed alongside foundation work.
+The [capability and experience plan](plans/active/android-experience-refresh.md)
+adds the editor/privacy/testing foundation and A–M completion gates for current work.
+Small usability corrections can accompany foundation work; major visual changes
+wait for the editor, privacy and testing foundation.
 
 ## Now
 
-- **Checkout:** `android-keyboard-hardening` on current `main`.
+- **Checkout:** `android-keyboard-hardening`, branch `codex/android-polish-alpha20`.
 - **Released:** [signed alpha19](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha19), including Backspace hold-to-swipe, direct Settings, visible Tools, searchable settings and Cut/Dictate visual fixes (PR #59).
-- **Next:** [physical-phone acceptance](plans/active/android-alpha18-phone-acceptance.md) on Pixel 8 Pro/GrapheneOS and named editors. Record the exact OS/build and reproduce remaining usability problems before another feature slice. Android remains the priority; desktop is parked.
-- **Verified:** exact-candidate CI passed 186/186 emulator tests; protected signing and independent signed alpha18-to-alpha19 upgrade/reinstall preserved synthetic preferences and model-storage markers.
-- **Open:** physical typing/latency, TalkBack/Switch Access, phone landscape/three-button navigation and real Obtainium updates. Emulator success does not close these gates.
+- **Next:** promote the bounded alpha20 preview through [release readiness](plans/active/android-alpha20-release-readiness.md): local regression/build/package review passed and remote promotion is authorized; protected signing/publication still require offline key-backup confirmation. Editor-bound dictation recovery and the daily/Tools replacement remain subsequent feature work unless the release scope changes. Android remains the priority; desktop is parked.
+- **Verified for alpha19:** exact-candidate CI passed 186/186 emulator tests; protected signing and independent signed alpha18-to-alpha19 upgrade/reinstall preserved synthetic preferences and model-storage markers.
+- **Manual feedback:** physical typing/latency, TalkBack/Switch Access, phone landscape/three-button navigation and real Obtainium behavior are handled through user reports, not mandatory test gates. Emulator success does not establish physical-device verification. See the [manual reporting policy](plans/completed/android-alpha18-phone-acceptance.md).
+
+**Acceptance policy — September 26, 2026:** routine increments and preview releases use the applicable automated regression, privacy/security, build and signed-release checks without making unobserved device claims. The A–M redesign is not complete until its named compatibility, performance and final accessibility audits pass. Physical-device and assistive-technology work need not block every bounded source slice, but unperformed checks remain open and can never be reported as passed.
 
 ## Current status
+
+- **Alpha20 local release candidate passed — September 26, 2026:** **236/236**
+  ordinary app emulator tests, **2/2** independent host/process-recovery tests,
+  **50 JVM** and **26 tooling** tests; app lint has zero errors / 51 warnings
+  (host: zero / 5). Unsigned release build and packaged identity, permissions,
+  asset/DEX isolation and alignment checks pass. Review closed an uncertain
+  dictation-insertion retry bug, an IME fixture selection/cleanup race, and a
+  missing post-reinstall preservation check in the signing workflow. Each take
+  now permits one insertion attempt; uncertain results stay selectable for
+  explicit Copy without re-arming Insert after edits. Exact hashes, first-run
+  failure, final reports and remote handoff are in
+  [release readiness](plans/active/android-alpha20-release-readiness.md#final-local-candidate).
+  This is a locally verified candidate, not a signed or published alpha20, full
+  A–M completion, or physical-phone acceptance.
+
+- **Editor capability foundation implemented in the current working tree:** one
+  metadata-only `EditorCapabilities` snapshot now classifies field kind,
+  sensitivity, multiline/numeric/email/URI/phone/search modes, Enter action and
+  editing/suggestion/selection/dictation/clipboard eligibility. `KeyboardIme`,
+  the voice-only IME, editor actions and password-manager visibility consume the
+  same policy. Unknown metadata disables context-based features and host menu
+  actions while retaining basic typing/newline dispatch. Raw fields remain visible
+  only with Extra Keys enabled, retain terminal key events, and dispatch Enter
+  instead of an editor action. Metadata-identified sensitive fields retain explicit Paste
+  but disable Copy/Cut, suggestions, dictation, private draft and surrounding-text
+  work. No clipboard-preview surface exists or was added. Historical emulator
+  failures and their unchanged reruns remain recorded in the active plan; they
+  are not explained away by later passes.
+
+- **Minimal sensitive surface implemented in the current working tree:** password
+  fields retain literal typing/symbols/accents, manual Shift/Caps, Backspace,
+  editor action, Paste, Switch keyboard and the optional configured password
+  manager. Tools, editing layers, emoji browsing, dictation, suggestions and draft
+  are absent. Refused cursor/selection gestures do not reach the host or become
+  accidental Space/Delete taps. Password input bypasses auto-capitalization and
+  repeat filtering without changing preferences or retaining a last-key cache.
+  Session invalidation now disposes the old typing panel; stale password-manager
+  callbacks also check their session token. Ordinary/raw/private-draft behavior
+  remains covered separately. Local verification: 49/49 focused and 205/205 full
+  API 35 emulator tests, 47 JVM tests, 17 tooling tests, and lint with zero errors
+  (60 warnings). Independent review and portrait/landscape render checks
+  passed; a live native portrait capture also passed. Named real applications, the broader
+  lifecycle matrix (including process/hardware/cross-application transitions), performance and
+  final accessibility audit remain open. No physical-device claim is made.
+
+- **Transient UI lifecycle hardening in the current working tree:** detaching a
+  reused typing panel resets Tools/edit/Fn, modifiers/Caps, compose/alternates,
+  symbol subpages and pending input before reattachment. Numeric fields return to
+  their numeric base; action/capability settings and staged preferences survive.
+  Old Shift long-press callbacks are generation-guarded. Attached-panel regressions
+  cover ordinary/numeric/owned-editor reuse and held-Delete cancellation. Live
+  native rotation tests explicitly reopen after the fixture's always-hidden policy;
+  they do not claim automatic keyboard visibility. Local verification passed
+  **210/210 full API 35 emulator tests**, 42/42 focused lifecycle cases and 22/22
+  final affected-harness cases, plus 47 JVM and 17 tooling tests; lint has zero
+  errors and 60 warnings. Independent review passed. Private-draft and
+  suggestion fixtures now wait for stable IME selection, use one-shot launch
+  requests, and preserve failures while restoring state. First-run failures remain in the
+  [A4 evidence log](plans/active/android-experience-refresh.md#verification-log--september-26-2026).
+  The later external lifecycle gauntlet below extends these named boundaries;
+  this earlier 210-test result remains evidence for its recorded candidate only.
+
+- **External lifecycle gauntlet in the current working tree:** the opt-in,
+  independent debug host passes **2/2** cross-application and actual IME-process
+  death/recovery tests (10.712 test seconds). It checks ownership before stopping
+  only the product IME process, preserves the host process/text/selection, rejects
+  stale controls and restores the prior keyboard. The separate voice-only
+  hide/reopen case passed **1/1**, without recording. A hardware fixture observes
+  a real external alphabetic input-device add/remove and explicit hide/reopen;
+  an internal emulator keyboard was already present, so it does not establish an
+  absent-to-present configuration transition or physical USB/Bluetooth behavior.
+  The integrated regression gate passes **220/220** ordinary app emulator cases,
+  **41/41** focused cases and **47 JVM** tests; lint has zero errors and 60
+  warnings. First failures and exact
+  candidate hashes remain in the [gauntlet log](plans/active/android-experience-refresh.md#gauntlet-log--external-lifecycle-and-degraded-editors).
+
+- **Degraded-editor contract verified in the same candidate:** editor actions and
+  auxiliary voice insertion fail locally, while suggestion reads reject missing,
+  oversized, throwing or interrupted context. Suggestion completion balances its
+  attempted batch and never replays or restores text after an ambiguous mutation.
+  An interrupted blocked worker preserves its interrupt signal and cannot crash
+  the process. The full run above includes the regression that originally exposed
+  that source defect; the failed first run remains recorded rather than waived.
+  The next gate is a measured pre-redesign baseline. The later trust/recovery
+  slice below removes the reviewed size-only readiness defect.
+
+- **Model trust, setup recovery and literal editing implemented in the current
+  working tree:** readiness and native loading require catalog-checksum verification
+  in this process, tied to file identity/metadata and performed on a bounded worker.
+  Capture holds one verified model under the work lease. Setup survives Activity
+  recreation during import, reports failures locally, preserves installed models,
+  and removes only owned unpublished staging on interrupted-import recovery.
+  Observer ordering/failure isolation and lease-before-terminal delivery were
+  independently reviewed. Email/web-email/URI fields suppress English completion
+  without blocking typing. Private-draft navigation/deletion respects combining,
+  supplementary and joined-emoji clusters, including an interior caret.
+  Verification: **228/228 full emulator**, **48 JVM**, **25 tooling**, lint
+  **zero errors / 57 warnings**. Exact hashes and review limitations are in the
+  [trust/recovery log](plans/active/android-experience-refresh.md#trust-recovery-and-editing-gauntlet-log).
+  Final exact-candidate verification includes unconditional native-byte cleanup
+  and again passes **228/228** plus unsigned release compilation. Its debug APK
+  matches P1; no signed release or publishing was requested. The
+  [compatibility record](android-keyboard-compatibility.md#native-editor-run-n1--september-26-2026)
+  now distinguishes native Pass/Partial evidence from unrun third-party rows.
+  This earlier result predates the model-presentation slice below and is not
+  final dictation-state-machine or redesign completion.
+  The independent cross-app/process-death fixture also passes **2/2** against
+  this exact APK after a missing parallel-Gradle install prerequisite was fixed
+  and tested from an absent disposable installation; host lint has zero errors
+  and five warnings. The failed predecessor remains in the evidence log.
+
+- **Pre-visual performance baseline recorded:** the opt-in performance fixture
+  completed **1/1**, with complete body/cleanup and parser-validated provenance.
+  [P1](android-keyboard-compatibility.md#performance-run-p1--accepted-pre-visual-baseline)
+  records timings, samples, memory and frame behavior on the API 35 software
+  emulator. Native host insertion remains distinct from the measured local
+  callback proxy, and observed frame overruns are not called a smooth-phone pass.
+  The raw logs, exact APK/source and machine-readable report are archived for
+  matched comparisons. A proposed one-row Fn modifier rail was rejected before
+  editing because narrow layouts would hide all but one function key and slow
+  other expert tasks; a replacement Tools grid needs a proper layout prototype.
+
+- **Model presentation and staged granular resets in the current working tree:**
+  Compact/Medium/Large English labels explain decimal-MB download sizes and
+  relative resource use without promising accuracy or phone speed. Technical
+  identifiers, filenames, format and checksums are behind explicit details;
+  installed model identities and checksum gates are unchanged. Settings compute
+  **Customized** from defaults, expose individually named and category resets,
+  preserve unrelated settings/models, and keep all reset changes staged until
+  Apply. Cancel and Activity recreation retain their existing semantics. Search
+  includes reset/default terms. The affected group passed **46/46**; a subsequent
+  category-row-only visual correction passed **22/22** settings checks, plus
+  **50 JVM** tests and lint **zero errors / 54 warnings**. Tooling passed **25/25**.
+  Independent review and synthetic render inspection passed; exact candidate
+  checks, corrected harness failures and synthetic-render limits are in the
+  [I/J log](plans/active/android-experience-refresh.md#ij-verification-log--september-26-2026).
+  This does not establish real font-scale, screen-reader, standalone voice
+  landscape or physical-phone usability. The next dictation slice is prepared,
+  not implemented; broader A–M completion remains open.
 
 - **Released alpha19:** [PR #59](https://github.com/RioPlay/utterleaf/pull/59).
   Immutable tag `android-v0.1.0-alpha19` identifies `599f675b46d6ad560d9f2e66bb80d6b3d3bfe6a5`.
@@ -49,7 +193,7 @@ One-hand reach and visual polish can proceed alongside foundation work.
   The [completed interaction/design pass](plans/completed/android-backspace-hold-swipe.md)
   records focused regressions and the independent UI/UX review. Physical-phone
   comfort, assistive technology and real Obtainium acceptance remain open.
-- **Next design pass after phone feedback:** toolbar target sizes, clearer Tools
+- **Next design pass:** toolbar target sizes, clearer Tools
   toggle states, simpler Setup/model management with nearby feedback, constrained
   landscape Settings width and action-specific editor failure messages.
 
@@ -343,7 +487,8 @@ One-hand reach and visual polish can proceed alongside foundation work.
   verified locally; cached layouts retain immutable keyboard-only editor metadata.
   Remaining lifecycle/cache, native hardening and framework recovery
   checks continue. It is not yet integrated
-  into the shipping keyboard; alpha15 remains the released implementation.
+  into the shipping keyboard; the independent alpha19 channel remains the
+  published implementation while alpha20 is prepared.
 
 - **Released alpha12:** compact [quick editing actions](android-quick-actions.md).
   Revision `aec275b` passed [Android CI 34498263015](https://github.com/RioPlay/utterleaf/actions/runs/34498263015):
@@ -486,8 +631,10 @@ channel, certificate identity and update acceptance work.
   The [alpha05 signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34432995380)
   also passed with the same certificate: signed alpha03-to-alpha05 emulator upgrade,
   same-version reinstall and setup launch. Preference/model retention was not tested.
-  CI debug keys remain disposable; physical updates, real Obtainium updates and independently
-  protected offline key backup remain separate gates.
+  Later alpha19 signing and preservation evidence is recorded above. CI debug keys
+  remain disposable; independently protected offline key backup remains required.
+  Physical updates and real Obtainium behavior stay unverified follow-up work
+  under the routine-preview manual-report policy, not inferred automated passes.
 
 ## iOS track
 
@@ -505,11 +652,12 @@ and primary platform references are in [the mobile guide](mobile.md).
 
 ## Before each mobile release
 
-The current released baseline is Android alpha15, revision `52b0e6a`: 148 API 35
-tests, 31 JVM tests, 14 tooling tests, lint and builds passed in
-[CI 34747169547](https://github.com/RioPlay/utterleaf/actions/runs/34747169547).
-See [signed publication and APK checksum](plans/completed/android-alpha15-snapshot.md).
-Earlier alpha entries retain their historical validation scope.
+The current published baseline is Android alpha19, revision `599f675`: 186 API 35
+tests and applicable JVM/tooling/lint/build checks passed in
+[CI 35462899374](https://github.com/RioPlay/utterleaf/actions/runs/35462899374).
+See [signed publication, preservation evidence and APK checksum](#current-status).
+Alpha20 release preparation is tracked separately; earlier alpha entries retain
+their historical validation scope and do not validate a newer candidate.
 
 Track the [Android responsiveness and acceleration pass](android-performance.md)
 separately from feature completeness; hardware speedups require physical-device

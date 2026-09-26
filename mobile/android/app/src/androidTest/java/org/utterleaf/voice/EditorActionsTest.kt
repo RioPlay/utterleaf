@@ -5,6 +5,7 @@ import android.text.InputType
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.BaseInputConnection
+import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -19,12 +20,52 @@ class EditorActionsTest {
     private fun descendants(view: View): List<View> = listOf(view) +
         if (view is ViewGroup) (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) } else emptyList()
 
+    @Test fun primaryEditorActionRefusesOnceWithoutTextOrKeyFallback() {
+        instrumentation.runOnMainSync {
+            var accepted = true
+            var throwing = false
+            val calls = mutableListOf<Int>()
+            val connection = object : BaseInputConnection(View(instrumentation.targetContext), true) {
+                override fun performEditorAction(actionCode: Int): Boolean {
+                    calls += actionCode
+                    if (throwing) throw IllegalStateException("Synthetic closed connection")
+                    return accepted
+                }
+                override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
+                    fail("Rejected editor action fell back to text")
+                    return false
+                }
+                override fun sendKeyEvent(event: android.view.KeyEvent): Boolean {
+                    fail("Rejected editor action fell back to a key event")
+                    return false
+                }
+            }
+
+            assertTrue(EditorActions.performImeAction(connection, EditorInfo.IME_ACTION_SEND))
+            accepted = false
+            assertFalse(EditorActions.performImeAction(connection, EditorInfo.IME_ACTION_SEND))
+            throwing = true
+            assertFalse(EditorActions.performImeAction(connection, EditorInfo.IME_ACTION_SEND))
+            assertFalse(EditorActions.performImeAction(null, EditorInfo.IME_ACTION_SEND))
+            assertEquals(listOf(EditorInfo.IME_ACTION_SEND, EditorInfo.IME_ACTION_SEND,
+                EditorInfo.IME_ACTION_SEND), calls)
+        }
+    }
+
     @Test fun dispatchIsBoundedAndDoesNotFallBackToTerminalKeys() {
         instrumentation.runOnMainSync {
             val calls = mutableListOf<Int>()
             val connection = object : BaseInputConnection(View(instrumentation.targetContext), true) {
                 override fun performContextMenuAction(id: Int): Boolean { calls += id; return true }
                 override fun sendKeyEvent(event: android.view.KeyEvent): Boolean { fail("Unexpected key fallback"); return false }
+                override fun getTextBeforeCursor(length: Int, flags: Int): CharSequence? =
+                    throw AssertionError("Editor action read preceding text")
+                override fun getTextAfterCursor(length: Int, flags: Int): CharSequence? =
+                    throw AssertionError("Editor action read following text")
+                override fun getSelectedText(flags: Int): CharSequence? =
+                    throw AssertionError("Editor action read selected text")
+                override fun getExtractedText(request: android.view.inputmethod.ExtractedTextRequest?, flags: Int):
+                    android.view.inputmethod.ExtractedText? = throw AssertionError("Editor action extracted field text")
             }
             EditorAction.values().forEach { assertTrue(EditorActions.perform(connection, it, InputType.TYPE_CLASS_TEXT)) }
             assertEquals(EditorAction.values().map { it.menuId }, calls)
@@ -40,7 +81,11 @@ class EditorActionsTest {
             assertFalse(EditorActions.perform(connection, EditorAction.PASTE, InputType.TYPE_NULL))
             assertFalse(EditorActions.perform(null, EditorAction.PASTE, InputType.TYPE_CLASS_TEXT))
             assertTrue(calls.isEmpty())
-            assertTrue(EditorActions.perform(connection, EditorAction.PASTE, passwords.first()))
+            passwords.forEach { inputType ->
+                calls.clear()
+                assertTrue(EditorActions.perform(connection, EditorAction.PASTE, inputType))
+                assertEquals("Each explicit password Paste must dispatch exactly once", listOf(android.R.id.paste), calls)
+            }
             val rejected = object : BaseInputConnection(View(instrumentation.targetContext), true) {
                 override fun performContextMenuAction(id: Int): Boolean = throw IllegalStateException("closed")
             }
@@ -64,18 +109,19 @@ class EditorActionsTest {
                 editor.setText("cat"); editor.setSelection(3)
                 key("s").performClick()
                 assertEquals("cats", editor.text.toString())
+                key("Editing tools").performClick()
                 key("Undo").performClick(); assertEquals("cat", editor.text.toString())
                 key("Redo").performClick(); assertEquals("cats", editor.text.toString())
-                key("Copy").performLongClick()
+                key("Select neighboring word").performLongClick()
                 assertEquals(0, editor.selectionStart); assertEquals(4, editor.selectionEnd)
-                key("Copy").performClick(); key("Copy").performLongClick(); key("Cut").performClick()
+                key("Copy").performClick(); key("Select neighboring word").performLongClick(); key("Cut").performClick()
                 assertEquals("", editor.text.toString())
                 key("Paste").performClick(); assertEquals("cats", editor.text.toString())
                 val stale = key("Cut")
                 key("Extra keys").performClick()
                 editor.selectAll(); stale.performClick()
                 assertEquals("cats", editor.text.toString())
-                key("Extra keys").performClick()
+                key("Close extra keys").performClick()
                 check(context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0)
                 activity.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
             }
@@ -110,15 +156,17 @@ class EditorActionsTest {
                 return panel.view.measuredHeight
             }
             panel.reset(false, false, "Enter"); val typingHeight = height()
+            key("Editing tools").performClick(); val editHeight = height()
+            assertTrue("Edit tools should replace letters without growing the keyboard", editHeight <= typingHeight)
             key("Undo").performClick()
-            assertEquals("A refused action must not change the layout", typingHeight, height())
+            assertEquals("A refused action must not change the layout", editHeight, height())
             assertFalse("Refused actions must not add a status row",
                 descendants(panel.view).filterIsInstance<android.widget.TextView>()
                     .any { it.text == "Key unavailable" && it.visibility == View.VISIBLE })
             assertEquals(1, attempts.size)
             val stale = key("Paste")
             panel.reset(false, true, "Next"); stale.performClick()
-            assertEquals("A stale toolbar button must not act after reset", 1, attempts.size)
+            assertEquals("A stale edit button must not act after reset", 1, attempts.size)
         }
     }
 }

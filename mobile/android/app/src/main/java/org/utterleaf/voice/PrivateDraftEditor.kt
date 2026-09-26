@@ -92,15 +92,16 @@ class PrivateDraftEditor(
     /** Inserts text at the private selection. Rejection leaves text and selection unchanged. */
     fun replace(value: String): Boolean = mutate { buffer.replaceSelection(value) }
 
-    /** Deletes the selection or the preceding Unicode code point. */
+    /** Deletes the selection or the preceding user-perceived character. */
     fun erase(): Boolean {
         val state = buffer.current
         if (state.selectionStart != state.selectionEnd) return replace("")
         val cursor = state.selectionEnd
         if (cursor == 0) return !disposed
-        val previous = Character.offsetByCodePoints(state.text, cursor, -1)
-        val next = state.text.removeRange(previous, cursor)
-        return mutate { buffer.acceptExternalEdit(next, previous, previous) }
+        val grapheme = graphemeBounds(state.text, cursor)
+        val end = if (grapheme.isBoundary) cursor else grapheme.after
+        val next = state.text.removeRange(grapheme.before, end)
+        return mutate { buffer.acceptExternalEdit(next, grapheme.before, grapheme.before) }
     }
 
     /** Local-only selection preview used by Backspace; it never touches a host connection. */
@@ -143,13 +144,21 @@ class PrivateDraftEditor(
         }
     }
 
-    private fun graphemeBefore(text: String, offset: Int): Int = BreakIterator.getCharacterInstance(Locale.ROOT).run {
-        setText(text); preceding(offset).takeIf { it != BreakIterator.DONE } ?: offset
-    }
+    private data class GraphemeBounds(val before: Int, val after: Int, val isBoundary: Boolean)
 
-    private fun graphemeAfter(text: String, offset: Int): Int = BreakIterator.getCharacterInstance(Locale.ROOT).run {
-        setText(text); following(offset).takeIf { it != BreakIterator.DONE } ?: offset
-    }
+    private fun graphemeBounds(text: String, offset: Int): GraphemeBounds =
+        BreakIterator.getCharacterInstance(Locale.ROOT).run {
+            setText(text)
+            GraphemeBounds(
+                before = preceding(offset).takeIf { it != BreakIterator.DONE } ?: offset,
+                after = following(offset).takeIf { it != BreakIterator.DONE } ?: offset,
+                isBoundary = isBoundary(offset),
+            )
+        }
+
+    private fun graphemeBefore(text: String, offset: Int): Int = graphemeBounds(text, offset).before
+
+    private fun graphemeAfter(text: String, offset: Int): Int = graphemeBounds(text, offset).after
 
     /** Handles the navigation and forward-delete keys exposed by the restricted keyboard. */
     fun navigate(keyCode: Int, select: Boolean = false, word: Boolean = false): Boolean {
@@ -188,9 +197,10 @@ class PrivateDraftEditor(
         if (state.selectionStart != state.selectionEnd) return replace("")
         val cursor = state.selectionEnd
         if (cursor == state.text.length) return true
-        val next = Character.offsetByCodePoints(state.text, cursor, 1)
-        val updated = state.text.removeRange(cursor, next)
-        return mutate { buffer.acceptExternalEdit(updated, cursor, cursor) }
+        val grapheme = graphemeBounds(state.text, cursor)
+        val start = if (grapheme.isBoundary) cursor else grapheme.before
+        val updated = state.text.removeRange(start, grapheme.after)
+        return mutate { buffer.acceptExternalEdit(updated, start, start) }
     }
 
     private fun mutate(operation: () -> Boolean): Boolean {
@@ -225,8 +235,8 @@ class PrivateDraftEditor(
             return if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) previousWord(text, extent) else nextWord(text, extent)
         }
         return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_LEFT -> if (extent == 0) 0 else Character.offsetByCodePoints(text, extent, -1)
-            KeyEvent.KEYCODE_DPAD_RIGHT -> if (extent == text.length) text.length else Character.offsetByCodePoints(text, extent, 1)
+            KeyEvent.KEYCODE_DPAD_LEFT -> if (extent == 0) 0 else graphemeBefore(text, extent)
+            KeyEvent.KEYCODE_DPAD_RIGHT -> if (extent == text.length) text.length else graphemeAfter(text, extent)
             KeyEvent.KEYCODE_MOVE_HOME -> lineStart(text, extent)
             KeyEvent.KEYCODE_MOVE_END -> lineEnd(text, extent)
             KeyEvent.KEYCODE_DPAD_UP -> vertical(text, extent, -1)

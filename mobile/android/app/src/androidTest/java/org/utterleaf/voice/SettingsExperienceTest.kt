@@ -47,7 +47,7 @@ class SettingsExperienceTest {
             try {
                 main {
                     category(activity, "Voice input")
-                    button(activity, "Hold the mic key to insert").performClick()
+                    button(activity, "Hold mic to insert after recognition").performClick()
                     assertFalse(prefs.getBoolean("voiceHoldToInsert", false))
                     if (apply) button(activity, "Apply").performClick()
                     else { activity.onBackPressed(); button(activity, "Cancel").performClick() }
@@ -59,7 +59,7 @@ class SettingsExperienceTest {
         val reopened = open()
         try { main {
             category(reopened, "Voice input")
-            assertTrue((button(reopened, "Hold the mic key to insert") as CheckBox).isChecked)
+            assertTrue((button(reopened, "Hold mic to insert after recognition") as CheckBox).isChecked)
         } } finally { main { reopened.finish() } }
     }
 
@@ -74,6 +74,10 @@ class SettingsExperienceTest {
             val lightInk = lightKey.currentTextColor
             button(activity, "Dark").performClick()
             assertNotEquals(lightInk, key(activity, "a").currentTextColor)
+            button(activity, "OLED · true black").performClick()
+            assertTrue((button(activity, "OLED · true black") as RadioButton).isChecked)
+            assertEquals(android.graphics.Color.BLACK,
+                Ui.palette(activity, KeyboardOptions(theme = ThemeMode.OLED)).background)
             button(activity, "System").performClick()
             assertTrue((button(activity, "System") as RadioButton).isChecked)
             activity.onBackPressed()
@@ -108,6 +112,37 @@ class SettingsExperienceTest {
             activity.onBackPressed(); button(activity, "Cancel").performClick()
         }
             assertEquals(KeyboardOptions(), KeyboardOptions.load(context))
+        } finally { main { activity.finish() } }
+    }
+
+    @Test fun splitLandscapeChoiceStagesCancelsAppliesAndYieldsToOneHand() = isolated {
+        val label = "Split keyboard in landscape"
+        for (apply in listOf(false, true)) {
+            val activity = open()
+            try { main {
+                category(activity, "Layout & size")
+                button(activity, label).performClick()
+                assertTrue((button(activity, label) as CheckBox).isChecked)
+                assertFalse(KeyboardOptions.load(context).splitLandscape)
+                if (apply) button(activity, "Apply").performClick()
+                else { activity.onBackPressed(); button(activity, "Cancel").performClick() }
+            }
+                instrumentation.waitForIdleSync()
+                assertEquals(apply, KeyboardOptions.load(context).splitLandscape)
+            } finally { main { activity.finish() } }
+        }
+
+        val activity = open()
+        try { main {
+            category(activity, "Layout & size")
+            assertTrue((button(activity, label) as CheckBox).isChecked)
+            button(activity, "Left hand").performClick()
+            assertFalse((button(activity, label) as CheckBox).isChecked)
+            button(activity, "Apply").performClick()
+        }
+            instrumentation.waitForIdleSync()
+            assertEquals(KeyboardAlignment.LEFT, KeyboardOptions.load(context).alignment)
+            assertFalse(KeyboardOptions.load(context).splitLandscape)
         } finally { main { activity.finish() } }
     }
 
@@ -218,7 +253,7 @@ class SettingsExperienceTest {
                     "Key vibration (respects device settings)" to "Holds & gestures",
                     "Hold Backspace or Delete to repeat" to "Holds & gestures",
                     "Ignore repeated taps on the same key within 250 ms" to "Holds & gestures",
-                    "Hold the mic key to insert" to "Voice input",
+                    "Hold mic to insert after recognition" to "Voice input",
                     "Larger keys and labels" to "Layout & size",
                     "Auto-capitalization" to "Typing assistance")
                 queries.forEach { (query, title) ->

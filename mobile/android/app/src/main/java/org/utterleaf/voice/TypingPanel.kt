@@ -2,6 +2,7 @@
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Configuration
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Canvas
@@ -20,6 +21,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -27,6 +29,8 @@ import android.widget.Toast
 /** Secondary hints are visual; the button keeps its primary spoken key label. */
 internal class HintedKey(context: Context) : Button(context) {
     var primaryIcon: android.graphics.drawable.Drawable? = null
+    var primaryIconSizeDp: Int = 24
+    var tintPrimaryIcon: Boolean = true
     var bottomIcon: android.graphics.drawable.Drawable? = null
     var secondaryHint: String? = null
         set(value) { field = value; invalidate() }
@@ -37,11 +41,11 @@ internal class HintedKey(context: Context) : Button(context) {
     override fun onDraw(canvas: Canvas) {
         primaryIcon?.let { icon ->
             super.onDraw(canvas)
-            val size = minOf(Ui.dp(context, 24), width, height)
+            val size = minOf(Ui.dp(context, primaryIconSizeDp), width, height)
             val lift = if (bottomIcon != null) Ui.dp(context, 5) else 0
             val left = (width - size) / 2; val top = (height - size) / 2 - lift
             icon.setBounds(left, top, left + size, top + size)
-            icon.setTint(currentTextColor)
+            if (tintPrimaryIcon) icon.setTint(currentTextColor) else icon.clearColorFilter()
             icon.alpha = if (isEnabled) 255 else 90
             icon.draw(canvas)
             bottomIcon?.let { glyph ->
@@ -105,14 +109,17 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private val requestSuggestions: (() -> Unit)? = null,
     private val backspaceSelection: BackspaceSelection? = null,
     /** Settings previews stage changes; ordinary IME panels still save immediately. */
-    private val stageOptions: ((KeyboardOptions) -> Unit)? = null) {
+    private val stageOptions: ((KeyboardOptions) -> Unit)? = null,
+    /** Immutable host policy, distinct from the user's local private-draft editor. */
+    private val sensitiveField: Boolean = false) {
     private val light = options.resolvedLight(context)
-    private val surface = Color.parseColor(if (light) "#E8EEEB" else "#171E20")
-    private val keyColor = Color.parseColor(if (light) "#FFFFFF" else "#303A3D")
-    private val utilityColor = Color.parseColor(if (light) "#D1DFD6" else "#24322D")
-    private val ink = Color.parseColor(if (light) "#17251D" else "#F0F5F2")
-    private val accent = Color.parseColor(if (light) "#25643D" else "#A2DFB3")
-    private val accentInk = Color.parseColor(if (light) "#FFFFFF" else "#10291B")
+    private val palette = Ui.palette(context, options)
+    private val surface = palette.background
+    private val keyColor = palette.key
+    private val utilityColor = palette.utility
+    private val ink = palette.ink
+    private val accent = palette.accent
+    private val accentInk = palette.accentInk
     private val keyHeight = if (options.keyHeightDp == 0) { if (options.large) 66 else 54 }
         else options.keyHeightDp.coerceIn(48, 80)
     val view = KeyboardSurface(context)
@@ -138,7 +145,14 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         else options.holdDelayMs.toLong()
     }
     private val deleteRepeater = DeleteRepeater()
-    private val selectableBackspace = backspaceSelection?.let { selection -> object : BackspaceSelection {
+    // Keep the swipe recognizer so a refused gesture cannot become a Delete tap.
+    // The sensitive wrapper never calls the host's selection/context callbacks.
+    private val selectableBackspace = if (sensitiveField) object : BackspaceSelection {
+        override fun begin() = false
+        override fun move(left: Boolean) = false
+        override fun finish() = false
+        override fun cancel() = Unit
+    } else backspaceSelection?.let { selection -> object : BackspaceSelection {
         override fun begin(): Boolean = !extraKeysOpen && selection.begin()
         override fun move(left: Boolean): Boolean = !extraKeysOpen && selection.move(left)
         override fun finish(): Boolean = !extraKeysOpen && selection.finish()
@@ -176,19 +190,21 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             override fun onViewDetachedFromWindow(v: View) {
                 layoutGeneration++
                 needsRenderOnAttach = true
-                clearEmoji(); clearUnavailable(); cancelCompose(); gestures.cancel(); view.cancelRollover(); deleteRepeater.cancel()
+                resetTransientState()
             }
         })
     }
     private var shift = false
     private var selecting = false
-    private var selectKey: Button? = null
     private var caps = false
+    private var baseNumeric = false
     private var symbols = false
     private var moreSymbols = false
     private var hubOpen = false
+    private var editOpen = false
     private var extraKeysOpen = false
-    private var functionKeysOpen = false
+    private enum class ExtraKeyGroup { ACCESSORY, FUNCTIONS }
+    private var extraKeyGroup = ExtraKeyGroup.ACCESSORY
     private var heldCtrl = false
     private var heldAlt = false
     private var armedCtrl = false
@@ -232,14 +248,16 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     }
 
     private fun saveQuickOption(numberRow: Boolean? = null, extraKeys: Boolean? = null,
-        alignment: KeyboardAlignment? = null, letterLayout: LetterLayout? = null) {
-        if (privateEditing || disposed) return
+        alignment: KeyboardAlignment? = null, letterLayout: LetterLayout? = null,
+        splitLandscape: Boolean? = null) {
+        if (privateEditing || sensitiveField || disposed) return
         val current = if (stageOptions == null) KeyboardOptions.load(context) else options
         options = current.copy(
             numberRow = numberRow ?: current.numberRow,
             extraKeys = extraKeys ?: current.extraKeys,
             alignment = alignment ?: current.alignment,
             letterLayout = letterLayout ?: current.letterLayout,
+            splitLandscape = splitLandscape ?: current.splitLandscape,
         )
         if (stageOptions == null) options.save(context) else stageOptions.invoke(options)
     }
@@ -259,12 +277,23 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     }
 
     private fun chooseAlignment(alignment: KeyboardAlignment) {
-        if (options.alignment == alignment) return
+        if (options.alignment == alignment && !(options.splitLandscape && alignment != KeyboardAlignment.FULL)) return
         cancelForGeometryChange()
-        saveQuickOption(alignment = alignment)
+        saveQuickOption(alignment = alignment,
+            splitLandscape = options.splitLandscape && alignment == KeyboardAlignment.FULL)
         render()
         quickOptionsChanged()
     }
+
+    private fun chooseSplitLandscape() {
+        cancelForGeometryChange()
+        saveQuickOption(alignment = KeyboardAlignment.FULL, splitLandscape = !options.splitLandscape)
+        render()
+        quickOptionsChanged()
+    }
+
+    private fun splitLandscape() = options.splitLandscape &&
+        context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     private fun chooseLetterLayout(letterLayout: LetterLayout) {
         if (options.letterLayout == letterLayout) return
@@ -277,14 +306,14 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
 
     @SuppressLint("RtlHardcoded") // Left/right are explicit physical one-hand choices.
     private fun alignmentGravity() = Gravity.TOP or when (options.alignment) {
-        KeyboardAlignment.RIGHT -> Gravity.RIGHT
+        KeyboardAlignment.RIGHT -> if (splitLandscape()) Gravity.LEFT else Gravity.RIGHT
         else -> Gravity.LEFT
     }
 
     private fun alignedContentWidth(available: Int): Int {
         val minimum = Ui.dp(context, 320)
         val maximum = Ui.dp(context, 360)
-        return if (options.alignment == KeyboardAlignment.FULL || available <= minimum) {
+        return if (splitLandscape() || options.alignment == KeyboardAlignment.FULL || available <= minimum) {
             available
         } else {
             ((available.toLong() * 82L) / 100L).toInt()
@@ -303,43 +332,49 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
 
     fun reset(allowVoice: Boolean, numeric: Boolean, action: String, allowEmoji: Boolean = true) {
         if (disposed) return
-        clearEmoji()
-        clearUnavailable()
-        gestures.cancel()
-        view.cancelRollover()
-        shift = false; selecting = false; caps = false; symbols = numeric; moreSymbols = false
-        hubOpen = false; extraKeysOpen = false; functionKeysOpen = false
-        ctrl = false; alt = false
-        alternateMode = false; alternateKey = null; cancelCompose()
-        voiceAllowed = allowVoice && !privateEditing; emojiAllowed = allowEmoji; actionLabel = action
-        lastKey = ""; lastTime = 0
+        baseNumeric = numeric
+        resetTransientState()
+        voiceAllowed = allowVoice && !privateEditing && !sensitiveField
+        emojiAllowed = allowEmoji && !sensitiveField; actionLabel = action
         render()
+    }
+    /** A view boundary resets modes, never preferences or an owning editor's text. */
+    private fun resetTransientState() {
+        clearEmoji()
+        cancelForGeometryChange()
+        caps = false; symbols = baseNumeric; moreSymbols = false
+        hubOpen = false; editOpen = false; extraKeysOpen = false; extraKeyGroup = ExtraKeyGroup.ACCESSORY
+        alternateMode = false; alternateKey = null
+        renderedSuggestions = SuggestionEngine.SuggestionState.EMPTY
     }
     /** Permanently invalidates even an owned panel that was never attached. */
     fun dispose() {
         if (disposed) return
         disposed = true; layoutGeneration++
         clearEmoji(); cancelForGeometryChange(); view.clearOrdinaryKeys()
-        view.modifiers.reset();         content.removeAllViews(); letters.clear(); actionKeys.clear()
+        view.modifiers.reset(); content.removeAllViews(); letters.clear(); actionKeys.clear()
+        caps = false; hubOpen = false; editOpen = false; extraKeysOpen = false
+        alternateMode = false; alternateKey = null
+        renderedSuggestions = SuggestionEngine.SuggestionState.EMPTY
         suggestionRow = null; suggestionChips.clear(); suggestionEmpty = null
         arrowRepeaters.clear()
         toolbarStatus = null; capsKey = null
-        ctrlKey = null; altKey = null; selectKey = null
+        ctrlKey = null; altKey = null
     }
     fun refreshEditorActions() {
-        if (!disposed) actionKeys.forEach { (action, button) -> button.isEnabled = actionAvailable(action) }
+        if (!disposed) actionKeys.forEach { (action, button) -> button.isEnabled = allowsEditorAction(action) }
     }
     private fun clearEmoji() {
         emoji?.clear()
         emoji = null
     }
     private fun showEmoji() {
-        if (disposed || !emojiAllowed) return
+        if (disposed || sensitiveField || !emojiAllowed) return
         cancelForGeometryChange()
         clearEmoji()
         layoutGeneration++
         val generation = layoutGeneration
-        hubOpen = false; extraKeysOpen = false; functionKeysOpen = false
+        hubOpen = false; editOpen = false; extraKeysOpen = false; extraKeyGroup = ExtraKeyGroup.ACCESSORY
         symbols = false
         alternateMode = false; alternateKey = null; cancelCompose()
         view.clearOrdinaryKeys()
@@ -398,8 +433,10 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             setOnClickListener {
                 if (disposed || generation != layoutGeneration) return@setOnClickListener
                 val now = SystemClock.elapsedRealtime()
-                if (!options.repeatGuard || description != lastKey || now - lastTime >= 250) {
-                    lastKey = description; lastTime = now
+                if (sensitiveField || !options.repeatGuard || description != lastKey || now - lastTime >= 250) {
+                    // A character's accessibility label is typed content. Never keep
+                    // a last-key cache for passwords, even when repeat guard is saved.
+                    if (!sensitiveField) { lastKey = description; lastTime = now }
                     if (options.haptics) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                     clearUnavailable()
                     action()
@@ -409,9 +446,9 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         row.addView(button, if (widthDp == null) LinearLayout.LayoutParams(0, Ui.dp(context, height), weight)
             else LinearLayout.LayoutParams(Ui.dp(context, widthDp), Ui.dp(context, height)))
         if (chordable && description !in listOf("Keyboard tools and settings", "Dictate", "Keyboard settings",
-                "Switch keyboard", "Function keys", "Hide function keys", "Caps lock off", "Caps lock on",
+                "Switch keyboard", "Function keys", "Caps lock off", "Caps lock on",
                 "Accents and alternate characters", "Select all text", "Select text", "Number row on",
-                "Number row off", "Extra keys on", "Extra keys off", "Latin compose", "Emoji", "Private draft",
+                "Number row off", "Latin compose", "Emoji", "Private draft",
                 "Extra keys", "Undo", "Redo", "Copy", "Cut", "Paste", "Switch letters and symbols",
                 "Open password manager"))
             view.modifiers.key(button)
@@ -447,7 +484,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
      */
     private fun afterCommit(value: String) {
         if (value == "." || value == "!" || value == "?" || value == "\n") {
-            if (options.autoCapitalize && !caps && !shift) {
+            if (!sensitiveField && options.autoCapitalize && !caps && !shift) {
                 shift = true
                 view.announceForAccessibility("Capitalization armed")
             } else if (!caps) {
@@ -462,6 +499,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
 
     /** The mockup's suggestion strip: stable height, completions of the current word. */
     private fun suggestionRow() {
+        if (sensitiveField) return
         val row = row()
         row.minimumHeight = Ui.dp(context, 40)
         suggestionRow = row
@@ -469,9 +507,9 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     }
 
     private fun refreshSuggestionsRow(request: Boolean = true) {
+        if (disposed || sensitiveField) return
         val row = suggestionRow ?: return
         val provider = suggest ?: return
-        if (disposed) return
         val state = runCatching { provider.invoke() }.getOrNull() ?: SuggestionEngine.SuggestionState.EMPTY
         renderedSuggestions = state
         if (suggestionChips.isEmpty()) {
@@ -515,9 +553,9 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     }
 
     private fun completeChip(composing: String, candidate: String) {
+        if (disposed || sensitiveField) return
         val provider = suggest ?: return
         val completer = completeWord ?: return
-        if (disposed) return
         clearUnavailable()
         // Re-verify the composing word at tap time: the caret may have moved
         // since this chip rendered.
@@ -623,12 +661,12 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     }
 
     private fun beginCompose() {
-        if (disposed) return
+        if (disposed || sensitiveField) return
         if (rawField) {
             clearUnavailable(); unavailable()
             return
         }
-        hubOpen = false; extraKeysOpen = false; functionKeysOpen = false
+        hubOpen = false; editOpen = false; extraKeysOpen = false; extraKeyGroup = ExtraKeyGroup.ACCESSORY
         alternateMode = false; alternateKey = null
         symbols = false; selecting = false
         composeChoosingMark = true; composeMark = null; composeError = null
@@ -712,9 +750,8 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     }
     private fun type(value: String): Boolean {
         clearUnavailable()
-        val accepted = if (ctrl || alt) modifiedCommit(value, ctrl, alt) else commit(value)
+        val accepted = if (!sensitiveField && (ctrl || alt)) modifiedCommit(value, ctrl, alt) else commit(value)
         selecting = false
-        selectKey?.isSelected = false
         if (!accepted) unavailable()
         return accepted
     }
@@ -728,17 +765,19 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         view.announceForAccessibility("This key is not supported in the current field")
     }
     private fun special(code: Int) {
+        if (disposed || sensitiveField) return
         clearUnavailable()
         val accepted = terminalKey(code, ctrl, alt, shift)
         if (!accepted) unavailable()
     }
-    private fun usesModifiedDelete() = ctrl || alt || (shift && (extraKeysOpen || rawField))
+    private fun usesModifiedDelete() = !sensitiveField && (ctrl || alt || (shift && (extraKeysOpen || rawField)))
     private fun delete() {
         clearUnavailable()
         if (usesModifiedDelete()) special(KeyEvent.KEYCODE_DEL) else erase()
         refreshSuggestionsRow()
     }
     private fun navigate(left: Boolean) {
+        if (disposed || sensitiveField) return
         clearUnavailable()
         if (selecting || shift || ctrl || alt) {
             val accepted = terminalKey(if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT,
@@ -750,6 +789,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
 
     /** Select the word immediately before the caret using the editor's native word movement. */
     private fun selectNeighboringWord() {
+        if (disposed || sensitiveField) return
         clearUnavailable()
         val accepted = terminalKey(KeyEvent.KEYCODE_DPAD_LEFT, true, false, true)
         if (!accepted) unavailable() else view.announceForAccessibility("Selected neighboring word")
@@ -757,19 +797,57 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
 
     private fun returnToTyping() {
         cancelForGeometryChange()
-        hubOpen = false
+        hubOpen = false; editOpen = false
         symbols = false; moreSymbols = false; alternateMode = false; alternateKey = null
         cancelCompose()
         render()
     }
 
     private fun openHub() {
+        if (disposed || sensitiveField) return
         cancelForGeometryChange()
-        hubOpen = true
-        extraKeysOpen = false; functionKeysOpen = false
+        hubOpen = true; editOpen = false
+        extraKeysOpen = false; extraKeyGroup = ExtraKeyGroup.ACCESSORY
         alternateMode = false; alternateKey = null; cancelCompose()
         render()
         view.announceForAccessibility(if (privateEditing) "Keyboard tools" else "Keyboard tools and settings")
+    }
+    private fun splitGap(row: LinearLayout) {
+        row.addView(View(context).apply {
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            isClickable = false
+            isFocusable = false
+        }, LinearLayout.LayoutParams(Ui.dp(context, 72), 1))
+    }
+    private fun characterRow(sequence: String) {
+        val line = row()
+        if (!splitLandscape()) {
+            characters(line, sequence)
+            return
+        }
+        val split = (sequence.length + 1) / 2
+        characters(line, sequence.take(split))
+        splitGap(line)
+        characters(line, sequence.drop(split))
+    }
+
+    private fun openEdit() {
+        if (disposed || sensitiveField) return
+        cancelForGeometryChange()
+        hubOpen = false; editOpen = true
+        extraKeysOpen = false; extraKeyGroup = ExtraKeyGroup.ACCESSORY
+        alternateMode = false; alternateKey = null; cancelCompose()
+        render()
+        view.announceForAccessibility("Editing tools")
+    }
+
+    private fun openExtraKeys() {
+        if (disposed || sensitiveField) return
+        cancelForGeometryChange()
+        hubOpen = false; editOpen = false
+        extraKeysOpen = true; extraKeyGroup = ExtraKeyGroup.ACCESSORY
+        render()
+        view.announceForAccessibility("Extra keys open")
     }
 
     private fun toggleNumberRow() {
@@ -779,20 +857,12 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     }
 
     private fun toggleExtraKeysPanel() {
+        if (disposed || sensitiveField) return
         cancelForGeometryChange()
         extraKeysOpen = !extraKeysOpen
-        if (!extraKeysOpen) functionKeysOpen = false
+        if (!extraKeysOpen) extraKeyGroup = ExtraKeyGroup.ACCESSORY
         render()
         view.announceForAccessibility(if (extraKeysOpen) "Extra keys open" else "Extra keys closed")
-    }
-
-    private fun toggleExtraKeysPreference() {
-        cancelForGeometryChange()
-        saveQuickOption(extraKeys = !options.extraKeys)
-        if (!options.extraKeys) {
-            extraKeysOpen = false; functionKeysOpen = false
-        }
-        render(); quickOptionsChanged()
     }
 
     private fun toolbarKey(row: LinearLayout, label: String, description: String, widthDp: Int = 62,
@@ -804,75 +874,139 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         }
 
     private fun toolbarIcon(row: LinearLayout, icon: Int, description: String, weight: Float = 1f,
-        primary: Boolean = false, pill: Boolean = false, enabled: Boolean = true,
+        primary: Boolean = false, pill: Boolean = false, enabled: Boolean = true, selected: Boolean = false,
+        iconSizeDp: Int = 24, tintIcon: Boolean = true,
         action: () -> Unit): Button =
-        key(row, "", description, weight = weight, utility = !primary, primary = primary, height = 46,
+        key(row, "", description, weight = weight, utility = !primary, primary = primary, height = 48,
             chordable = false, compact = true, pill = pill, action = action).apply {
             (this as HintedKey).primaryIcon = context.getDrawable(icon)?.mutate()
-            isEnabled = enabled
+            this.primaryIconSizeDp = iconSizeDp
+            this.tintPrimaryIcon = tintIcon
+            isEnabled = enabled; isSelected = selected
         }
 
-    private fun editorToolbarAction(row: LinearLayout, action: EditorAction, icon: Int,
-        selectAllOnLongPress: Boolean = false) {
-        val generation = layoutGeneration
+    private fun allowsEditorAction(action: EditorAction) =
+        (!sensitiveField || action == EditorAction.PASTE) && actionAvailable(action)
+
+    private fun performEditorAction(action: EditorAction): Boolean =
+        !disposed && allowsEditorAction(action) && editorAction(action)
+
+    private fun toolbarEditorAction(row: LinearLayout, action: EditorAction, icon: Int) {
         val button = toolbarIcon(row, icon, action.label) {
-            val accepted = editorAction(action)
+            val accepted = performEditorAction(action)
             selecting = false
-            selectKey?.isSelected = false
-            if (android.os.Build.VERSION.SDK_INT >= 30) selectKey?.stateDescription = "Off"
             if (!accepted) unavailable()
         }
         actionKeys[action] = button
-        button.isEnabled = actionAvailable(action)
-        if (selectAllOnLongPress) button.setOnLongClickListener {
+        button.isEnabled = allowsEditorAction(action)
+    }
+
+    private fun editorActionKey(row: LinearLayout, action: EditorAction, label: String = action.label) {
+        val button = key(row, label, action.label, utility = true, height = 48, chordable = false) {
+            val accepted = performEditorAction(action)
+            selecting = false
+            if (!accepted) unavailable()
+        }
+        actionKeys[action] = button
+        button.isEnabled = allowsEditorAction(action)
+    }
+
+    private fun selectActionKey(row: LinearLayout, height: Int = 48) {
+        val generation = layoutGeneration
+        val button = key(row, "Select", "Select neighboring word", utility = true, height = height,
+            chordable = false, compact = true) { selectNeighboringWord() }
+        actionKeys[EditorAction.SELECT_ALL] = button
+        button.isEnabled = allowsEditorAction(EditorAction.SELECT_ALL)
+        button.setOnLongClickListener {
             if (disposed || generation != layoutGeneration) false else {
-                val accepted = editorAction(EditorAction.SELECT_ALL)
+                val accepted = performEditorAction(EditorAction.SELECT_ALL)
                 selecting = false
-                selectKey?.isSelected = false
                 if (!accepted) unavailable() else view.announceForAccessibility("Selected all text")
                 true
+            }
+        }
+        button.accessibilityDelegate = object : View.AccessibilityDelegate() {
+            override fun onInitializeAccessibilityNodeInfo(host: View,
+                info: android.view.accessibility.AccessibilityNodeInfo) {
+                super.onInitializeAccessibilityNodeInfo(host, info)
+                if (host.isEnabled) info.addAction(android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(
+                    android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK, "Select all text"))
             }
         }
     }
 
     private fun normalToolbar() {
-        val toolbar = row()
-        if (privateEditing) {
-            // A draft has no host exits: local history, local emoji and the panel.
-            editorToolbarAction(toolbar, EditorAction.UNDO, R.drawable.ic_undo)
-            editorToolbarAction(toolbar, EditorAction.REDO, R.drawable.ic_redo)
-            toolbarIcon(toolbar, R.drawable.ic_emoji, "Emoji", enabled = emojiAllowed) { showEmoji() }
-            spacer(toolbar, 1f)
-            if (options.extraKeys) {
-                toolbarIcon(toolbar, if (extraKeysOpen) R.drawable.ic_expand_close else R.drawable.ic_expand_open,
-                    "Extra keys", weight = 0.9f) { toggleExtraKeysPanel() }
-            } else spacer(toolbar, 1f)
+        if (sensitiveField) {
+            val actions = row()
+            toolbarEditorAction(actions, EditorAction.PASTE, R.drawable.ic_paste)
+            if (openPasswordManager != null) {
+                toolbarIcon(actions, R.drawable.ic_key, "Open password manager") {
+                    if (openPasswordManager.invoke() != true) unavailable()
+                }
+            }
+            key(actions, "Switch", "Switch keyboard", utility = true, height = 48,
+                chordable = false, compact = true) { switchKeyboard() }
             toolbarStatus = null
             return
         }
-        editorToolbarAction(toolbar, EditorAction.UNDO, R.drawable.ic_undo)
-        editorToolbarAction(toolbar, EditorAction.REDO, R.drawable.ic_redo)
-        editorToolbarAction(toolbar, EditorAction.COPY, R.drawable.ic_copy, selectAllOnLongPress = true)
-        editorToolbarAction(toolbar, EditorAction.CUT, R.drawable.ic_cut)
-        editorToolbarAction(toolbar, EditorAction.PASTE, R.drawable.ic_paste)
-        key(toolbar, "Tools", "Keyboard tools", weight = 1.2f, utility = true,
-            height = 46, chordable = false, compact = true) { openHub() }
-        if (openPasswordManager != null) {
-            // Password fields carry no draft or dictation: the credential
-            // shortcut takes that slot, and only there.
-            toolbarIcon(toolbar, R.drawable.ic_key, "Open password manager") {
+        val actions = row()
+        toolbarEditorAction(actions, EditorAction.UNDO, R.drawable.ic_undo)
+        toolbarEditorAction(actions, EditorAction.REDO, R.drawable.ic_redo)
+        if (privateEditing) {
+            repeat(3) { spacer(actions, 1f) }
+        } else {
+            toolbarEditorAction(actions, EditorAction.CUT, R.drawable.ic_cut)
+            toolbarEditorAction(actions, EditorAction.COPY, R.drawable.ic_copy)
+            toolbarEditorAction(actions, EditorAction.PASTE, R.drawable.ic_paste)
+        }
+        selectActionKey(actions)
+
+        // A single 12-position strip keeps the typing rows visible in landscape.
+        // Portrait retains two rows so every target stays at least 48dp wide.
+        val destinations = if (context.resources.configuration.orientation ==
+            Configuration.ORIENTATION_LANDSCAPE) actions else row()
+        key(destinations, "Tools", "Keyboard tools", utility = true, height = 48,
+            chordable = false, compact = true) { openHub() }
+        key(destinations, "Edit", "Editing tools", utility = true, height = 48,
+            chordable = false, compact = true) { openEdit() }
+        toolbarIcon(destinations, R.drawable.ic_emoji, "Emoji", enabled = emojiAllowed) { showEmoji() }
+        if (!privateEditing && openPasswordManager != null) {
+            toolbarIcon(destinations, R.drawable.ic_key, "Open password manager") {
                 if (openPasswordManager?.invoke() != true) unavailable()
             }
-        } else if (openDraft != null) {
-            toolbarIcon(toolbar, R.drawable.ic_draft, "Private draft") { openDraft?.invoke() }
-        } else spacer(toolbar, 1f)
-        toolbarIcon(toolbar, R.drawable.voice_idle, "Dictate", weight = 1.1f, primary = true, pill = true,
-            enabled = voiceAllowed) { dictate() }
-        if (options.extraKeys) {
-            toolbarIcon(toolbar, if (extraKeysOpen) R.drawable.ic_expand_close else R.drawable.ic_expand_open,
-                "Extra keys", weight = 0.9f) { toggleExtraKeysPanel() }
-        } else spacer(toolbar, 1f)
+        } else if (!privateEditing && openDraft != null) {
+            toolbarIcon(destinations, R.drawable.ic_draft, "Private draft") { openDraft?.invoke() }
+        } else spacer(destinations, 1f)
+        if (!privateEditing) {
+            toolbarIcon(destinations, R.drawable.utterling_mic, "Dictate", primary = true, pill = true,
+                enabled = voiceAllowed, iconSizeDp = 34, tintIcon = false) { dictate() }
+        } else {
+            spacer(destinations, 1f)
+        }
+        if (options.extraKeys) toolbarIcon(destinations, R.drawable.ic_expand_open,
+            if (extraKeysOpen) "Close extra keys" else "Extra keys", selected = extraKeysOpen) {
+            if (extraKeysOpen) toggleExtraKeysPanel() else openExtraKeys()
+        }
+        else spacer(destinations, 1f)
         toolbarStatus = null
+    }
+
+    private fun editRows() {
+        val history = row()
+        editorActionKey(history, EditorAction.UNDO)
+        editorActionKey(history, EditorAction.REDO)
+        selectActionKey(history)
+        val clipboard = row()
+        editorActionKey(clipboard, EditorAction.CUT)
+        editorActionKey(clipboard, EditorAction.COPY)
+        editorActionKey(clipboard, EditorAction.PASTE)
+        val navigation = row()
+        key(navigation, "←", "Move cursor left", utility = true, height = 48, chordable = false) { navigate(true) }
+        key(navigation, "→", "Move cursor right", utility = true, height = 48, chordable = false) { navigate(false) }
+        if (options.extraKeys) {
+            key(navigation, "More keys", "Extra keys", utility = true, height = 48,
+                chordable = false) { openExtraKeys() }
+        } else spacer(navigation, 1f)
     }
 
     private fun layerHeader(title: String, exitDescription: String = "Return to typing",
@@ -898,6 +1032,21 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         }
         capsKey = key(actions, "Caps", if (caps) "Caps lock on" else "Caps lock off",
             utility = true, height = 48, chordable = false) { caps = !caps; returnToTyping() }.apply { isSelected = caps }
+        val destinations = row()
+        if (!privateEditing && openPasswordManager != null) {
+            key(destinations, "Passwords", "Open password manager", utility = true, height = 48,
+                chordable = false) { if (openPasswordManager?.invoke() != true) unavailable() }
+        } else if (!privateEditing && openDraft != null) {
+            key(destinations, "Draft", "Private draft", utility = true, height = 48,
+                chordable = false) { openDraft?.invoke() }
+        } else spacer(destinations, 1f)
+        key(destinations, "Extra keys", "Extra keys", utility = true, height = 48,
+            chordable = false) { openExtraKeys() }
+        if (!privateEditing) {
+            key(destinations, "123 row", if (options.numberRow) "Number row on" else "Number row off",
+                utility = true, height = 48, chordable = false) { toggleNumberRow() }
+                .apply { isSelected = options.numberRow }
+        } else spacer(destinations, 1f)
         val text = row()
         key(text, "Accents", "Accents and alternate characters", utility = true, height = 48, chordable = false) {
             cancelForGeometryChange(); cancelCompose(); hubOpen = false
@@ -907,22 +1056,10 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         }
         key(text, "Compose", if (rawField) "Latin compose unavailable in raw input" else "Latin compose",
             utility = true, height = 48, chordable = false) { beginCompose() }.apply { isEnabled = !rawField }
-        val generation = layoutGeneration
-        selectKey = key(text, "Select all", "Select all text", utility = true, height = 48, chordable = false) {
-            val accepted = editorAction(EditorAction.SELECT_ALL)
-            selecting = false
-            selectKey?.isSelected = false
-            if (!accepted) unavailable()
-        }.also { button ->
-            button.setOnLongClickListener {
-                if (disposed || generation != layoutGeneration) false else {
-                    selectNeighboringWord(); true
-                }
-            }
-        }
+        spacer(text, 1f)
         if (privateEditing) {
             // Keep the layer stable while host preferences stay out of a draft.
-            repeat(3) { row().minimumHeight = Ui.dp(context, 48) }
+            repeat(2) { row().minimumHeight = Ui.dp(context, 48) }
             return
         }
         val alignment = row()
@@ -935,74 +1072,92 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         key(alignment, "Right", "Right hand layout", utility = true, height = 48, chordable = false) {
             chooseAlignment(KeyboardAlignment.RIGHT)
         }.apply { isSelected = options.alignment == KeyboardAlignment.RIGHT }
+        key(alignment, "Split", "Split keyboard in landscape", utility = true, height = 48, chordable = false) {
+            chooseSplitLandscape()
+        }.apply { isSelected = options.splitLandscape }
         val layouts = row()
         LetterLayout.entries.forEach { layout ->
             key(layouts, layout.label, "${layout.label} letter layout", utility = true, height = 48, chordable = false) {
                 chooseLetterLayout(layout)
             }.apply { isSelected = options.letterLayout == layout }
         }
-        val modes = row()
-        key(modes, "123 row", if (options.numberRow) "Number row on" else "Number row off",
-            utility = true, height = 48, chordable = false) { toggleNumberRow() }
-            .apply { isSelected = options.numberRow }
-        key(modes, "Extra keys", if (options.extraKeys) "Extra keys on" else "Extra keys off",
-            utility = true, height = 48, chordable = false) { toggleExtraKeysPreference() }
-            .apply { isSelected = options.extraKeys }
     }
 
-    /** The mockup's fold-out panel: extra controls above the toolbar, letters stay visible. */
+    /** One grouped specialist row keeps the typing surface and daily toolbar visible. */
     private fun extraKeyRows() {
-        if (functionKeysOpen) {
-            for (start in listOf(1, 7)) {
-                val functions = row()
-                for (number in start until start + 6) {
-                    key(functions, "F$number", utility = true, height = 44, labelSizeSp = 16) {
-                        special(KeyEvent.KEYCODE_F1 + number - 1)
-                    }
+        addExtraKeyControls(row())
+    }
+
+    private fun landscapeExtraHeader() {
+        val specialist = row()
+        key(specialist, "ABC", "Close extra keys", utility = true, height = 48, widthDp = 48,
+            compact = true, labelSizeSp = 12, chordable = false) { toggleExtraKeysPanel() }
+        addExtraKeyControls(specialist)
+    }
+
+    private fun addExtraKeyControls(specialist: LinearLayout, stripWeight: Float = 1f) {
+        fun group(label: String, description: String, value: ExtraKeyGroup) {
+            key(specialist, label, description, utility = true, height = 48, widthDp = 48,
+                compact = true, labelSizeSp = 12, chordable = false) {
+                if (extraKeyGroup != value) { extraKeyGroup = value; render() }
+            }.isSelected = extraKeyGroup == value
+        }
+        group("Keys", "Accessory keys", ExtraKeyGroup.ACCESSORY)
+        group("F1–12", "Function keys", ExtraKeyGroup.FUNCTIONS)
+
+        val strip = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            isMotionEventSplittingEnabled = false
+            isBaselineAligned = false
+        }
+        specialist.addView(HorizontalScrollView(context).apply {
+            isHorizontalScrollBarEnabled = false
+            isFillViewport = true
+            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+            addView(strip, FrameLayout.LayoutParams(-2, Ui.dp(context, 48)))
+        }, LinearLayout.LayoutParams(0, Ui.dp(context, 48), stripWeight))
+
+        when (extraKeyGroup) {
+            ExtraKeyGroup.ACCESSORY -> {
+                key(strip, "Esc", "Escape", utility = true, height = 48, widthDp = 52,
+                    compact = true, labelSizeSp = 14) { special(KeyEvent.KEYCODE_ESCAPE) }
+                ctrlKey = key(strip, "Ctrl", "Control off", utility = true, height = 48, widthDp = 52,
+                    compact = true, labelSizeSp = 14) { ctrl = !ctrl; updateCase() }
+                addNavigationKey(strip, "←", "Left arrow", KeyEvent.KEYCODE_DPAD_LEFT)
+                altKey = key(strip, "Alt", "Alt off", utility = true, height = 48, widthDp = 52,
+                    compact = true, labelSizeSp = 14) { alt = !alt; updateCase() }
+                shiftKeys.add(key(strip, "Shift", if (shift) "Shift on" else "Shift off", utility = true,
+                    height = 48, widthDp = 58, compact = true, labelSizeSp = 13, chordable = false) { tapShift() }
+                    .apply { tag = "Shift"; attachCapsLock(this) })
+                key(strip, "Tab", utility = true, height = 48, widthDp = 52,
+                    compact = true, labelSizeSp = 14) { special(KeyEvent.KEYCODE_TAB) }
+                listOf(
+                    Triple("↓", "Down arrow", KeyEvent.KEYCODE_DPAD_DOWN),
+                    Triple("↑", "Up arrow", KeyEvent.KEYCODE_DPAD_UP),
+                    Triple("→", "Right arrow", KeyEvent.KEYCODE_DPAD_RIGHT),
+                    Triple("Home", "Home", KeyEvent.KEYCODE_MOVE_HOME),
+                    Triple("End", "End", KeyEvent.KEYCODE_MOVE_END),
+                    Triple("Ins", "Insert", KeyEvent.KEYCODE_INSERT),
+                    Triple("Del", "Forward delete", KeyEvent.KEYCODE_FORWARD_DEL),
+                    Triple("PgUp", "Page up", KeyEvent.KEYCODE_PAGE_UP),
+                    Triple("PgDn", "Page down", KeyEvent.KEYCODE_PAGE_DOWN)).forEach { (label, description, code) ->
+                    addNavigationKey(strip, label, description, code)
                 }
             }
+            ExtraKeyGroup.FUNCTIONS -> (1..12).forEach { number ->
+                key(strip, "F$number", utility = true, height = 48, widthDp = 52,
+                    compact = true, labelSizeSp = 14) { special(KeyEvent.KEYCODE_F1 + number - 1) }
+            }
         }
-        val modifiers = row()
-        if (functionKeysOpen) {
-            key(modifiers, "Hide F", "Hide function keys", utility = true, height = 44, labelSizeSp = 13,
-                chordable = false) { functionKeysOpen = false; render() }
-        } else {
-            key(modifiers, "Fn", "Function keys", utility = true, height = 44, labelSizeSp = 16,
-                chordable = false) { functionKeysOpen = true; render() }
-        }
-        key(modifiers, "Esc", "Escape", utility = true, height = 44, labelSizeSp = 16) { special(KeyEvent.KEYCODE_ESCAPE) }
-        key(modifiers, "Tab", utility = true, height = 44, labelSizeSp = 16) { special(KeyEvent.KEYCODE_TAB) }
-        ctrlKey = key(modifiers, "Ctrl", "Control off", utility = true, height = 44, labelSizeSp = 16) {
-            ctrl = !ctrl; updateCase()
-        }
-        altKey = key(modifiers, "Alt", "Alt off", utility = true, height = 44, labelSizeSp = 16) {
-            alt = !alt; updateCase()
-        }
-        shiftKeys.add(key(modifiers, "Shift", if (shift) "Shift on" else "Shift off", utility = true,
-            height = 44, labelSizeSp = 14, chordable = false) { tapShift() }
-            .apply {
-                tag = "Shift"
-                attachCapsLock(this)
-            })
-        val navigation = row()
-        listOf(
-            Triple("Home", "Home", KeyEvent.KEYCODE_MOVE_HOME),
-            Triple("End", "End", KeyEvent.KEYCODE_MOVE_END),
-            Triple("Ins", "Insert", KeyEvent.KEYCODE_INSERT),
-            Triple("Del", "Forward delete", KeyEvent.KEYCODE_FORWARD_DEL),
-            Triple("PgUp", "Page up", KeyEvent.KEYCODE_PAGE_UP),
-            Triple("PgDn", "Page down", KeyEvent.KEYCODE_PAGE_DOWN)).forEach { (label, description, code) ->
-            key(navigation, label, description, utility = true, height = 44, labelSizeSp = 14) { special(code) }
-        }
-        val arrows = row()
-        listOf(Triple("←", "Left arrow", KeyEvent.KEYCODE_DPAD_LEFT),
-            Triple("↓", "Down arrow", KeyEvent.KEYCODE_DPAD_DOWN),
-            Triple("↑", "Up arrow", KeyEvent.KEYCODE_DPAD_UP),
-            Triple("→", "Right arrow", KeyEvent.KEYCODE_DPAD_RIGHT)).forEach { (label, description, code) ->
-            val generation = layoutGeneration
-            val button = key(arrows, label, description, utility = true, height = 44, compact = true,
-                labelSizeSp = 20) { special(code) }
-            if (options.arrowRepeat) arrowRepeaters.add(ArrowRepeater(button) {
+    }
+
+    private fun addNavigationKey(row: LinearLayout, label: String, description: String, code: Int) {
+        val generation = layoutGeneration
+        val button = key(row, label, description, utility = true, height = 48, widthDp = 54,
+            compact = true, labelSizeSp = if (label.length == 1) 20 else 12) { special(code) }
+        if (options.arrowRepeat && code in setOf(KeyEvent.KEYCODE_DPAD_LEFT,
+                KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN)) {
+            arrowRepeaters.add(ArrowRepeater(button) {
                 if (generation == layoutGeneration && !disposed) special(code)
             })
         }
@@ -1013,8 +1168,9 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         updateCase()
     }
     private fun attachCapsLock(button: Button) {
+        val generation = layoutGeneration
         button.setOnLongClickListener {
-            if (disposed) false else {
+            if (disposed || generation != layoutGeneration) false else {
                 caps = !caps
                 updateCase()
                 view.announceForAccessibility(if (caps) "Caps lock on" else "Caps lock off")
@@ -1036,10 +1192,14 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         arrowRepeaters.clear()
         content.removeAllViews(); letters.clear(); actionKeys.clear()
         suggestionRow = null; suggestionChips.clear(); suggestionEmpty = null
-        shiftKeys.clear(); letterShiftKey = null; capsKey = null; ctrlKey = null; altKey = null; selectKey = null
+        shiftKeys.clear(); letterShiftKey = null; capsKey = null; ctrlKey = null; altKey = null
         applyContentAlignment()
+        val landscapeExtra = extraKeysOpen && context.resources.configuration.orientation ==
+            Configuration.ORIENTATION_LANDSCAPE
         when {
             hubOpen -> layerHeader("All tools", "Close tools and settings")
+            editOpen -> layerHeader("Edit", "Close editing tools")
+            extraKeysOpen -> if (landscapeExtra) landscapeExtraHeader() else normalToolbar()
             composeChoosingMark -> layerHeader("Compose: choose a mark", "Return to typing") {
                 cancelForGeometryChange(); cancelCompose(); render()
             }
@@ -1053,33 +1213,52 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
                 cancelForGeometryChange(); alternateMode = false; alternateKey = null; render()
             }
             else -> {
-                if (extraKeysOpen) extraKeyRows()
                 normalToolbar()
-                if (suggest != null && !symbols) suggestionRow()
+                if (!sensitiveField && suggest != null && !symbols) suggestionRow()
             }
         }
         if (hubOpen) { hubRows(); updateCase(); return }
+        if (editOpen) { editRows(); updateCase(); return }
+        if (extraKeysOpen && !landscapeExtra) extraKeyRows()
         if (composeChoosingMark) { composeMarkRows(); updateCase(); return }
         if (composeMark != null) { composeLetterRows(); updateCase(); return }
         alternateKey?.let { alternateRows(it); updateCase(); return }
-        if (options.numberRow && !symbols) characters(row(), "1234567890")
+        if (options.numberRow && !symbols) characterRow("1234567890")
         if (symbols) {
-            characters(row(), if (moreSymbols) "`~!@#$%^&*" else "1234567890")
-            val middle = row()
-            characters(middle, if (moreSymbols) "()-_=+[]{}" else "@#$%&-+()/")
-            val third = row()
-            key(third, if (moreSymbols) "?123" else "=\\<",
-                if (moreSymbols) "More numbers and symbols" else "More symbols", 1.5f, utility = true) {
-                moreSymbols = !moreSymbols; render()
+            characterRow(if (moreSymbols) "`~!@#$%^&*" else "1234567890")
+            characterRow(if (moreSymbols) "()-_=+[]{}" else "@#$%&-+()/")
+            if (moreSymbols) {
+                characterRow("\\|;:\"',<>./?")
+                val last = row()
+                key(last, "?123", "More numbers and symbols", 1.5f, utility = true) {
+                    moreSymbols = false; render()
+                }
+                characters(last, "±×÷")
+                if (splitLandscape()) splitGap(last)
+                characters(last, "§©®")
+                key(last, "⌫", "Delete", 1.5f, utility = true) { delete() }
+            } else {
+                val third = row()
+                key(third, "=\\<", "More symbols", 1.5f, utility = true) {
+                    moreSymbols = true; render()
+                }
+                characters(third, "*\"':")
+                if (splitLandscape()) splitGap(third)
+                characters(third, ";!?_")
+                key(third, "⌫", "Delete", 1.5f, utility = true) { delete() }
             }
-            characters(third, if (moreSymbols) "\\|;:\"',<>./?±×÷§©®" else "*\"':;!?_")
-            key(third, "⌫", "Delete", 1.5f, utility = true) { delete() }
         } else {
             val layout = options.letterLayout
-            characters(row(), layout.top)
+            characterRow(layout.top)
             val home = row()
             val homeEdge = (10 - layout.home.length) / 2f
-            spacer(home, homeEdge); characters(home, layout.home); spacer(home, homeEdge)
+            spacer(home, homeEdge)
+            if (splitLandscape()) {
+                val split = (layout.home.length + 1) / 2
+                characters(home, layout.home.take(split)); splitGap(home); characters(home, layout.home.drop(split))
+                if (layout.home.length % 2 != 0) spacer(home, 1f)
+            } else characters(home, layout.home)
+            spacer(home, homeEdge)
             val third = row()
             val bottomEdge = (10 - layout.bottom.length) / 2f
             val shiftButton = key(third, "⇧", "Shift off", bottomEdge, utility = true) { tapShift() }
@@ -1087,7 +1266,11 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             shiftKeys.add(shiftButton)
             letterShiftKey = shiftButton
             attachCapsLock(shiftButton)
-            characters(third, layout.bottom)
+            if (splitLandscape()) {
+                val split = (layout.bottom.length + 1) / 2
+                characters(third, layout.bottom.take(split)); splitGap(third); characters(third, layout.bottom.drop(split))
+                if (layout.bottom.length % 2 != 0) spacer(third, 1f)
+            } else characters(third, layout.bottom)
             key(third, "⌫", "Delete", bottomEdge, utility = true) { delete() }
         }
         renderBottomRow()
@@ -1099,44 +1282,28 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         val bottom = row()
         key(bottom, if (symbols) "ABC" else "?123", "Switch letters and symbols", 1.5f, utility = true) {
             symbols = !symbols; moreSymbols = false
-            extraKeysOpen = false; functionKeysOpen = false
+            extraKeysOpen = false; extraKeyGroup = ExtraKeyGroup.ACCESSORY
             cancelCompose(); alternateMode = false; alternateKey = null; render()
         }
-        if (privateEditing) {
-            key(bottom, "Tools", "Keyboard tools", 1.5f, utility = true) { openHub() }
-        } else {
-            val emojiKey = key(bottom, "", "Emoji", 1.5f, utility = true) { showEmoji() }.apply { isEnabled = emojiAllowed }
-            (emojiKey as HintedKey).apply {
-                primaryIcon = context.getDrawable(R.drawable.ic_emoji)?.mutate()
-                bottomIcon = context.getDrawable(R.drawable.ic_gear)?.mutate()
-            }
-            val emojiGeneration = layoutGeneration
-            emojiKey.setOnLongClickListener {
-                if (disposed || emojiGeneration != layoutGeneration || !emojiAllowed) false
-                else { settings(); true }
-            }
-            emojiKey.accessibilityDelegate = object : View.AccessibilityDelegate() {
-                override fun onInitializeAccessibilityNodeInfo(host: View,
-                    info: android.view.accessibility.AccessibilityNodeInfo) {
-                    super.onInitializeAccessibilityNodeInfo(host, info)
-                    if (host.isEnabled) info.addAction(android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(
-                        android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK, "Open keyboard settings"))
-                }
-            }
-        }
-        key(bottom, spaceLabel ?: "", "Space", 5f, labelSizeSp = 14) {
+        // Daily destinations live in the stable toolbar; keep this row focused on typing.
+        val spaces = mutableListOf<Button>()
+        fun addSpace(weight: Float) = key(bottom, spaceLabel ?: "", "Space", weight, labelSizeSp = 14) {
             if (type(" ")) refreshSuggestionsRow()
         }.also { space ->
+            spaces += space
             val generation = layoutGeneration
+            // Recognize and consume a drag in sensitive fields, but navigate()
+            // refuses it without calling the host or inserting an accidental space.
             gestures.attachSpace(space) { left -> if (generation == layoutGeneration) navigate(left) }
-            view.bindSelection(letterShiftKey, space) { left ->
-                if (generation == layoutGeneration) {
-                    ctrl = false; alt = false; updateCase()
-                    if (!terminalKey(if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT,
-                            false, false, true)) unavailable()
-                    refreshSuggestionsRow()
-                }
-            }
+        }
+        if (splitLandscape()) {
+            spacer(bottom, 1f)
+            addSpace(2.5f)
+            splitGap(bottom)
+            addSpace(2.5f)
+        } else {
+            spacer(bottom, 1.5f)
+            addSpace(5f)
         }
         key(bottom, ".") { if (alternateMode) openAlternates('.') else if (type(".")) afterCommit(".") }.also { period ->
             view.registerOrdinaryKey(period)
@@ -1149,9 +1316,9 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             }
         }
         key(bottom, if (actionLabel == "Enter") "↵" else actionLabel, actionLabel, 1.5f, primary = true, pill = true) {
-            if (ctrl || alt) special(KeyEvent.KEYCODE_ENTER)
+            if (!sensitiveField && (ctrl || alt)) special(KeyEvent.KEYCODE_ENTER)
             else {
-                if (options.autoCapitalize && actionLabel == "Enter" && !caps) {
+                if (!sensitiveField && options.autoCapitalize && actionLabel == "Enter" && !caps) {
                     shift = true
                     view.announceForAccessibility("Capitalization armed")
                 }
@@ -1159,6 +1326,15 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             }
             updateCase()
             refreshSuggestionsRow()
+        }
+        val generation = layoutGeneration
+        if (!sensitiveField) view.bindSelection(letterShiftKey, spaces.last()) { left ->
+            if (generation == layoutGeneration) {
+                ctrl = false; alt = false; updateCase()
+                if (!terminalKey(if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT,
+                        false, false, true)) unavailable()
+                refreshSuggestionsRow()
+            }
         }
     }
     private fun updateCase() {

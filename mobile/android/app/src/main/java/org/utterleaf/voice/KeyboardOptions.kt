@@ -12,7 +12,7 @@ enum class KeyboardAlignment(val stored: String) {
 }
 
 enum class ThemeMode(val stored: String) {
-    SYSTEM("system"), LIGHT("light"), DARK("dark");
+    SYSTEM("system"), LIGHT("light"), DARK("dark"), OLED("oled");
 
     companion object {
         fun fromStored(value: String?) = entries.firstOrNull { it.stored == value } ?: SYSTEM
@@ -30,11 +30,12 @@ data class KeyboardOptions(val large: Boolean = false, val light: Boolean = fals
     val extraKeys: Boolean = true, val autoCapitalize: Boolean = true,
     val arrowRepeat: Boolean = true, val keyBorders: Boolean = true,
     val suggestions: Boolean = true,
-    val theme: ThemeMode = ThemeMode.SYSTEM) {
+    val theme: ThemeMode = ThemeMode.SYSTEM,
+    val splitLandscape: Boolean = false) {
     /** Panels resolve the stored theme against the system for actual colors. */
     fun resolvedLight(context: Context): Boolean = when (theme) {
         ThemeMode.LIGHT -> true
-        ThemeMode.DARK -> false
+        ThemeMode.DARK, ThemeMode.OLED -> false
         ThemeMode.SYSTEM -> (context.resources.configuration.uiMode and
             Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_NO
     }
@@ -50,6 +51,7 @@ data class KeyboardOptions(val large: Boolean = false, val light: Boolean = fals
             .putBoolean("arrowRepeat", arrowRepeat)
             .putBoolean("keyBorders", keyBorders)
             .putBoolean("suggestions", suggestions)
+            .putBoolean("splitLandscape", splitLandscape)
             .putString("theme", theme.stored)
             .putString("alignment", alignment.stored)
             .putString("letterLayout", letterLayout.stored)
@@ -90,7 +92,8 @@ data class KeyboardOptions(val large: Boolean = false, val light: Boolean = fals
                 prefs.getBoolean("arrowRepeat", true),
                 prefs.getBoolean("keyBorders", true),
                 if (migrated) prefs.getBoolean("suggestions", true) else true,
-                theme)
+                theme,
+                prefs.getBoolean("splitLandscape", false))
         }
         /** Restores typing preferences only. Verified models and microphone permission stay. */
         fun resetPreferences(context: Context) {

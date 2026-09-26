@@ -10,8 +10,25 @@ import android.view.WindowInsets
 import android.widget.*
 
 object Ui {
-    val ink = Color.rgb(229, 238, 232)
-    val green = Color.rgb(131, 218, 154)
+    data class Palette(val background: Int, val key: Int, val utility: Int, val ink: Int,
+        val muted: Int, val accent: Int, val accentInk: Int)
+    fun palette(context: Context, options: KeyboardOptions = KeyboardOptions.load(context)): Palette {
+        val mode = when (options.theme) {
+            ThemeMode.SYSTEM -> if (options.resolvedLight(context)) ThemeMode.LIGHT else ThemeMode.DARK
+            else -> options.theme
+        }
+        return when (mode) {
+            ThemeMode.LIGHT -> Palette(Color.rgb(232, 238, 235), Color.WHITE,
+                Color.rgb(209, 223, 214), Color.rgb(23, 37, 29), Color.rgb(72, 96, 82),
+                Color.rgb(37, 100, 61), Color.WHITE)
+            ThemeMode.OLED -> Palette(Color.BLACK, Color.rgb(16, 20, 18),
+                Color.rgb(7, 16, 11), Color.rgb(243, 248, 245), Color.rgb(170, 186, 175),
+                Color.rgb(162, 223, 179), Color.rgb(8, 23, 14))
+            else -> Palette(Color.rgb(23, 30, 32), Color.rgb(48, 58, 61),
+                Color.rgb(36, 50, 45), Color.rgb(240, 245, 242), Color.rgb(178, 197, 185),
+                Color.rgb(162, 223, 179), Color.rgb(16, 41, 27))
+        }
+    }
     fun dp(context: Context, n: Int) = (n * context.resources.displayMetrics.density).toInt()
     /** Call once on a new app content root, never the window decor. Owns its subtree's insets. */
     @Suppress("DEPRECATION")
@@ -58,23 +75,27 @@ object Ui {
             override fun onViewDetachedFromWindow(detached: View) = Unit
         })
     }
-    fun column(context: Context) = LinearLayout(context).apply {
+    fun column(context: Context, options: KeyboardOptions = KeyboardOptions.load(context)) = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
-        setBackgroundColor(Color.rgb(23, 30, 32))
+        setBackgroundColor(palette(context, options).background)
         val p = dp(context, 18); setPadding(p, p, p, p)
     }
-    fun text(context: Context, value: String, size: Float = 16f) = TextView(context).apply {
-        text = value; textSize = size; setTextColor(ink)
+    fun text(context: Context, value: String, size: Float = 16f,
+        options: KeyboardOptions = KeyboardOptions.load(context)) = TextView(context).apply {
+        text = value; textSize = size; setTextColor(palette(context, options).ink)
         setPadding(0, dp(context, 6), 0, dp(context, 6))
     }
-    fun title(context: Context, value: String) = text(context, value, 24f).apply { setTypeface(typeface, Typeface.BOLD) }
-    fun button(context: Context, label: String, action: () -> Unit) = Button(context).apply {
+    fun title(context: Context, value: String, options: KeyboardOptions = KeyboardOptions.load(context)) =
+        text(context, value, 24f, options).apply { setTypeface(typeface, Typeface.BOLD) }
+    fun button(context: Context, label: String, options: KeyboardOptions = KeyboardOptions.load(context),
+        action: () -> Unit) = Button(context).apply {
+        val colors = palette(context, options)
         text = label; isAllCaps = false; minHeight = dp(context, 48)
         backgroundTintList = ColorStateList(
             arrayOf(intArrayOf(android.R.attr.state_pressed), intArrayOf(android.R.attr.state_focused), intArrayOf()),
-            intArrayOf(Color.rgb(53, 92, 69), Color.rgb(53, 92, 69), Color.rgb(40, 51, 53)))
+            intArrayOf(colors.accent, colors.accent, colors.utility))
         setTextColor(ColorStateList(arrayOf(intArrayOf(-android.R.attr.state_enabled), intArrayOf()),
-            intArrayOf(Color.rgb(113, 137, 123), green)))
+            intArrayOf(colors.muted, colors.ink)))
         setOnClickListener { action() }
     }
     fun mascot(context: Context) = ImageView(context).apply {

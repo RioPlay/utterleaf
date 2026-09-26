@@ -116,38 +116,40 @@ class PrivateDraftImeTest {
                 .putExtra("password", password)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         ) as KeyboardEditorContractActivity
-        await("Editor activity never acquired window focus") { main { activity.hasWindowFocus() } }
-        main { activity.editor.requestFocus() }
-        val manager = app.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        await("Editor never became active") { main { manager.isActive(activity.editor) } }
-        // A prior test's manual finish callbacks can leave the service expecting
-        // a fresh show cycle; retry the request until the panel appears.
-        val deadline = android.os.SystemClock.elapsedRealtime() + 20_000
-        var shown = false
-        while (!shown && android.os.SystemClock.elapsedRealtime() < deadline) {
+        try {
+            await("Editor activity never acquired window focus") { main { activity.hasWindowFocus() } }
+            val manager = app.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            main { activity.editor.requestFocus() }
+            await("Editor never became active") { main { manager.isActive(activity.editor) } }
             main {
                 manager.restartInput(activity.editor)
                 manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
             }
-            try {
-                await("Typing keyboard did not appear") { findNode("Undo") != null }
-                shown = true
-            } catch (retry: AssertionError) {
-                Thread.sleep(250)
+            await("Typing keyboard did not appear after one restart/show request") {
+                findNode(if (password) "Delete" else "Editing tools") != null
             }
+            return activity
+        } catch (error: Throwable) {
+            try {
+                main { activity.finish() }
+                instrumentation.waitForIdleSync()
+            } catch (cleanup: Throwable) {
+                if (cleanup !== error) error.addSuppressed(cleanup)
+            }
+            throw error
         }
-        check(shown) { "Typing keyboard did not appear" }
-        return activity
     }
 
-    private fun close(activity: KeyboardEditorContractActivity) {
+    private fun close(activity: KeyboardEditorContractActivity, password: Boolean = false) {
         main { activity.finish() }
         await("Previous IME session did not close") {
-            findNode("Undo") == null && findNode("Insert private draft") == null
+            findNode(if (password) "Delete" else "Editing tools") == null &&
+                findNode("Insert private draft") == null
         }
     }
 
     private fun openDraft() {
+        if (findNode("Private draft") == null) press("Keyboard tools")
         press("Private draft")
         await("Private draft panel did not appear") { findNode("Insert private draft") != null }
     }
@@ -160,6 +162,7 @@ class PrivateDraftImeTest {
         val options = KeyboardOptions.load(app)
         val automation = instrumentation.uiAutomation
         val flags = automation.serviceInfo.flags
+        var primaryFailure: Throwable? = null
         try {
             automation.serviceInfo = automation.serviceInfo.apply {
                 this.flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
@@ -167,20 +170,24 @@ class PrivateDraftImeTest {
             shell("ime enable $id")
             shell("ime set $id")
             KeyboardOptions().save(app)
-            await("Typing IME was not selected") {
-                Settings.Secure.getString(app.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) == id
-            }
+            ImeTestReadiness.awaitDefaultImeStable(app, manager, id, "Typing IME setup")
             block(manager)
+        } catch (error: Throwable) {
+            primaryFailure = error
+            throw error
         } finally {
-            if (!previous.isNullOrBlank()) {
-                shell("ime set $previous")
-                await("Previous IME was not restored") {
-                    Settings.Secure.getString(app.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) == previous
-                }
-            }
-            if (!enabled) shell("ime disable $id")
-            options.save(app)
-            automation.serviceInfo = automation.serviceInfo.apply { this.flags = flags }
+            ImeTestReadiness.cleanupPreserving(
+                primaryFailure,
+                {
+                    if (!previous.isNullOrBlank()) {
+                        shell("ime set $previous")
+                        ImeTestReadiness.awaitDefaultImeStable(app, manager, previous, "Previous IME restore")
+                    }
+                },
+                { if (!enabled) shell("ime disable $id") },
+                { options.save(app) },
+                { automation.serviceInfo = automation.serviceInfo.apply { this.flags = flags } },
+            )
         }
     }
 
@@ -320,10 +327,16 @@ class PrivateDraftImeTest {
         KeyboardOptions().save(app)
         activity = launch(password = true)
         try {
-            assertEquals(null, findNode("Private draft"))
+            assertTrue(findNode("Delete") != null)
+            assertTrue(findNode("Paste") != null)
+            assertTrue(findNode("Switch keyboard") != null)
+            for (description in listOf("Keyboard tools", "Editing tools", "Extra keys", "Emoji",
+                "Dictate", "Private draft")) {
+                assertEquals("$description leaked into password input", null, findNode(description))
+            }
             assertEquals("", main { activity.editor.text.toString() })
         } finally {
-            close(activity)
+            close(activity, password = true)
         }
 
         activity = launch()

@@ -55,11 +55,14 @@ are bundled copies, so updating a documentation asset alone does not update an A
 The desktop release publishers accept their distinct stable or preview tag forms
 and verify the matching desktop jobs and source revision. Android release publication uses a separate manually dispatched signing workflow after CI;
 do not upload Android artifacts to a desktop release or replace desktop's stable
-latest release with a mobile alpha. The mobile release key is kept in a main-only GitHub environment. Physical update
-testing and offline key backup remain acceptance gates.
-For the alpha14 snapshot only, physical-phone testing is deferred to follow-up
-feedback; automated signed install/upgrade/reinstall, signing and certificate
-checks remain release gates.
+latest release with a mobile alpha. The mobile release key is kept in a main-only
+GitHub environment, with an independently protected offline backup required.
+Routine Android previews require the applicable emulator/JVM/tooling/lint/build
+checks and signed install/upgrade/reinstall, signer and package checks. Under the
+[manual reporting policy](plans/completed/android-alpha18-phone-acceptance.md),
+physical-phone, third-party-editor and live assistive-technology campaigns are
+follow-up work, not required for each preview. Unperformed checks remain
+unverified; a preview pass is not stable-channel or complete-redesign acceptance.
 
 If branch protection later requires always-present checks, use a routing/gate job
 instead of workflow path skipping so unrelated changes do not wait on missing checks.

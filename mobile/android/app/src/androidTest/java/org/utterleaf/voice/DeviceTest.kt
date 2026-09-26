@@ -335,21 +335,30 @@ class DeviceTest {
                 onMain { manager.showSoftInput(field, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT) }
                 awaitCondition("Typing keyboard did not appear") { findKey("a") != null }
             }
+            fun assertSensitiveSurface() {
+                awaitCondition("Minimal password keyboard did not appear") {
+                    findKey("Delete") != null && findKey("Paste") != null && findKey("Switch keyboard") != null
+                }
+                for (description in listOf("Keyboard tools", "Editing tools", "Extra keys", "Emoji",
+                    "Dictate", "Private draft", "Undo", "Redo", "Cut", "Copy", "Select neighboring word")) {
+                    assertTrue("$description leaked into password input", findKey(description) == null)
+                }
+            }
             show(screen.editor)
             awaitCondition("Password-manager key leaked onto an ordinary text field") {
                 findKey("Open password manager") == null
             }
             press("a"); press("b"); press("c")
             awaitCondition("InputConnection did not commit letters") { onMain { screen.editor.text.toString() == "abc" } }
-            press("Extra keys"); press("Left arrow")
+            press("Editing tools"); press("Extra keys"); press("Accessory keys"); press("Left arrow")
             awaitCondition("InputConnection did not move cursor") { onMain { screen.editor.selectionStart == 2 } }
-            press("Extra keys"); press("Delete")
+            press("Close extra keys"); press("Delete")
             awaitCondition("InputConnection did not delete before cursor") { onMain { screen.editor.text.toString() == "ac" } }
-            press("Extra keys"); press("Right arrow"); press("Extra keys"); press("d")
+            press("Editing tools"); press("Extra keys"); press("Accessory keys"); press("Right arrow"); press("Close extra keys"); press("d")
             awaitCondition("Cursor-right edit was incorrect") { onMain { screen.editor.text.toString() == "acd" } }
-            press("Extra keys"); press("Left arrow"); press("Forward delete")
+            press("Editing tools"); press("Extra keys"); press("Accessory keys"); press("Left arrow"); press("Forward delete")
             awaitCondition("Forward delete did not remove text after the cursor") { onMain { screen.editor.text.toString() == "ac" } }
-            press("Extra keys"); press("d")
+            press("Close extra keys"); press("d")
             press("Done")
             awaitCondition("Editor action did not reach editor") { onMain { screen.lastEditorAction == android.view.inputmethod.EditorInfo.IME_ACTION_DONE } }
 
@@ -557,9 +566,10 @@ class DeviceTest {
                     UiAwait.until("Editor restart did not replace the IME panel") { !beforeRestart.isAttachedToWindow }
                     livePress("s")
                     awaitCondition("Live action fixture did not type") { onMain { screen.editor.text.toString() == "cats" } }
+                    livePress("Editing tools")
                     livePress("Undo")
                     awaitCondition("Live Undo did not reach editor history") { onMain { screen.editor.text.toString() == "cat" } }
-                    liveLongPress("Copy")
+                    liveLongPress("Select neighboring word")
                     awaitCondition("Live Select all did not select the editor") { onMain {
                         screen.editor.selectionStart == 0 && screen.editor.selectionEnd == 3
                     } }
@@ -568,10 +578,12 @@ class DeviceTest {
                     livePress("Paste")
                     awaitCondition("Live Copy/Paste did not duplicate the selected text") { onMain { screen.editor.text.toString() == "catcat" } }
                     val leftPanelPaste = onMain { findNativeKey(currentImeRoot(), "Paste") ?: error("Missing live Paste") }
+                    livePress("Close editing tools")
                     livePress("Keyboard tools")
                     onMain { leftPanelPaste.performClick() }
                     UiAwait.remains("Old action changed text after leaving typing") { screen.editor.text.toString() == "catcat" }
                     livePress("Close tools and settings")
+                    livePress("Editing tools")
                     val oldFieldPaste = onMain { findNativeKey(currentImeRoot(), "Paste") ?: error("Missing live Paste") }
                     show(screen.password)
                     onMain { oldFieldPaste.performClick() }
@@ -594,10 +606,7 @@ class DeviceTest {
                     .any { it.root?.findAccessibilityNodeInfosByText("Utterleaf dictation")?.isNotEmpty() == true }
             }
             show(screen.password)
-            awaitCondition("Password Dictate control did not appear disabled") {
-                val dictate = findKey("Dictate")
-                dictate != null && !dictate.isEnabled
-            }
+            assertSensitiveSurface()
             // The credential shortcut follows the configured autofill application:
             // present only on password fields, only when one is configured.
             assertEquals("Password-manager key visibility did not follow the configured autofill application",
@@ -608,10 +617,7 @@ class DeviceTest {
             onMain { manager.hideSoftInputFromWindow(screen.password.windowToken, 0) }
             awaitCondition("Keyboard did not hide") { findKey("a") == null }
             show(screen.password)
-            awaitCondition("Reopened password Dictate control did not appear disabled") {
-                val dictate = findKey("Dictate")
-                dictate != null && !dictate.isEnabled
-            }
+            assertSensitiveSurface()
             // Email fields are credential-adjacent but never carry the shortcut.
             show(screen.email)
             awaitCondition("Email field keyboard did not appear") { findKey("a") != null }
@@ -621,7 +627,7 @@ class DeviceTest {
             press("y")
             awaitCondition("Email typing did not work") { onMain { screen.email.text.toString() == "y" } }
             show(screen.password)
-            awaitCondition("Password keyboard did not return for the terminal section") { findKey("Dictate") != null }
+            assertSensitiveSurface()
             press("y")
             awaitCondition("Keyboard failed after reopen") { onMain { screen.password.text.toString() == "xy" } }
             assertEquals("Password input changed the previous field", "acd", onMain { screen.editor.text.toString() })
@@ -630,7 +636,7 @@ class DeviceTest {
             awaitCondition("TYPE_NULL terminal field did not receive raw ASCII key events") {
                 onMain { screen.raw.text.toString() == "ls" }
             }
-            press("Extra keys")
+            press("Editing tools"); press("Extra keys")
             press("Control off")
             press("c")
             awaitCondition("Ctrl+C inserted a letter into the TYPE_NULL terminal field") {
@@ -677,7 +683,7 @@ class DeviceTest {
                 is android.view.ViewGroup -> (0 until view.childCount).flatMap { buttons(view.getChildAt(it)) }
                 else -> emptyList()
             }
-            val speak = buttons(panel.view).first { it.text == "Speak" }
+            val speak = buttons(panel.view).first { it.text == "Start dictation" }
             val insert = speak // The same primary control changes action in place.
             panel.view.measure(android.view.View.MeasureSpec.makeMeasureSpec(Ui.dp(app, 360), android.view.View.MeasureSpec.EXACTLY),
                 android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED))
@@ -685,7 +691,7 @@ class DeviceTest {
             speak.performClick()
             panel.clear() // Same path used by input-field changes and hiding the IME.
             callbacks[0]("stale speech")
-            assertEquals("Speak", insert.text.toString())
+            assertEquals("Start dictation", insert.text.toString())
             assertEquals(1, cancellations)
             speak.performClick()
             callbacks[1]("fresh speech")
@@ -717,19 +723,20 @@ class DeviceTest {
         }
         assertTrue(audio.size > 16000)
         NativeEngine.reset()
-        val result = NativeEngine.decode(ModelStore.file(app.noBackupFilesDir).absolutePath, audio)
+        val model = requireNotNull(ModelStore.verifiedFile(app.noBackupFilesDir)).absolutePath
+        val result = NativeEngine.decode(model, audio)
         assertNotNull(result)
         val text = result!!.toString(Charsets.UTF_8).lowercase()
         assertTrue("Known speech was not recognized", text.contains("country"))
         NativeEngine.reset(); NativeEngine.cancel()
-        assertNull(NativeEngine.decode(ModelStore.file(app.noBackupFilesDir).absolutePath, audio))
+        assertNull(NativeEngine.decode(model, audio))
         NativeEngine.reset()
-        val recovered = NativeEngine.decode(ModelStore.file(app.noBackupFilesDir).absolutePath, audio)
+        val recovered = NativeEngine.decode(model, audio)
         assertNotNull("A new native generation must be able to decode after cancel", recovered)
         audio.fill(0f); result.fill(0); recovered!!.fill(0)
     }
     @Test fun zCaptureStopsAndReleasesItsLeaseOnCancel() {
-        // Last test: granting a runtime permission persists for this emulator install.
+        // Final capture tests: granting permission persists for this emulator install.
         instrumentation.context.assets.open("ggml-tiny.en.bin").use { ModelStore.install(it, app.noBackupFilesDir) }
         instrumentation.uiAutomation.grantRuntimePermission(app.packageName, "android.permission.RECORD_AUDIO")
         val activity = instrumentation.startActivitySync(android.content.Intent(app, SetupActivity::class.java)
@@ -756,6 +763,53 @@ class DeviceTest {
         }
         assertTrue("Capture did not release its lease", released)
         assertNull(failure.get())
+    }
+
+    @Test fun zzCaptureTerminalFailurePublishesAfterReleasingItsLease() {
+        instrumentation.context.assets.open("ggml-tiny.en.bin").use { ModelStore.install(it, app.noBackupFilesDir) }
+        instrumentation.uiAutomation.grantRuntimePermission(app.packageName, "android.permission.RECORD_AUDIO")
+        val activity = instrumentation.startActivitySync(android.content.Intent(app, SetupActivity::class.java)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        val terminal = java.util.concurrent.CountDownLatch(1)
+        val message = java.util.concurrent.atomic.AtomicReference<String>()
+        val leaseAvailable = java.util.concurrent.atomic.AtomicReference<Boolean>()
+        var session: VoiceSession? = null
+        var failure: Throwable? = null
+        try {
+            instrumentation.runOnMainSync {
+                session = VoiceSession(app, {}, {
+                    message.set("Unexpected transcript from an immediately stopped take")
+                    terminal.countDown()
+                }, {
+                    message.set(it)
+                    val acquired = WorkLease.acquire()
+                    leaseAvailable.set(acquired)
+                    if (acquired) WorkLease.release()
+                    terminal.countDown()
+                })
+                session!!.start()
+                session!!.stop()
+            }
+            assertTrue("Stopped take did not finish", terminal.await(10, java.util.concurrent.TimeUnit.SECONDS))
+            assertTrue("Expected the worker's short-take failure, got ${message.get()}",
+                message.get()?.startsWith("Take too short.") == true)
+            assertEquals("Terminal UI was published while the model lease was busy", true, leaseAvailable.get())
+        } catch (error: Throwable) {
+            failure = error
+            throw error
+        } finally {
+            ImeTestReadiness.cleanupPreserving(failure,
+                { instrumentation.runOnMainSync { session?.cancel(); activity.finish() } },
+                {
+                    val deadline = android.os.SystemClock.elapsedRealtime() + 5000
+                    var released = false
+                    while (android.os.SystemClock.elapsedRealtime() < deadline) {
+                        if (WorkLease.acquire()) { WorkLease.release(); released = true; break }
+                        Thread.sleep(20)
+                    }
+                    assertTrue("Stopped take retained its lease", released)
+                })
+        }
     }
 }
 

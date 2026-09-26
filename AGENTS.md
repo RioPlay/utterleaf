@@ -13,6 +13,11 @@
 - Prefer useful, accessible controls over extra menus. Document unsupported
   editor/platform behavior and distinguish implemented features from verified
   device behavior. Do not claim emulator tests establish physical-phone usability.
+- Android release readiness uses emulator verification plus applicable JVM, tooling,
+  lint/build and signing checks. Physical-phone, real-editor, TalkBack/Switch Access
+  and real Obtainium test campaigns are not required gates; users report observed
+  issues manually. Preserve the distinction between emulator evidence and actual
+  device observations. Address reported failures with focused regression checks.
 - Follow the [development guide](docs/development.md),
   [mobile capability plan](docs/android-keyboard-capabilities.md) and applicable
   platform roadmap. Run checks appropriate to the changed behavior.

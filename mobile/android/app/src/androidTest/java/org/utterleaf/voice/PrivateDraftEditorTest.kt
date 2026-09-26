@@ -77,6 +77,119 @@ class PrivateDraftEditorTest {
         assertEquals("alpha beta", editor.current.text)
     }
 
+    @Test fun deleteAndHorizontalNavigationRespectEveryNamedGraphemeBoundary() = main {
+        val cases = listOf(
+            "simple" to "b",
+            "supplementary emoji" to "😀",
+            "combining sequence" to "e\u0301",
+            "joined family" to "👩‍👩‍👧‍👦",
+        )
+
+        fun editor(text: String, cursor: Int) =
+            PrivateDraftEditor(instrumentation.targetContext).also {
+                assertTrue(it.replace(text))
+                it.view.setSelection(cursor)
+                assertEquals(cursor, it.current.selectionStart)
+                assertEquals(cursor, it.current.selectionEnd)
+            }
+
+        cases.forEach { (name, grapheme) ->
+            editor("$grapheme!", grapheme.length).let {
+                assertTrue("$name Backspace was rejected", it.erase())
+                assertEquals("$name Backspace split the grapheme", "!", it.current.text)
+                assertEquals(0, it.current.selectionEnd)
+                it.dispose()
+            }
+            editor("$grapheme!", 0).let {
+                assertTrue("$name forward Delete was rejected",
+                    it.navigate(KeyEvent.KEYCODE_FORWARD_DEL))
+                assertEquals("$name forward Delete split the grapheme", "!", it.current.text)
+                assertEquals(0, it.current.selectionEnd)
+                it.dispose()
+            }
+            editor("$grapheme!", grapheme.length).let {
+                assertTrue("$name Left was rejected", it.navigate(KeyEvent.KEYCODE_DPAD_LEFT))
+                assertEquals("$name Left entered the grapheme", 0, it.current.selectionEnd)
+                it.dispose()
+            }
+            editor("$grapheme!", 0).let {
+                assertTrue("$name Right was rejected", it.navigate(KeyEvent.KEYCODE_DPAD_RIGHT))
+                assertEquals("$name Right entered the grapheme", grapheme.length,
+                    it.current.selectionEnd)
+                it.dispose()
+            }
+            editor("$grapheme!", grapheme.length).let {
+                assertTrue("$name Shift+Left was rejected",
+                    it.navigate(KeyEvent.KEYCODE_DPAD_LEFT, select = true))
+                assertEquals(grapheme.length, it.current.selectionStart)
+                assertEquals("$name Shift+Left ended inside the grapheme", 0,
+                    it.current.selectionEnd)
+                assertEquals(grapheme, it.current.text.substring(
+                    minOf(it.current.selectionStart, it.current.selectionEnd),
+                    maxOf(it.current.selectionStart, it.current.selectionEnd)))
+                it.dispose()
+            }
+            editor("$grapheme!", 0).let {
+                assertTrue("$name Shift+Right was rejected",
+                    it.navigate(KeyEvent.KEYCODE_DPAD_RIGHT, select = true))
+                assertEquals(0, it.current.selectionStart)
+                assertEquals("$name Shift+Right ended inside the grapheme", grapheme.length,
+                    it.current.selectionEnd)
+                it.dispose()
+            }
+            editor("x${grapheme}y", 1 + grapheme.length).let {
+                it.view.setSelection(1 + grapheme.length, 1)
+                assertTrue("$name reversed selection Backspace was rejected", it.erase())
+                assertEquals("$name boundary selection was not deleted atomically", "xy",
+                    it.current.text)
+                assertEquals(1, it.current.selectionEnd)
+                it.dispose()
+            }
+            editor("x${grapheme}y", 1).let {
+                it.view.setSelection(1, 1 + grapheme.length)
+                assertTrue("$name selected forward Delete was rejected",
+                    it.navigate(KeyEvent.KEYCODE_FORWARD_DEL))
+                assertEquals("$name forward boundary selection was not deleted atomically", "xy",
+                    it.current.text)
+                assertEquals(1, it.current.selectionEnd)
+                it.dispose()
+            }
+        }
+
+        listOf(
+            Triple("combining sequence", "e\u0301", 1),
+            Triple("joined family", "👩‍👩‍👧‍👦", 2),
+        ).forEach { (name, grapheme, interior) ->
+            editor("$grapheme!", interior).let {
+                assertTrue("$name interior Backspace was rejected", it.erase())
+                assertEquals("$name interior Backspace split the grapheme", "!", it.current.text)
+                assertEquals(0, it.current.selectionEnd)
+                it.dispose()
+            }
+            editor("$grapheme!", interior).let {
+                assertTrue("$name interior forward Delete was rejected",
+                    it.navigate(KeyEvent.KEYCODE_FORWARD_DEL))
+                assertEquals("$name interior forward Delete split the grapheme", "!",
+                    it.current.text)
+                assertEquals(0, it.current.selectionEnd)
+                it.dispose()
+            }
+        }
+
+        editor("😀", 0).let {
+            assertTrue(it.erase())
+            assertEquals("😀", it.current.text)
+            assertTrue(it.navigate(KeyEvent.KEYCODE_DPAD_LEFT))
+            assertEquals(0, it.current.selectionEnd)
+            it.view.setSelection(it.current.text.length)
+            assertTrue(it.navigate(KeyEvent.KEYCODE_FORWARD_DEL))
+            assertTrue(it.navigate(KeyEvent.KEYCODE_DPAD_RIGHT))
+            assertEquals(it.current.text.length, it.current.selectionEnd)
+            assertEquals("😀", it.current.text)
+            it.dispose()
+        }
+    }
+
     @Test fun clipboardMenusPhysicalTypingAndContentImportsAreRejected() {
         val context = instrumentation.targetContext
         val activity = instrumentation.startActivitySync(Intent(context, KeyboardTestActivity::class.java)

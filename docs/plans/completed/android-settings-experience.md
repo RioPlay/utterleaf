@@ -10,7 +10,7 @@ passed 28/28; narrow large-text and landscape owned-view checks passed.
 
 The evidence below is historical; pending statements describe earlier stages.
 Physical/editor/accessibility acceptance remains in the
-[phone checklist](../active/android-alpha18-phone-acceptance.md) and
+[phone checklist](android-alpha18-phone-acceptance.md) and
 [mobile roadmap](../../mobile-roadmap.md).
 
 ## Goal and area
