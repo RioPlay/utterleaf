@@ -6,8 +6,10 @@ Obtainium checks GitHub and installs Android updates. Utterleaf itself keeps **n
 Internet permission** and does not add an updater service. The signed channel
 begins with Android alpha03; alpha01/alpha02 used disposable debug keys.
 
-Current release: [Android alpha15](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha15) ·
-[Signed APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha15/Utterleaf-Android-0.1.0-alpha15.apk).
+Current release: [Android alpha19](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha19) ·
+[Signed APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha19/Utterleaf-Android-0.1.0-alpha19.apk).
+Alpha20 is an unreleased candidate; do not treat its roadmap or local build as an
+available update.
 
 ## Set up
 
@@ -40,11 +42,19 @@ the speech model. Uninstalling removes app data. Do not disable Android's signat
 checks or protection settings to force an update.
 
 Signed alpha03 and later releases use the same persistent release identity. An installed
-signed alpha03 should be updated in place. The
+signed alpha03 should be updated in place. Current alpha19 evidence includes
+[protected signing](https://github.com/RioPlay/utterleaf/actions/runs/35463561268)
+and an independently checked signed alpha18-to-alpha19 upgrade/reinstall with
+synthetic preferences and model-storage markers preserved. Markers are not a
+claim of real imported-model inference after every possible version upgrade.
+See the [current release evidence](mobile-roadmap.md#current-status).
+
+Historically, the
 [successful alpha04 signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34428171272)
 verified the unchanged certificate, upgraded signed alpha03 to alpha04 on an
 emulator, and reinstalled alpha04. Preference and imported-model preservation were
-not exercised. Real Obtainium import and physical updates remain separate gates.
+not exercised in that older run. Real Obtainium import and physical updates remain
+unverified follow-up work, not required routine-preview test campaigns.
 
 The [passed alpha04 CI run](https://github.com/RioPlay/utterleaf/actions/runs/34427672686)
 records 4 JVM, 11 API 35 emulator and 3 release-contract tests. See the

@@ -4,10 +4,13 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import android.text.Selection
+import android.view.View
+import android.view.ViewGroup
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.Button
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
@@ -44,72 +47,131 @@ class KeyboardEditorContractTest {
             .filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }.mapNotNull { it.root?.let(::find) }.firstOrNull()
     }
     private fun press(label: String) {
-        await("Missing $label") { key(label)?.isEnabled == true }
-        val deadline = android.os.SystemClock.elapsedRealtime() + 2_000
-        while (android.os.SystemClock.elapsedRealtime() < deadline) {
-            if (key(label)?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true) {
-                instrumentation.waitForIdleSync()
-                return
-            }
-            Thread.sleep(50)
+        var target: AccessibilityNodeInfo? = null
+        await("Missing $label") { key(label)?.takeIf { it.isEnabled }?.also { target = it } != null }
+        if (target?.performAction(AccessibilityNodeInfo.ACTION_CLICK) != true) {
+            throw AssertionError("Enabled $label rejected its single click")
         }
-        throw AssertionError("Could not press $label")
+        instrumentation.waitForIdleSync()
     }
 
-    /** Retry across the asynchronous IME rebuild triggered by editor text changes. */
     private fun openEditingTools() {
-        var attempts = 0
-        val deadline = android.os.SystemClock.elapsedRealtime() + 15_000
-        while (android.os.SystemClock.elapsedRealtime() < deadline) {
-            if (key("Select neighboring word") != null) return
-            val edit = key("Editing tools")
-            if (edit?.isEnabled == true && edit.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                attempts++
-                instrumentation.waitForIdleSync()
-            }
-            val openDeadline = android.os.SystemClock.elapsedRealtime() + 2_000
-            while (android.os.SystemClock.elapsedRealtime() < openDeadline) {
-                if (key("Select neighboring word") != null) return
-                Thread.sleep(50)
-            }
+        if (key("Select neighboring word") != null) return
+        press("Editing tools")
+        await("Editing tools did not open after its single click") {
+            key("Select neighboring word") != null
         }
-        throw AssertionError("Editing tools did not open after $attempts attempts")
     }
 
     /**
      * Opens the extra-keys panel and waits until its keys are actually present.
-     * A setText-driven IME rebuild lands asynchronously; a toggle pressed on
-     * the pre-rebuild panel is silently lost, so retry the chevron if the
-     * accessory keys never surface.
+     * Editor readiness is established before this helper. Each panel toggle is
+     * dispatched once; a missing resulting state remains a test failure.
      */
     private fun openExtraKeys() {
-        var attempts = 0
-        val deadline = android.os.SystemClock.elapsedRealtime() + 15_000
-        while (android.os.SystemClock.elapsedRealtime() < deadline) {
-            if (key("Extra keys") == null) press("Editing tools")
-            press("Extra keys")
-            attempts++
-            val openDeadline = android.os.SystemClock.elapsedRealtime() + 3_000
-            while (android.os.SystemClock.elapsedRealtime() < openDeadline) {
-                if (key("Accessory keys") != null && key("Close extra keys") != null) return
-                Thread.sleep(50)
-            }
-            if (attempts >= 5) break
+        if (key("Accessory keys") != null && key("Close extra keys") != null) return
+        if (key("Extra keys") == null) {
+            openEditingTools()
         }
-        throw AssertionError("Extra keys panel did not open after $attempts attempts")
+        press("Extra keys")
+        await("Extra keys panel did not open after its single click") {
+            key("Accessory keys") != null && key("Close extra keys") != null
+        }
     }
     private fun longPress(label: String) {
-        await("Missing $label") { key(label)?.isEnabled == true }
-        val deadline = android.os.SystemClock.elapsedRealtime() + 2_000
+        var target: AccessibilityNodeInfo? = null
+        await("Missing $label") { key(label)?.takeIf { it.isEnabled }?.also { target = it } != null }
+        if (target?.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK) != true) {
+            throw AssertionError("Enabled $label rejected its single long click")
+        }
+        instrumentation.waitForIdleSync()
+    }
+
+    private fun descendants(view: View): List<View> = listOf(view) + if (view is ViewGroup)
+        (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) } else emptyList()
+
+    private fun nativeKey(label: String): Button? = main {
+        android.view.inspector.WindowInspector.getGlobalWindowViews().flatMap(::descendants)
+            .filterIsInstance<Button>()
+            .singleOrNull { it.isShown && it.contentDescription?.toString() == label }
+    }
+
+    private fun imeSelection(button: Button): Pair<Int, Int>? = main {
+        val service = button.context as? KeyboardIme ?: return@main null
+        fun offset(name: String) = KeyboardIme::class.java.getDeclaredField(name).run {
+            isAccessible = true
+            getInt(service)
+        }
+        offset("selectionStart") to offset("selectionEnd")
+    }
+
+    private data class EditorObservation(
+        val textMatches: Boolean,
+        val textLength: Int,
+        val selectionStart: Int,
+        val selectionEnd: Int,
+    )
+
+    private data class DeleteCase(
+        val name: String,
+        val value: String,
+        val cursor: Int,
+        val expected: String,
+    )
+
+    /**
+     * setText updates the host immediately but the input session and keyboard can
+     * rebuild later. Observe both sides before dispatching a one-shot edit.
+     */
+    private fun awaitEditorReady(
+        activity: KeyboardEditorContractActivity,
+        caseName: String,
+        expectedText: String,
+        expectedStart: Int,
+        expectedEnd: Int,
+        keyLabel: String,
+    ) {
+        val deadline = android.os.SystemClock.elapsedRealtime() + 10_000
+        var previousKey: Button? = null
+        var lastObservation = "not sampled"
         while (android.os.SystemClock.elapsedRealtime() < deadline) {
-            if (key(label)?.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK) == true) {
-                instrumentation.waitForIdleSync()
-                return
+            val host = main {
+                val actual = activity.editor.text.toString()
+                EditorObservation(
+                    textMatches = actual == expectedText,
+                    textLength = actual.length,
+                    selectionStart = activity.editor.selectionStart,
+                    selectionEnd = activity.editor.selectionEnd,
+                )
             }
+            val currentKey = runCatching { nativeKey(keyLabel) }.getOrNull()
+            val keyStable = currentKey != null && currentKey === previousKey
+            val keyEnabled = currentKey?.let { main { it.isEnabled } }
+            val observedSelection = currentKey?.let { runCatching { imeSelection(it) }.getOrNull() }
+            // The host preserves selection direction, while Android normalizes
+            // the selection bounds delivered to InputMethodService callbacks.
+            val expectedImeSelection = minOf(expectedStart, expectedEnd) to maxOf(expectedStart, expectedEnd)
+            val observedImeSelection = observedSelection?.let {
+                minOf(it.first, it.second) to maxOf(it.first, it.second)
+            }
+            lastObservation = "textMatches=${host.textMatches}, textLength=${host.textLength}, " +
+                "hostSelection=${host.selectionStart}..${host.selectionEnd}, " +
+                "keyPresent=${currentKey != null}, keyEnabled=$keyEnabled, " +
+                "keyStable=$keyStable, imeSelection=$observedSelection"
+            if (host.textMatches && host.selectionStart == expectedStart && host.selectionEnd == expectedEnd &&
+                keyEnabled == true && keyStable &&
+                observedImeSelection == expectedImeSelection
+            ) return
+            previousKey = currentKey
             Thread.sleep(50)
         }
-        throw AssertionError("Could not long press $label")
+        throw AssertionError(
+            "$caseName editor state did not settle before $keyLabel: " +
+                "expectedLength=${expectedText.length}, expectedSelection=$expectedStart..$expectedEnd; " +
+                lastObservation,
+        )
     }
+
     private fun launch(options: Int, raw: Boolean = false, multiline: Boolean = false): KeyboardEditorContractActivity {
         val activity = instrumentation.startActivitySync(Intent(app, KeyboardEditorContractActivity::class.java)
             .putExtra("ime_options", options).putExtra("raw", raw).putExtra("multiline", multiline)
@@ -134,33 +196,57 @@ class KeyboardEditorContractTest {
         val options = KeyboardOptions.load(app)
         val automation = instrumentation.uiAutomation
         val flags = automation.serviceInfo.flags
+        var primaryFailure: Throwable? = null
         try {
             automation.serviceInfo = automation.serviceInfo.apply {
                 this.flags = flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
             }
             shell("ime enable $id"); shell("ime set $id")
             options.copy(extraKeys = true).save(app)
-            await("Typing IME was not selected") { Settings.Secure.getString(app.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) == id }
+            ImeTestReadiness.awaitDefaultImeStable(app, manager, id, "Typing IME setup")
             block()
+        } catch (error: Throwable) {
+            primaryFailure = error
+            throw error
         }
         finally {
-            if (!previous.isNullOrBlank()) shell("ime set $previous"); if (!enabled) shell("ime disable $id")
-            options.save(app)
-            automation.serviceInfo = automation.serviceInfo.apply { this.flags = flags }
+            ImeTestReadiness.cleanupPreserving(
+                primaryFailure,
+                {
+                    if (!previous.isNullOrBlank()) {
+                        shell("ime set $previous")
+                        ImeTestReadiness.awaitDefaultImeStable(app, manager, previous, "Previous IME restore")
+                    }
+                },
+                { if (!enabled) shell("ime disable $id") },
+                { options.save(app) },
+                { automation.serviceInfo = automation.serviceInfo.apply { this.flags = flags } },
+            )
         }
     }
 
     @Test fun freshSessionsReplaceSelectionDeleteUnicodeAndDispatchEnter() = withKeyboard {
         val text = launch(EditorInfo.IME_ACTION_DONE)
         try {
-            main { text.editor.setText("A😀é👩‍👩‍👧‍👦Z"); Selection.setSelection(text.editor.text, text.editor.length() - 1, 1) }
+            val original = "A😀é👩‍👩‍👧‍👦Z"
+            val selectionStart = original.length - 1
+            main { text.editor.setText(original); Selection.setSelection(text.editor.text, selectionStart, 1) }
+            awaitEditorReady(text, "Reversed UTF-16 selection", original, selectionStart, 1, "x")
             press("x"); await("Reversed selection was not replaced") { main { text.editor.text.toString() == "AxZ" } }
-            for ((value, cursor, expected) in listOf(Triple("á", 2, "a"), Triple("😀x", 2, "x"),
-                Triple("👩‍👩‍👧‍👦x", "👩‍👩‍👧‍👦".length, "x"))) {
+            for ((caseName, value, cursor, expected) in listOf(
+                DeleteCase("combining-mark cluster", "á", 2, "a"),
+                DeleteCase("supplementary emoji", "😀x", 2, "x"),
+                DeleteCase("joined-family emoji", "👩‍👩‍👧‍👦x", "👩‍👩‍👧‍👦".length, "x"),
+            )) {
                 main { text.editor.setText(value); text.editor.setSelection(cursor) }
-                press("Delete"); await("Unicode delete failed") { main { text.editor.text.toString() == expected } }
+                awaitEditorReady(text, "Backward delete for $caseName", value, cursor, cursor, "Delete")
+                press("Delete")
+                await("Backward delete failed for $caseName; expectedLength=${expected.length}") {
+                    main { text.editor.text.toString() == expected }
+                }
             }
             main { text.editor.setText("😀x"); text.editor.setSelection(0) }
+            awaitEditorReady(text, "Forward delete at field start", "😀x", 0, 0, "Editing tools")
             openExtraKeys(); press("Accessory keys"); press("Forward delete")
             await("Forward delete did not remove supplementary Unicode") { main { text.editor.text.toString() == "x" } }
             press("Close extra keys")
@@ -190,6 +276,7 @@ class KeyboardEditorContractTest {
         val activity = launch(EditorInfo.IME_ACTION_DONE)
         try {
             main { activity.editor.setText("alpha beta"); activity.editor.setSelection(activity.editor.length()) }
+            awaitEditorReady(activity, "Neighboring-word selection", "alpha beta", 10, 10, "Editing tools")
             openEditingTools()
             press("Select neighboring word")
             await("Neighboring word was not selected") {
@@ -210,6 +297,7 @@ class KeyboardEditorContractTest {
         val activity = launch(EditorInfo.IME_ACTION_DONE)
         try {
             main { activity.editor.setText("one two three"); activity.editor.setSelection(activity.editor.length()) }
+            awaitEditorReady(activity, "Latched word selection", "one two three", 13, 13, "Editing tools")
             openExtraKeys()
             press("Control off")
             press("Shift off")

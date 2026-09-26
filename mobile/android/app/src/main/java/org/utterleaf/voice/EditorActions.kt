@@ -1,6 +1,5 @@
 package org.utterleaf.voice
 
-import android.text.InputType
 import android.view.inputmethod.InputConnection
 
 enum class EditorAction(val label: String, val menuId: Int) {
@@ -11,14 +10,22 @@ enum class EditorAction(val label: String, val menuId: Int) {
 
 /** Explicit editor commands only: no clipboard reads, history or terminal shortcut fallback. */
 object EditorActions {
+    /** One host action attempt only. Refusal or a broken connection never falls back to text or keys. */
+    internal fun performImeAction(connection: InputConnection?, action: Int): Boolean {
+        if (connection == null) return false
+        return try { connection.performEditorAction(action) } catch (_: RuntimeException) { false }
+    }
+
     fun perform(connection: InputConnection?, action: EditorAction, inputType: Int?): Boolean {
-        if (connection == null || inputType == null || inputType == InputType.TYPE_NULL) return false
-        val cls = inputType and InputType.TYPE_MASK_CLASS
-        val variation = inputType and InputType.TYPE_MASK_VARIATION
-        val password = (cls == InputType.TYPE_CLASS_NUMBER && variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD) ||
-            (cls == InputType.TYPE_CLASS_TEXT && variation in listOf(InputType.TYPE_TEXT_VARIATION_PASSWORD,
-                InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD, InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD))
-        if (password && action in listOf(EditorAction.COPY, EditorAction.CUT)) return false
+        return perform(connection, action, EditorCapabilities.resolve(inputType))
+    }
+
+    internal fun perform(connection: InputConnection?, action: EditorAction,
+                         capabilities: EditorCapabilities): Boolean {
+        if (connection == null || !capabilities.knownEditable) return false
+        if (action == EditorAction.COPY && !capabilities.clipboard.copy) return false
+        if (action == EditorAction.CUT && !capabilities.clipboard.cut) return false
+        if (action == EditorAction.PASTE && !capabilities.clipboard.paste) return false
         return try { connection.performContextMenuAction(action.menuId) } catch (_: RuntimeException) { false }
     }
 }

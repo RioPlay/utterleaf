@@ -193,7 +193,7 @@ class KeyboardGeometryTest {
         val manager = app.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         await("Editor never became active") { main { manager.isActive(activity.editor) } }
         main { manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT) }
-        await("Typing IME did not appear") { node("Editing tools") != null }
+        await("Typing IME did not appear") { node(if (password) "Delete" else "Editing tools") != null }
         return activity
     }
 
@@ -216,7 +216,7 @@ class KeyboardGeometryTest {
                     manager.hideSoftInputFromWindow(editor.editor.windowToken, 0)
                     editor.finish()
                 } }
-                await("Previous IME did not close") { node("Editing tools") == null }
+                await("Previous IME did not close") { node("Delete") == null }
                 activity = null
             }
             val display = app.resources.displayMetrics
@@ -306,26 +306,22 @@ class KeyboardGeometryTest {
                 activity!!.editor.setSelection(0, activity!!.editor.length())
             }
             instrumentation.waitForIdleSync()
-            settled(listOf("Editing tools", "Dictate", "Space"))
-            press("Editing tools")
-            settled(listOf("Undo", "Cut", "Copy", "Paste"))
-            val beforeFailure = mapOf("Cut" to screenBounds("Cut"), "Copy" to screenBounds("Copy"))
-            // The controlled password field rejects Cut. Verify actual failure
-            // feedback separately from the keyboard-only geometry render.
-            val rejection = automation.executeAndWaitForEvent({ press("Cut") }, { event ->
-                event.eventType == android.view.accessibility.AccessibilityEvent.TYPE_ANNOUNCEMENT &&
-                    event.text.any { it.toString() == "This key is not supported in the current field" }
-            }, 3_000)
-            rejection.recycle()
+            val passwordActions = mutableListOf("q", "p", "Shift off", "Delete", "Paste",
+                "Switch keyboard", "Switch letters and symbols", "Space", "Done")
+            if (node("Open password manager") != null) passwordActions.add("Open password manager")
+            capture("password-minimal", passwordActions)
+            for (description in listOf("Keyboard tools", "Editing tools", "Extra keys", "Emoji",
+                "Dictate", "Private draft", "Undo", "Redo", "Cut", "Copy",
+                "Select neighboring word")) {
+                assertTrue("$description leaked into password input", node(description) == null)
+            }
             main {
                 assertEquals("Synthetic protected text", activity!!.editor.text.toString())
                 assertEquals(0, activity!!.editor.selectionStart)
                 assertEquals(activity!!.editor.length(), activity!!.editor.selectionEnd)
             }
-            capture("failure-status", listOf("Undo", "Cut", "Copy", "Paste"))
-            assertEquals(beforeFailure["Cut"], screenBounds("Cut"))
-            assertEquals(beforeFailure["Copy"], screenBounds("Copy"))
-            press("Close editing tools")
+            closeEditor()
+            activity = launch()
             press("Keyboard tools"); press("Number row on")
             press("Close tools and settings")
             await("Number row did not close") { node("1") == null }

@@ -49,13 +49,18 @@ class EmojiImeTest {
         return result.get()
     }
 
-    private fun await(message: String, condition: () -> Boolean) {
+    private fun await(
+        message: String,
+        diagnostics: (() -> String)? = null,
+        condition: () -> Boolean,
+    ) {
         val deadline = android.os.SystemClock.elapsedRealtime() + 10_000
         while (android.os.SystemClock.elapsedRealtime() < deadline) {
             if (condition()) return
             Thread.sleep(50)
         }
-        throw AssertionError(message)
+        val detail = diagnostics?.let { runCatching(it).getOrNull() }
+        throw AssertionError(if (detail.isNullOrBlank()) message else "$message; $detail")
     }
 
     private fun findNode(description: String): AccessibilityNodeInfo? {
@@ -114,21 +119,50 @@ class EmojiImeTest {
                 .putExtra("password", password)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         ) as KeyboardEditorContractActivity
-        await("Editor activity never acquired window focus") { main { activity.hasWindowFocus() } }
-        main { activity.editor.requestFocus() }
-        val manager = app.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        await("Editor never became active") { main { manager.isActive(activity.editor) } }
-        main { manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT) }
-        await("Typing keyboard did not appear") {
-            findNode("Editing tools") != null
+        try {
+            await("Editor activity never acquired window focus") { main { activity.hasWindowFocus() } }
+            main { activity.editor.requestFocus() }
+            val manager = app.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            await("Editor never became active") { main { manager.isActive(activity.editor) } }
+            val showAccepted = main {
+                manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
+            }
+            val expectedMarker = if (password) "Delete" else "Editing tools"
+            await(
+                message = "Typing keyboard did not appear after one show request",
+                diagnostics = {
+                    val editorState = main {
+                        "windowFocused=${activity.hasWindowFocus()}, " +
+                            "editorFocused=${activity.editor.hasFocus()}, " +
+                            "editorActive=${manager.isActive(activity.editor)}"
+                    }
+                    val selected = Settings.Secure.getString(
+                        app.contentResolver,
+                        Settings.Secure.DEFAULT_INPUT_METHOD,
+                    )
+                    "expectedMarker=$expectedMarker, showAccepted=$showAccepted, " +
+                        "defaultIme=$selected, $editorState"
+                },
+            ) {
+                findNode(expectedMarker) != null
+            }
+            return activity
+        } catch (error: Throwable) {
+            try {
+                main { activity.finish() }
+                instrumentation.waitForIdleSync()
+            } catch (cleanup: Throwable) {
+                if (cleanup !== error) error.addSuppressed(cleanup)
+            }
+            throw error
         }
-        return activity
     }
 
-    private fun close(activity: KeyboardEditorContractActivity) {
+    private fun close(activity: KeyboardEditorContractActivity, password: Boolean = false) {
         main { activity.finish() }
         await("Previous IME session did not close") {
-            findNode("Editing tools") == null && findNode("Return from emoji to letters") == null
+            findNode(if (password) "Delete" else "Editing tools") == null &&
+                findNode("Return from emoji to letters") == null
         }
     }
 
@@ -140,6 +174,7 @@ class EmojiImeTest {
         val options = KeyboardOptions.load(app)
         val automation = instrumentation.uiAutomation
         val flags = automation.serviceInfo.flags
+        var primaryFailure: Throwable? = null
         try {
             automation.serviceInfo = automation.serviceInfo.apply {
                 this.flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
@@ -147,15 +182,29 @@ class EmojiImeTest {
             shell("ime enable $id")
             shell("ime set $id")
             KeyboardOptions().save(app)
-            await("Typing IME was not selected") {
-                Settings.Secure.getString(app.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) == id
-            }
+            ImeTestReadiness.awaitDefaultImeStable(app, manager, id, "Typing IME setup")
             block(manager)
+        } catch (error: Throwable) {
+            primaryFailure = error
+            throw error
         } finally {
-            if (!previous.isNullOrBlank()) shell("ime set $previous")
-            if (!enabled) shell("ime disable $id")
-            options.save(app)
-            automation.serviceInfo = automation.serviceInfo.apply { this.flags = flags }
+            ImeTestReadiness.cleanupPreserving(
+                primaryFailure,
+                {
+                    if (!previous.isNullOrBlank()) {
+                        shell("ime set $previous")
+                        ImeTestReadiness.awaitDefaultImeStable(
+                            app,
+                            manager,
+                            previous,
+                            "Previous IME restore",
+                        )
+                    }
+                },
+                { if (!enabled) shell("ime disable $id") },
+                { options.save(app) },
+                { automation.serviceInfo = automation.serviceInfo.apply { this.flags = flags } },
+            )
         }
     }
 
@@ -286,17 +335,18 @@ class EmojiImeTest {
         KeyboardOptions().save(app)
         activity = launch(password = true)
         try {
-            press("Emoji")
-            press("Search emoji")
-            assertEquals("Search emoji · English names", queryText())
-            typeQuery("wave")
-            press("waving hand")
-            await("Explicit password-field emoji was not inserted") {
-                main { activity.editor.text.toString() == "👋" }
+            assertNotNull(findNode("Delete"))
+            assertNotNull(findNode("Paste"))
+            assertNotNull(findNode("Switch keyboard"))
+            for (description in listOf("Keyboard tools", "Editing tools", "Extra keys", "Emoji",
+                "Dictate", "Private draft")) {
+                assertEquals("$description leaked into password input", null, findNode(description))
             }
-            assertEquals(EditorInfo.IME_ACTION_NONE, main { activity.action })
+            UiAwait.remains("Password input accepted hidden emoji state") {
+                activity.editor.text.isEmpty() && activity.action == EditorInfo.IME_ACTION_NONE
+            }
         } finally {
-            close(activity)
+            close(activity, password = true)
         }
 
         activity = launch()

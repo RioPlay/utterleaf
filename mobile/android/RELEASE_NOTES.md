@@ -13,10 +13,34 @@
   expand only when requested.
 
 This preview polishes the daily keyboard, makes editing easier to reach, adds
-complete dark appearance choices, and shortens routine Android CI feedback.
+dark appearance choices, hardens editor/privacy boundaries, and shortens routine
+Android CI feedback. It is a bounded development preview, not completion of the
+full A–M keyboard redesign.
 
 ## What changed
 
+- Editor capabilities and the action key now use one metadata policy. Password
+  fields use a minimal literal-input surface: no suggestions, dictation, draft,
+  Tools or surrounding-text inspection. Explicit Paste remains a host action;
+  the keyboard does not inspect clipboard contents.
+- Field changes and panel detach/reuse clear transient Tools, modifiers,
+  alternates and pending gestures. Limited/throwing editors fail locally without
+  replaying ambiguous editing actions. Lifecycle tests cover owned cross-app
+  transitions and actual IME-process recovery, not every third-party editor.
+- Model readiness and native loading require checksum verification tied to the
+  installed file. Import progress and failures survive Activity recreation while
+  preserving the previous verified model. This does not claim process-death
+  continuation of an import.
+- Models use **Compact English**, **Medium English** and **Large English** names
+  with download sizes and relative resource use. Technical identifiers, filenames
+  and checksums are available under **Show technical model details**. Existing
+  imports keep their identities; names do not promise accuracy or phone speed.
+- Settings show **Customized** for values that differ from defaults. Individual
+  and category resets remain staged until Apply; Cancel discards them without
+  changing unrelated preferences or deleting installed models.
+- Email and URL fields suppress prose suggestions. Private-draft navigation and
+  deletion respect combining characters and joined emoji, including a caret
+  inside a cluster.
 - The stable daily strip keeps Undo, Redo, Cut, Copy, Paste, Select, **Tools**,
   **Edit**, **Emoji**, Private Draft, **Voice**, and Extra Keys directly
   reachable. It uses two rows in portrait and one in landscape.
@@ -28,6 +52,10 @@ complete dark appearance choices, and shortens routine Android CI feedback.
   true-black **OLED** modes.
 - A normal mic tap preserves the review-and-correct flow before **Insert**.
   **Hold mic to insert after recognition** remains an explicit opt-in shortcut.
+- Each dictation take permits only one direct insertion attempt. If the editor
+  reports an uncertain result, Insert stays unavailable even after editing; the
+  transcript remains selectable for explicit Copy, with a warning to check the
+  receiving field. This avoids accidentally duplicating text after a host failure.
 - The mic action now uses an Utterling holding a microphone. The Voice surface
   pairs distinct Utterling states with explicit **Listening**, **Processing
   locally**, **Transcript ready**, **Editing transcript**, and **Needs attention**
@@ -84,3 +112,9 @@ No automatic correction, next-word prediction, swipe typing, streaming partial
 dictation, or language expansion is added. Typing needs no model or microphone
 permission. Dictation remains explicit and unavailable in password fields.
 Screenshot protection remains enabled.
+
+Changing fields still cancels/clears dictation rather than carrying a transcript
+to another target. Recoverable stale-result delivery and the replacement Tools
+composition remain planned. Standalone voice landscape/large-font reachability,
+extreme narrow/large-text Settings header wrapping, and the final accessibility
+audit remain open; passing emulator bounds checks is not full usability evidence.

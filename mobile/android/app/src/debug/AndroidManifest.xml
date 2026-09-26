@@ -1,7 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <permission android:name="org.utterleaf.voice.permission.DEBUG_LIFECYCLE_HOST"
+        android:protectionLevel="signature" />
     <application>
         <!-- Instrumentation-only synthetic fields; absent from the release variant. -->
-        <activity android:name=".KeyboardTestActivity" android:exported="false"
+        <activity android:name=".KeyboardTestActivity" android:exported="true"
+            android:permission="org.utterleaf.voice.permission.DEBUG_LIFECYCLE_HOST"
             android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />
         <activity android:name=".KeyboardEditorContractActivity" android:exported="false"
             android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />

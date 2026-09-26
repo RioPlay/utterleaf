@@ -31,12 +31,14 @@ class DailyToolbarContractTest {
         privateEditing: Boolean = false,
         allowVoice: Boolean = true,
         raw: Boolean = false,
+        sensitive: Boolean = false,
         draft: (() -> Unit)? = {},
         password: (() -> Boolean)? = null,
         available: (EditorAction) -> Boolean = { true },
     ) = TypingPanel(panelContext, KeyboardOptions(extraKeys = true), { true }, {}, {}, {}, {}, {}, {},
         editorAction = { true }, privateEditing = privateEditing, openDraft = draft,
-        actionAvailable = available, rawField = raw, openPasswordManager = password).also {
+        actionAvailable = available, rawField = raw, openPasswordManager = password,
+        sensitiveField = sensitive).also {
         it.reset(allowVoice, numeric = false, action = "Enter")
     }
 
@@ -49,16 +51,12 @@ class DailyToolbarContractTest {
             assertTrue(descriptions(ordinary).containsAll(
                 common + setOf("Cut", "Copy", "Paste", "Private draft", "Dictate")))
 
-            val password = panel(allowVoice = false, draft = null, password = { true }) { action ->
-                action !in setOf(EditorAction.CUT, EditorAction.COPY)
-            }
+            val password = panel(allowVoice = false, sensitive = true, draft = null, password = { true })
             val passwordActions = descriptions(password)
-            assertTrue(passwordActions.containsAll(
-                common + setOf("Cut", "Copy", "Paste", "Open password manager", "Dictate")))
-            assertFalse(buttons(password.view).single { it.contentDescription == "Cut" }.isEnabled)
-            assertFalse(buttons(password.view).single { it.contentDescription == "Copy" }.isEnabled)
-            assertFalse(buttons(password.view).single { it.contentDescription == "Dictate" }.isEnabled)
-            assertFalse("Private draft" in passwordActions)
+            val toolbarActions = common + setOf("Cut", "Copy", "Paste", "Private draft", "Dictate",
+                "Open password manager", "Switch keyboard")
+            assertTrue(passwordActions.intersect(toolbarActions) ==
+                setOf("Paste", "Open password manager", "Switch keyboard"))
 
             val raw = panel(allowVoice = false, raw = true, draft = null) { false }
             assertTrue(descriptions(raw).containsAll(common + setOf("Cut", "Copy", "Paste", "Dictate")))

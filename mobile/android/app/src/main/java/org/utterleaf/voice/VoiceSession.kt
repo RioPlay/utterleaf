@@ -9,6 +9,7 @@ import android.media.MediaRecorder
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
 interface CaptureSession {
@@ -27,6 +28,7 @@ class VoiceSession(private val context: Context, private val state: (CaptureStat
     private val cancelled = AtomicBoolean(false)
     private var started = false
     private var ownsLease = false
+    private var verifiedModel: File? = null
     private fun update(text: String, phase: CapturePhase = CapturePhase.RECORDING) =
         main.post { if (!cancelled.get()) state(CaptureStatus(phase, text)) }
     // Single-use, including failed starts: callers create a fresh session for each take/retry.
@@ -36,16 +38,28 @@ class VoiceSession(private val context: Context, private val state: (CaptureStat
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             error("Open Utterleaf and grant microphone permission first."); return
         }
-        if (!ModelStore.ready(context.noBackupFilesDir)) {
-            error("Open Utterleaf and import the English model first."); return
-        }
         if (!WorkLease.acquire()) { error("Another take or model import is finishing. Try again shortly."); return }
         ownsLease = true
-        try { NativeEngine.reset() } catch (_: LinkageError) {
-            ownsLease = false; WorkLease.release(); error("The speech engine is unavailable on this device."); return
+        when (val readiness = ModelStore.readiness(context.noBackupFilesDir)) {
+            is ModelStore.Readiness.Ready -> verifiedModel = readiness.file
+            ModelStore.Readiness.Missing -> {
+                failStart("Open Utterleaf and import the English model first."); return
+            }
+            is ModelStore.Readiness.Checking -> {
+                failStart("The speech model is still being verified on this device. Try again shortly."); return
+            }
+            is ModelStore.Readiness.Invalid -> {
+                failStart("The speech model could not be verified. Open Utterleaf to repair or import it again."); return
+            }
         }
+        try { NativeEngine.reset() }
+        catch (_: LinkageError) { failStart("The speech engine is unavailable on this device."); return }
+        catch (_: RuntimeException) { failStart("The speech engine could not start. Try again."); return }
+        catch (_: OutOfMemoryError) { failStart("Not enough memory to start dictation. Close other apps and try again."); return }
         update("Opening microphone…")
-        Thread({ runTake() }, "utterleaf-take").start()
+        try { Thread({ runTake() }, "utterleaf-take").start() }
+        catch (_: RuntimeException) { failStart("Capture could not start. Try again.") }
+        catch (_: OutOfMemoryError) { failStart("Not enough memory to start capture. Close other apps and try again.") }
     }
     override fun stop() { stopped.set(true) }
     override fun cancel() {
@@ -58,6 +72,7 @@ class VoiceSession(private val context: Context, private val state: (CaptureStat
         var audio = FloatArray(0)
         var count = 0
         var recorder: AudioRecord? = null
+        var terminal: (() -> Unit)? = null
         try {
             audio = FloatArray(16000 * 120)
             val minimum = AudioRecord.getMinBufferSize(16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
@@ -100,26 +115,42 @@ class VoiceSession(private val context: Context, private val state: (CaptureStat
             check(energy / count > 0.000001) { "Very little audio detected. Check your microphone and try again." }
             update("Microphone off · transcribing on this device…", CapturePhase.PROCESSING)
             val samples = audio.copyOf(count)
-            val bytes = try { NativeEngine.decode(ModelStore.file(context.noBackupFilesDir).absolutePath, samples) }
+            val model = checkNotNull(verifiedModel) { "The verified speech model is unavailable." }
+            val bytes = try { NativeEngine.decode(model.absolutePath, samples) }
                         finally { samples.fill(0f) }
             if (cancelled.get()) { bytes?.fill(0); return }
             check(bytes != null) { "Could not transcribe. Try a shorter take or restart the app." }
-            val text = bytes.toString(Charsets.UTF_8).trim()
-            bytes.fill(0)
+            val text = try { bytes.toString(Charsets.UTF_8).trim() }
+                finally { bytes.fill(0) }
             check(text.isNotBlank()) { "No speech recognized. Try again." }
-            main.post { if (!cancelled.get()) result(text) }
+            terminal = { result(text) }
         } catch (failure: Exception) {
             val message = if (failure is SecurityException) "Microphone permission was denied. Enable it in Utterleaf settings."
                           else if (failure is IllegalStateException) failure.message ?: "Capture failed. Try again."
                           else "Capture failed. Check the microphone and try again."
-            main.post { if (!cancelled.get()) error(message) }
+            terminal = { error(message) }
+        } catch (_: LinkageError) {
+            terminal = { error("The speech engine became unavailable. Restart Utterleaf and try again.") }
         } catch (_: OutOfMemoryError) {
-            main.post { if (!cancelled.get()) error("Not enough memory. Close other apps and try again.") }
+            terminal = { error("Not enough memory. Close other apps and try again.") }
         } finally {
             try { recorder?.stop() } catch (_: Exception) { }
             try { recorder?.release() } catch (_: Exception) { }
             audio.fill(0f)
-            main.post { ownsLease = false; WorkLease.release() }
+            val delivery = terminal
+            main.post {
+                verifiedModel = null
+                ownsLease = false
+                WorkLease.release()
+                if (!cancelled.get()) delivery?.invoke()
+            }
         }
+    }
+
+    private fun failStart(message: String) {
+        cancelled.set(true)
+        verifiedModel = null
+        if (ownsLease) { ownsLease = false; WorkLease.release() }
+        error(message)
     }
 }

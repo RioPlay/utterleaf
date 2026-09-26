@@ -161,8 +161,11 @@ restructuring.
 
 ## Final interaction blockers
 
-Publication remains paused until the reported editing and dictation friction is
-included in the exact candidate. Long Backspace releases now remain pending while
+The September 20 interaction pause concerned the editing and dictation changes
+described below. Those source changes and their scoped checks are implemented;
+the current publication checklist is [alpha20 release readiness](android-alpha20-release-readiness.md),
+including fresh integrated checks and the uncertain-insertion contract review.
+Historical focused passes alone do not approve publication. Long Backspace releases now remain pending while
 the host confirms queued Shift+Left selection steps, including offset zero. Word
 completion inserts one typing space unless whitespace or punctuation already
 follows. Voice keeps configuration behind a collapsed Voice options control and

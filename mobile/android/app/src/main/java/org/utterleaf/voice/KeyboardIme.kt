@@ -4,7 +4,6 @@ import android.content.Intent
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
 import android.os.Looper
-import android.text.InputType
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
@@ -22,6 +21,7 @@ class KeyboardIme : InputMethodService() {
     private var voice: VoicePanel? = null
     private var draft: PrivateDraftPanel? = null
     private var active = false
+    private var editorCapabilities = EditorCapabilities.resolve(null)
     /** Monotonically identifies the panel and editor session currently on screen.
      *  Every suggestion, composition, speech or editor callback must capture this token. */
     private var uiGeneration = 0L
@@ -39,6 +39,7 @@ class KeyboardIme : InputMethodService() {
         uiGeneration++
         suggestionWork.invalidate()
         suggestionSnapshot = SuggestionEngine.SuggestionState.EMPTY
+        suggestionPanel?.dispose()
         suggestionPanel = null
         requestSuggestions = null
     }
@@ -54,6 +55,7 @@ class KeyboardIme : InputMethodService() {
         super.onStartInput(attribute, restarting)
         invalidateUiSession()
         active = false
+        editorCapabilities = EditorCapabilities.from(attribute)
         selectionStart = attribute?.initialSelStart ?: -1
         selectionEnd = attribute?.initialSelEnd ?: -1
         selectionKnown = selectionStart >= 0 && selectionEnd >= 0
@@ -64,7 +66,8 @@ class KeyboardIme : InputMethodService() {
     }
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        active = info != null && (info.inputType != InputType.TYPE_NULL || KeyboardOptions.load(this).extraKeys)
+        editorCapabilities = EditorCapabilities.from(info)
+        active = info != null && (!editorCapabilities.raw || KeyboardOptions.load(this).extraKeys)
         showTyping()
         if (!active) requestHideSelf(0)
     }
@@ -105,7 +108,7 @@ class KeyboardIme : InputMethodService() {
     private fun commit(value: String, generation: Long): Boolean {
         if (!currentUiSession(generation)) return false
         return TerminalInput.printable(currentInputConnection, value,
-            forceKeyEvents = currentInputEditorInfo?.inputType == InputType.TYPE_NULL)
+            forceKeyEvents = editorCapabilities.raw)
     }
     private fun keyEvent(code: Int, generation: Long) {
         if (!currentUiSession(generation)) return
@@ -124,32 +127,23 @@ class KeyboardIme : InputMethodService() {
         invalidateUiSession()
         voice?.clear(); voice = null
         draft?.clear(); draft = null
-        val info = currentInputEditorInfo
-        val action = info?.imeOptions?.and(EditorInfo.IME_MASK_ACTION) ?: EditorInfo.IME_ACTION_NONE
-        val useAction = info != null && info.imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION == 0 &&
-            action in listOf(EditorInfo.IME_ACTION_GO, EditorInfo.IME_ACTION_SEARCH, EditorInfo.IME_ACTION_SEND,
-                EditorInfo.IME_ACTION_NEXT, EditorInfo.IME_ACTION_DONE, EditorInfo.IME_ACTION_PREVIOUS)
-        val label = if (useAction) when (action) {
-            EditorInfo.IME_ACTION_GO -> "Go"; EditorInfo.IME_ACTION_SEARCH -> "Search"
-            EditorInfo.IME_ACTION_SEND -> "Send"; EditorInfo.IME_ACTION_NEXT -> "Next"
-            EditorInfo.IME_ACTION_PREVIOUS -> "Previous"; else -> "Done"
-        } else "Enter"
+        val capabilities = editorCapabilities
+        val action = capabilities.enterAction
+        val label = action.label
         val generation = uiGeneration
         val options = KeyboardOptions.load(this)
         // The credential shortcut exists only on password fields with a
         // configured, launchable autofill application.
-        val passwordManager = PasswordManagerKey.launchIntent(this, info?.inputType)?.let { template ->
+        val passwordManager = PasswordManagerKey.launchIntent(this, capabilities)?.let { template ->
             {
-                try { startActivity(Intent(template).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); true }
-                catch (_: Exception) { false }
+                if (!currentUiSession(generation)) false
+                else try { startActivity(Intent(template).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); true }
+                    catch (_: Exception) { false }
             }
         }
         // Suggestions complete the current word only: a bounded before-cursor
         // read, no replacement, no learning, and never in restricted fields.
-        val suggestionsAllowed = options.suggestions && active && info != null &&
-            VoiceIme.safeField(info.inputType) &&
-            (info.inputType and InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT &&
-            (info.inputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) == 0
+        val suggestionsAllowed = options.suggestions && active && capabilities.suggestions
         var panel: TypingPanel? = null
         lateinit var refreshSuggestions: () -> Unit
         refreshSuggestions = {
@@ -176,16 +170,20 @@ class KeyboardIme : InputMethodService() {
             { composing: String, candidate: String -> completeSuggestion(composing, candidate, generation) }
         } else null
         backspaceSelection = HostBackspaceSelection(
-            current = { currentUiSession(generation) && active && info != null && VoiceIme.safeField(info.inputType) },
+            current = { currentUiSession(generation) && editorCapabilities === capabilities &&
+                capabilities.complexEditing },
             connection = { currentInputConnection }, selection = { selectionStart to selectionEnd })
         val createdPanel = TypingPanel(this, options,
             { value -> commit(value, generation) },
             { keyEvent(KeyEvent.KEYCODE_DEL, generation) },
             { if (currentUiSession(generation)) {
-                if (info?.inputType == InputType.TYPE_NULL) TerminalInput.send(currentInputConnection, KeyEvent.KEYCODE_ENTER)
-                else if (useAction) currentInputConnection?.performEditorAction(action) else commit("\n", generation)
+                if (capabilities.raw) TerminalInput.send(currentInputConnection, KeyEvent.KEYCODE_ENTER)
+                else if (action.imeAction != null)
+                    EditorActions.performImeAction(currentInputConnection, action.imeAction)
+                else commit("\n", generation)
             }; Unit },
-            { left -> keyEvent(if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT, generation) },
+            { left -> if (!capabilities.sensitive)
+                keyEvent(if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT, generation) },
             { if (currentUiSession(generation)) showVoice() },
             {
                 if (currentUiSession(generation)) {
@@ -195,29 +193,30 @@ class KeyboardIme : InputMethodService() {
             },
             { if (currentUiSession(generation))
                 (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker() },
-            { code, ctrl, alt, shift -> currentUiSession(generation) &&
+            { code, ctrl, alt, shift -> currentUiSession(generation) && !capabilities.sensitive &&
                 TerminalInput.command(currentInputConnection, code, ctrl, alt, shift,
-                    raw = info?.inputType == InputType.TYPE_NULL) },
-            { text, ctrl, alt -> currentUiSession(generation) &&
+                    raw = capabilities.raw) },
+            { text, ctrl, alt -> currentUiSession(generation) && !capabilities.sensitive &&
                 TerminalInput.printable(currentInputConnection, text, ctrl, alt,
-                    forceKeyEvents = currentInputEditorInfo?.inputType == InputType.TYPE_NULL) },
+                    forceKeyEvents = capabilities.raw) },
             editorAction = { command -> currentUiSession(generation) &&
-                EditorActions.perform(currentInputConnection, command, currentInputEditorInfo?.inputType) },
+                (!capabilities.sensitive || command == EditorAction.PASTE) &&
+                EditorActions.perform(currentInputConnection, command, capabilities) },
             spaceLabel = subtypeSpaceLabel(),
-            rawField = info?.inputType == InputType.TYPE_NULL,
+            rawField = capabilities.raw,
+            sensitiveField = capabilities.sensitive,
             openPasswordManager = passwordManager,
             suggest = suggest,
             completeWord = completeWord,
             requestSuggestions = requestSuggestions,
-            openDraft = if (active && info != null && VoiceIme.safeField(info.inputType))
+            openDraft = if (active && capabilities.privateDraft)
                 { { if (currentUiSession(generation)) showDraft() } } else null,
             backspaceSelection = backspaceSelection)
-        val cls = (info?.inputType ?: 0) and InputType.TYPE_MASK_CLASS
         panel = createdPanel
         suggestionPanel = panel
-        createdPanel.reset(active && info != null && VoiceIme.safeField(info.inputType),
-            cls in listOf(InputType.TYPE_CLASS_NUMBER, InputType.TYPE_CLASS_PHONE, InputType.TYPE_CLASS_DATETIME), label,
-            allowEmoji = active && info != null && info.inputType != InputType.TYPE_NULL)
+        createdPanel.reset(active && capabilities.dictation,
+            capabilities.numeric || capabilities.phone, label,
+            allowEmoji = active && capabilities.emoji)
         show(createdPanel.view)
         if (suggestionsAllowed) {
             SuggestionRepository.preload(this) { refreshSuggestions() }
@@ -225,30 +224,32 @@ class KeyboardIme : InputMethodService() {
         }
     }
     private fun showVoice() {
-        val info = currentInputEditorInfo ?: return
-        if (!active || !VoiceIme.safeField(info.inputType)) return
+        if (currentInputEditorInfo == null) return
+        val capabilities = editorCapabilities
+        if (!active || !capabilities.dictation) return
         invalidateUiSession()
         val generation = uiGeneration
         draft?.clear(); draft = null; backspaceSelection = null
         voice?.clear()
         voice = VoicePanel(this, { text ->
             val current = currentInputEditorInfo
-            current != null && VoiceIme.safeField(current.inputType) && commit(text, generation)
+            EditorCapabilities.from(current).dictation && commit(text, generation)
         }, { if (currentUiSession(generation)) showTyping() })
         show(voice!!.view)
         voice?.startFromMicTap()
     }
     private fun showDraft() {
-        val info = currentInputEditorInfo ?: return
+        if (currentInputEditorInfo == null) return
         // An unmasked private preview is not suitable for password or raw-key fields.
-        if (!active || !VoiceIme.safeField(info.inputType)) return
+        val capabilities = editorCapabilities
+        if (!active || !capabilities.privateDraft) return
         invalidateUiSession()
         voice?.clear(); voice = null
         draft?.clear(); backspaceSelection = null
         val generation = uiGeneration
         draft = PrivateDraftPanel(this, KeyboardOptions.load(this), { text ->
             val current = currentInputEditorInfo
-            if (!currentUiSession(generation) || current == null || !VoiceIme.safeField(current.inputType)) {
+            if (!currentUiSession(generation) || !EditorCapabilities.from(current).privateDraft) {
                 DraftInsertionResult.UNAVAILABLE
             } else {
                 val connection = currentInputConnection
@@ -268,7 +269,8 @@ class KeyboardIme : InputMethodService() {
     }
     private fun clear() {
         invalidateUiSession()
-        active = false; backspaceSelection = null; voice?.clear(); voice = null; draft?.clear(); draft = null; root?.removeAllViews()
+        active = false; editorCapabilities = EditorCapabilities.resolve(null)
+        backspaceSelection = null; voice?.clear(); voice = null; draft?.clear(); draft = null; root?.removeAllViews()
     }
     override fun onFinishInputView(finishingInput: Boolean) { clear(); super.onFinishInputView(finishingInput) }
     override fun onFinishInput() { clear(); super.onFinishInput() }
@@ -283,10 +285,10 @@ internal fun completeSuggestionTransaction(
     candidate: String,
     selectionCollapsed: Boolean,
 ): Boolean {
-    if (!selectionCollapsed || composing.isEmpty()) return false
-    val before = runCatching {
+    if (!selectionCollapsed || composing.isEmpty() || composing.length > SuggestionEngine.MAX_COMPOSING) return false
+    val before = readBoundedEditorText(SuggestionEngine.MAX_COMPOSING) {
         connection.getTextBeforeCursor(SuggestionEngine.MAX_COMPOSING, 0)
-    }.getOrNull() ?: return false
+    } ?: return false
     var trailingLetters = 0
     for (index in before.length - 1 downTo 0) {
         val char = before[index]
@@ -294,21 +296,29 @@ internal fun completeSuggestionTransaction(
         trailingLetters++
     }
     if (trailingLetters != composing.length || before.takeLast(trailingLetters) != composing) return false
-    val after = runCatching { connection.getTextAfterCursor(1, 0) }.getOrNull()
-    val completion = candidate + if (after.isNullOrEmpty() || !after.first().blocksCompletionSpace()) " " else ""
-    var deleted = false
-    return try {
-        connection.beginBatchEdit()
-        deleted = connection.deleteSurroundingText(composing.length, 0) == true
-        val committed = deleted && runCatching { connection.commitText(completion, 1) }.getOrDefault(false)
-        if (deleted && !committed) runCatching { connection.commitText(composing, 1) }
-        committed
-    } catch (_: Exception) {
-        if (deleted) runCatching { connection.commitText(composing, 1) }
-        false
+    val after = readBoundedEditorText(1) { connection.getTextAfterCursor(1, 0) } ?: return false
+    val completion = candidate + if (after.isEmpty() || !after.first().blocksCompletionSpace()) " " else ""
+    val batchStarted = runCatching { connection.beginBatchEdit() }.getOrDefault(false)
+    var committed = false
+    var batchEndConfirmed = false
+    try {
+        if (batchStarted) {
+            val deleted = runCatching {
+                connection.deleteSurroundingText(composing.length, 0)
+            }.getOrDefault(false)
+            if (deleted) {
+                // A refusal may still have mutated a broken editor. Never append a
+                // compensating copy of the original word and risk duplicate text.
+                committed = runCatching { connection.commitText(completion, 1) }.getOrDefault(false)
+            }
+        }
     } finally {
-        runCatching { connection.endBatchEdit() }
+        // Every client begin call gets one balancing end call, even if the
+        // connection refused or threw. From an IME, false or an exception
+        // leaves the remote transaction unconfirmed; never replay the edit.
+        batchEndConfirmed = runCatching { connection.endBatchEdit() }.getOrDefault(false)
     }
+    return batchStarted && committed && batchEndConfirmed
 }
 
 private fun Char.blocksCompletionSpace(): Boolean = isWhitespace() || when (Character.getType(this)) {
@@ -317,6 +327,26 @@ private fun Char.blocksCompletionSpace(): Boolean = isWhitespace() || when (Char
     Character.INITIAL_QUOTE_PUNCTUATION.toInt(), Character.FINAL_QUOTE_PUNCTUATION.toInt(),
     Character.OTHER_PUNCTUATION.toInt() -> true
     else -> false
+}
+
+/** Copies at most [limit] UTF-16 code units without trusting a host object's conversion methods. */
+private inline fun readBoundedEditorText(limit: Int, read: () -> CharSequence?): String? {
+    if (limit < 0) return null
+    return try {
+        val value = read() ?: return null
+        val length = value.length
+        if (length !in 0..limit) return null
+        buildString(length) {
+            for (index in 0 until length) append(value[index])
+        }
+    } catch (_: InterruptedException) {
+        // Executor cancellation clears the flag while throwing. Restore it so
+        // the worker can terminate without treating cancellation as editor data.
+        Thread.currentThread().interrupt()
+        null
+    } catch (_: RuntimeException) {
+        null
+    }
 }
 
 /**
@@ -400,9 +430,9 @@ internal class SuggestionWork {
     }
 
     private fun read(connection: InputConnection, engine: SuggestionEngine): SuggestionEngine.SuggestionState {
-        val before = runCatching {
+        val before = readBoundedEditorText(SuggestionEngine.MAX_COMPOSING) {
             connection.getTextBeforeCursor(SuggestionEngine.MAX_COMPOSING, 0)
-        }.getOrNull() ?: return SuggestionEngine.SuggestionState.EMPTY
+        } ?: return SuggestionEngine.SuggestionState.EMPTY
         val composing = buildString {
             for (index in before.length - 1 downTo 0) {
                 val char = before[index]

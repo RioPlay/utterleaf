@@ -117,7 +117,7 @@ class KeyboardTuningTest {
             val launched = mutableListOf<Boolean>()
             fun panel(manager: (() -> Boolean)?): TypingPanel =
                 TypingPanel(context, KeyboardOptions(numberRow = false), { true }, {}, {}, {}, {}, {}, {},
-                    openPasswordManager = manager).apply { reset(true, false, "Enter") }
+                    openPasswordManager = manager, sensitiveField = true).apply { reset(true, false, "Enter") }
             fun keyOf(view: TypingPanel, label: String) = descendants(view.view)
                 .filterIsInstance<android.widget.Button>().single { it.contentDescription == label }
 

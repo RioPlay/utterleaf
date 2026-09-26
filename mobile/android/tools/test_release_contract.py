@@ -6,6 +6,41 @@ from release_contract import package_metadata, verify_upgrade
 
 
 class ReleaseContractTest(unittest.TestCase):
+    def test_signed_upgrade_and_reinstall_each_verify_preservation(self):
+        workflow = (
+            Path(__file__).resolve().parents[3] / ".github/workflows/android-release.yml"
+        ).read_text()
+        smoke = workflow.split("- name: Signed APK installation smoke test", 1)[1].split(
+            "- name: Publish Android prerelease independently of desktop", 1
+        )[0]
+        predecessor = "predecessor/Utterleaf-Android-0.1.0-alpha03.apk"
+        candidate_install = "adb install -r release/Utterleaf-Android-${{ env.VERSION }}.apk"
+        seed_if_predecessor = (
+            f"if [ -f {predecessor} ]; then adb install {predecessor} && "
+            "adb shell am start -W -n org.utterleaf.voice/.SetupActivity && "
+            "python3 mobile/android/tools/preserve_upgrade.py seed; fi"
+        )
+        verify_if_predecessor = (
+            f"if [ -f {predecessor} ]; then python3 "
+            "mobile/android/tools/preserve_upgrade.py verify; fi"
+        )
+
+        self.assertEqual(smoke.count(seed_if_predecessor), 1)
+        self.assertEqual(smoke.count(candidate_install), 2)
+        self.assertEqual(smoke.count("preserve_upgrade.py verify"), 2)
+        self.assertEqual(smoke.count(verify_if_predecessor), 2)
+
+        cursor = 0
+        for command in (
+            seed_if_predecessor,
+            candidate_install,
+            verify_if_predecessor,
+            candidate_install,
+            verify_if_predecessor,
+            "adb shell am start -W -n org.utterleaf.voice/.SetupActivity",
+        ):
+            cursor = smoke.index(command, cursor) + len(command)
+
     def test_obtainium_selects_only_signed_android_channel(self):
         config = json.loads((Path(__file__).parents[1] / "app/src/main/assets/obtainium.json").read_text())
         settings = json.loads(config["additionalSettings"])

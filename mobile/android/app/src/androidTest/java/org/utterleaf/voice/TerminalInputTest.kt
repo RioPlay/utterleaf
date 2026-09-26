@@ -22,6 +22,8 @@ class TerminalInputTest {
         val commits = mutableListOf<String>()
         var failDown = false
         var throwDown = false
+        var acceptCommit = true
+        var throwCommit = false
         override fun sendKeyEvent(event: KeyEvent): Boolean {
             events.add(KeyEvent(event))
             if (event.action == KeyEvent.ACTION_DOWN && throwDown) throw IllegalStateException("Synthetic closed connection")
@@ -30,7 +32,8 @@ class TerminalInputTest {
         override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
             assertEquals(1, newCursorPosition)
             commits.add(text.toString())
-            return true
+            if (throwCommit) throw IllegalStateException("Synthetic closed connection")
+            return acceptCommit
         }
         override fun getTextBeforeCursor(length: Int, flags: Int): CharSequence {
             fail("Terminal dispatch must not read surrounding text")
@@ -177,6 +180,16 @@ class TerminalInputTest {
         assertEquals(listOf("Café 名前"), connection.commits)
         assertTrue(connection.events.isEmpty())
         assertFalse(TerminalInput.printable(connection, ""))
+    }
+
+    @Test fun refusedOrThrowingPlainCommitNeverRetriesOrFallsBackToKeys() = withConnection { connection ->
+        connection.acceptCommit = false
+        assertFalse(TerminalInput.printable(connection, "first"))
+        connection.acceptCommit = true
+        connection.throwCommit = true
+        assertFalse(TerminalInput.printable(connection, "second"))
+        assertEquals(listOf("first", "second"), connection.commits)
+        assertTrue("Plain commit failure fell back to key events", connection.events.isEmpty())
     }
 
     @Test fun missingConnectionAndUnknownKeyFailWithoutDispatch() = withConnection { connection ->

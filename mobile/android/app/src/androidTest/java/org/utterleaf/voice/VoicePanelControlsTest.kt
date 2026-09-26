@@ -2,12 +2,15 @@ package org.utterleaf.voice
 
 import android.content.Intent
 import android.content.ContextWrapper
+import android.graphics.Rect
 import android.os.SystemClock
+import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
+import android.widget.TextView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
@@ -70,7 +73,8 @@ class VoicePanelControlsTest {
             try { button.dispatchTouchEvent(event) } finally { event.recycle() }
         }
     }
-    private fun withPanel(accept: Boolean = true, theme: ThemeMode? = null, test: (Fixture) -> Unit) {
+    private fun withPanel(accept: Boolean = true, theme: ThemeMode? = null,
+                          insertResult: ((String) -> Boolean)? = null, test: (Fixture) -> Unit) {
         val context = instrumentation.targetContext
         val oldOptions = KeyboardOptions.load(context)
         if (theme != null) oldOptions.copy(theme = theme).save(context)
@@ -82,7 +86,10 @@ class VoicePanelControlsTest {
             val laidOut = java.util.concurrent.CountDownLatch(1)
             val fixture = main {
                 val fake = Fake(); val results = mutableListOf<(String) -> Unit>(); val inserted = mutableListOf<String>()
-                val panel = VoicePanel(activity, { inserted.add(it); accept }, {}, { state, result, _ ->
+                val panel = VoicePanel(activity, { text ->
+                    inserted.add(text)
+                    insertResult?.invoke(text) ?: accept
+                }, {}, { state, result, _ ->
                     fake.status = state; results.add(result); fake
                 })
                 Ui.applySystemInsets(panel.view)
@@ -197,27 +204,98 @@ class VoicePanelControlsTest {
         main { f.results.single()("cancelled") }
         assertTrue(f.inserted.isEmpty()); assertEquals(1, main { f.fake.cancelled })
     }
-    @Test fun rejectedAutomaticInsertKeepsEditableReview() = withPanel(accept = false) { f ->
-        val button = f.hold(); main { f.results.single()("original") }
-        f.touch(button, MotionEvent.ACTION_UP)
-        assertEquals(listOf("original"), f.inserted)
-        f.click("Fix transcript"); f.click("."); f.click("Done editing"); f.click("Insert text")
-        assertEquals(listOf("original", "original."), f.inserted)
+    @Test fun unconfirmedManualInsertLocksTheTakeButKeepsSelectableRecovery() {
+        var accept = false
+        withPanel(insertResult = { accept }) { f ->
+            f.click("Start dictation"); f.click("Stop & transcribe")
+            main { f.results.single()("original") }
+            val primary = f.key("Insert text")
+            val preview = main { descendants(f.panel.view).filterIsInstance<android.widget.EditText>().single() }
+            f.click("Insert text")
+            assertEquals(listOf("original"), f.inserted)
+            assertSame(primary, f.key("Insert unavailable"))
+            assertFalse(main { primary.isEnabled })
+            assertTrue(f.hasText("Insertion unconfirmed. Check the field; select the transcript to copy."))
+            assertTrue(main { preview.isEnabled && preview.keyListener == null && preview.isTextSelectable })
+
+            main { primary.performClick(); primary.performClick() }
+            f.click("Fix transcript")
+            assertTrue(f.hasText("Insertion unconfirmed. Check the field; select the transcript to copy."))
+            f.click("."); f.click("Done editing")
+            assertEquals("original.", main { preview.text.toString() })
+            assertFalse(main { f.key("Insert unavailable").isEnabled })
+            assertTrue(f.hasText("Insertion unconfirmed. Check the field; select the transcript to copy."))
+            assertEquals(listOf("original"), f.inserted)
+            main { f.key("Keep reviewing").performClick() }
+            assertTrue(f.hasText("Insertion unconfirmed. Check the field; select the transcript to copy."))
+
+            f.click("Fix transcript")
+            main { preview.setText("original"); preview.setSelection(preview.length()) }
+            f.click("Done editing")
+            main { primary.performClick() }
+            assertTrue(f.hasText("Insertion unconfirmed. Check the field; select the transcript to copy."))
+            assertEquals(listOf("original"), f.inserted)
+
+            accept = true
+            f.click("Retake"); assertEquals(2, main { f.fake.started })
+            f.click("Stop & transcribe"); main { f.results.last()("fresh take") }
+            f.click("Insert text")
+            assertEquals(listOf("original", "fresh take"), f.inserted)
+            assertTrue(f.hasText("Inserted · microphone off"))
+        }
     }
+
+    @Test fun unconfirmedHeldInsertRejectsReentryAndClearAllowsANewTake() {
+        var accept = false
+        var reentered = false
+        var reenter: (() -> Unit)? = null
+        withPanel(insertResult = {
+            if (!reentered) { reentered = true; reenter?.invoke() }
+            accept
+        }) { f ->
+            val primary = f.hold()
+            reenter = { main { primary.performClick() } }
+            main { f.results.single()("held take") }
+            f.touch(primary, MotionEvent.ACTION_UP)
+            assertEquals(listOf("held take"), f.inserted)
+            assertFalse(main { f.key("Insert unavailable").isEnabled })
+            main { primary.performClick(); primary.performClick() }
+            assertEquals(listOf("held take"), f.inserted)
+
+            main {
+                f.panel.clear()
+                descendants(f.panel.view).filterIsInstance<CheckBox>().single().isChecked = false
+            }
+            accept = true
+            f.click("Start dictation"); f.click("Stop & transcribe")
+            main { f.results.last()("fresh after clear") }
+            f.click("Insert text")
+            assertEquals(listOf("held take", "fresh after clear"), f.inserted)
+        }
+    }
+
+    @Test fun throwingInsertLocksTheTakeWithoutEscapingOrRetrying() =
+        withPanel(insertResult = { throw IllegalStateException("Synthetic closed connection") }) { f ->
+            f.click("Start dictation"); f.click("Stop & transcribe")
+            main { f.results.single()("uncertain") }
+            val primary = f.key("Insert text")
+            f.click("Insert text")
+            assertEquals(listOf("uncertain"), f.inserted)
+            assertSame(primary, f.key("Insert unavailable"))
+            assertFalse(main { primary.isEnabled })
+            assertTrue(f.hasText("Insertion unconfirmed. Check the field; select the transcript to copy."))
+            main { primary.performClick() }
+            assertEquals(listOf("uncertain"), f.inserted)
+        }
 
     @Test fun modelSelectorSwitchesVerifiedPrivateSlotsAndRejectsBusyOrStaleChoices() {
         val activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext, KeyboardSettingsActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         val directory = Files.createTempDirectory(activity.cacheDir.toPath(), "utterleaf-voice-models").toFile()
         try {
-            fun sparse(id: String) {
-                val spec = ModelStore.catalog.single { it.id == id }
-                val file = java.io.File(directory, "models/ggml-$id.bin")
-                file.parentFile.mkdirs(); java.io.RandomAccessFile(file, "rw").use { it.setLength(spec.size) }
-            }
-            // Private readiness fixtures only: fake sessions never send sparse files to native code.
-            sparse("tiny.en"); sparse("base.en")
-            java.io.File(directory, "active-model").writeText("tiny.en")
+            instrumentation.context.assets.open("ggml-tiny.en.bin").use { ModelStore.install(it, directory) }
+            instrumentation.context.assets.open("ggml-base.en.bin").use { ModelStore.install(it, directory) }
+            assertTrue(ModelStore.select(directory, ModelStore.catalog.single { it.id == "tiny.en" }))
             lateinit var panel: VoicePanel; lateinit var fake: Fake
             val results = mutableListOf<(String) -> Unit>()
             val wrapper = object : ContextWrapper(activity) { override fun getNoBackupFilesDir() = directory }
@@ -230,19 +308,60 @@ class VoicePanelControlsTest {
             }
             assertTrue(laidOut.await(5, java.util.concurrent.TimeUnit.SECONDS)); instrumentation.waitForIdleSync()
             fun button(text: String) = main { descendants(panel.view).filterIsInstance<Button>().single { it.text == text } }
-            main { button("Voice options").performClick(); button("Model · tiny.en").performClick() }
-            val baseChoice = button("Balanced · base.en")
+            val tinySpec = ModelStore.catalog.single { it.id == "tiny.en" }
+            val baseSpec = ModelStore.catalog.single { it.id == "base.en" }
+            val tinyPresentation = ModelPresentation.forSpec(tinySpec)
+            val basePresentation = ModelPresentation.forSpec(baseSpec)
+            val tinyLabel = "${tinyPresentation.summary(tinySpec)} · ${tinyPresentation.tradeoff}"
+            val baseLabel = "${basePresentation.summary(baseSpec)} · ${basePresentation.tradeoff}"
+            main {
+                button("Voice options").performClick()
+                button("Model · Compact English").performClick()
+                val visible = descendants(panel.view).filterIsInstance<Button>().filter { it.visibility == View.VISIBLE }
+                assertFalse(visible.any { it.text.contains("tiny.en") || it.text.contains("base.en") })
+            }
+            val baseChoice = button(baseLabel)
             main { assertTrue(WorkLease.acquire()) }
             try { main { baseChoice.performClick() } }
             finally { main { WorkLease.release() } }
             assertEquals("tiny.en", ModelStore.installed(directory)?.id)
             main { baseChoice.performClick() }
             assertEquals("tiny.en", ModelStore.installed(directory)?.id)
-            main { button("Model · tiny.en").performClick(); button("Balanced · base.en").performClick() }
+            main { button("Model · Compact English").performClick(); button(baseLabel).performClick() }
             assertEquals("base.en", ModelStore.installed(directory)?.id)
 
-            main { button("Model · base.en").performClick() }
-            val staleChoice = button("Fast · tiny.en")
+            main { button("Model · Medium English").performClick() }
+            val staleChoice = button(tinyLabel)
+            main {
+                descendants(panel.view).filterIsInstance<TextView>().forEach { label ->
+                    label.setTextSize(TypedValue.COMPLEX_UNIT_PX, label.textSize * 1.5f)
+                }
+                val width = Ui.dp(wrapper, 320)
+                panel.view.measure(
+                    View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                )
+                panel.view.layout(0, 0, width, panel.view.measuredHeight)
+                listOf(button(tinyLabel), button(baseLabel)).forEach { option ->
+                    val textLayout = checkNotNull(option.layout) { "Model option text was not laid out" }
+                    assertEquals(option.text.length, textLayout.getLineEnd(textLayout.lineCount - 1))
+                    assertTrue((0 until textLayout.lineCount).all { textLayout.getEllipsisCount(it) == 0 })
+                    assertTrue(option.height >= textLayout.height + option.compoundPaddingTop + option.compoundPaddingBottom)
+                }
+                descendants(panel.view).filter { it.isShown && it.isClickable }.forEach { action ->
+                    assertTrue("Visible action has no touch area", action.width > 0 && action.height > 0)
+                    val bounds = Rect(0, 0, action.width, action.height)
+                    panel.view.offsetDescendantRectToMyCoords(action, bounds)
+                    assertTrue("Action extends left of the voice panel", bounds.left >= 0)
+                    assertTrue("Action extends right of the voice panel", bounds.right <= panel.view.width)
+                    assertTrue("Action extends above the voice panel", bounds.top >= 0)
+                    assertTrue("Action extends below the voice panel", bounds.bottom <= panel.view.height)
+                }
+                // VoiceIme returns this raw panel instead of KeyboardIme's ScrollView wrapper.
+                assertTrue("Large-text model choices exceed the standalone voice screen",
+                    panel.view.height <= activity.resources.displayMetrics.heightPixels)
+                assertEquals("Geometry measurement started capture", 0, fake.started)
+            }
             main { panel.startFromMicTap() }
             main { staleChoice.performClick() }
             assertEquals("base.en", ModelStore.installed(directory)?.id)

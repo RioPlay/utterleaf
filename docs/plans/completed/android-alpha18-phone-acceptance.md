@@ -1,4 +1,25 @@
-# Android phone acceptance — current candidate alpha19
+# Android phone acceptance - retired in favor of manual reports
+
+## Disposition - September 19, 2026
+
+The product owner removed this mandatory test campaign. Emulator verification
+is sufficient for Android release readiness together with applicable automated
+regression, privacy/security, build and signing checks. Physical-phone, named-editor,
+TalkBack/Switch Access and real Obtainium campaigns are not required. Users will
+report observed issues manually; reports drive bounded fixes and regression checks.
+No physical check below is marked passed. The original checklist is retained as
+optional reproduction guidance and historical context, not a release gate.
+
+For reports, request useful details: app version, device/OS and editor, steps,
+expected and observed behavior. Use synthetic examples and avoid private typing
+or recordings. No exhaustive device matrix or full journey is required.
+
+This documentation-only policy change updates the roadmap, workspace pointers
+and repository contract. Verification: `git diff --check` and link inspection.
+App source, automated tests, signing safeguards and historical results are outside
+scope. Stop after recording the policy; the next feature is separate work.
+
+## Historical checklist (optional)
 
 ## Goal and area
 

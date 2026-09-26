@@ -62,29 +62,25 @@ class ComposeImeTest {
     }
 
     private fun press(description: String) {
-        await("Missing enabled $description") { findNode(description)?.isEnabled == true }
-        val deadline = android.os.SystemClock.elapsedRealtime() + 2_000
-        while (android.os.SystemClock.elapsedRealtime() < deadline) {
-            if (findNode(description)?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true) {
-                instrumentation.waitForIdleSync()
-                return
-            }
-            Thread.sleep(50)
+        var target: AccessibilityNodeInfo? = null
+        await("Missing enabled $description") {
+            findNode(description)?.takeIf { it.isEnabled }?.also { target = it } != null
         }
-        throw AssertionError("Could not press $description")
+        if (target?.performAction(AccessibilityNodeInfo.ACTION_CLICK) != true) {
+            throw AssertionError("Enabled $description rejected its single click")
+        }
+        instrumentation.waitForIdleSync()
     }
 
     private fun longPress(description: String) {
-        await("Missing enabled $description") { findNode(description)?.isEnabled == true }
-        val deadline = android.os.SystemClock.elapsedRealtime() + 2_000
-        while (android.os.SystemClock.elapsedRealtime() < deadline) {
-            if (findNode(description)?.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK) == true) {
-                instrumentation.waitForIdleSync()
-                return
-            }
-            Thread.sleep(50)
+        var target: AccessibilityNodeInfo? = null
+        await("Missing enabled $description") {
+            findNode(description)?.takeIf { it.isEnabled }?.also { target = it } != null
         }
-        throw AssertionError("Could not long press $description")
+        if (target?.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK) != true) {
+            throw AssertionError("Enabled $description rejected its single long click")
+        }
+        instrumentation.waitForIdleSync()
     }
 
     private fun descendants(view: View): List<View> = listOf(view) + if (view is ViewGroup)
@@ -117,23 +113,13 @@ class ComposeImeTest {
         val manager = app.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         main { activity.editor.requestFocus() }
         await("Editor never became active") { main { manager.isActive(activity.editor) } }
-        // A prior test's manual service callbacks can leave the IME expecting a
-        // fresh show cycle; retry until the panel actually appears.
-        val deadline = android.os.SystemClock.elapsedRealtime() + 20_000
-        var shown = false
-        while (!shown && android.os.SystemClock.elapsedRealtime() < deadline) {
-            main {
-                manager.restartInput(activity.editor)
-                manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
-            }
-            try {
-                await("Typing keyboard did not appear") { findNode("Editing tools") != null }
-                shown = true
-            } catch (retry: AssertionError) {
-                Thread.sleep(250)
-            }
+        main {
+            manager.restartInput(activity.editor)
+            manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT)
         }
-        check(shown) { "Typing keyboard did not appear" }
+        await("Typing keyboard did not appear after one restart/show request") {
+            findNode("Editing tools") != null
+        }
         return activity
     }
 
@@ -157,6 +143,7 @@ class ComposeImeTest {
         val options = KeyboardOptions.load(app)
         val automation = instrumentation.uiAutomation
         val flags = automation.serviceInfo.flags
+        var primaryFailure: Throwable? = null
         try {
             automation.serviceInfo = automation.serviceInfo.apply {
                 this.flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
@@ -164,20 +151,24 @@ class ComposeImeTest {
             shell("ime enable $id")
             shell("ime set $id")
             KeyboardOptions().save(app)
-            await("Typing IME was not selected") {
-                Settings.Secure.getString(app.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) == id
-            }
+            ImeTestReadiness.awaitDefaultImeStable(app, manager, id, "Typing IME setup")
             block(manager)
+        } catch (error: Throwable) {
+            primaryFailure = error
+            throw error
         } finally {
-            if (!previous.isNullOrBlank()) {
-                shell("ime set $previous")
-                await("Previous IME was not restored") {
-                    Settings.Secure.getString(app.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) == previous
-                }
-            }
-            if (!enabled) shell("ime disable $id")
-            options.save(app)
-            automation.serviceInfo = automation.serviceInfo.apply { this.flags = flags }
+            ImeTestReadiness.cleanupPreserving(
+                primaryFailure,
+                {
+                    if (!previous.isNullOrBlank()) {
+                        shell("ime set $previous")
+                        ImeTestReadiness.awaitDefaultImeStable(app, manager, previous, "Previous IME restore")
+                    }
+                },
+                { if (!enabled) shell("ime disable $id") },
+                { options.save(app) },
+                { automation.serviceInfo = automation.serviceInfo.apply { this.flags = flags } },
+            )
         }
     }
 

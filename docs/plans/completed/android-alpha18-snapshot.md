@@ -21,7 +21,7 @@ is available as a preview. PR #56 merged at `70b0cbf`; immutable tag
 - Certificate SHA-256: `a7987d44a70eed90500b5d77a555df0e18e80e79dd7cf882e1a066dbc2214be6`.
 
 Candidate work is complete. The next gate is the
-[phone acceptance checklist](../active/android-alpha18-phone-acceptance.md).
+[phone acceptance checklist](android-alpha18-phone-acceptance.md).
 All physical checks remain unperformed. The original contract below is historical;
 earlier pending statements do not reopen the completed release steps.
 

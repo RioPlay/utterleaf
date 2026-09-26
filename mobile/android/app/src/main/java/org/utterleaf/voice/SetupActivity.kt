@@ -14,7 +14,6 @@ import android.provider.Settings
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
-import java.util.Locale
 
 class SetupActivity : Activity() {
     private lateinit var status: TextView
@@ -23,7 +22,9 @@ class SetupActivity : Activity() {
     private lateinit var companionStatus: TextView
     private lateinit var enableKeyboard: Button
     private lateinit var chooseKeyboard: Button
+    private lateinit var modelSummary: TextView
     private lateinit var modelDetails: TextView
+    private lateinit var modelDetailsToggle: Button
     private lateinit var useModel: Button
     private lateinit var removeModel: Button
     private val modelChoices = mutableMapOf<ModelStore.Spec, RadioButton>()
@@ -31,13 +32,22 @@ class SetupActivity : Activity() {
     private lateinit var importModel: Button
     private var selectedModel = ModelStore.catalog.first()
     private var importPending = false
+    private var voiceExpanded = false
+    private var modelDetailsExpanded = false
+    private lateinit var modelImports: ModelImportWork
+    private var importObserver: AutoCloseable? = null
+    private var readinessObserver: AutoCloseable? = null
+    private var observerGeneration = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val colors = Ui.palette(this)
+        modelImports = ModelImports.forDirectory(noBackupFilesDir)
         selectedModel = ModelStore.catalog.firstOrNull { it.id == savedInstanceState?.getString("model") }
             ?: ModelStore.installed(noBackupFilesDir) ?: ModelStore.catalog.first()
         importPending = savedInstanceState?.getBoolean("importPending") ?: false
+        voiceExpanded = savedInstanceState?.getBoolean("voiceExpanded") ?: false
+        modelDetailsExpanded = savedInstanceState?.getBoolean("modelDetailsExpanded") ?: false
         val column = Ui.column(this)
         column.addView(LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -82,16 +92,22 @@ class SetupActivity : Activity() {
         voiceStatus = Ui.text(this, "")
         voiceCard.addView(voiceStatus)
         voiceCard.addView(Ui.text(this, "Choose a verified English model and allow the microphone only when you are ready to dictate.", 14f))
-        val voiceDetails = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        val voiceDetails = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = if (voiceExpanded) View.VISIBLE else View.GONE
+        }
         lateinit var voiceToggle: Button
-        voiceToggle = Ui.button(this, "Set up offline voice") {
+        voiceToggle = Ui.button(this, if (voiceExpanded) "Hide voice setup" else "Set up offline voice") {
             val expanding = voiceDetails.visibility != View.VISIBLE
+            voiceExpanded = expanding
             voiceDetails.visibility = if (expanding) View.VISIBLE else View.GONE
             voiceToggle.text = if (expanding) "Hide voice setup" else "Set up offline voice"
+            if (expanding) ModelStore.verifyAvailableAsync(noBackupFilesDir)
+            refreshModelChoice()
         }
         voiceCard.addView(voiceToggle)
         voiceDetails.addView(Ui.text(this, "1 · Add a speech model", 19f))
-        voiceDetails.addView(Ui.text(this, "Tiny is fast, Base balances size and processing, and Small offers more capacity at a higher cost in memory and time. Larger does not guarantee accuracy. Models are English only."))
+        voiceDetails.addView(Ui.text(this, "All models work offline in English. Choose based on download size and resource use."))
         importModel = Ui.button(this, "Import a model") {
             importPending = true
             try { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -102,13 +118,14 @@ class SetupActivity : Activity() {
             }
         }
         voiceDetails.addView(importModel)
-        voiceDetails.addView(Ui.text(this, "Already downloaded a model? Import identifies tiny.en, base.en or small.en automatically and verifies the file. Need a download? Choose an option below; this only changes the browser link."))
+        voiceDetails.addView(Ui.text(this, "Already downloaded a supported English model? Import identifies and verifies it automatically. Need a download? Choose an option below; this only changes the browser link."))
         val choices = RadioGroup(this)
         ModelStore.catalog.forEach { spec ->
             choices.addView(RadioButton(this).apply {
                 modelChoices[spec] = this
                 id = View.generateViewId()
-                text = "${spec.id} · ${megabytes(spec.size)} MB\n${spec.description}"
+                val presentation = ModelPresentation.forSpec(spec)
+                text = "${presentation.summary(spec)}\n${presentation.tradeoff}"
                 setTextColor(colors.ink)
                 buttonTintList = android.content.res.ColorStateList.valueOf(colors.accent)
                 minHeight = Ui.dp(this@SetupActivity, 56)
@@ -120,12 +137,21 @@ class SetupActivity : Activity() {
             })
         }
         voiceDetails.addView(choices)
-        modelDetails = Ui.text(this, "")
+        modelSummary = Ui.text(this, "")
+        voiceDetails.addView(modelSummary)
+        modelDetailsToggle = Ui.button(this, "Show technical model details") {
+            modelDetailsExpanded = !modelDetailsExpanded
+            refreshModelDetails()
+        }
+        voiceDetails.addView(modelDetailsToggle)
+        modelDetails = Ui.text(this, "").apply {
+            visibility = if (modelDetailsExpanded) View.VISIBLE else View.GONE
+        }
         voiceDetails.addView(modelDetails)
         useModel = Ui.button(this, "Use selected model") {
             if (WorkLease.acquire()) {
                 try { status.text = if (ModelStore.select(noBackupFilesDir, selectedModel))
-                    "${selectedModel.id} selected for the next take." else "Import this model first." }
+                    "${ModelPresentation.forSpec(selectedModel).name} selected for the next take." else "Import this model first." }
                 catch (_: Exception) { status.text = "Could not switch models. The previous choice is kept." }
                 finally { WorkLease.release() }
                 refreshReadiness(); refreshModelChoice()
@@ -134,11 +160,12 @@ class SetupActivity : Activity() {
         voiceDetails.addView(useModel)
         downloadModel = Ui.button(this, "") {
             val spec = selectedModel
-            AlertDialog.Builder(this).setTitle("Download ${spec.id} in your browser?")
-                .setMessage("Your browser will connect to Hugging Face for ${spec.filename} (${megabytes(spec.size)} MB). Utterleaf does not download files itself. Return here to import the downloaded file.")
+            val presentation = ModelPresentation.forSpec(spec)
+            AlertDialog.Builder(this).setTitle("Download ${presentation.name} in your browser?")
+                .setMessage("Your browser will connect to Hugging Face for a ${ModelPresentation.sizeLabel(spec.size)} download. Utterleaf does not download files itself. Return here to import the downloaded model.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Open browser") { _, _ ->
                     try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(spec.url))) }
-                    catch (_: android.content.ActivityNotFoundException) { status.text = "No browser available. Transfer ${spec.filename} from another device, then import it here." }
+                    catch (_: android.content.ActivityNotFoundException) { status.text = "No browser available. Transfer the ${presentation.name} model from another device, then import it here." }
                 }.show()
         }
         voiceDetails.addView(downloadModel)
@@ -155,7 +182,8 @@ class SetupActivity : Activity() {
         voiceDetails.addView(Ui.text(this, "Tap Dictate, then Stop & transcribe. Review the result, use Fix transcript when needed, and tap Insert text. Each take has a 120-second limit. Dictation stays unavailable in password fields."))
         removeModel = Ui.button(this, "Delete selected model") {
             val deleting = selectedModel
-            AlertDialog.Builder(this).setTitle("Delete ${deleting.id}?").setMessage("Only this imported model is removed. Typing will still work. You can select another installed model or import it again later.")
+            val presentation = ModelPresentation.forSpec(deleting)
+            AlertDialog.Builder(this).setTitle("Delete ${presentation.name}?").setMessage("Only this imported model is removed. Typing will still work. You can select another installed model or import it again later.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Delete") { _, _ ->
                     if (WorkLease.acquire()) {
                         try { status.text = if (ModelStore.remove(noBackupFilesDir, deleting)) "Model deleted." else "Could not delete model. Try again." }
@@ -213,26 +241,43 @@ class SetupActivity : Activity() {
         topMargin = Ui.dp(this@SetupActivity, 12)
         bottomMargin = Ui.dp(this@SetupActivity, 4)
     }
-    private fun megabytes(size: Long) = String.format(Locale.US, "%.1f", size / 1_000_000.0)
+    private fun refreshModelDetails() {
+        if (!::modelSummary.isInitialized || !::modelDetails.isInitialized || !::modelDetailsToggle.isInitialized) return
+        val presentation = ModelPresentation.forSpec(selectedModel)
+        modelSummary.text = "${presentation.summary(selectedModel)}\n${presentation.tradeoff}. Allow about ${ModelPresentation.sizeLabel(selectedModel.size * 2)} free for the browser download and verified import. Your current model stays installed until verification succeeds. You can remove the browser's downloaded copy afterwards."
+        modelDetails.text = presentation.technicalDetails(selectedModel)
+        modelDetails.visibility = if (modelDetailsExpanded) View.VISIBLE else View.GONE
+        modelDetailsToggle.text = if (modelDetailsExpanded) "Hide technical model details" else "Show technical model details"
+    }
     private fun refreshModelChoice() {
-        if (!::modelDetails.isInitialized || !::downloadModel.isInitialized || !::importModel.isInitialized) return
-        modelDetails.text = "${selectedModel.filename}\nDownload: ${megabytes(selectedModel.size)} MB. Allow about ${megabytes(selectedModel.size * 2)} MB free for the browser download and verified import. Your current model stays installed until verification succeeds. You can remove the browser's downloaded copy afterwards."
-        downloadModel.text = "Download ${selectedModel.id} in browser"
+        if (!::modelSummary.isInitialized || !::downloadModel.isInitialized || !::importModel.isInitialized) return
+        refreshModelDetails()
+        val selectedPresentation = ModelPresentation.forSpec(selectedModel)
+        downloadModel.text = "Download ${selectedPresentation.name} in browser"
         val installed = ModelStore.available(noBackupFilesDir)
         val active = ModelStore.installed(noBackupFilesDir)
+        val importing = modelImports.state.busy
+        importModel.isEnabled = !importing
         modelChoices.forEach { (spec, choice) ->
-            val profile = when (spec.id) { "tiny.en" -> "Fast"; "base.en" -> "Balanced"; else -> "Larger" }
-            val state = if (spec == active) "Active" else if (spec in installed) "Installed" else "Not installed"
-            choice.text = "$profile · ${spec.id} · ${megabytes(spec.size)} MB · $state\n${spec.description}"
+            val presentation = ModelPresentation.forSpec(spec)
+            val state = when {
+                spec == active -> "Active"
+                spec in installed -> "Installed"
+                ModelStore.hasStoredFile(noBackupFilesDir, spec) -> "Not verified"
+                else -> "Not installed"
+            }
+            choice.text = "${presentation.summary(spec)} · $state\n${presentation.tradeoff}"
         }
         if (::useModel.isInitialized) {
-            useModel.text = if (selectedModel == active) "${selectedModel.id} is active" else "Use ${selectedModel.id}"
-            useModel.isEnabled = selectedModel in installed && selectedModel != active
+            useModel.text = if (selectedModel == active) "${selectedPresentation.name} is active" else "Use ${selectedPresentation.name}"
+            useModel.isEnabled = !importing && selectedModel in installed && selectedModel != active
         }
-        if (::removeModel.isInitialized) removeModel.isEnabled = selectedModel in installed
+        if (::removeModel.isInitialized) removeModel.isEnabled =
+            !importing && ModelStore.hasStoredFile(noBackupFilesDir, selectedModel)
     }
     private fun microphoneAllowed() = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
     private fun refreshReadiness() {
+        if (::modelImports.isInitialized) modelImports.recoverInterrupted()
         refreshModelChoice()
         if (!::companionStatus.isInitialized) return
         val manager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
@@ -248,16 +293,44 @@ class SetupActivity : Activity() {
         enableKeyboard.text = if (keyboardEnabled) "1 · Enabled · manage keyboards" else "1 · Enable Utterleaf"
         chooseKeyboard.text = if (keyboardSelected) "2 · Selected · change keyboard" else "2 · Choose Utterleaf"
         chooseKeyboard.isEnabled = keyboardEnabled
-        val model = ModelStore.installed(noBackupFilesDir)
+        val modelReadiness = ModelStore.readiness(noBackupFilesDir)
+        val model = (modelReadiness as? ModelStore.Readiness.Ready)?.spec
         val mic = microphoneAllowed()
         voiceStatus.text = when {
-            model != null && mic -> "Voice setup ready · ${model.id} installed · microphone permission allowed. Tap Speak in a compatible field to record."
-            model != null -> "Voice needs microphone permission · ${model.id} installed."
+            modelReadiness is ModelStore.Readiness.Checking -> "Checking the model on this device… Typing still works."
+            modelReadiness is ModelStore.Readiness.Invalid -> "The model could not be verified. Typing is unaffected. Open voice setup and import the original model file again."
+            model != null && mic -> "Offline dictation ready · ${ModelPresentation.forSpec(model).name} verified · microphone permission allowed. In a compatible field, tap Dictate, then Start dictation."
+            model != null -> "Voice needs microphone permission · ${ModelPresentation.forSpec(model).name} installed."
             mic -> "Voice needs a model · microphone permission allowed."
             else -> "Voice not set up · import a model and allow your microphone if you want dictation."
         }
         val voiceEnabled = enabled.any { it.packageName == packageName && it.serviceName == VoiceIme::class.java.name }
         companionStatus.text = if (voiceEnabled) "Optional Utterleaf dictation input method is enabled." else "Optional Utterleaf dictation input method is not enabled."
+    }
+    override fun onStart() {
+        super.onStart()
+        val generation = ++observerGeneration
+        readinessObserver = ModelStore.observe(noBackupFilesDir) {
+            runOnUiThread {
+                if (generation == observerGeneration && !isDestroyed && !isFinishing) refreshReadiness()
+            }
+        }
+        importObserver = modelImports.observe { state ->
+            if (generation == observerGeneration && !isDestroyed && !isFinishing) {
+                if (state.message.isNotEmpty()) status.text = state.message
+                refreshReadiness()
+            }
+        }
+        modelImports.recoverInterrupted()
+        if (voiceExpanded) ModelStore.verifyAvailableAsync(noBackupFilesDir)
+    }
+    override fun onStop() {
+        observerGeneration++
+        readinessObserver?.close()
+        readinessObserver = null
+        importObserver?.close()
+        importObserver = null
+        super.onStop()
     }
     override fun onResume() { super.onResume(); refreshReadiness() }
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -267,6 +340,8 @@ class SetupActivity : Activity() {
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString("model", selectedModel.id)
         outState.putBoolean("importPending", importPending)
+        outState.putBoolean("voiceExpanded", voiceExpanded)
+        outState.putBoolean("modelDetailsExpanded", modelDetailsExpanded)
         super.onSaveInstanceState(outState)
     }
     @Deprecated("Platform callback")
@@ -277,20 +352,11 @@ class SetupActivity : Activity() {
         importPending = false
         if (resultCode != RESULT_OK || !pending) return
         val uri = data?.data ?: return
-        if (!WorkLease.acquire()) { status.text = "Wait for the current take or import to finish."; return }
-        status.text = "Identifying and verifying the model locally…"
         val app = applicationContext
-        Thread({
-            val message = try {
-                val installed = app.contentResolver.openInputStream(uri).use { input ->
-                    requireNotNull(input) { "Could not open the selected file." }
-                    ModelStore.install(input, app.noBackupFilesDir)
-                }
-                "${installed.id} verified and installed. The downloaded copy can now be removed from Downloads."
-            } catch (_: Exception) { "Import failed. Use an original tiny.en, base.en or small.en file from the download links and check free storage. Existing model kept." }
-            finally { WorkLease.release() }
-            runOnUiThread { if (!isDestroyed) { status.text = message; refreshReadiness() } }
-        }, "utterleaf-import").start()
+        if (!modelImports.start {
+                requireNotNull(app.contentResolver.openInputStream(uri)) { "Could not open the selected file" }
+            }) status.text = "Another take or model change is finishing. Typing is unaffected. Try the import again shortly."
+        refreshModelChoice()
     }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)

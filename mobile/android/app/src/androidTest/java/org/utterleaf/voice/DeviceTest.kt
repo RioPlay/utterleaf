@@ -335,6 +335,15 @@ class DeviceTest {
                 onMain { manager.showSoftInput(field, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT) }
                 awaitCondition("Typing keyboard did not appear") { findKey("a") != null }
             }
+            fun assertSensitiveSurface() {
+                awaitCondition("Minimal password keyboard did not appear") {
+                    findKey("Delete") != null && findKey("Paste") != null && findKey("Switch keyboard") != null
+                }
+                for (description in listOf("Keyboard tools", "Editing tools", "Extra keys", "Emoji",
+                    "Dictate", "Private draft", "Undo", "Redo", "Cut", "Copy", "Select neighboring word")) {
+                    assertTrue("$description leaked into password input", findKey(description) == null)
+                }
+            }
             show(screen.editor)
             awaitCondition("Password-manager key leaked onto an ordinary text field") {
                 findKey("Open password manager") == null
@@ -597,10 +606,7 @@ class DeviceTest {
                     .any { it.root?.findAccessibilityNodeInfosByText("Utterleaf dictation")?.isNotEmpty() == true }
             }
             show(screen.password)
-            awaitCondition("Password Dictate control did not appear disabled") {
-                val dictate = findKey("Dictate")
-                dictate != null && !dictate.isEnabled
-            }
+            assertSensitiveSurface()
             // The credential shortcut follows the configured autofill application:
             // present only on password fields, only when one is configured.
             assertEquals("Password-manager key visibility did not follow the configured autofill application",
@@ -611,10 +617,7 @@ class DeviceTest {
             onMain { manager.hideSoftInputFromWindow(screen.password.windowToken, 0) }
             awaitCondition("Keyboard did not hide") { findKey("a") == null }
             show(screen.password)
-            awaitCondition("Reopened password Dictate control did not appear disabled") {
-                val dictate = findKey("Dictate")
-                dictate != null && !dictate.isEnabled
-            }
+            assertSensitiveSurface()
             // Email fields are credential-adjacent but never carry the shortcut.
             show(screen.email)
             awaitCondition("Email field keyboard did not appear") { findKey("a") != null }
@@ -624,7 +627,7 @@ class DeviceTest {
             press("y")
             awaitCondition("Email typing did not work") { onMain { screen.email.text.toString() == "y" } }
             show(screen.password)
-            awaitCondition("Password keyboard did not return for the terminal section") { findKey("Dictate") != null }
+            assertSensitiveSurface()
             press("y")
             awaitCondition("Keyboard failed after reopen") { onMain { screen.password.text.toString() == "xy" } }
             assertEquals("Password input changed the previous field", "acd", onMain { screen.editor.text.toString() })
@@ -720,19 +723,20 @@ class DeviceTest {
         }
         assertTrue(audio.size > 16000)
         NativeEngine.reset()
-        val result = NativeEngine.decode(ModelStore.file(app.noBackupFilesDir).absolutePath, audio)
+        val model = requireNotNull(ModelStore.verifiedFile(app.noBackupFilesDir)).absolutePath
+        val result = NativeEngine.decode(model, audio)
         assertNotNull(result)
         val text = result!!.toString(Charsets.UTF_8).lowercase()
         assertTrue("Known speech was not recognized", text.contains("country"))
         NativeEngine.reset(); NativeEngine.cancel()
-        assertNull(NativeEngine.decode(ModelStore.file(app.noBackupFilesDir).absolutePath, audio))
+        assertNull(NativeEngine.decode(model, audio))
         NativeEngine.reset()
-        val recovered = NativeEngine.decode(ModelStore.file(app.noBackupFilesDir).absolutePath, audio)
+        val recovered = NativeEngine.decode(model, audio)
         assertNotNull("A new native generation must be able to decode after cancel", recovered)
         audio.fill(0f); result.fill(0); recovered!!.fill(0)
     }
     @Test fun zCaptureStopsAndReleasesItsLeaseOnCancel() {
-        // Last test: granting a runtime permission persists for this emulator install.
+        // Final capture tests: granting permission persists for this emulator install.
         instrumentation.context.assets.open("ggml-tiny.en.bin").use { ModelStore.install(it, app.noBackupFilesDir) }
         instrumentation.uiAutomation.grantRuntimePermission(app.packageName, "android.permission.RECORD_AUDIO")
         val activity = instrumentation.startActivitySync(android.content.Intent(app, SetupActivity::class.java)
@@ -759,6 +763,53 @@ class DeviceTest {
         }
         assertTrue("Capture did not release its lease", released)
         assertNull(failure.get())
+    }
+
+    @Test fun zzCaptureTerminalFailurePublishesAfterReleasingItsLease() {
+        instrumentation.context.assets.open("ggml-tiny.en.bin").use { ModelStore.install(it, app.noBackupFilesDir) }
+        instrumentation.uiAutomation.grantRuntimePermission(app.packageName, "android.permission.RECORD_AUDIO")
+        val activity = instrumentation.startActivitySync(android.content.Intent(app, SetupActivity::class.java)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        val terminal = java.util.concurrent.CountDownLatch(1)
+        val message = java.util.concurrent.atomic.AtomicReference<String>()
+        val leaseAvailable = java.util.concurrent.atomic.AtomicReference<Boolean>()
+        var session: VoiceSession? = null
+        var failure: Throwable? = null
+        try {
+            instrumentation.runOnMainSync {
+                session = VoiceSession(app, {}, {
+                    message.set("Unexpected transcript from an immediately stopped take")
+                    terminal.countDown()
+                }, {
+                    message.set(it)
+                    val acquired = WorkLease.acquire()
+                    leaseAvailable.set(acquired)
+                    if (acquired) WorkLease.release()
+                    terminal.countDown()
+                })
+                session!!.start()
+                session!!.stop()
+            }
+            assertTrue("Stopped take did not finish", terminal.await(10, java.util.concurrent.TimeUnit.SECONDS))
+            assertTrue("Expected the worker's short-take failure, got ${message.get()}",
+                message.get()?.startsWith("Take too short.") == true)
+            assertEquals("Terminal UI was published while the model lease was busy", true, leaseAvailable.get())
+        } catch (error: Throwable) {
+            failure = error
+            throw error
+        } finally {
+            ImeTestReadiness.cleanupPreserving(failure,
+                { instrumentation.runOnMainSync { session?.cancel(); activity.finish() } },
+                {
+                    val deadline = android.os.SystemClock.elapsedRealtime() + 5000
+                    var released = false
+                    while (android.os.SystemClock.elapsedRealtime() < deadline) {
+                        if (WorkLease.acquire()) { WorkLease.release(); released = true; break }
+                        Thread.sleep(20)
+                    }
+                    assertTrue("Stopped take retained its lease", released)
+                })
+        }
     }
 }
 

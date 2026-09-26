@@ -13,6 +13,15 @@ android {
         versionCode = 20
         versionName = "0.1.0-alpha20"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        if (providers.gradleProperty("utterleafPerformance").orNull == "true") {
+            // An explicit opt-in can run only this fixture; it can never add
+            // microphone/timing work to an ordinary correctness selection.
+            testInstrumentationRunnerArguments["class"] =
+                "org.utterleaf.voice.KeyboardPerformanceTest"
+        } else {
+            testInstrumentationRunnerArguments["notAnnotation"] =
+                "org.utterleaf.voice.PerformanceMeasurement"
+        }
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         externalNativeBuild { cmake { arguments += "-DANDROID_STL=c++_shared" } }
     }

@@ -5,3 +5,7 @@ dependencyResolutionManagement {
 }
 rootProject.name = "UtterleafVoice"
 include(":app")
+// Opt-in, debug-only editor host for lifecycle tests that must survive an IME process kill.
+if (providers.gradleProperty("includeLifecycleHost").orNull == "true") {
+    include(":lifecycleHost")
+}

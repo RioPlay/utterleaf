@@ -27,6 +27,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     private var session: CaptureSession? = null
     private var autoInsert = false
     private var released = false
+    private var directInsertAttempted = false
     private var disposed = false
     private var editingGeneration = 0
     private var holdPointer = -1
@@ -37,6 +38,9 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     private var micEntryUsed = false
     private var transcriptExpanded = false
     private var optionsExpanded = false
+    private var modelReadiness: ModelStore.Readiness = ModelStore.readiness(context.noBackupFilesDir)
+    private var modelObserver: AutoCloseable? = null
+    private var modelObserverGeneration = 0
     private val stateIcon = ImageView(context).apply {
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         scaleType = ImageView.ScaleType.FIT_CENTER
@@ -72,7 +76,8 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
             Mode.REVIEW -> insertReview()
             Mode.EDIT -> {
                 editingGeneration++; editingKeys.removeAllViews(); mode = Mode.REVIEW
-                visualState = VisualState.READY; updateControls()
+                visualState = if (directInsertAttempted) VisualState.PROBLEM else VisualState.READY
+                status.text = reviewStatus(); updateControls()
             }
             Mode.PROCESSING -> Unit
         }
@@ -112,7 +117,9 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     private val keyboard = Ui.button(context, "Keyboard") { clear(); leave() }
     private val warning = Runnable {
         if (mode == Mode.REVIEW || mode == Mode.EDIT) {
-            status.text = "Preview clears in 30 seconds. Tap Keep reviewing for more time."
+            status.text = if (directInsertAttempted)
+                "Insertion unconfirmed. Preview clears in 30 seconds; select it to copy."
+            else "Preview clears in 30 seconds. Tap Keep reviewing for more time."
             keep.visibility = View.VISIBLE
             status.announceForAccessibility(status.text)
         }
@@ -147,10 +154,30 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         view.addView(secondary)
         primary.setOnTouchListener { _, event -> handleHold(event) }
         view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
-            override fun onViewAttachedToWindow(v: View) = Unit
-            override fun onViewDetachedFromWindow(v: View) { disposed = true; clear() }
+            override fun onViewAttachedToWindow(v: View) { observeModelReadiness() }
+            override fun onViewDetachedFromWindow(v: View) {
+                disposed = true; modelObserverGeneration++
+                modelObserver?.close(); modelObserver = null
+                clear()
+            }
         })
         updateControls()
+    }
+    private fun observeModelReadiness() {
+        if (disposed || modelObserver != null) return
+        modelReadiness = ModelStore.readiness(context.noBackupFilesDir)
+        updateControls()
+        val observerGeneration = ++modelObserverGeneration
+        modelObserver = ModelStore.observe(context.noBackupFilesDir) { readiness ->
+            view.post {
+                if (!disposed && modelObserverGeneration == observerGeneration) {
+                    val refreshChooser = modelOptions.childCount > 0
+                    modelReadiness = readiness
+                    updateControls()
+                    if (refreshChooser) renderModelOptions()
+                }
+            }
+        }
     }
     private fun cancelHold() {
         pendingHold?.let { primary.removeCallbacks(it) }; pendingHold = null
@@ -199,6 +226,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
     private fun begin(automatic: Boolean) {
         if (disposed || mode != Mode.IDLE) return
         optionsExpanded = false
+        directInsertAttempted = false
         val token = gate.next()
         autoInsert = automatic; released = false; mode = Mode.CAPTURE
         visualState = VisualState.LISTENING; updateControls()
@@ -237,11 +265,15 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         updateControls(); session?.stop()
     }
     private fun insertReview() {
-        if (disposed || mode != Mode.REVIEW) return
+        if (disposed || mode != Mode.REVIEW || directInsertAttempted) return
         val text = preview.text.toString()
         if (text.isBlank()) { status.text = "The transcript is empty. Edit it or discard this take."; return }
-        autoInsert = false // A rejected automatic insertion requires an explicit retry.
-        if (insert(text)) {
+        autoInsert = false
+        // A remote editor may mutate and still refuse or throw. Latch before
+        // dispatch so neither reentrant nor later taps can replay this take.
+        directInsertAttempted = true
+        val confirmed = try { insert(text) } catch (_: RuntimeException) { false }
+        if (confirmed) {
             clear(); visualState = VisualState.AVAILABLE; status.text = "Inserted · microphone off"
             inhibitUntil = android.os.SystemClock.uptimeMillis() + 400
             val token = gate.next()
@@ -249,7 +281,7 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
             updateControls()
         } else {
             visualState = VisualState.PROBLEM
-            status.text = "Could not insert into this field. Edit, retry, or discard this preview."
+            status.text = reviewStatus()
             updateControls()
         }
     }
@@ -277,10 +309,16 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
         optionsToggle.visibility = if (mode == Mode.IDLE && !disposed) View.VISIBLE else View.GONE
         optionsToggle.text = if (optionsExpanded) "Hide voice options" else "Voice options"
         optionsPanel.visibility = if (mode == Mode.IDLE && optionsExpanded && !disposed) View.VISIBLE else View.GONE
-        modelChoice.visibility = if (mode == Mode.IDLE && optionsExpanded && models.size > 1) View.VISIBLE else View.GONE
+        val storedModels = ModelStore.catalog.count { ModelStore.hasStoredFile(context.noBackupFilesDir, it) }
+        modelChoice.visibility = if (mode == Mode.IDLE && optionsExpanded && maxOf(models.size, storedModels) > 1) View.VISIBLE else View.GONE
         modelChoice.isEnabled = mode == Mode.IDLE && optionsExpanded && !disposed
         if (mode != Mode.IDLE || !optionsExpanded) modelOptions.removeAllViews()
-        modelChoice.text = "Model · ${ModelStore.installed(context.noBackupFilesDir)?.id ?: "choose"}"
+        modelChoice.text = when (val readiness = modelReadiness) {
+            is ModelStore.Readiness.Ready -> "Model · ${ModelPresentation.forSpec(readiness.spec).name}"
+            is ModelStore.Readiness.Checking -> "Model · checking"
+            is ModelStore.Readiness.Invalid -> "Model · needs repair"
+            ModelStore.Readiness.Missing -> "Model · choose"
+        }
         stateIcon.setImageResource(when (visualState) {
             VisualState.AVAILABLE -> R.drawable.utterling_mic
             VisualState.LISTENING -> R.drawable.utterling_listening
@@ -301,11 +339,13 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
             Mode.IDLE -> if (holdMode.isChecked) "Hold to dictate" else "Start dictation"
             Mode.CAPTURE -> "Stop & transcribe"
             Mode.PROCESSING -> "Transcribing locally…"
-            Mode.REVIEW -> "Insert text"
+            Mode.REVIEW -> if (directInsertAttempted) "Insert unavailable" else "Insert text"
             Mode.EDIT -> "Done editing"
         }
         primary.contentDescription = primary.text
-        primary.isEnabled = !disposed && mode != Mode.PROCESSING && android.os.SystemClock.uptimeMillis() >= inhibitUntil
+        primary.isEnabled = !disposed && mode != Mode.PROCESSING &&
+            !(mode == Mode.REVIEW && directInsertAttempted) &&
+            android.os.SystemClock.uptimeMillis() >= inhibitUntil
         preview.visibility = if (mode == Mode.REVIEW || mode == Mode.EDIT) View.VISIBLE else View.GONE
         // Read-only review must still allow scrolling and selection.
         preview.keyListener = if (mode == Mode.EDIT) transcriptKeyListener else null
@@ -329,25 +369,42 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
             Mode.IDLE -> "Cancel take"
         }
     }
+    private fun reviewStatus(): String = if (directInsertAttempted)
+        "Insertion unconfirmed. Check the field; select the transcript to copy."
+    else "Microphone off · preview clears in 2 minutes"
     private fun scheduleExpiry() {
         handler.removeCallbacks(warning); handler.removeCallbacks(expire)
         keep.visibility = View.GONE
-        status.text = "Microphone off · preview clears in 2 minutes"
+        status.text = reviewStatus()
         handler.postDelayed(warning, 90000); handler.postDelayed(expire, 120000)
     }
     private fun chooseModel() {
         if (disposed || mode != Mode.IDLE) return
-        val models = ModelStore.available(context.noBackupFilesDir)
-        val selected = ModelStore.installed(context.noBackupFilesDir)
-        val token = gate.next()
         if (modelOptions.childCount > 0) { modelOptions.removeAllViews(); return }
+        ModelStore.verifyAvailableAsync(context.noBackupFilesDir)
+        renderModelOptions()
+    }
+    private fun renderModelOptions() {
+        if (disposed || mode != Mode.IDLE || !optionsExpanded) return
+        modelOptions.removeAllViews()
+        val models = ModelStore.catalog.filter { ModelStore.hasStoredFile(context.noBackupFilesDir, it) }
+        val selected = (modelReadiness as? ModelStore.Readiness.Ready)?.spec
+        val token = gate.next()
         models.forEach { spec ->
-                val profile = when (spec.id) { "tiny.en" -> "Fast"; "base.en" -> "Balanced"; else -> "Larger · more memory and time" }
-                modelOptions.addView(Ui.button(context, "$profile · ${spec.id}") {
+            val presentation = ModelPresentation.forSpec(spec)
+            val readiness = ModelStore.storedReadiness(context.noBackupFilesDir, spec)
+            val summary = "${presentation.summary(spec)} · ${presentation.tradeoff}"
+            val label = when (readiness) {
+                is ModelStore.Readiness.Ready -> summary
+                is ModelStore.Readiness.Checking -> "$summary · checking"
+                is ModelStore.Readiness.Invalid -> "$summary · needs repair"
+                ModelStore.Readiness.Missing -> "$summary · unavailable"
+            }
+            modelOptions.addView(Ui.button(context, label) {
                 if (!disposed && mode == Mode.IDLE && gate.accepts(token)) {
                     if (WorkLease.acquire()) {
                         try { status.text = if (ModelStore.select(context.noBackupFilesDir, spec))
-                            "${spec.id} selected · microphone off" else "Model unavailable. Open setup to import it." }
+                            "${presentation.name} selected · microphone off" else "Model unavailable. Open setup to import it." }
                         catch (_: Exception) { status.text = "Could not switch models. Try again in setup." }
                         finally { WorkLease.release() }
                         updateControls()
@@ -355,13 +412,16 @@ class VoicePanel(private val context: Context, private val insert: (String) -> B
                     gate.invalidate()
                     modelOptions.removeAllViews()
                 }
-            }.apply { isSelected = spec == selected })
+            }.apply {
+                isSelected = spec == selected
+                isEnabled = readiness is ModelStore.Readiness.Ready
+            })
         }
     }
     fun clear() {
         modelOptions.removeAllViews()
         rearm?.let { handler.removeCallbacks(it) }; rearm = null; inhibitUntil = 0
-        gate.invalidate(); cancelHold(); autoInsert = false; released = false
+        gate.invalidate(); cancelHold(); autoInsert = false; released = false; directInsertAttempted = false
         session?.cancel(); session = null; editingGeneration++; editingKeys.removeAllViews()
         preview.setText(""); transcriptExpanded = false; mode = Mode.IDLE
         visualState = VisualState.AVAILABLE
