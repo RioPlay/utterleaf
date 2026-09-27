@@ -112,6 +112,19 @@ class SuggestionStripTest {
         }
     }
 
+    private fun forceCachedCollapsedSelection(service: KeyboardIme, position: Int) {
+        KeyboardIme::class.java.getDeclaredField("selectionKnown").run {
+            isAccessible = true
+            setBoolean(service, true)
+        }
+        for (name in listOf("selectionStart", "selectionEnd")) {
+            KeyboardIme::class.java.getDeclaredField(name).run {
+                isAccessible = true
+                setInt(service, position)
+            }
+        }
+    }
+
     private fun shell(command: String) = android.os.ParcelFileDescriptor.AutoCloseInputStream(
         instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
 
@@ -423,6 +436,16 @@ class SuggestionStripTest {
                 throw AssertionError("Selected text must be rejected before reading the editor")
         }
         assertFalse(completeSuggestionTransaction(unreadableSelection, "hel", "help", false))
+        assertFalse(selectedEditorTextIsEmpty(object : InputConnectionWrapper(null, true) {
+            override fun getSelectedText(flags: Int): CharSequence = " rest"
+        }))
+        assertFalse(selectedEditorTextIsEmpty(object : InputConnectionWrapper(null, true) {
+            override fun getSelectedText(flags: Int): CharSequence =
+                throw IllegalStateException("closed")
+        }))
+        assertTrue(selectedEditorTextIsEmpty(object : InputConnectionWrapper(null, true) {
+            override fun getSelectedText(flags: Int): CharSequence? = null
+        }))
         withKeyboard {
             KeyboardOptions().save(app)
             val activity = launch()
@@ -432,6 +455,10 @@ class SuggestionStripTest {
                     activity.editor.setSelection(3, 8)
                 }
                 instrumentation.waitForIdleSync()
+                // Reproduce the release-gate race deterministically: the host has
+                // a live selection while the last delivered callback still says
+                // the caret is collapsed after the composing word.
+                forceCachedCollapsedSelection(currentService(), 3)
                 assertFalse("A chip must not replace selected text",
                     complete(currentService(), "hel", "help"))
                 assertEquals("hel rest", main { activity.editor.text.toString() })
