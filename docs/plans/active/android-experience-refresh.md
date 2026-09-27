@@ -11,7 +11,7 @@ state safety, one-handed use, editing speed, offline dictation and progressive
 disclosure. Visual polish follows those invariants.
 
 Status remains in the [mobile roadmap](../../mobile-roadmap.md). This plan
-reconciles the published alpha20 baseline and alpha21 release candidate with the longer-running
+reconciles the published alpha21 baseline with the longer-running
 [keyboard rebuild](android-keyboard-rebuild.md); it does not make release or
 physical-device claims from emulator results.
 

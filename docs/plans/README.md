@@ -4,9 +4,9 @@ Substantial in-flight work lives here so a new session can continue without the
 previous chat. One-line fixes do not need a plan.
 
 Start with [workspaces](../workspaces.md) and the platform roadmap's **Now**
-section, not the first filename in `active/`. Android alpha20 is published and
-[alpha21 release readiness](active/android-alpha21-release-readiness.md) is the
-current bounded promotion task. Continue the roadmap design follow-ups afterward;
+section, not the first filename in `active/`. Android alpha21 is published; its
+[release record](completed/android-alpha21-release-readiness.md) preserves the
+exact promotion evidence. Continue the roadmap design follow-ups;
 [physical issues are reported manually](completed/android-alpha18-phone-acceptance.md),
 and a dedicated phone acceptance campaign is no longer required. The separate
 [desktop modernization stream](active/desktop-modernization.md) is active, with
@@ -28,8 +28,8 @@ The current cross-milestone Android contract is the
 [compatibility and performance template](../android-keyboard-compatibility.md)
 records evidence without treating unrun checks as results.
 
-The completed bounded preview record is preserved under
-[alpha20 release readiness](completed/android-alpha20-release-readiness.md). It
+The latest completed bounded preview record is preserved under
+[alpha21 release readiness](completed/android-alpha21-release-readiness.md). It
 does not close the broader experience plan or its physical/accessibility gates.
 
 An active plan should include objective, area, constraints, acceptance,
