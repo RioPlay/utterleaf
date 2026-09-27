@@ -8,9 +8,9 @@ tree, one desktop OBS tree, and published/unpublished release receipts.
 
 | Stream | Checkout | Next PR |
 | --- | --- | --- |
-| Android keyboard | `android-keyboard-hardening` on `codex/android-alpha21-release` | Promote the merged daily-surface reset and selection safeguard as alpha21; [signed alpha20](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha20) remains published. Physical campaigns remain unverified follow-up, not routine-preview gates. |
+| Android keyboard | `android-keyboard-hardening` on `codex/android-alpha21-release-record` | [Signed alpha21](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha21) is published. Record the immutable evidence, then continue workflow maintenance and the active experience plan. Physical campaigns remain unverified follow-up, not routine-preview gates. |
 | Desktop OBS | `desktop-obs-bridge` on `feat/obs-session-arm` | Parked while Android is prioritized. PR #36 is merged. On resumption, refresh, review and check draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37), then replay #38 onto the resulting `main`. Keep #38–42 draft until each is rebased and verified. |
-| Android CI split | same Android alpha21 branch | Fast PR checks are implemented; full emulator/release gates remain required on the exact main/manual release revision. |
+| Android CI split | same Android release-record branch | Fast PR checks are implemented; full emulator/release gates remain required on every exact main/manual release revision. |
 
 Android PR #59 is merged; the exact alpha19 tag is `599f675`.
 Use current remote `main` at session start. PR #36 is merged and its
@@ -25,7 +25,7 @@ Do not mix these in one branch. Desktop CI already skips Android-only paths.
 
 | Branch | Purpose | Next work |
 | --- | --- | --- |
-| `codex/android-alpha21-release` | Current Android keyboard checkout (`android-keyboard-hardening` worktree) | Promote the merged daily-surface reset and selection safeguard as alpha21; alpha20 is the published preview. Preserve [manual issue reporting](plans/completed/android-alpha18-phone-acceptance.md) and explicit unverified limits. |
+| `codex/android-alpha21-release-record` | Current Android keyboard checkout (`android-keyboard-hardening` worktree) | Record the published alpha21 evidence, then continue the roadmap. Preserve [manual issue reporting](plans/completed/android-alpha18-phone-acceptance.md) and explicit unverified limits. |
 | `feat/obs-session-arm` | Desktop OBS worktree (`desktop-obs-bridge`); draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37) | Parked. Its earlier green check was against `aa296c9`; refresh onto current `main` and rerun checks before landing #37 and replaying #38. |
 | `checkpoint/mixed-work-20260912` | Preserved mixed development snapshot; not a release or PR | Recovery/reference only; leave the original source environment intact |
 | `release/desktop-0.4.6rc2` | Published Windows x64 CPU prerelease | Preserve the immutable RC2 tag and release evidence |
@@ -35,7 +35,7 @@ Do not mix these in one branch. Desktop CI already skips Android-only paths.
 
 The desktop release uses `desktop-v0.4.6-rc.2`; stable desktop `v*` and Android
 `android-v*` releases remain separate. Current published Android preview is
-[alpha19](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha19).
+[alpha21](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha21).
 Read the platform roadmap and active plan in the owning checkout. A green test
 in one checkout does not validate another.
 

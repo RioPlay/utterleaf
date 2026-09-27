@@ -31,16 +31,14 @@ wait for the editor, privacy and testing foundation.
 
 ## Now
 
-- **Checkout:** `android-keyboard-hardening`, branch `codex/android-alpha21-release`.
-- **Released:** [signed alpha20](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha20), including the bounded uncertain-dictation insertion correction, deterministic IME test cleanup and signed-reinstall preservation coverage (PR #61).
-- **Next:** promote the merged daily-surface reset and live-selection safeguard as
-  the bounded signed alpha21 preview, then complete the workflow-only Node.js/action
-  and runner-image maintenance recorded in
+- **Checkout:** `android-keyboard-hardening`, branch `codex/android-alpha21-release-record`.
+- **Released:** [signed alpha21](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha21), including the clean-room daily-surface reset and live selected-text completion safeguard (PRs #64–#66).
+- **Next:** complete the workflow-only Node.js/action and runner-image maintenance recorded in
   [alpha20 release readiness](plans/completed/android-alpha20-release-readiness.md#post-release-ci-maintenance-memory).
   Editor-bound dictation recovery and the remaining Tools architecture work stay
   in the [capability and experience plan](plans/active/android-experience-refresh.md).
   Android remains the priority; desktop is parked.
-- **Verified for alpha20:** exact-main CI [run 36271277037](https://github.com/RioPlay/utterleaf/actions/runs/36271277037) passed; protected signing [run 36335155637](https://github.com/RioPlay/utterleaf/actions/runs/36335155637) preserved the established signer, passed the signed alpha03 upgrade and same-version installation smoke tests, and published the prerelease.
+- **Verified for alpha21:** exact-main CI [run 36347322221](https://github.com/RioPlay/utterleaf/actions/runs/36347322221) passed; protected signing [run 36348423330](https://github.com/RioPlay/utterleaf/actions/runs/36348423330) preserved the established signer, passed signed alpha03 upgrade and same-version reinstall preservation checks, and published the prerelease.
 - **Manual feedback:** physical typing/latency, TalkBack/Switch Access, phone landscape/three-button navigation and real Obtainium behavior are handled through user reports, not mandatory test gates. Emulator success does not establish physical-device verification. See the [manual reporting policy](plans/completed/android-alpha18-phone-acceptance.md).
 - **CI maintenance after alpha20:** update Node.js-20-based actions (including
   deprecated `actions/setup-java@v4`) to supported Node.js 24 releases, and pin or
@@ -51,6 +49,21 @@ wait for the editor, privacy and testing foundation.
 **Acceptance policy — September 26, 2026:** routine increments and preview releases use the applicable automated regression, privacy/security, build and signed-release checks without making unobserved device claims. The A–M redesign is not complete until its named compatibility, performance and final accessibility audits pass. Physical-device and assistive-technology work need not block every bounded source slice, but unperformed checks remain open and can never be reported as passed.
 
 ## Current status
+
+- **Alpha21 signed prerelease published — September 27, 2026:** PR #66 merged
+  release metadata as exact main revision
+  `394fdff11b8ed300d320d9e28c04876d00cc2c93`. Exact-main Android run
+  [36347322221](https://github.com/RioPlay/utterleaf/actions/runs/36347322221)
+  passed build/JVM/lint, lifecycle compilation, release contracts, the complete
+  emulator privacy/inference phase, release packaging and unsigned-input retention.
+  Annotated tag `android-v0.1.0-alpha21` resolves to that revision. Protected
+  signing/publication [run 36348423330](https://github.com/RioPlay/utterleaf/actions/runs/36348423330)
+  passed package/version/signer/alignment, signed alpha03 upgrade, same-version
+  reinstall preservation and publication. The downloaded 11,587,536-byte APK
+  SHA-256 is `b3cf9aed7259f3004ecaab657502ce6019abbdd265ff699c96bc16a3c3578434`;
+  its checksum, version code **21**, version name `0.1.0-alpha21`, package and
+  established certificate fingerprint were independently rechecked. This is a
+  bounded preview release, not final A–M or physical-device acceptance.
 
 - **Daily-surface clean-room reset merged and exact-main verified —
   September 27, 2026:** PR [#64](https://github.com/RioPlay/utterleaf/pull/64)
@@ -531,8 +544,8 @@ wait for the editor, privacy and testing foundation.
   verified locally; cached layouts retain immutable keyboard-only editor metadata.
   Remaining lifecycle/cache, native hardening and framework recovery
   checks continue. It is not yet integrated
-  into the shipping keyboard; the independent alpha20 channel remains the
-  published implementation while alpha21 is prepared.
+  into the shipping keyboard; the independent alpha21 channel remains the
+  published implementation.
 
 - **Released alpha12:** compact [quick editing actions](android-quick-actions.md).
   Revision `aec275b` passed [Android CI 34498263015](https://github.com/RioPlay/utterleaf/actions/runs/34498263015):
