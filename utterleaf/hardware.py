@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from utterleaf.config import Config
+from utterleaf.model_selection import resolve_model_selection
 
 log = logging.getLogger("utterleaf")
 
@@ -484,10 +485,7 @@ def pick(cfg: Config, accelerators: list[Accelerator] | None = None) -> Accelera
 
 
 def _model_key(cfg: Config) -> str:
-    name = cfg.model.strip()
-    if cfg.language.lower() in {"en", "english"} and name in {"tiny", "base", "small", "medium"}:
-        return f"{name}.en"
-    return name
+    return resolve_model_selection(cfg.model, cfg.language)
 
 
 def describe(accels: list[Accelerator], chosen: Accelerator) -> list[str]:

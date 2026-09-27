@@ -6,15 +6,17 @@ if (-not (Test-Path '.\.venv\Scripts\python.exe')) {
     Write-Error "Run from the repo root with a .venv present."
 }
 
-if (-not (Test-Path '.\.venv\Scripts\pyinstaller.exe')) {
+& .\.venv\Scripts\python -c 'import PyInstaller'
+if ($LASTEXITCODE -ne 0) {
     & .\.venv\Scripts\python -m pip install pyinstaller
+    if ($LASTEXITCODE -ne 0) { exit 1 }
 }
 
 # Regenerate the exe icon from the leaf renderer; the spec consumes the .ico.
 & .\.venv\Scripts\python 'packaging\make_icon.py'
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
-& .\.venv\Scripts\pyinstaller --noconfirm --clean 'packaging\utterleaf.spec'
+& .\.venv\Scripts\python -m PyInstaller --noconfirm --clean 'packaging\utterleaf.spec'
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
 Write-Host ''

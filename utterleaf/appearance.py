@@ -4,10 +4,12 @@ from __future__ import annotations
 import tkinter as tk
 import queue
 import threading
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog
 from PIL import ImageTk
 
 from utterleaf import brand, theme
+from utterleaf.ui_feedback import RecoveryFeedback
+from utterleaf.ui_layout import ActionRow, wrapped_label
 
 
 class AppearanceGuide:
@@ -21,18 +23,24 @@ class AppearanceGuide:
         self.entries = {}
         self.export_results = queue.Queue()
         self.export_poll = None
+        self.closed = False
         self.root.protocol("WM_DELETE_WINDOW", self.close)
-        title = ttk.Frame(self.root, padding=(24, 18))
-        title.pack(fill="x")
-        ttk.Label(title, text="Icons & artwork", style="Title.TLabel").pack(anchor="w")
-        ttk.Label(title, text="What each image means, where it appears, and how it looks on light and dark surfaces.",
-                  style="Hint.TLabel", wraplength=640).pack(anchor="w", pady=(6, 0))
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(1, weight=1)
+        title = ttk.Frame(self.root, padding=(24, 12))
+        title.grid(row=0, column=0, sticky="ew")
+        wrapped_label(title, text="Icons & artwork", style="Section.TLabel").pack(fill="x")
+        wrapped_label(title, text="Light/dark previews. Page Up/Down to scroll.",
+                      style="Hint.TLabel").pack(fill="x", pady=(6, 0))
         self.tabs = ttk.Notebook(self.root)
-        self.tabs.pack(fill="both", expand=True, padx=20)
+        self.tabs.grid(row=1, column=0, sticky="nsew", padx=20)
         self.canvases = {}
-        for name in ("Tray states", "App badges", "Cutout marks", "Utterling", "Wordmark"):
+        self._tab_names = ("Tray states", "App badges", "Cutout marks", "Utterling", "Wordmark")
+        tab_labels = {"Tray states": "Tray", "App badges": "Badges", "Cutout marks": "Marks"}
+        for name in self._tab_names:
             tab = ttk.Frame(self.tabs)
-            self.tabs.add(tab, text=name)
+            # Concise, stable labels fit large text without shrinking its font.
+            self.tabs.add(tab, text=tab_labels.get(name, name))
             canvas = tk.Canvas(tab, bg=theme.SURFACE, highlightthickness=0)
             scrollbar = ttk.Scrollbar(tab, orient="vertical", command=canvas.yview)
             scrollbar.pack(side="right", fill="y")
@@ -50,25 +58,28 @@ class AppearanceGuide:
         self.root.bind("<Button-4>", lambda e: self._wheel(e, -1))
         self.root.bind("<Button-5>", lambda e: self._wheel(e, 1))
         self.root.bind("<FocusIn>", self._reveal_focus)
+        for sequence in ("<Prior>", "<Next>", "<Home>", "<End>"):
+            self.root.bind(sequence, self._scroll_page)
         self.root.bind("<Escape>", lambda e: self.close())
-        footer = ttk.Frame(self.root, padding=(20, 14))
-        footer.pack(fill="x")
+        self.status = tk.StringVar(self.root)
+        self.feedback = RecoveryFeedback(self.root, self.status)
+        self.feedback.grid(row=2, column=0, sticky="ew", padx=20, pady=(10, 0))
+        self.feedback.grid_remove()
+        footer = ActionRow(self.root)
+        footer.grid(row=3, column=0, sticky="ew", padx=20, pady=10)
         self.export_button = ttk.Button(footer, text="Export asset pack…", command=self.export)
-        self.export_button.pack(side="left")
-        ttk.Button(footer, text="Close", command=self.close).pack(side="right")
+        footer.add(self.export_button)
+        self.close_button = footer.add(ttk.Button(footer, text="Close", command=self.close))
 
     def _row(self, parent, key, title, text, images, filename):
         row = ttk.Frame(parent)
         row.pack(fill="x", pady=(0, 20))
         row.columnconfigure(0, weight=1)
         words = ttk.Frame(row)
-        words.grid(row=0, column=0, sticky="nw", padx=(0, 16))
-        ttk.Label(words, text=title, style="Section.TLabel", wraplength=320).pack(anchor="w")
-        description = ttk.Label(words, text=text, style="Hint.TLabel", wraplength=320)
-        description.pack(anchor="w", pady=(6, 4))
-        reference = ttk.Label(words, text=filename, style="Hint.TLabel", wraplength=320)
-        reference.pack(anchor="w")
-        words.bind("<Configure>", lambda e: [w.configure(wraplength=max(120, e.width)) for w in words.winfo_children()])
+        words.grid(row=0, column=0, sticky="ew", padx=(0, 16))
+        wrapped_label(words, text=title, style="Section.TLabel").pack(fill="x")
+        wrapped_label(words, text=text, style="Hint.TLabel").pack(fill="x", pady=(6, 4))
+        wrapped_label(words, text=filename, style="Hint.TLabel").pack(fill="x")
         for col, background in enumerate(("#FFFFFF", brand.DARK), start=1):
             panel = tk.Frame(row, bg=background, padx=8, pady=8)
             panel.grid(row=0, column=col, sticky="n", padx=3)
@@ -108,12 +119,42 @@ class AppearanceGuide:
             self._row(body, "wordmark", "Utterleaf · Let ideas speak", "Primary wordmark for documentation and brand materials. Use the inverse variant on dark backgrounds.",
                       [wordmark_image(False, 170), wordmark_image(True, 170)], "wordmark.png / wordmark-inverse.png / SVG equivalents")
 
+    def _selected_canvas(self):
+        return self.canvases[self._tab_names[self.tabs.index("current")]]
+
+    def _scroll_input(self, event):
+        if self.closed or event.widget.winfo_toplevel() is not self.root:
+            return False
+        if event.widget.winfo_class() in {"Text", "Entry", "TEntry", "Spinbox", "TSpinbox",
+                                         "TCombobox", "Listbox", "Scale", "TScale"}:
+            return False
+        lock_mask = 0x2 if self.root.tk.call("tk", "windowingsystem") == "aqua" else 0x12
+        return not (event.state & ~lock_mask)
+
+    def _scroll_page(self, event):
+        if not self._scroll_input(event):
+            return
+        canvas = self._selected_canvas()
+        if event.keysym in {"Home", "End"}:
+            canvas.yview_moveto(0 if event.keysym == "Home" else 1)
+        else:
+            canvas.yview_scroll(-1 if event.keysym == "Prior" else 1, "pages")
+        return "break"
+
     def _wheel(self, event, direction=None):
-        name = self.tabs.tab(self.tabs.select(), "text")
-        self.canvases[name].yview_scroll(direction if direction is not None else (-3 if event.delta > 0 else 3), "units")
+        if not self._scroll_input(event) or event.widget.winfo_class() in {"Scrollbar", "TScrollbar"}:
+            return
+        if direction is None:
+            if not event.delta:
+                return
+            direction = -1 if event.delta > 0 else 1
+        self._selected_canvas().yview_scroll(direction * 3, "units")
+        return "break"
 
     def _reveal_focus(self, event):
-        canvas = self.canvases[self.tabs.tab(self.tabs.select(), "text")]
+        if self.closed:
+            return
+        canvas = self._selected_canvas()
         if not str(event.widget).startswith(str(canvas) + "."):
             return
         top = event.widget.winfo_rooty() - canvas.winfo_rooty()
@@ -123,11 +164,22 @@ class AppearanceGuide:
             canvas.yview_moveto(canvas.yview()[0] + (top-10 if top < 0 else bottom-canvas.winfo_height()+10)/total)
 
     def export(self):
-        path = filedialog.asksaveasfilename(parent=self.root, title="Export Utterleaf artwork", defaultextension=".zip",
-                                          initialfile="utterleaf-artwork.zip", filetypes=[("ZIP archive", "*.zip")])
-        if not path:
+        if self.closed or self.export_button.instate(["disabled"]):
+            return
+        try:
+            path = filedialog.asksaveasfilename(parent=self.root, title="Export Utterleaf artwork", defaultextension=".zip",
+                                              initialfile="utterleaf-artwork.zip", filetypes=[("ZIP archive", "*.zip")])
+        except Exception as exc:
+            if not self.closed:
+                self.feedback.error("Couldn't choose an export location", "Export hasn't started.",
+                                    "Try Export asset pack again and choose a writable folder.", exc)
+                self.feedback.grid()
+            return
+        if not path or self.closed:
             return
         from .brand_export import export_pack
+        self.status.set("Exporting artwork…")
+        self.feedback.grid()
         self.export_button.configure(state="disabled", text="Exporting…")
         def work():
             try:
@@ -136,10 +188,22 @@ class AppearanceGuide:
                 self.export_results.put(exc)
             else:
                 self.export_results.put(None)
-        threading.Thread(target=work, daemon=True).start()
+        try:
+            threading.Thread(target=work, daemon=True).start()
+        except Exception as exc:
+            self._export_error(exc)
+            return
         self.export_poll = self.root.after(100, self._export_done)
 
+    def _export_error(self, error):
+        self.export_button.configure(state="normal", text="Export asset pack…")
+        self.feedback.error("Couldn't export artwork", "Export did not finish.",
+                            "Check disk space and folder access, then retry Export.", error)
+        self.feedback.grid()
+
     def _export_done(self):
+        if self.closed:
+            return
         try:
             result = self.export_results.get_nowait()
         except queue.Empty:
@@ -148,11 +212,16 @@ class AppearanceGuide:
         self.export_poll = None
         self.export_button.configure(state="normal", text="Export asset pack…")
         if isinstance(result, Exception):
-            messagebox.showerror("Could not export artwork", str(result), parent=self.root)
+            self._export_error(result)
         else:
-            messagebox.showinfo("Artwork exported", "Saved the icon sizes, transparent cutouts, mascots, and usage guide.", parent=self.root)
+            self.status.set("Artwork exported. The asset pack includes icons, cutouts, mascots and a usage guide.")
+            self.feedback.grid()
 
     def close(self):
+        if self.closed:
+            return
+        self.closed = True
         if self.export_poll is not None:
             self.root.after_cancel(self.export_poll)
+            self.export_poll = None
         self.root.destroy()

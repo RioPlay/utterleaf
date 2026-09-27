@@ -13,6 +13,7 @@ from utterleaf import audio
 @pytest.fixture(autouse=True)
 def synthetic_com(monkeypatch):
     monkeypatch.setattr("utterleaf.audio_owner._com_scope", nullcontext)
+    monkeypatch.setattr(audio.sd, "default", SimpleNamespace(device=[0, -1]))
 
 
 @pytest.fixture

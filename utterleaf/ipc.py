@@ -54,7 +54,7 @@ def running_port() -> int | None:
         return None
 
 
-def send(command: str, timeout: float = 1.5) -> str | None:
+def send(command: str, timeout: float = 1.5, *, exact_reply: bool = False) -> str | None:
     try:
         endpoint = json.loads(port_file().read_text(encoding="utf-8"))
         port = int(endpoint["port"])
@@ -71,6 +71,14 @@ def send(command: str, timeout: float = 1.5) -> str | None:
             request = json.dumps({"token": token, "command": command}) + "\n"
         with socket.create_connection((HOST, port), timeout=timeout) as sock:
             sock.sendall(request.encode("utf-8"))
+            if exact_reply:
+                # New allowlisted protocols must not turn whitespace-padded or
+                # truncated input into a valid token. Empty is an invalid reply,
+                # distinct from a transport failure or an older server's unknown.
+                # Binary framing also preserves CR instead of normalizing it.
+                with sock.makefile("rb") as reader:
+                    line = reader.readline(1024)
+                return line[:-1].decode("utf-8") if line.endswith(b"\n") else ""
             return sock.makefile().readline(1024).strip()
     except (OSError, ValueError, KeyError, TypeError):
         return None

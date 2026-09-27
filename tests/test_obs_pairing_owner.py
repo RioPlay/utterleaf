@@ -45,6 +45,17 @@ def _child_linger(marker: str) -> int:
     return 0 if sys.stdin.buffer.read(1) == b"x" else 4
 
 
+def _source_environment() -> dict[str, str]:
+    """Make direct child scripts import this checkout, not ambient installs."""
+    environment = os.environ.copy()
+    source_root = str(Path(__file__).resolve().parents[1])
+    existing = environment.get("PYTHONPATH")
+    environment["PYTHONPATH"] = (
+        os.pathsep.join((source_root, existing)) if existing else source_root
+    )
+    return environment
+
+
 def _run_claim(root: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, __file__, "--claim", str(root)],
@@ -52,6 +63,7 @@ def _run_claim(root: Path) -> subprocess.CompletedProcess[str]:
         text=True,
         timeout=10,
         check=False,
+        env=_source_environment(),
     )
 
 
@@ -157,6 +169,7 @@ def test_owner_handle_is_not_inherited_by_child(tmp_path):
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         close_fds=False,
+        env=_source_environment(),
     )
     try:
         deadline = time.monotonic() + 5

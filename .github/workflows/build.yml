@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.14.6"
+          python-version: "3.14.7"
       - name: Install
         run: |
           python -m venv .venv
@@ -51,11 +51,8 @@ jobs:
         run: .\.venv\Scripts\python.exe -m pytest -q
       - name: Build CPU distribution and collect notices
         run: .\packaging\build.ps1
-      - name: Frozen CLI smoke test
-        run: .\dist\Utterleaf\utterleaf-cli.exe --help
-      - name: Device report (host hardware may be unavailable)
-        run: .\dist\Utterleaf\utterleaf-cli.exe --doctor
-        continue-on-error: true
+      - name: Frozen Windows release smoke test
+        run: .\.venv\Scripts\python.exe tests\smoke_release.py dist\Utterleaf
       - name: Package
         run: |
           Compress-Archive -Path dist\Utterleaf -DestinationPath dist\Utterleaf-windows-x64-cpu.zip

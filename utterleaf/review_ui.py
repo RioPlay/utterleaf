@@ -182,6 +182,7 @@ def run_review() -> int:
         import tkinter as tk
         from tkinter import ttk
         from utterleaf import theme
+        from utterleaf.ui_layout import ActionRow, ScrollableContent, readonly_preview, wrapped_label
     except Exception:
         return 1
 
@@ -204,28 +205,31 @@ def run_review() -> int:
     root.geometry("680x480")
     root.minsize(480, 320)
     root.columnconfigure(0, weight=1)
-    root.rowconfigure(2, weight=1)
-    ttk.Label(root, text="Review dictation", style="Title.TLabel").grid(
-        row=0, column=0, sticky="w", padx=20, pady=(18, 6)
+    root.rowconfigure(0, weight=1)
+    content = ScrollableContent(root, padding=20)
+    content.grid(row=0, column=0, sticky="nsew")
+    page = content.body
+    page.columnconfigure(0, weight=1)
+    page.rowconfigure(2, weight=1)
+    wrapped_label(page, text="Review dictation", style="Section.TLabel").grid(
+        row=0, column=0, sticky="ew", pady=(0, 6)
     )
-    instruction = ttk.Label(
-        root,
+    instruction = wrapped_label(
+        page,
         text=("Nothing has been inserted. Insert is available only while the original field remains unchanged; "
               "use Copy otherwise. This preview clears after two minutes; copy to keep the text."
               if allow_insert else
               "Nothing has been inserted. This field cannot be verified for safe insertion; use Copy instead. "
               "This preview clears after two minutes; copy to keep the text."),
         style="Subtitle.TLabel",
-        wraplength=440,
     )
-    instruction.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 10))
-    root.bind("<Configure>", lambda event: instruction.configure(
-        wraplength=max(300, event.width - 40)) if event.widget is root else None, add="+")
-    frame = ttk.Frame(root)
-    frame.grid(row=2, column=0, sticky="nsew", padx=20)
+    instruction.grid(row=1, column=0, sticky="ew", pady=(0, 10))
+    frame = ttk.Frame(page)
+    frame.grid(row=2, column=0, sticky="nsew")
     frame.columnconfigure(0, weight=1)
     frame.rowconfigure(0, weight=1)
-    preview = tk.Text(frame, wrap="word", font=(ui_font(), 11), padx=10, pady=10, undo=False)
+    preview = tk.Text(frame, height=8, width=1, wrap="word", font=(ui_font(), 11),
+                      padx=10, pady=10, undo=False)
     preview.configure(
         bg=theme.SURFACE_LOW,
         fg=theme.ON_SURFACE,
@@ -240,8 +244,9 @@ def run_review() -> int:
     preview.configure(yscrollcommand=scroll.set)
     preview.insert("1.0", text)
     preview.configure(state="disabled")
-    actions = ttk.Frame(root)
-    actions.grid(row=3, column=0, sticky="e", padx=20, pady=18)
+    readonly_preview(preview)
+    actions = ActionRow(root)
+    actions.grid(row=1, column=0, sticky="ew", padx=20, pady=(12, 18))
     sent = False
 
     def choose(action: str) -> None:
@@ -255,11 +260,11 @@ def run_review() -> int:
         finally:
             root.destroy()
 
-    ttk.Button(actions, text="Discard", command=lambda: choose("discard")).pack(side="left", padx=6)
-    ttk.Button(actions, text="Copy", command=lambda: choose("copy")).pack(side="left", padx=6)
+    actions.add(ttk.Button(actions, text="Discard", command=lambda: choose("discard")))
+    actions.add(ttk.Button(actions, text="Copy", command=lambda: choose("copy")))
     insert = ttk.Button(actions, text="Insert", style="Primary.TButton",
                         command=lambda: choose("insert"))
-    insert.pack(side="left", padx=6)
+    actions.add(insert)
     if not allow_insert:
         insert.configure(state="disabled")
     root.protocol("WM_DELETE_WINDOW", lambda: choose("dismiss"))

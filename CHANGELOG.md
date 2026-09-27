@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased — 0.4.6 RC3 candidate
+
+- Modernize the desktop shell, landing/status surface, Settings, recovery flows,
+  and supporting windows while preserving the established Tk architecture.
+- Present Ready, Listening, Processing, and Error consistently, with bounded IPC
+  status snapshots and privacy-safe model presentation.
+- Add guided fixed-catalog model inventory/download presentation and clearer
+  microphone, save, backup, diagnostic, and file-transcription recovery.
+- Revalidate the effective OS-default input route before each deliberate stream
+  preparation; missing or ambiguous named microphones continue to fail closed.
+- Expand keyboard access, focus visibility, Settings search, section-level reset,
+  deterministic UI captures, and regression coverage.
+- Keep removal/update lifecycle, tray dictation controls, native device identity,
+  signing, physical-device, assistive-technology, mixed-DPI, and cross-platform
+  installed-build acceptance behind their documented release gates.
+
 ## 0.3.1
 
 - Find the Linux NVIDIA toolkit installed at `/opt/cuda` (Arch) in addition to `/usr/local/cuda`.

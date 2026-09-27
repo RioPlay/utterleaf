@@ -144,6 +144,13 @@ def test_close_discards_queued_result_without_widget_callbacks(window):
     assert window.cancel_event.is_set()
 
 
+def test_authenticated_close_request_is_applied_on_tk_poll(window):
+    window.close_requests.set()
+    window.poll()
+    assert window.closed
+    assert window.cancel_event.is_set()
+
+
 def test_export_needs_explicit_replace_and_preserves_preview(window, monkeypatch, tmp_path):
     path = tmp_path / "字幕.vtt"
     path.write_text("keep", encoding="utf-8")

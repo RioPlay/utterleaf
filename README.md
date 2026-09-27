@@ -13,10 +13,10 @@
   <a href="docs/README.md">Help & docs</a>
 </p>
 
-> **Windows desktop 0.4.6 RC1 preview:** this checkout contains the
-> continuous-dictation, long-file, speech-end, Markdown and delivery-safety update.
-> See the [preview notes](packaging/preview-notes.md). Preview downloads use a
-> separate prerelease; the Download links below point to stable v0.4.5.
+> **Windows desktop 0.4.6 RC3 candidate:** this checkout contains the desktop
+> modernization, recovery, continuous-dictation, long-file, speech-end, Markdown,
+> and delivery-safety updates. See the [preview notes](packaging/preview-notes.md).
+> RC3 is not published yet; the Download links below point to stable v0.4.5.
 
 Speak into the app you're already using. Utterleaf turns your words into text,
 then gets out of the way. No account, no cloud transcription, and no saved audio
@@ -54,8 +54,9 @@ these stable `latest` downloads.
 
 ## Your first words on desktop
 
-1. **Open Utterleaf.** The speech model downloads on first launch. Once installed,
-   recognition works offline; you can disable further model downloads in Settings.
+1. **Open Utterleaf.** Fresh profiles stay offline. In **Speech & privacy**, choose
+   **Download selected model…** and approve that one-time installation. Once installed,
+   recognition works offline. Automatic missing-model downloads remain optional.
 2. **Check your microphone.** Click the tray leaf, then **Test microphone**.
 3. **Click a text field and speak.** Hold **Ctrl+Win** on Windows or
    **Ctrl+Shift+Space** on macOS/X11, wait for Listening or the start sound, and

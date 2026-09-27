@@ -2,6 +2,7 @@
 from pathlib import Path
 import os
 import subprocess
+import tempfile
 import time
 import sys
 import struct
@@ -17,8 +18,12 @@ else:
         pe = struct.unpack_from("<I", binary, 0x3C)[0]
         assert struct.unpack_from("<H", binary, pe + 24 + 68)[0] == 2, f"{name} must use Windows GUI subsystem"
     print("Both app executables use the Windows GUI subsystem (no launch console)")
-env = dict(os.environ, APPDATA=str(root / "artifacts" / "smoke-profile"))
-for args in (["--help"], ["--polish", "um we should ship it"], ["--doctor", "--offline"]):
+artifacts = root / "artifacts"
+artifacts.mkdir(exist_ok=True)
+profile_owner = tempfile.TemporaryDirectory(prefix="utterleaf-release-smoke-", dir=artifacts)
+profile = Path(profile_owner.name)
+env = dict(os.environ, APPDATA=str(profile))
+for args in (["--help"], ["--polish", "um we should ship it"], ["--doctor"]):
     result = subprocess.run([str(cli), *args], env=env,
                             capture_output=True, text=True, timeout=45)
     print(f"{' '.join(args)}: exit {result.returncode}")
@@ -27,8 +32,17 @@ for args in (["--help"], ["--polish", "um we should ship it"], ["--doctor", "--o
     elif args[0] == "--help":
         assert result.returncode == 0, result.stderr
     else:
-        (root / "artifacts" / "doctor.txt").write_text(result.stdout + result.stderr, encoding="utf-8")
+        (artifacts / "doctor.txt").write_text(result.stdout + result.stderr, encoding="utf-8")
         assert result.returncode == 0, result.stdout + result.stderr
+        assert "allow_network: False" in result.stdout, result.stdout
+        assert "missing (install from Settings)" in result.stdout, result.stdout
+        config = profile / "Utterleaf" / "config.toml"
+        assert "allow_network = false" in config.read_text(encoding="utf-8")
+        assert not any(
+            path.suffix.lower() in {".bin", ".safetensors", ".gguf"}
+            for path in profile.rglob("*")
+            if path.is_file()
+        )
 
 result = subprocess.run([str(cli), "--polish", "Make a bolded list 1 2 3."], env=env,
                         capture_output=True, text=True, timeout=20)
@@ -44,3 +58,4 @@ finally:
     if process.poll() is None:
         process.terminate()
     process.wait(timeout=5)
+    profile_owner.cleanup()
