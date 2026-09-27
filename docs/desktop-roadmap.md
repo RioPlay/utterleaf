@@ -190,7 +190,9 @@ intended field, with understandable local processing and minimal interruption.
   editable, and incompatible English-only/non-English pairs cannot download or
   save. The final local suite passed **2,693 tests with 14 documented prerequisite
   skips**; a fresh package smoke and **58 source-matched Settings captures** passed.
-  Exact-head hosted CI and per-language recognition quality remain open.
+  Merged source revision `7938002` passed all five desktop jobs in
+  [CI 36349231740](https://github.com/RioPlay/utterleaf/actions/runs/36349231740),
+  including packaged smoke. Per-language recognition quality remains open.
   Active-take identity and safe removal/update are not inferred from a local
   file inventory or a generic app-status response.
   These are unreleased source results. Physical readiness, accessibility,

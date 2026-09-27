@@ -143,8 +143,13 @@ installation is not accepted as proof for the candidate source.
   parent-process runtime evidence, not immutable candidate provenance or a
   whole-process lifecycle receipt. The exact-final hosted build and tag-bound
   archive must supply that binding.
-- Exact final-candidate hosted CI is still required after the ledger commit is
-  pushed. Public tag or prerelease creation remains explicitly unauthorized.
+- Merged source revision `7938002b3900dbe44a3bf104b537e39592986ff4`
+  passed all five hosted jobs in
+  [run 36349231740](https://github.com/RioPlay/utterleaf/actions/runs/36349231740):
+  Windows tests/package/frozen smoke, macOS tests/package, and Linux X11/Wayland
+  tests plus extracted-package startup. A later ledger-only commit does not alter
+  that source result, but its own PR checks must remain green. Public tag or
+  prerelease creation remains explicitly unauthorized.
 
 ## Non-goals
 

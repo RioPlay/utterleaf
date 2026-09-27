@@ -2142,6 +2142,10 @@ Implementation and verification, September 27, 2026:
   regression was added; **six targeted checks** passed afterward. An attempted
   full rerun encountered the documented Windows pytest temporary-directory ACL
   failure before product assertions, so it is not counted as a product result.
-- Exact-head hosted CI is required after the feature commit. Recognition quality
-  for every language, physical accessibility and public release authorization
-  remain separate gates.
+- Merged source revision `7938002b3900dbe44a3bf104b537e39592986ff4`
+  passed all five hosted jobs in
+  [run 36349231740](https://github.com/RioPlay/utterleaf/actions/runs/36349231740),
+  including Windows frozen smoke and Linux extracted-package startup. The
+  ledger-only follow-up must retain green PR checks. Recognition quality for
+  every language, physical accessibility and public release authorization remain
+  separate gates.
