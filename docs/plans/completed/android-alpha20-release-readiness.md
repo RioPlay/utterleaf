@@ -9,6 +9,33 @@ The user requested progress toward release on September 26, 2026 and subsequentl
 authorized following this bounded candidate through PR, checks, merge and release.
 The broader redesign does not enter the release scope implicitly.
 
+## Outcome — completed September 27, 2026
+
+Alpha20 is published as a signed Android prerelease. PR #61 merged to
+`ff3bfbf03dfee12304baf6e24540d1d259a52029`; exact-main Android CI
+[run 36271277037](https://github.com/RioPlay/utterleaf/actions/runs/36271277037)
+passed and retained the unsigned release input. Annotated tag
+`android-v0.1.0-alpha20` resolves to that exact revision.
+
+The persistent PKCS#12 signer was recovered from its protected local location and
+its certificate matched the established release fingerprint. A byte-exact copy and
+the Windows-DPAPI-protected password companion were placed in the user-authorized
+sync backup. That synchronized copy improves recovery but is not a disconnected
+offline backup; a separately protected offline copy remains an operational follow-up.
+
+Protected signing/publication
+[run 36335155637](https://github.com/RioPlay/utterleaf/actions/runs/36335155637)
+passed release identity, package, signer, version, signed alpha03 upgrade and
+same-version installation smoke checks before publishing
+[Utterleaf Android 0.1.0-alpha20](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha20).
+The downloaded public APK is 11,587,536 bytes with SHA-256
+`2b96fca709f71ecda9372ec918dcd93d2b648ae7d985f85ce9c66cc7a05833de`;
+its checksum file matches, `version.json` reports code 20/name
+`0.1.0-alpha20`, and the certificate matches the established signer.
+
+This closes the bounded alpha20 release plan, not the broader A–M experience plan,
+physical-device acceptance, live Obtainium verification or final accessibility work.
+
 ## Area and ownership
 
 Android source/build/tests, Android release workflow and documentation only.
@@ -196,30 +223,30 @@ the local verification pass, no new commit, push, PR, merge, tag, signing dispat
 or release had been performed. Alpha19 remained the published preview. The broader A–M release gate, physical
 usability, G recovery, replacement Tools and final accessibility remain open.
 
-### Promotion authorized — September 26, 2026
+### Promotion completed — September 27, 2026
 
-The user has authorized following the candidate through release. The remote
-preflight reconfirmed main at `be4f11779d29b11d5b3451fee2c23fe4d327acc3`, with
-no alpha20 branch, PR or tag. The intended sequence is the checklist below;
-source is frozen and the release PR/checks may proceed. Independent offline
-signing-key backup confirmation is still pending and holds signing/publication.
+The authorized sequence completed: reviewed PR, exact-main full Android run,
+retained release input, immutable tag, protected signing/upgrade/install checks,
+publication and independent public-asset verification. The exact identifiers and
+remaining limits are recorded in the outcome above. Synthetic preservation markers
+still do not establish real-model inference after every upgrade or live Obtainium use.
 
-### Remaining promotion checklist
+### Post-release CI maintenance memory
 
-1. Remote promotion/publication is authorized. Obtain confirmation of the
-   independently protected offline signing-key backup before signing. Do not
-   request key bytes or passwords. Missing confirmation holds signing/publication.
-2. Review/commit the intended Android changes while preserving unrelated dirty
-   user work; push/open the authorized PR. PR checks are the fast path only.
-3. Merge only after required review/checks, then obtain the full successful
-   `android.yml` main/manual run for the exact release SHA and its retained
-   `Android-release-input`. Local APKs are not substituted for that artifact.
-4. At that green main SHA create immutable `android-v0.1.0-alpha20`; verify
-   package/version metadata and tag/run SHA equality before proceeding.
-5. With publication authority and backup confirmed, dispatch the protected
-   `android-release.yml` from main with that tag/run. This workflow signs,
-   verifies signer/package/version/alignment, checks signed alpha03 upgrade plus
-   same-version reinstall preservation, and **publishes** the prerelease.
-6. Verify published public assets/checksums/version/certificate and update the
-   roadmap/download links only after actual success. Synthetic markers do not
-   establish real-model inference after every upgrade or live Obtainium use.
+The exact-main Android run emitted two warnings and one notice that do not change
+the alpha20 test result or release artifact, but require a separate workflow-only
+follow-up after this frozen candidate:
+
+- GitHub-hosted runners are forcing Node.js 24 for actions that still declare
+  Node.js 20: `actions/checkout@v4`, `actions/setup-java@v4`,
+  `actions/upload-artifact@v4`, `actions/download-artifact@v4`,
+  `android-actions/setup-android@v3` and `gradle/actions/setup-gradle@v4`.
+- `actions/setup-java@v4` is deprecated; migrate to `actions/setup-java@v5`.
+- `ubuntu-latest` begins migrating to Ubuntu 26 on October 19, 2026.
+
+Do not fold unreviewed action upgrades into the signed alpha20 revision. Audit all
+Android and signing workflows together, select supported Node.js 24 action majors,
+and pin or explicitly validate the runner image before the Ubuntu migration. Run
+the tooling contract, fast PR path, full main emulator/release path and protected
+signing smoke contract after that workflow change. Never test signing changes by
+publishing over an immutable released tag.
