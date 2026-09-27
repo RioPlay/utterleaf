@@ -8,7 +8,7 @@ tree, one desktop OBS tree, and published/unpublished release receipts.
 
 | Stream | Checkout | Next PR |
 | --- | --- | --- |
-| Android keyboard | `android-keyboard-hardening` on `codex/android-polish-alpha20` | Alpha19 is published. Alpha20 local gates passed; follow the authorized [release promotion](plans/active/android-alpha20-release-readiness.md). Physical campaigns remain unverified follow-up, not routine-preview gates. |
+| Android keyboard | `android-keyboard-hardening` on `codex/android-polish-alpha20` | [Signed alpha20](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha20) is published; see the completed [release record](plans/completed/android-alpha20-release-readiness.md). Continue Android workflow maintenance and the active experience plan. Physical campaigns remain unverified follow-up, not routine-preview gates. |
 | Desktop OBS | `desktop-obs-bridge` on `feat/obs-session-arm` | Parked while Android is prioritized. PR #36 is merged. On resumption, refresh, review and check draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37), then replay #38 onto the resulting `main`. Keep #38–42 draft until each is rebased and verified. |
 | Android CI split | same Android alpha20 branch | Implemented in the candidate: fast PR checks; full emulator/release gates remain required on the exact main/manual release revision. |
 
