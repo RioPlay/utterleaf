@@ -822,6 +822,17 @@ def test_ipc_toggle_replies_before_recording_side_effects(monkeypatch):
     assert finished.wait(2)
 
 
+def test_quit_requests_authenticated_companion_window_shutdown(monkeypatch):
+    app = _app(monkeypatch)
+    requested = []
+    monkeypatch.setattr(
+        "utterleaf.settings_instance.request_close",
+        lambda namespace="settings": requested.append(namespace) or True,
+    )
+    app.quit()
+    assert requested == ["settings", "files"]
+
+
 def test_reload_honors_indicator_off(monkeypatch) -> None:
     monkeypatch.setattr("utterleaf.app.beep", lambda *_a, **_k: None)
     app = Utterleaf(Config(tray=True, indicator=True, beep=False))

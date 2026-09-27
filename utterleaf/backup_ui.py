@@ -6,6 +6,7 @@ from utterleaf import theme
 
 from utterleaf.backup import PORTABLE_PREFERENCES, export_backup
 from utterleaf.backup_store import apply_import, prepare_import, write_backup
+from utterleaf.ui_feedback import RecoveryFeedback
 from utterleaf.ui_layout import ActionRow, readonly_preview, wrapped_label
 
 LABELS = {"text_cleanup": "Text cleanup", "remove_fillers": "Remove fillers",
@@ -90,8 +91,8 @@ class BackupDialog:
         self.preview.configure(yscrollcommand=scroll.set)
         readonly_preview(self.preview)
         self.status = tk.StringVar(self.root)
-        self.status_label = wrapped_label(self.root, textvariable=self.status)
-        self.status_label.grid(row=2, column=0, sticky="ew", padx=18, pady=5)
+        self.feedback = RecoveryFeedback(self.root, self.status)
+        self.feedback.grid(row=2, column=0, sticky="ew", padx=18, pady=5)
         actions = ActionRow(self.root)
         actions.grid(row=3, column=0, sticky="ew", padx=18, pady=(0, 9))
         actions.add(ttk.Button(actions, text="Cancel", command=self.root.destroy))
@@ -158,9 +159,14 @@ class BackupDialog:
                 content = "\n".join(lines)
                 self.status.set("Nothing is saved until you apply and confirm. Replace removes the current vocabulary.")
             self.confirm.configure(state="normal")
-        except Exception:
+        except Exception as error:
             content = "Could not build a safe preview. Check the selected file and current vocabulary, then reopen this dialog."
-            self.status.set("No changes saved.")
+            self.feedback.error(
+                "Backup preview unavailable",
+                "No changes were saved.",
+                "Review the file and reopen this dialog.",
+                error,
+            )
             self.confirm.configure(state="disabled")
         self.preview.configure(state="normal")
         self.preview.delete("1.0", "end")
@@ -192,5 +198,8 @@ class BackupDialog:
             messagebox.showerror("Choose a new filename", "An existing file will not be overwritten. Choose a different filename.", parent=self.root)
         except Exception as error:
             from utterleaf.backup import BackupError
-            message = str(error) if isinstance(error, BackupError) else "The file operation failed. Check access and free disk space."
-            messagebox.showerror("Backup could not finish", message, parent=self.root)
+            impact = ("No backup was saved." if self.plan is None
+                      else "No changes were applied.")
+            recovery = ("Review the backup and try again." if isinstance(error, BackupError)
+                        else "Check storage access and try again.")
+            self.feedback.error("Backup could not finish", impact, recovery, error)

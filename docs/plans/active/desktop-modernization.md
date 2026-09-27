@@ -2142,10 +2142,76 @@ Implementation and verification, September 27, 2026:
   regression was added; **six targeted checks** passed afterward. An attempted
   full rerun encountered the documented Windows pytest temporary-directory ACL
   failure before product assertions, so it is not counted as a product result.
-- Merged source revision `7938002b3900dbe44a3bf104b537e39592986ff4`
+- PR source revision `3dd958dab26aa59fc14f66f6ef4d7de9e101386f`
   passed all five hosted jobs in
-  [run 36349231740](https://github.com/RioPlay/utterleaf/actions/runs/36349231740),
-  including Windows frozen smoke and Linux extracted-package startup. The
-  ledger-only follow-up must retain green PR checks. Recognition quality for
-  every language, physical accessibility and public release authorization remain
-  separate gates.
+  [run 36349620833](https://github.com/RioPlay/utterleaf/actions/runs/36349620833),
+  including Linux extracted-package startup. The hosted Windows job built and
+  packaged successfully but only exercised CLI help plus a non-blocking doctor;
+  the downloaded exact-run artifact passed the full frozen smoke locally. The
+  workflow now requires that full smoke. Later recovery/lifecycle source still
+  needs exact-head CI. Recognition quality for every language, physical
+  accessibility and public release authorization remain separate gates.
+
+### Closeout recovery, lifecycle and accessibility audit
+
+**Goal:** close deterministic auxiliary recovery and whole-process shutdown gaps,
+then perform the native Windows accessibility audit required by the release gate.
+
+**Area:** backup recovery presentation; OBS pairing baseline/layout; Settings and
+file-window instance control; Windows build smoke; packaged family lifecycle;
+read-only Windows UI Automation inventory.
+
+**Constraints:** retain existing speech/configuration architecture, authenticated
+local control, unsaved-change confirmation, offline defaults and guarded captures;
+do not claim screen-reader certification from automation or publish a release.
+
+**Acceptance:** raw backup failures are optional Details; compact pairing actions
+remain reachable; Quit requests companion windows to close without discarding
+unsaved Settings silently; hosted Windows packaging must run the full frozen
+smoke; UIA semantics and remaining physical/manual evidence are stated exactly.
+
+**Verification:** focused real-Tk recovery/pairing/lifecycle checks, deterministic
+captures, full desktop pytest, fresh Windows onedir build and frozen smoke,
+whole-family process measurement, and a fresh UIA inventory.
+
+**Non-goals:** framework migration within this slice, physical screen-reader or
+mixed-monitor certification, signing, merge, tag or publication.
+
+**Stop:** stop source editing when executable regressions pass and any remaining
+toolkit/accessibility decision is isolated with reproducible evidence.
+
+Implementation and verification, September 27, 2026:
+
+- Backup preview/export failures now use the shared Problem/Impact/Recovery pattern
+  with bounded optional Details. **43 focused backup/workflow checks passed**;
+  eight updated captures include compact 2× recovery states.
+- A guarded OBS pairing harness records **10 states** without pairing-store,
+  preference, network, audio, clipboard or native-dialog access. Its initial
+  compact 2× baseline found unreachable footer actions; the production footer now
+  wraps in focus order. **17 harness/layout checks** and **88 focused pairing
+  checks** passed, and fresh after-state captures keep all actions in bounds.
+- Authenticated companion-instance control now distinguishes activate from close.
+  Tray Quit asks Settings and file transcription to close on their Tk threads;
+  Settings retains its existing save-in-progress and unsaved-change confirmation.
+  A final **191-test** Settings/app/file-window/instance regression, including
+  in-flight Save, direct tray and Tk-poll shutdown checks, passed after review.
+  A rebuilt-package whole-family run (three 15-second samples and one 60-second
+  sample) left no package process after a bounded three-second grace and required
+  no harness window-close or forced termination. Total family shutdown completed
+  in 118–217 ms after the main process exited. Every sample retained the offline
+  default with zero external connections, download markers or model weights.
+  Sustained family CPU was 7.4787% of this 16-logical-CPU machine because the
+  visible first-run Settings process was included; this is not tray-only idle or
+  recognition-latency evidence. The ignored receipt is
+  `.grok/performance/companion-close-fix-grace-whole-family-20260927T2145Z/receipt.json`
+  (SHA-256 `04a0e3fce1aad33b1543641282084bd26924b0400eb4d9f62be093fa1ca6b877`).
+- The integrated full desktop suite passed **2,714 tests with 14 documented
+  prerequisite skips**. A fresh 48-package Windows onedir build contains no model
+  weights; the full frozen release smoke passed help, polish, doctor, spoken-list
+  formatting and a persistent Settings launch.
+- A fresh Windows UIA audit is adverse: all 12 inspected surfaces expose only a
+  window and unnamed panes, with zero UIA-focusable or named-focusable controls.
+  This is a product/toolkit accessibility defect, not merely missing manual proof.
+  An actual UIA provider/bridge or Windows presentation shell is now evidence-based
+  work under the framework decision gate; Narrator/NVDA, modal focus and physical
+  DPI acceptance remain subsequent external checks.

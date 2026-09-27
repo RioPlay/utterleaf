@@ -190,11 +190,27 @@ intended field, with understandable local processing and minimal interruption.
   editable, and incompatible English-only/non-English pairs cannot download or
   save. The final local suite passed **2,693 tests with 14 documented prerequisite
   skips**; a fresh package smoke and **58 source-matched Settings captures** passed.
-  Merged source revision `7938002` passed all five desktop jobs in
-  [CI 36349231740](https://github.com/RioPlay/utterleaf/actions/runs/36349231740),
-  including packaged smoke. Per-language recognition quality remains open.
+  PR source revision `3dd958d` passed all five desktop jobs in
+  [CI 36349620833](https://github.com/RioPlay/utterleaf/actions/runs/36349620833).
+  Its downloaded Windows artifact passed the complete frozen smoke locally, but
+  the hosted Windows job itself only ran CLI help and a non-blocking doctor. The
+  workflow now requires the complete smoke on subsequent revisions.
+  Per-language recognition quality remains open.
   Active-take identity and safe removal/update are not inferred from a local
   file inventory or a generic app-status response.
+  Backup recovery now uses optional technical Details, OBS pairing has a guarded
+  10-state baseline with compact 2× actions fixed, and authenticated Quit requests
+  both Settings and file-transcription companion windows to close without bypassing
+  unsaved-change confirmation. The integrated suite passed **2,714 tests with 14
+  prerequisite skips**, followed by a fresh Windows onedir build and full frozen
+  smoke. A whole-family rebuilt-package probe then closed every process without
+  harness intervention in all four samples; the 60-second sample includes visible
+  first-run Settings and is not tray-only idle or recognition-latency evidence.
+  A new exact-head hosted run is still required.
+  A fresh Windows UI Automation audit found zero focusable or named-focusable
+  controls across all 12 inspected Tk surfaces. That is an actionable toolkit
+  accessibility blocker: implement a real UIA provider/bridge or a Windows-native
+  presentation shell before manual Narrator/NVDA and mixed-DPI acceptance.
   These are unreleased source results. Physical readiness, accessibility,
   remaining auxiliary/native-dialog acceptance, device/model lifecycle, physical DPI,
   and sustained/recognition/cross-platform performance remain open.

@@ -84,6 +84,8 @@ def test_staged_backup_dialogs_are_synthetic_and_never_apply(state, working_tk_d
             assert str(dialog.preview.cget("state")) == "disabled"
             if state == "error":
                 assert "Could not build a safe preview" in preview
+                assert "Backup preview unavailable" in dialog.status.get()
+                assert str(dialog.feedback.details_button.cget("state")) == "normal"
                 assert str(dialog.confirm.cget("state")) == "disabled"
                 assert dialog.payload is dialog.review is None
             elif state == "export":

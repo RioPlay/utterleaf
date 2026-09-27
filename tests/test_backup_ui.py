@@ -107,13 +107,33 @@ def test_changed_settings_after_preview_fail_without_implicit_refresh(context, m
     dialog.selected["beep"].set(True)
     dialog.refresh()
     config.save(config.Config(beep=True, allow_network=False, restore_clipboard=False))
-    errors = []
     monkeypatch.setattr("utterleaf.backup_ui.messagebox.askyesno", lambda *a, **kw: True)
-    monkeypatch.setattr("utterleaf.backup_ui.messagebox.showerror", lambda *a, **kw: errors.append(a))
     dialog.confirm_action()
     assert config.load().beep is True
     assert config.load().restore_clipboard is False
-    assert "changed since preview" in errors[0][1]
+    assert "No changes were applied." in dialog.status.get()
+    assert "Review the backup and try again." in dialog.status.get()
+    assert "changed since preview" not in dialog.status.get()
+    assert "changed since preview" in dialog.feedback.details
+    assert str(dialog.feedback.details_button.cget("state")) == "normal"
+
+
+def test_export_failure_is_inline_and_keeps_technical_details_optional(context, monkeypatch):
+    root, tmp_path = context
+    dialog = BackupDialog(root, config.load(), "name = Námé\n")
+    monkeypatch.setattr("utterleaf.backup_ui.filedialog.asksaveasfilename",
+                        lambda **_kwargs: str(tmp_path / "export.json"))
+    monkeypatch.setattr("utterleaf.backup_ui.write_backup",
+                        lambda *_args: (_ for _ in ()).throw(OSError("synthetic disk detail")))
+
+    dialog.confirm_action()
+
+    assert "Backup could not finish" in dialog.status.get()
+    assert "No backup was saved." in dialog.status.get()
+    assert "Check storage access and try again." in dialog.status.get()
+    assert "synthetic disk detail" not in dialog.status.get()
+    assert "synthetic disk detail" in dialog.feedback.details
+    assert str(dialog.feedback.details_button.cget("state")) == "normal"
 
 
 def test_dialog_actions_and_preview_fit_compact_window_and_tab_order(context):

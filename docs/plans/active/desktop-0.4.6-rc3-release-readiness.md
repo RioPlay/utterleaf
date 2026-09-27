@@ -143,12 +143,26 @@ installation is not accepted as proof for the candidate source.
   parent-process runtime evidence, not immutable candidate provenance or a
   whole-process lifecycle receipt. The exact-final hosted build and tag-bound
   archive must supply that binding.
-- Merged source revision `7938002b3900dbe44a3bf104b537e39592986ff4`
+- A rebuilt working-tree package after the companion-close fix passed three
+  15-second whole-family samples and one 60-second sample. Authenticated Quit left
+  no package process after a bounded grace, required no harness `WM_CLOSE` or
+  forced termination, and completed family shutdown in 118–217 ms after the main
+  process exited. Every sample retained the offline default with zero external
+  connections, download markers or model weights. Sustained family CPU was
+  7.4787% of this 16-logical-CPU machine because visible first-run Settings was
+  included; it is not tray-only idle or recognition-latency clearance. Receipt:
+  `.grok/performance/companion-close-fix-grace-whole-family-20260927T2145Z/receipt.json`,
+  SHA-256 `04a0e3fce1aad33b1543641282084bd26924b0400eb4d9f62be093fa1ca6b877`.
+- PR source revision `3dd958dab26aa59fc14f66f6ef4d7de9e101386f`
   passed all five hosted jobs in
-  [run 36349231740](https://github.com/RioPlay/utterleaf/actions/runs/36349231740):
-  Windows tests/package/frozen smoke, macOS tests/package, and Linux X11/Wayland
-  tests plus extracted-package startup. A later ledger-only commit does not alter
-  that source result, but its own PR checks must remain green. Public tag or
+  [run 36349620833](https://github.com/RioPlay/utterleaf/actions/runs/36349620833):
+  Windows tests/package, macOS tests/package, and Linux X11/Wayland tests plus
+  extracted-package startup. That Windows workflow still ran only frozen CLI
+  help and a non-blocking doctor check; it did **not** run the repository's full
+  frozen Windows smoke. The downloaded exact-run artifact separately passed that
+  smoke locally and its three executable hashes matched both packaged checksum
+  files. The workflow is now corrected to require the full smoke, but subsequent
+  recovery/lifecycle changes need a new exact-head hosted run. Public tag or
   prerelease creation remains explicitly unauthorized.
 
 ## Non-goals

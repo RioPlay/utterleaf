@@ -18,9 +18,9 @@ else:
         pe = struct.unpack_from("<I", binary, 0x3C)[0]
         assert struct.unpack_from("<H", binary, pe + 24 + 68)[0] == 2, f"{name} must use Windows GUI subsystem"
     print("Both app executables use the Windows GUI subsystem (no launch console)")
-profile_owner = tempfile.TemporaryDirectory(
-    prefix="utterleaf-release-smoke-", dir=root / "artifacts"
-)
+artifacts = root / "artifacts"
+artifacts.mkdir(exist_ok=True)
+profile_owner = tempfile.TemporaryDirectory(prefix="utterleaf-release-smoke-", dir=artifacts)
 profile = Path(profile_owner.name)
 env = dict(os.environ, APPDATA=str(profile))
 for args in (["--help"], ["--polish", "um we should ship it"], ["--doctor"]):
@@ -32,7 +32,7 @@ for args in (["--help"], ["--polish", "um we should ship it"], ["--doctor"]):
     elif args[0] == "--help":
         assert result.returncode == 0, result.stderr
     else:
-        (root / "artifacts" / "doctor.txt").write_text(result.stdout + result.stderr, encoding="utf-8")
+        (artifacts / "doctor.txt").write_text(result.stdout + result.stderr, encoding="utf-8")
         assert result.returncode == 0, result.stdout + result.stderr
         assert "allow_network: False" in result.stdout, result.stdout
         assert "missing (install from Settings)" in result.stdout, result.stdout

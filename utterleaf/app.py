@@ -1456,6 +1456,9 @@ class Utterleaf:
 
     def quit(self) -> None:
         self._stop.set()
+        from utterleaf.settings_instance import request_close
+        request_close()
+        request_close("files")
         with self._presentation_lock:
             # Result captions can contain dictated text. Late publishers see
             # the stop flag, and waiting here prevents an earlier publisher

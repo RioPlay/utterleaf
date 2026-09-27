@@ -61,10 +61,13 @@ def test_backup_compact_wide_compact_keeps_whole_controls_and_review(kind, scale
         dialog.preview.tag_add("sel", "1.0", "1.6")
         selection = tuple(map(str, dialog.preview.tag_ranges("sel")))
         widgets = tuple(capture_backup.descendants(dialog.root))
-        actions = [widget for widget in widgets if widget.winfo_class() == "TButton"]
+        actions = [widget for widget in dialog.confirm.master.winfo_children()
+                   if widget.winfo_class() == "TButton"]
         choices = [widget for widget in capture_backup.descendants(dialog.options_body)
                    if widget.winfo_class() in {"TCheckbutton", "TCombobox"}]
         assert len(actions) == 2
+        details = dialog.feedback.details_button
+        assert bool(details.winfo_ismapped()) is (kind == "error")
         assert len(choices) >= 11
         if kind == "export":
             vocabulary_choice = next(widget for widget in choices
@@ -75,6 +78,8 @@ def test_backup_compact_wide_compact_keeps_whole_controls_and_review(kind, scale
             resize(dialog, size, minimum_height=620 if size == (1000, 700) else None)
             for action in actions:
                 assert_bounds(action, dialog.root)
+            if kind == "error":
+                assert_bounds(details, dialog.root)
             assert dialog.options_canvas.winfo_height() >= 64
             assert dialog.preview.winfo_height() >= 64
             assert dialog.preview.winfo_width() >= 64

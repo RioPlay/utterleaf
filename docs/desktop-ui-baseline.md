@@ -348,6 +348,38 @@ The final integration refresh is **55 images** in
 and scale restoration match; **195 final-source Settings/recovery regressions
 passed without skips**. Earlier screenshot directories remain historical evidence.
 
+## OBS pairing-dialog baseline — September 27
+
+`python tests/capture_obs_pairing.py --output artifacts/screenshots/desktop-obs-pairing-final2-20260927`
+recorded **10
+synthetic images** with a completed, source-hashed manifest. The inventory covers
+unpaired and paired status, import in progress, cancellation in progress, a
+selected-file/storage error, uncertain commit, unavailable private storage with
+Retry, and verified pairing whose transfer file remains. The error and storage
+recovery states also run at the existing 450 × 460 minimum with 2× Tk text
+scaling.
+
+The production dialog and its presentation callback render every state. The
+pairing worker is held before execution, and the harness blocks pairing-store
+open/load/import/forget, preferences, file pickers and confirmation dialogs,
+network, audio, clipboard access, subprocesses and unrelated workers. Therefore
+the capture does not read or mutate the native pairing store, a transfer file or
+user preferences, and it never connects to OBS. The harness SHA-256 is
+`2d2b4c996c3959fd2588b486d654455bc550adc57d912c9cac2fd0aa8769b3bf`;
+the captured `obs_pairing_ui.py` SHA-256 is
+`420d2a5f1c69c1b0b54b4980e20ab2341b9115c42627ae97f82ad66de74555c6`.
+The dedicated guard, layout and manifest suite passed **17 tests without skips**;
+the focused pairing UI/store/capture suite passed **88 tests without skips**.
+
+Visual inspection confirms the normal 620 × 530 states keep their status,
+primary action and footer actions readable. The initial compact 2× baseline found
+Close unmapped and Forget beyond the right edge. The production footer now wraps
+its three actions in focus order; fresh after-state captures and real-Tk bounds
+checks confirm all three remain visible while the recovery content stays in the
+scrollable viewport. Native file/confirmation dialog interiors, real pairing
+import/storage behavior, OBS connectivity, keyboard and screen-reader acceptance,
+physical DPI and other desktop platforms remain unverified.
+
 ## Settings-save recovery follow-up — September 26
 
 Ten guarded before images in `artifacts/screenshots/desktop-save-before-20260926`

@@ -53,6 +53,7 @@ class FileWindow:
         self.events = queue.Queue(maxsize=8)
         self.poll_id = None
         self.activation_requests = threading.Event()
+        self.close_requests = threading.Event()
         theme.apply(root)
         root.title("Transcribe a file — Utterleaf")
         root.geometry("800x640")
@@ -239,6 +240,10 @@ class FileWindow:
     def poll(self):
         if self.closed:
             return
+        if self.close_requests.is_set():
+            self.close_requests.clear()
+            self.close()
+            return
         if self.activation_requests.is_set():
             self.activation_requests.clear()
             from utterleaf.window_activation import raise_window
@@ -343,13 +348,15 @@ def run(cfg: Config) -> int:
 
     instance = SettingsInstance("files")
     requests = threading.Event()
-    if not instance.acquire(requests.set):
+    close_requests = threading.Event()
+    if not instance.acquire(requests.set, close_requests.set):
         return 0
     try:
         enable_dpi_awareness()
         root = tk.Tk()
         window = FileWindow(root, cfg)
         window.activation_requests = requests
+        window.close_requests = close_requests
         root.mainloop()
         return 0
     finally:

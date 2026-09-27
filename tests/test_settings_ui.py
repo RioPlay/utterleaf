@@ -7,7 +7,7 @@ import pytest
 
 from utterleaf.config import Config
 from utterleaf.host import is_wayland
-from utterleaf.settings_ui import SettingsWindow
+from utterleaf.settings_ui import SettingsWindow, _service_close_request
 
 
 @pytest.fixture(scope="module")
@@ -41,6 +41,34 @@ def window(monkeypatch, tk_root):
         if app._page_reset is not None:
             root.after_cancel(app._page_reset)
         root.destroy()
+
+
+def test_companion_close_request_waits_for_inflight_save():
+    import threading
+    from types import SimpleNamespace
+
+    request = threading.Event()
+    request.set()
+    messages = []
+    calls = []
+    window = SimpleNamespace(
+        saving=True,
+        closed=False,
+        status=SimpleNamespace(set=messages.append),
+    )
+
+    def close():
+        calls.append("close")
+        window.closed = True
+
+    window.close = close
+    assert not _service_close_request(window, request)
+    assert request.is_set() and calls == []
+    assert messages == ["Finishing your save…"]
+
+    window.saving = False
+    assert _service_close_request(window, request)
+    assert not request.is_set() and calls == ["close"]
 
 
 def test_pages_preserve_edits_and_preview(window):

@@ -16,6 +16,10 @@ stable release remains v0.4.5.
 - **Local model clarity:** the fixed model catalog presents human-readable names,
   purpose, size, installation readiness, and guided downloads without treating
   raw model files as the primary interface.
+- **Language and pack choice:** Speech & privacy offers Automatic detection and
+  the complete 100-language Whisper catalog. Guided sizes distinguish shared
+  multilingual packs from English-only packs, and incompatible choices are
+  explained before download or Save.
 
 - **Keep speaking:** manually started recording has no scheduled duration cutoff.
   Audio is temporarily stored on local disk and recognized in bounded batches

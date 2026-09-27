@@ -1905,12 +1905,25 @@ def enable_dpi_awareness():
             pass
 
 
+def _service_close_request(window, requests) -> bool:
+    """Close once Tk is safe to do so; retain requests received during Save."""
+    if not requests.is_set():
+        return False
+    if window.saving:
+        window.status.set("Finishing your save…")
+        return False
+    requests.clear()
+    window.close()
+    return window.closed
+
+
 def run() -> int:
     from utterleaf.settings_instance import SettingsInstance
 
     requests = threading.Event()
+    close_requests = threading.Event()
     instance = SettingsInstance()
-    if not instance.acquire(requests.set):
+    if not instance.acquire(requests.set, close_requests.set):
         return 0
     root = None
     try:
@@ -1920,6 +1933,8 @@ def run() -> int:
 
         def poll_activation():
             if window.closed:
+                return
+            if _service_close_request(window, close_requests):
                 return
             if requests.is_set():
                 requests.clear()
