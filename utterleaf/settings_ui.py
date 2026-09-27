@@ -1072,7 +1072,7 @@ class SettingsWindow:
                       "Use page scrolling from the sidebar or a button; text fields keep their editing keys.\n"
                       "These shortcuts apply only in Settings. Your dictation shortcut is set on Dictation.")
         p = self._section(page, "A fresh start", "Restore preferences without removing your vocabulary or models.")
-        self.reset_button = ttk.Button(p, text="Restore default settings…", command=self.restore_defaults)
+        self.reset_button = ttk.Button(p, text="Restore defaults…", command=self.restore_defaults)
         self.reset_button.pack(anchor="w", pady=(10, 4))
         p = self._section(page, "Local backup", "Review and export portable preferences and vocabulary, or inspect a selected backup before applying it.")
         ttk.Button(p, text="Export backup…", command=lambda: self.show_backup(False)).pack(anchor="w", pady=4)

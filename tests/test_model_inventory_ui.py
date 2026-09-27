@@ -374,11 +374,32 @@ def test_compact_roundtrip_preserves_native_keyboard_pointer_and_full_wrapped_te
     view.pack(fill="x")
     after = ttk.Button(root, text="Close")
     after.pack()
+    windowing_system = root.tk.call("tk", "windowingsystem")
+    menu = original = None
+    native_post = []
     try:
         root.geometry("430x560+20+20")
         root.deiconify()
         root.update()
         _load(view, worker, (INCOMPLETE, INSTALLED))
+        # Aqua Tk enters Cocoa's synchronous native menu loop when a readonly
+        # combobox opens. Intercept only the final menu post so the keyboard
+        # path remains covered without blocking the headless CI session.
+        if windowing_system == "aqua":
+            popup = view.model_picker.tk.call(
+                "ttk::combobox::PopdownWindow", str(view.model_picker)
+            )
+            menu = f"{popup}.menu"
+            original = f"{menu}.__original__"
+            view.model_picker.tk.call("rename", menu, original)
+
+            def menu_command(*args):
+                if args and args[0] == "post":
+                    native_post.append(tuple(map(int, args[1:3])))
+                    return ""
+                return view.model_picker.tk.call(original, *args)
+
+            view.model_picker.tk.createcommand(menu, menu_command)
         for geometry in ("430x560", "1000x800", "430x560"):
             root.geometry(geometry)
             root.update()
@@ -396,11 +417,13 @@ def test_compact_roundtrip_preserves_native_keyboard_pointer_and_full_wrapped_te
             root.update()
             assert root.focus_get() is view.model_picker
             assert view.selected_entry == INCOMPLETE
-            # Escape cancels the native picker popup without editing the row.
+            posts_before = len(native_post)
             view.model_picker.event_generate("<Down>")
             root.update()
             view.model_picker.event_generate("<Escape>")
             root.update()
+            if windowing_system == "aqua":
+                assert len(native_post) == posts_before + 1
             assert view.model_picker.instate(["readonly"])
             # Traverse the full text using page keys, not synthetic canvas alignment.
             view.refresh_button.focus_force()
@@ -467,5 +490,8 @@ def test_compact_roundtrip_preserves_native_keyboard_pointer_and_full_wrapped_te
         assert "PRIVATE-SENTINEL" not in _primary(view)
         assert len(worker.jobs) == 1 and errors == []
     finally:
+        if menu is not None and original is not None:
+            view.model_picker.tk.deletecommand(menu)
+            view.model_picker.tk.call("rename", original, menu)
         root.destroy()
         tk_root.tk.call("tk", "scaling", baseline)

@@ -138,7 +138,7 @@ def test_auxiliary_minimum_wide_minimum_keeps_actions_and_state(kind, scale, wor
         view.root.update()
         assert view.root.focus_get() == focused
         compact_rows = None
-        for size in (MINIMUM[kind], (1100, 850), MINIMUM[kind]):
+        for size in (MINIMUM[kind], (1000, 700), MINIMUM[kind]):
             resize(view.root, size)
             assert_fixed_actions_fit(view)
             assert tuple(descendants(view.root)) == view.widgets

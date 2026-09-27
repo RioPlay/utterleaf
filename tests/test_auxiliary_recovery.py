@@ -309,7 +309,7 @@ def test_details_keyboard_focus_reveals_action_after_compact_resize(kind, scale)
         details = window.feedback.details_button
         minimum = (760, 560) if kind == "file" else (560, 500)
         state = (window.status.get(), window.feedback.details)
-        for width, height in (minimum, (1100, 850), minimum):
+        for width, height in (minimum, (1000, 700), minimum):
             window.root.geometry(f"{width}x{height}+50+40")
             window.root.update()
             assert (window.root.winfo_width(), window.root.winfo_height()) == (width, height)

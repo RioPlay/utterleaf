@@ -47,6 +47,23 @@ The managed local sandbox's unchanged OBS named-pipe fixture currently exceeds i
 eight-second connection watchdog; directory-permission shims are not acceptable
 evidence for its security-sensitive ACL tests.
 
+## CI receipts
+
+- Candidate `bf260d044bfb5c7378a36331ef62f74a39fcac11` built successfully on
+  Linux and macOS. Its first test pass exposed cross-platform assumptions in the
+  test harness, so it is not the final release revision.
+- Linux and Windows synthetic audio tests now declare their simulated default
+  input explicitly; production capture remains fail-closed when no input exists.
+- Hosted Windows and macOS runners cannot always realize the former test window
+  sizes. Layout assertions now use realizable compact dimensions and condition
+  true-wide expectations on the geometry the window manager actually provides.
+- Aqua's readonly combobox still exercises the keyboard-open path, while the
+  final native menu post is intercepted in automation to avoid Cocoa's
+  synchronous physical-menu loop.
+- The Help recovery action was shortened to `Restore defaults…` after the Linux
+  high-text-scale check found genuine clipping. A clean CI rerun is required for
+  the replacement candidate.
+
 ## Non-goals
 
 - Stable v0.4.6 publication.

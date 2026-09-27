@@ -3,12 +3,14 @@ import numpy as np
 import pytest
 from utterleaf.audio import resample_audio
 from contextlib import nullcontext
+from types import SimpleNamespace
 
 
 @pytest.fixture(autouse=True)
 def synthetic_com(monkeypatch):
     # These tests simulate devices, including Windows hosts on Linux CI.
     monkeypatch.setattr("utterleaf.audio_owner._com_scope", nullcontext)
+    monkeypatch.setattr("utterleaf.audio.sd.default", SimpleNamespace(device=[0, -1]))
 
 
 def _devices() -> list[dict]:

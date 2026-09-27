@@ -234,6 +234,8 @@ def test_loaded_status_native_keyboard_resize_and_help_copy(working_tk_display, 
         for geometry in ("760x560", "1600x900", "760x560"):
             window.root.geometry(geometry)
             window.root.update()
+            wide_realized = (window.root.winfo_width() >= 1500
+                             and window.root.winfo_height() >= 850)
             for variable, action in ((window.connection, button), (window.model_summary, window.model_manage_button)):
                 detail = next(widget for widget in descendants(window.pages["Dictation"])
                               if "textvariable" in widget.keys() and str(widget.cget("textvariable")) == str(variable))
@@ -242,7 +244,7 @@ def test_loaded_status_native_keyboard_resize_and_help_copy(working_tk_display, 
                     assert action.winfo_rooty() >= words.winfo_rooty() + words.winfo_height()
                     assert words.winfo_width() == words.master.winfo_width()
                     assert detail.winfo_width() >= words.winfo_width() - 4
-                elif geometry == "1600x900":
+                elif geometry == "1600x900" and wide_realized:
                     assert action.winfo_rootx() >= words.winfo_rootx() + words.winfo_width()
                     assert action.winfo_rooty() < words.winfo_rooty() + words.winfo_height()
             button.focus_force()
