@@ -16,6 +16,14 @@ intended field, with understandable local processing and minimal interruption.
 
 ## Now
 
+- **Windows accessibility shell:** the September 27 UI Automation audit is a
+  measured framework decision gate, not missing documentation: all 12 inspected
+  Tk surfaces exposed only a Window and unnamed panes, with no semantic controls.
+  The [active accessibility-shell plan](plans/active/desktop-windows-accessibility-shell.md)
+  starts an isolated, opt-in standard-Win32 proof while preserving the existing
+  speech/configuration architecture and Tk on macOS/Linux. It cannot become the
+  default or satisfy the release gate until complete automated UIA, Narrator,
+  NVDA, physical DPI, packaging and regression acceptance passes.
 - **Active bounded desktop stream:** the
   [desktop modernization plan](plans/active/desktop-modernization.md) starts with
   a deterministic [UI baseline](desktop-ui-baseline.md): 39 Settings captures and
