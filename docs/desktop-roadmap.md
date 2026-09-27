@@ -4,7 +4,7 @@
 
 Scope: Windows, macOS, and Linux desktop application only.
 
-Updated September 18, 2026. Priorities follow the
+Updated September 26, 2026. Priorities follow the
 [offline STT user research](offline-stt-user-research-2026-09-08.md).
 This is an ordered development plan, not a promise of release dates.
 
@@ -16,6 +16,166 @@ intended field, with understandable local processing and minimal interruption.
 
 ## Now
 
+- **Active bounded desktop stream:** the
+  [desktop modernization plan](plans/active/desktop-modernization.md) starts with
+  a deterministic [UI baseline](desktop-ui-baseline.md): 39 Settings captures and
+  eight indicator captures, with source and physical-device evidence separated.
+  The first implemented source slice adds last-checked app presence and selected
+  model-file status to Dictation, a scale-aware maximum page width, and local
+  page/help shortcuts. The focused Settings/save/configuration/theme/brand/
+  indicator/capture suite passed **103 tests**; the final wrapping and actual-key
+  event follow-up passed **12 tests**, including 1×/1.5×/2× Tk text scaling.
+  Native indicator checks passed eight scenarios through three lifecycles.
+  Independent review found no blocking issues in this bounded source slice.
+  A follow-up recovery slice adds safe device-list/model-download failure copy,
+  optional local Details, and non-overlapping microphone refresh/test feedback.
+  Input changes invalidate old check results; audio detection no longer claims
+  speech-model readiness. **133 focused tests passed, with no skips**, and all
+  **40 candidate Settings captures** completed. Native device enumeration still
+  has no timeout; physical recovery and Details-dialog accessibility remain open.
+  Independent review caught a late-cancel download race; it is fixed and covered
+  by a regression test, with no blocking findings after re-review.
+  A third slice adds authenticated, text-free last-reported app status:
+  Idle, Listening, Processing, or Needs attention. Opening Settings and explicit
+  Refresh query a snapshot; no polling or readiness claim is added. **174 focused
+  tests passed with no skips**, **43 candidate captures** completed, and the full
+  desktop suite passed **1,690 tests with 14 explicit prerequisite skips**.
+  Independent product review found no blocking issues; exact receipts and skip
+  reasons are in the active plan.
+  Keyboard page scrolling now makes the full Voice commands reference reachable
+  without a mouse. Page Up/Down and Home/End preserve native editing keys,
+  focus, and drafts; explicit scrolling survives a queued page-opening reset.
+  **101 focused Settings tests passed with no skips**, including 12 new keyboard
+  cases and compact 1×/1.5×/2× Tk text scales. All **43 captures** completed and
+  the updated Help reference was inspected. Independent review is clear.
+  Follow-up source slices keep oversized-editor insertion/validation lines in
+  view, support held-key repeats and report Tab traversal, and add consistent
+  model names/purpose with explicit cached Model details. Model rows/actions
+  stack at larger text sizes; compact sidebar copy is no longer partially clipped.
+  A consolidated run passed **1,760 tests with 14 prerequisite skips** before
+  the final sidebar correction. Final-source Settings/model/save/reset checks
+  passed **173 tests with no skips**, and **46 candidate captures** completed.
+  Independent reviews are clear. An earlier intermittent Tcl Tab-command failure
+  remains recorded despite subsequent green runs. A bounded six-sample Settings
+  comparison measured low idle CPU and nearly unchanged private memory; its exact
+  scope, source stage, startup variance, and raw receipt are in the active plan.
+  The auxiliary follow-up records **19 before-state and 19 final file/decoder/
+  review captures**, fixes clipped large-text actions with fixed wrapping footers
+  and scrollable content, and preserves native preview/picker keys. Independent
+  review is clear; **69 final-source focused tests passed without skips using
+  pytest `-s`**. Ordinary captured-output runs still intermittently fail during
+  Tcl startup before widgets exist; an initial 80-lifecycle probe did not
+  reproduce it. A later bare-Tk probe, with no Utterleaf imports or capture
+  guards, reproduced two startup failures in 20 cases under pytest FD capture;
+  all 20 passed under `--capture=sys`. The native cause remains unproven.
+  Focused UI checks now use explicit sys capture, preserving all assertions;
+  no app workaround, startup retry or global test-policy change was added.
+  The recovery/state follow-up adds reusable, explicit Details for file
+  transcription/export and decoder setup failures, preserves previews on export
+  errors, and handles destination-validation failures without bypassing overwrite
+  consent. Entire recovery messages and Details reveal together without moving
+  focus. Shared artwork says Listening; indicator errors use Speech model
+  unavailable and Needs attention. Measured Tk headline width prevents clipping.
+  **142 final-source focused tests passed without skips**, **21 final auxiliary
+  captures** completed, and **11 native indicator scenarios passed three
+  lifecycles**, including headline-fit checks. Independent review is clear.
+  The applied-model readiness follow-up now requires a successful load matching
+  applied model/device/compute/language settings, separate from unsaved choices
+  and local files. Serialized, generation-checked warmup preserves active states,
+  respects revoked download permission before native loading, and clears cached
+  result captions on Quit. Independent review is clear. The final full suite
+  passed **1,958 tests with 14 prerequisite skips**; **47 Settings captures** and
+  **11 native indicator scenarios through three lifecycles** completed.
+  Exact commands, earlier focused receipts and limitations are in the plan.
+  The next recovery slice recognizes structured unsupported audio configurations
+  without guessing from exception text or changing capture retries/fallback.
+  **275 focused app/audio/Settings/capture tests** and **29 indicator/failure
+  tests** pass without skips. **49 Settings images** and **12 native indicator
+  scenarios through three lifecycles** completed; independent review is clear.
+  Stable device identity and bounded enumeration remain separate contracts.
+  Settings search now covers 21 preferences and five destinations using static
+  labels/help terms, never private entered values. Ctrl+F/Command+F, keyboard
+  results, prerequisite guidance and focus-preserving dismissal have real-Tk
+  checks. **181 combined Settings tests passed**, followed by **37 final-source
+  search/capture tests** after a reviewed alternate-label correction, all without
+  skips. **55 final Settings captures** completed; independent review is clear.
+  Backup preview now supports both Tab directions and wraps choices/actions at
+  natural widths. Source fixes keep the vocabulary disclosure visible and prevent
+  ancestor focus events moving a checkbox during its first mouse click.
+  **41 final-source backup tests passed without skips**; eight source-hashed
+  reviewed captures retain the separate eight-image before-state. Independent
+  review is clear; backup storage, consent and staleness checks are unchanged.
+  Icons & artwork now keeps its actions visible, uses five concise stable tab
+  labels, supports page-key scrolling and gives inline export recovery with
+  explicit Details. **21 focused tests passed without skips**; nine reviewed
+  artwork captures retain the separate before-state, and **55 Settings captures**
+  refresh the integrated guide views. Independent review is clear. The compact
+  2× failure keeps a 103-pixel reference viewport and complete recovery/actions.
+  Diagnostic/GPU checks now share one guarded operation and retain the previous
+  report on failure. Report exports handle picker/write errors, preserve the
+  chosen snapshot across native-picker callbacks, and distinguish newer previews.
+  Details remains stationary during pointer activation while keyboard focus
+  reveals full recovery. **48 focused checks** and **195 final-source Settings
+  regressions** pass without skips; 23 existing hardware tests also pass. Nine
+  reviewed diagnostic captures and **55 refreshed Settings captures** completed
+  with matching source hashes. Independent review is clear; probing, saved-config
+  semantics and the existing direct report-file writer are unchanged.
+  Settings-save recovery now preserves confirmed local progress separately from
+  app notification. Partial/unknown/start failures retain drafts and explain
+  retry; optional bounded Save details keeps raw causes out of automatic alerts.
+  Stale/closed callbacks are ignored and worker-start failure unlocks controls.
+  **34 UI** and **13 harness checks** pass without skips; **38 pure presentation
+  tests** pass. Ten reviewed captures retain the separate ten-image baseline;
+  all source/helper/harness hashes match. Independent review caught and verified
+  a keyboard retry-focus correction, with no remaining bounded findings.
+  The final combined Settings/recovery integration passed **290 tests without
+  skips**. Separate settings/configuration/privacy/boundary/startup/presentation
+  checks passed **81**, with one existing Windows symlink-privilege prerequisite
+  skip; no persistence source changed.
+  **55 refreshed Settings images** completed with unchanged reviewed source
+  hashes; ordinary footers remain unchanged outside save recovery.
+  Microphone Refresh/Test and app-status checks now recover when a worker cannot
+  start. Controls unlock, drafts/selection remain, and both initial background
+  checks can fail without abandoning Settings construction. No recording,
+  enumeration or IPC runs for those failed starts. **26 new UI checks**, **11
+  harness checks** and **41 existing microphone/status/landing checks** pass
+  without skips. Six reviewed captures retain the before evidence; independent
+  source/test/image review is clear. Actual keyboard tests prove three-scale
+  reachability; manually framed captures do not claim automatic resize reveal.
+  The final Settings/search/save/dispatch regression passed **208 tests without
+  skips** on unchanged reviewed source.
+  Guided model inventory now checks the 16 known model/backend locations only
+  on explicit Refresh, with human names, file state, scoped setup-file sizes and
+  draft-only selection. Language/device mismatches explain the prerequisite;
+  they never change those preferences silently. Download start failures,
+  reentrant consent and stale/closed completion recover without changing consent
+  or the non-daemon cancellation/reaping path. **398 focused checks** passed,
+  followed by **25 strengthened integration checks**, without skips. Twenty
+  source-hashed reviewed model captures and 55 refreshed Settings images are
+  recorded in the active plan. At 2×, long groups require scrolling; actual-key
+  checks establish access, not full-group fit or physical accessibility.
+  The runtime now supplies one authenticated last-check snapshot containing
+  operational status and the matching loaded model for applied settings.
+  Custom identifiers stay private; unsaved drafts, file inventory and Save
+  outcomes cannot establish load proof. Old status clients remain compatible,
+  and malformed replies cannot trigger fallback. Compact/larger-text summary
+  actions stack below their text, with native keyboard/resize coverage.
+  The full desktop gauntlet passed **2,648 tests with 14 prerequisite skips**;
+  fixture-isolation failures and their fixes remain documented in the plan.
+  Recording feedback now has a reviewed, explicit three-field section reset;
+  **16 scoped tests**, a **192-test Settings/privacy regression**, and **56
+  source-matched Settings captures** verify persistence, cancellation, both
+  global-reset orderings, keyboard access and focus recovery. Effective input
+  routes are now revalidated between explicit takes; query-string/OS-default and
+  same-name route replacement, duplicate-name failure and named reconnect have
+  **145 focused audio lifecycle checks** plus independent review. Next: stable
+  native identity/physical device acceptance, gated model lifecycle, full-plan
+  performance and native release gates.
+  Active-take identity and safe removal/update are not inferred from a local
+  file inventory or a generic app-status response.
+  These are unreleased source results. Physical readiness, accessibility,
+  remaining auxiliary/native-dialog acceptance, device/model lifecycle, physical DPI,
+  and whole-app/tray/recognition performance remain open.
 - **Landed:** native pairing/vendor integration and desktop enrollment UI, PR #36 (`aa296c9`); [CI 35366314920](https://github.com/RioPlay/utterleaf/actions/runs/35366314920) passed all five desktop jobs.
 - **Parked while Android is prioritized:** `desktop-obs-bridge` on `feat/obs-session-arm`, draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37). Its earlier green check was against `aa296c9`; refresh onto current `main` and rerun checks before review/landing, then replay #38 onto the resulting `main`.
 - **Parked:** #38 PCM, #39 disarm, #40 controller, #41 provenance, #42 timelines. Each must be rebased, retargeted and verified in order; do not merge the old stack as-is. See [workspaces](workspaces.md).

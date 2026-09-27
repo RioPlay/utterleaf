@@ -92,6 +92,209 @@ def test_resolve_input_device(monkeypatch) -> None:
             resolve_input_device(name)
 
 
+def test_duplicate_named_input_fails_closed(monkeypatch) -> None:
+    devices = [
+        {"name": "USB Mic", "max_input_channels": 1, "hostapi": 0},
+        {"name": "USB Mic", "max_input_channels": 1, "hostapi": 1},
+    ]
+    monkeypatch.setattr("utterleaf.audio.sd.query_devices", lambda: devices)
+    with pytest.raises(SelectedMicrophoneUnavailable):
+        resolve_input_device("USB Mic")
+
+
+@pytest.mark.parametrize("replacement_name", ["Shared Mic", "Other Mic"])
+def test_default_route_change_reopens_cached_stream_even_with_same_name(monkeypatch, replacement_name):
+    from types import SimpleNamespace
+    from utterleaf import audio
+
+    monkeypatch.setattr(audio.sys, "platform", "linux")
+    default = SimpleNamespace(device=[0, -1])
+    monkeypatch.setattr(audio.sd, "default", default)
+    devices = [
+        {"name": "Shared Mic", "max_input_channels": 1, "hostapi": 0,
+         "default_samplerate": 48000},
+        {"name": replacement_name, "max_input_channels": 1, "hostapi": 0,
+         "default_samplerate": 48000},
+    ]
+    monkeypatch.setattr(audio.sd, "query_devices", lambda index=None, **kw:
+                        devices if index is None else devices[index])
+    opened = []
+
+    class Stream:
+        def __init__(self, **kwargs):
+            self.device = kwargs["device"]
+            self.stopped = False
+            self.closed = False
+            opened.append(self)
+
+        def start(self):
+            pass
+
+        def stop(self):
+            self.stopped = True
+
+        def close(self):
+            self.closed = True
+
+    monkeypatch.setattr(audio.sd, "InputStream", Stream)
+    recorder = Recorder()
+    try:
+        recorder.start()
+        first = recorder._stream
+        recorder.stop()
+        recorder.prepare()
+        assert recorder._stream is first
+        assert len(opened) == 1
+
+        default.device[0] = 1
+        recorder.start()
+        assert first.stopped and first.closed
+        assert recorder._stream is opened[1]
+        assert opened[1].device == 1
+        assert recorder.device_name == replacement_name
+        recorder.stop()
+    finally:
+        recorder.close()
+
+
+def test_query_string_default_is_normalized_before_route_comparison(monkeypatch):
+    from types import SimpleNamespace
+    from utterleaf import audio
+
+    monkeypatch.setattr(audio.sys, "platform", "linux")
+    default = SimpleNamespace(device=["route-a", -1])
+    monkeypatch.setattr(audio.sd, "default", default)
+    devices = [
+        {"name": "Shared Mic", "index": 0, "max_input_channels": 1,
+         "hostapi": 0, "default_samplerate": 48000},
+        {"name": "Shared Mic", "index": 1, "max_input_channels": 1,
+         "hostapi": 0, "default_samplerate": 48000},
+    ]
+
+    def query(device=None, **kwargs):
+        if device is None:
+            return devices
+        if device == "route-a":
+            return devices[0]
+        if device == "route-b":
+            return devices[1]
+        return devices[device]
+
+    monkeypatch.setattr(audio.sd, "query_devices", query)
+    streams = []
+
+    class Stream:
+        def __init__(self, **kwargs):
+            self.device = kwargs["device"]
+            self.closed = False
+            streams.append(self)
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+        def close(self):
+            self.closed = True
+
+    monkeypatch.setattr(audio.sd, "InputStream", Stream)
+    recorder = Recorder()
+    try:
+        recorder.prepare()
+        assert streams[0].device == 0
+        default.device[0] = "route-b"
+        recorder.prepare()
+        assert streams[0].closed
+        assert streams[1].device == 1
+    finally:
+        recorder.close()
+
+
+def test_missing_numeric_default_fails_closed_without_query_or_open(monkeypatch):
+    from types import SimpleNamespace
+    from utterleaf import audio
+
+    monkeypatch.setattr(audio.sys, "platform", "linux")
+    monkeypatch.setattr(audio.sd, "default", SimpleNamespace(device=[-1, -1]))
+    monkeypatch.setattr(audio.sd, "query_devices", lambda *a, **k: pytest.fail("No default may be queried"))
+    monkeypatch.setattr(audio.sd, "InputStream", lambda **kw: pytest.fail("No stream may open"))
+    recorder = Recorder()
+    with pytest.raises(RuntimeError, match="default input is unavailable"):
+        recorder.prepare()
+    assert recorder._stream is None
+    assert recorder._device_route is None
+
+
+def test_ambiguous_query_string_default_fails_closed(monkeypatch):
+    from types import SimpleNamespace
+    from utterleaf import audio
+
+    monkeypatch.setattr(audio.sys, "platform", "linux")
+    monkeypatch.setattr(audio.sd, "default", SimpleNamespace(device=["USB", -1]))
+    monkeypatch.setattr(audio.sd, "query_devices",
+                        lambda *a, **k: (_ for _ in ()).throw(ValueError("ambiguous default")))
+    monkeypatch.setattr(audio.sd, "InputStream", lambda **kw: pytest.fail("No stream may open"))
+    recorder = Recorder()
+    with pytest.raises(ValueError, match="ambiguous"):
+        recorder.prepare()
+    assert recorder._stream is None
+    assert recorder._device_route is None
+
+
+def test_windows_wasapi_default_route_change_reopens_same_named_stream(monkeypatch):
+    from types import SimpleNamespace
+    from utterleaf import audio
+
+    monkeypatch.setattr(audio.sys, "platform", "win32")
+    monkeypatch.setattr(audio.sd, "default", SimpleNamespace(device=[0, -1]))
+    devices = [
+        {"name": "Shared Mic", "max_input_channels": 1, "hostapi": 0,
+         "default_samplerate": 48000},
+        {"name": "Shared Mic", "max_input_channels": 1, "hostapi": 1,
+         "default_samplerate": 48000},
+        {"name": "Shared Mic", "max_input_channels": 1, "hostapi": 1,
+         "default_samplerate": 48000},
+    ]
+    hosts = [
+        {"name": "MME", "default_input_device": 0},
+        {"name": "Windows WASAPI", "default_input_device": 1},
+    ]
+    monkeypatch.setattr(audio.sd, "query_devices", lambda index=None, **kw:
+                        devices if index is None else devices[index])
+    monkeypatch.setattr(audio.sd, "query_hostapis", lambda index=None:
+                        hosts if index is None else hosts[index])
+    monkeypatch.setattr(audio.sd, "WasapiSettings", lambda **kw: object())
+    streams = []
+
+    class Stream:
+        def __init__(self, **kwargs):
+            self.device = kwargs["device"]
+            self.closed = False
+            streams.append(self)
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+        def close(self):
+            self.closed = True
+
+    monkeypatch.setattr(audio.sd, "InputStream", Stream)
+    recorder = Recorder()
+    try:
+        recorder._prepare()
+        assert streams[0].device == 1
+        hosts[1]["default_input_device"] = 2
+        recorder._prepare()
+        assert streams[0].closed
+        assert streams[1].device == 2
+    finally:
+        recorder._close()
+
+
 def test_missing_selected_microphone_never_opens_default_and_can_retry(monkeypatch):
     from utterleaf import audio
     devices = [{"name": "Laptop Mic", "max_input_channels": 1,
@@ -367,6 +570,91 @@ def test_wasapi_known_hresult_classification(monkeypatch, code, transient, hint,
     assert audio.device_unavailable(error) is transient
     assert hint in audio.microphone_error_hint(error)
     assert queried and set(queried) == {2}
+
+
+@pytest.mark.parametrize("code", [-9998, -9997, -9994, -9993])
+@pytest.mark.parametrize("platform", ["win32", "darwin", "linux"])
+def test_unsupported_audio_configuration_has_fixed_private_recovery(monkeypatch, code, platform):
+    from utterleaf import audio
+    monkeypatch.setattr(audio.sys, "platform", platform)
+    monkeypatch.setattr(audio.sd, "query_hostapis", lambda *a: pytest.fail("Core errors need no host query"))
+    error = audio.sd.PortAudioError("Private USB device at C:/private/device.log", code)
+    assert audio.microphone_error_hint(error) == (
+        "This microphone cannot use the requested audio format. "
+        "Choose another input in Settings → Dictation, then try again."
+    )
+    assert not audio.device_unavailable(error)
+
+
+@pytest.mark.parametrize("args", [
+    (), ("Invalid sample rate -9997: private device",),
+    ("private device", True), ("private device", False),
+    ("private device", -9997.0), ("private device", "-9997"),
+    ("private device", None), ("private device", [-9997]),
+    ("private device", {"code": -9997}),
+    ("private device", -9997, None),
+    ("private device", -9997, (0, 0x88890008, "private host")),
+    (None, -9997), ("private device", 9997),
+    ("private device", -9996), ("private device", -9995),
+    ("Invalid sample format: private device", -9999),
+])
+def test_unknown_or_malformed_audio_configuration_keeps_generic_hint(monkeypatch, args):
+    from utterleaf import audio
+    monkeypatch.setattr(audio.sys, "platform", "win32")
+    monkeypatch.setattr(audio.sd, "query_hostapis", lambda *a: pytest.fail("Malformed errors need no host query"))
+    assert audio.microphone_error_hint(audio.sd.PortAudioError(*args)) == (
+        "Could not open the microphone. Check microphone permission and your input "
+        "in Settings → Dictation, then try again."
+    )
+
+
+@pytest.mark.parametrize("code", [-9998, -9997, -9994, -9993])
+def test_configuration_code_on_unrelated_exception_keeps_generic_hint(code):
+    from utterleaf import audio
+    assert audio.microphone_error_hint(RuntimeError("Invalid sample format: private device", code)) == (
+        "Could not open the microphone. Check microphone permission and your input "
+        "in Settings → Dictation, then try again."
+    )
+
+
+@pytest.mark.parametrize("code", [-9998, -9997, -9994, -9993])
+@pytest.mark.parametrize("failure_stage", ["open", "start"])
+def test_unsupported_audio_configuration_never_retries_or_falls_back(monkeypatch, code, failure_stage):
+    from utterleaf import audio
+    monkeypatch.setattr(audio.sys, "platform", "win32")
+    devices = [{**device, "default_samplerate": 48000} for device in _devices()]
+    monkeypatch.setattr(audio.sd, "query_devices", lambda index=None, **kw:
+                        devices if index is None else devices[index])
+    monkeypatch.setattr(audio, "shared_input_device", lambda chosen, info, preferred: (chosen, info))
+    monkeypatch.setattr(audio.sd, "query_hostapis", lambda *a: pytest.fail("Core errors need no host query"))
+    monkeypatch.setattr(audio.time, "sleep", lambda *a: pytest.fail("Must not retry"))
+    failure = audio.sd.PortAudioError("private device details", code)
+    opened, events = [], []
+    class Stream:
+        def __init__(self, **kwargs):
+            opened.append(kwargs["device"])
+            events.append("open")
+            if failure_stage == "open":
+                raise failure
+        def start(self):
+            events.append("start")
+            raise failure
+        def close(self):
+            events.append("close")
+    monkeypatch.setattr(audio.sd, "InputStream", Stream)
+    recorder = Recorder("Headset Mic")
+    try:
+        with pytest.raises(audio.sd.PortAudioError) as caught:
+            recorder.start()
+        assert caught.value is failure
+        assert opened == [1]
+        assert events == (["open"] if failure_stage == "open" else ["open", "start", "close"])
+        assert recorder.preferred_device == "Headset Mic"
+        assert not recorder.recording
+        assert recorder._stream is None
+        assert recorder._owner is None
+    finally:
+        recorder.close()
 
 
 @pytest.mark.parametrize("host_error", [

@@ -84,15 +84,13 @@ def test_load_model_reuses_cache_without_pick(monkeypatch) -> None:
     from utterleaf import transcribe as t
 
     fake = object()
-    t._engine = fake
-    t._engine_key = ("small.en", "gpu", "ctranslate2")
+    cfg = Config(model="small", language="en")
+    monkeypatch.setattr(t, "_engine", fake)
+    monkeypatch.setattr(t, "_engine_key", ("small.en", "gpu", "ctranslate2"))
+    monkeypatch.setattr(t, "_engine_config_key", t._config_key(cfg))
 
     def boom(_cfg):
         raise AssertionError("pick should not run when the engine is cached")
 
     monkeypatch.setattr(t, "pick", boom)
-    try:
-        assert t.load_model(Config(model="small", language="en")) is fake
-    finally:
-        t._engine = None
-        t._engine_key = None
+    assert t.load_model(cfg) is fake

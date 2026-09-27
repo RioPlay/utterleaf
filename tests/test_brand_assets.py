@@ -1,10 +1,23 @@
 from io import BytesIO
+import json
 from zipfile import ZipFile
 
 import pytest
 from PIL import Image
 
 from utterleaf import brand, brand_export
+
+
+def test_state_labels_keep_runtime_keys_and_capture_meaning():
+    assert {state: label for state, (label, _) in brand.STATE_LABELS.items()} == {
+        "idle": "Ready",
+        "recording": "Listening",
+        "busy": "Processing",
+        "error": "Needs attention",
+    }
+    assert "No audio is being captured" in brand.STATE_LABELS["idle"][1]
+    assert "microphone is capturing" in brand.STATE_LABELS["recording"][1]
+    assert "loading the speech model, or transcribing" in brand.STATE_LABELS["busy"][1]
 
 
 def test_mascots_have_real_alpha_and_keep_eye_highlights():
@@ -36,6 +49,9 @@ def test_export_pack_contains_complete_rgba_catalog(tmp_path):
     with ZipFile(target) as archive:
         names = set(archive.namelist())
         assert {"wordmark.svg", "wordmark.png", "wordmark-inverse.png", "utterleaf.ico", "utterleaf.icns", "usage.json"} <= names
+        usage = json.loads(archive.read("usage.json"))
+        assert usage["states"]["recording"][0] == "Listening"
+        assert "tray-recording.png" in names
         for expression in brand.MASCOT_LABELS:
             assert f"utterling-{expression}.png" in names
         for state in brand.STATE_COLORS:

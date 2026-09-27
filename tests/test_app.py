@@ -521,6 +521,38 @@ def test_failed_microphone_start_resets_toggle_for_next_attempt(monkeypatch):
     assert app._limit_timer is None
 
 
+@pytest.mark.parametrize("code", [-9998, -9997, -9994, -9993])
+def test_unsupported_microphone_format_reports_safe_recovery_without_retry(monkeypatch, code):
+    from sounddevice import PortAudioError
+
+    app = _app(monkeypatch, microphone="Selected USB microphone", mode="toggle")
+    attempts, closed, resets = [], [], []
+    app.hotkey = SimpleNamespace(reset_active=lambda: resets.append(True))
+    monkeypatch.setattr("utterleaf.app.foreground_id", lambda: 1)
+    monkeypatch.setattr("utterleaf.app.foreground_app", lambda: "editor")
+    monkeypatch.setattr(app, "_hide_after", lambda seconds: None)
+    monkeypatch.setattr(app.recorder, "close", lambda: closed.append(True))
+
+    def fail(**kwargs):
+        attempts.append(kwargs)
+        raise PortAudioError("private driver format detail", code)
+
+    monkeypatch.setattr(app.recorder, "start", fail)
+    app.start_recording()
+    assert app.state == "idle"
+    assert len(attempts) == 1
+    assert closed == resets == [True]
+    assert app.cfg.microphone == "Selected USB microphone"
+    assert app._display_badge == "no_mic"
+    assert app._display_caption == (
+        "This microphone cannot use the requested audio format. "
+        "Choose another input in Settings → Dictation, then try again."
+    )
+    assert app._handle_ipc("status") == "status-v1:attention"
+    assert app._limit_timer is None
+    assert not app._job_running
+
+
 @pytest.mark.parametrize(
     ("wayland", "expected"),
     (
@@ -763,7 +795,9 @@ def test_engine_error_does_not_auto_hide(monkeypatch) -> None:
 
 def test_idle_keeps_engine_failed_pill(monkeypatch) -> None:
     app = _app(monkeypatch)
-    app._status = ENGINE_FAILED
+    app._model_phase = "failed"
+    app._status = "listening"  # Presentation no longer owns model health.
+    monkeypatch.setattr("utterleaf.app.engine_ready", lambda cfg: False)
     badges: list[str] = []
     monkeypatch.setattr(
         app, "_set_icon", lambda color, status=None, badge=None, caption="": badges.append(badge or "")

@@ -11,6 +11,8 @@ from utterleaf import theme
 from utterleaf.config import Config
 from utterleaf.file_transcription import transcribe_file
 from utterleaf.transcript import TranscriptionCancelled, export_transcript
+from utterleaf.ui_layout import ActionRow, ScrollableContent, readonly_preview, wrapped_label
+from utterleaf.ui_feedback import RecoveryFeedback
 
 
 def _work(path, cfg, audio_track, cancel, events):
@@ -57,22 +59,25 @@ class FileWindow:
         root.minsize(760, 560)
         root.protocol("WM_DELETE_WINDOW", self.close)
         root.bind("<Escape>", lambda _event: self.cancel() if self.busy else self.close())
-        page = ttk.Frame(root, padding=24)
-        page.pack(fill="both", expand=True)
+        root.columnconfigure(0, weight=1)
+        root.rowconfigure(0, weight=1)
+        self.content = ScrollableContent(root, padding=24)
+        self.content.grid(row=0, column=0, sticky="nsew")
+        page = self.content.body
         page.columnconfigure(0, weight=1)
         page.rowconfigure(5, weight=1)
         heading = ttk.Frame(page)
         heading.grid(row=0, column=0, rowspan=3, sticky="ew")
         heading.columnconfigure(0, weight=1)
-        ttk.Label(heading, text="Transcribe a file", style="Section.TLabel").grid(row=0, column=0, sticky="w")
-        ttk.Label(heading, text="Choose local audio, review the words, then export when ready.", wraplength=560).grid(row=1, column=0, sticky="w", pady=(8, 4))
-        self.file_guidance = ttk.Label(
+        wrapped_label(heading, text="Transcribe a file", style="Section.TLabel").grid(row=0, column=0, sticky="ew")
+        wrapped_label(heading, text="Choose local audio, review the words, then export when ready.").grid(row=1, column=0, sticky="ew", pady=(8, 4))
+        self.file_guidance = wrapped_label(
             heading,
             text="No duration limit · Processing stays on this computer · Installed models only\n"
                  "MP3, M4A and video: choose More formats to set up local decoding.",
-            style="Hint.TLabel", wraplength=560,
+            style="Hint.TLabel",
         )
-        self.file_guidance.grid(row=2, column=0, sticky="w")
+        self.file_guidance.grid(row=2, column=0, sticky="ew")
         from PIL import ImageTk
         from utterleaf.brand import mascot_image
         self.mascot = ImageTk.PhotoImage(mascot_image("typing", size=80), master=root)
@@ -80,14 +85,14 @@ class FileWindow:
         select = ttk.Frame(page)
         select.grid(row=3, column=0, sticky="ew", pady=16)
         select.columnconfigure(1, weight=1)
-        self.choose_button = ttk.Button(select, text="Choose file…", command=self.choose)
-        self.choose_button.grid(row=0, column=0, sticky="w")
+        file_actions = ActionRow(select)
+        file_actions.grid(row=0, column=0, columnspan=2, sticky="ew")
+        self.choose_button = file_actions.add(ttk.Button(file_actions, text="Choose file…", command=self.choose))
         self.filename = tk.StringVar(value="No file selected")
-        ttk.Label(select, textvariable=self.filename, wraplength=440).grid(row=0, column=1, sticky="w", padx=12)
-        self.start_button = ttk.Button(select, text="Transcribe", style="Primary.TButton", command=self.start, state="disabled")
-        self.start_button.grid(row=0, column=2)
+        wrapped_label(select, textvariable=self.filename).grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        self.start_button = file_actions.add(ttk.Button(file_actions, text="Transcribe", style="Primary.TButton", command=self.start, state="disabled"))
         self.audio_track_label = ttk.Label(select, text="Audio track", underline=0)
-        self.audio_track_label.grid(row=1, column=0, sticky="w", pady=(10, 0))
+        self.audio_track_label.grid(row=2, column=0, sticky="w", pady=(10, 0))
         self.audio_track = tk.StringVar(value="1")
         track_style = ttk.Style(root)
         track_style.configure("File.TSpinbox", fieldbackground=theme.SURFACE_LOW,
@@ -101,29 +106,28 @@ class FileWindow:
         self.audio_track_input = ttk.Spinbox(select, from_=1, to=256, increment=1,
                                               textvariable=self.audio_track, width=6,
                                               style="File.TSpinbox")
-        self.audio_track_input.grid(row=1, column=1, sticky="w", padx=12, pady=(10, 0))
+        self.audio_track_input.grid(row=2, column=1, sticky="w", padx=12, pady=(10, 0))
         root.bind("<Alt-a>", lambda _event: self.audio_track_input.focus_set(), add="+")
-        self.audio_track_hint = ttk.Label(
+        self.audio_track_hint = wrapped_label(
             select,
             text="A track is a separate audio stream, not a stereo channel. "
                  "Utterleaf does not identify speakers.",
-            style="Hint.TLabel", wraplength=440,
+            style="Hint.TLabel",
         )
-        self.audio_track_hint.grid(row=2, column=1, columnspan=2, sticky="w",
-                                   padx=12, pady=(4, 0))
+        self.audio_track_hint.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(4, 0))
         preview_heading = ttk.Frame(page)
         preview_heading.grid(row=4, column=0, sticky="ew", pady=(0, 8))
         preview_heading.columnconfigure(0, weight=1)
-        ttk.Label(preview_heading, text="Transcript preview", style="Section.TLabel").grid(row=0, column=0, sticky="w")
+        wrapped_label(preview_heading, text="Transcript preview", style="Section.TLabel").grid(row=0, column=0, sticky="ew")
+        preview_actions = ActionRow(preview_heading)
+        preview_actions.grid(row=1, column=0, sticky="ew", pady=(8, 0))
         from utterleaf.settings import launch_settings
-        self.model_button = ttk.Button(preview_heading, text="Model settings…", command=launch_settings)
-        self.model_button.grid(row=0, column=1, padx=(0, 8))
-        self.decoder_button = ttk.Button(preview_heading, text="More formats…", command=self.decoder_setup)
-        self.decoder_button.grid(row=0, column=2)
+        self.model_button = preview_actions.add(ttk.Button(preview_actions, text="Model settings…", command=launch_settings))
+        self.decoder_button = preview_actions.add(ttk.Button(preview_actions, text="More formats…", command=self.decoder_setup))
         self.decoder_dialog = None
         preview_frame = ttk.Frame(page)
         preview_frame.grid(row=5, column=0, sticky="nsew")
-        self.preview = tk.Text(preview_frame, wrap="word", height=10, state="disabled",
+        self.preview = tk.Text(preview_frame, wrap="word", width=1, height=8, state="disabled",
                                bg=theme.SURFACE_LOW, fg=theme.ON_SURFACE,
                                selectbackground=theme.PRIMARY_CONTAINER, selectforeground=theme.ON_SURFACE,
                                highlightbackground=theme.OUTLINE_VARIANT, highlightcolor=theme.PRIMARY,
@@ -132,23 +136,26 @@ class FileWindow:
         scrollbar.pack(side="right", fill="y")
         self.preview.configure(yscrollcommand=scrollbar.set)
         self.preview.pack(fill="both", expand=True)
+        readonly_preview(self.preview)
         self.progress = ttk.Progressbar(page, maximum=1.0)
         self.progress.grid(row=6, column=0, sticky="ew", pady=(14, 8))
         self.status = tk.StringVar(value="Nothing is saved until you export. Closing discards this preview.")
-        ttk.Label(page, textvariable=self.status, wraplength=700).grid(row=7, column=0, sticky="ew")
-        actions = ttk.Frame(page)
-        actions.grid(row=8, column=0, sticky="ew", pady=(16, 0))
-        actions.columnconfigure(2, weight=1)
+        self.feedback = RecoveryFeedback(page, self.status)
+        self.feedback.grid(row=7, column=0, sticky="ew")
+        actions = self.actions = ActionRow(root)
+        actions.grid(row=1, column=0, sticky="ew", padx=24, pady=(12, 20))
         self.cancel_button = ttk.Button(actions, text="Cancel", command=self.cancel, state="disabled")
-        self.cancel_button.grid(row=0, column=0)
+        actions.add(self.cancel_button)
         self.discard_button = ttk.Button(actions, text="Discard", command=self.discard, state="disabled")
-        self.discard_button.grid(row=0, column=1, padx=8)
+        actions.add(self.discard_button)
         self.format = tk.StringVar(value="TXT")
-        ttk.Label(actions, text="Format").grid(row=0, column=3, padx=8)
-        ttk.Combobox(actions, textvariable=self.format, values=("TXT", "SRT", "VTT"), state="readonly", width=5).grid(row=0, column=4)
+        format_group = ttk.Frame(actions)
+        ttk.Label(format_group, text="Format").pack(side="left", padx=(0, 8))
+        ttk.Combobox(format_group, textvariable=self.format, values=("TXT", "SRT", "VTT"), state="readonly", width=5).pack(side="left")
+        actions.add(format_group)
         self.export_button = ttk.Button(actions, text="Export…", command=self.export, state="disabled")
-        self.export_button.grid(row=0, column=5, padx=8)
-        ttk.Button(actions, text="Close", command=self.close).grid(row=0, column=6)
+        actions.add(self.export_button)
+        actions.add(ttk.Button(actions, text="Close", command=self.close))
         self.poll_id = root.after(100, self.poll)
         self.choose_button.focus_set()
 
@@ -156,6 +163,7 @@ class FileWindow:
         self.preview.configure(state="normal")
         self.preview.delete("1.0", "end")
         self.preview.insert("1.0", text)
+        self.preview.mark_set("insert", "1.0")
         self.preview.configure(state="disabled")
 
     def _controls(self):
@@ -258,7 +266,13 @@ class FileWindow:
                 if self.cancel_event.is_set() or kind == "cancelled":
                     self.status.set("Cancelled. No transcript saved.")
                 elif kind == "error":
-                    self.status.set(value)
+                    self.feedback.error(
+                        "Couldn't transcribe this file",
+                        "No transcript is available to export.",
+                        "Check the audio track, Model settings or More formats, then choose Transcribe to retry.",
+                        value,
+                    )
+                    self.content.reveal(self.feedback)
                 elif kind == "result":
                     self.result = value
                     self._preview(value.text)
@@ -276,9 +290,13 @@ class FileWindow:
         if not selected:
             return
         path = Path(selected)
-        if self.path is not None and (path.resolve() == self.path.resolve() or
-                                     (path.exists() and self.path.exists() and path.samefile(self.path))):
-            self.status.set("Choose a different destination to preserve the original media file.")
+        try:
+            if self.path is not None and (path.resolve() == self.path.resolve() or
+                                         (path.exists() and self.path.exists() and path.samefile(self.path))):
+                self.status.set("Choose a different destination to preserve the original media file.")
+                return
+        except Exception as exc:
+            self._export_error(exc)
             return
         try:
             export_transcript(self.result, path, format=format)
@@ -288,12 +306,21 @@ class FileWindow:
             try:
                 export_transcript(self.result, path, format=format, overwrite=True)
             except Exception as exc:
-                self.status.set(f"Could not export: {exc}")
+                self._export_error(exc)
                 return
         except Exception as exc:
-            self.status.set(f"Could not export: {exc}")
+            self._export_error(exc)
             return
         self.status.set(f"Exported {format.upper()} to {path.name}.")
+
+    def _export_error(self, error):
+        self.feedback.error(
+            "Couldn't export transcript",
+            "Your preview is still available.",
+            "Check the destination file, then choose Export and select a writable location to retry.",
+            error,
+        )
+        self.content.reveal(self.feedback)
 
     def close(self):
         if self.closed:

@@ -20,6 +20,7 @@ from pystray import Icon, Menu, MenuItem
 
 from utterleaf.beep import beep
 from utterleaf import edit_target, ipc
+from utterleaf.app_status import presentation_reply, snapshot_reply
 from utterleaf.audio import TAIL_SECONDS, Recorder, list_devices, microphone_error_hint
 from utterleaf.capture_store import CaptureStore, CaptureStorageError
 from utterleaf.audio_batching import audio_windows
@@ -38,6 +39,8 @@ from utterleaf.settings import launch_settings
 from utterleaf.theme import leaf_image
 from utterleaf.startup import enabled as startup_enabled
 from utterleaf.transcribe import (
+    engine_ready,
+    loaded_model_token,
     clear_final,
     load_model,
     request_final,
@@ -218,11 +221,23 @@ class Utterleaf:
         self._recording_draft = ""
         self._lock = threading.Lock()
         self._capture_lock = threading.RLock()
+        self._reload_lock = threading.Lock()
+        self._presentation_lock = threading.RLock()
+        self._model_load_lock = threading.Lock()
+        self._model_generation = 0
+        self._model_phase = "loading"
+        self._model_caption = ""
         self._stop = threading.Event()
         self.icon: Icon | None = None
         self.hotkey: HotkeyWatcher | None = None
         self._server: socket.socket | None = None
         self._status = LOADING
+        # A single immutable, allowlisted token; never cache caption/transcript
+        # text here or acquire the capture lock to answer a status request.
+        self._reported_status = presentation_reply("busy")
+        self._display_color = "busy"
+        self._display_badge = "loading"
+        self._display_caption = ""
         self._indicator_generation = 0
         self.indicator = Indicator(enabled=cfg.indicator and cfg.tray)
         if cfg.tray:
@@ -230,13 +245,87 @@ class Utterleaf:
             for color in ("idle", "recording", "busy", "error"):
                 leaf_image(color)
 
-    def _needs_download(self, chosen) -> bool:
+    def _needs_download(self, chosen, cfg: Config | None = None) -> bool:
         """True when the picked backend still has to fetch its weights."""
-        name = resolve_name(self.cfg)
+        name = resolve_name(cfg if cfg is not None else self.cfg)
         if chosen.backend == "openvino":
             repo = ov_model_id(name)
             return not (repo and ov_ready(ov_dir(repo)))
         return not ct2_ready(ct2_dir(name))
+
+    def _start_model_warmup(self, *, reset: bool = False) -> None:
+        with self._presentation_lock:
+            if self._stop.is_set():
+                return
+            cfg = replace(self.cfg)
+            self._model_generation += 1
+            generation = self._model_generation
+            self._model_phase = "loading"
+            self._model_caption = ""
+            self._refresh_model_presentation()
+        threading.Thread(target=self._warm_model, args=(generation, cfg, reset),
+                         name="utterleaf-model-warmup", daemon=True).start()
+
+    def _warm_model(self, generation: int, cfg: Config, reset: bool) -> None:
+        # An old queued warmup must not replace a newer cached engine. Native
+        # loading/reset waits hold only this lane, never capture or UI locks.
+        with self._model_load_lock:
+            with self._presentation_lock:
+                if self._stop.is_set() or generation != self._model_generation:
+                    return
+            try:
+                if reset:
+                    reset_engine()
+                chosen = pick(cfg)
+                needs_download = cfg.allow_network and self._needs_download(chosen, cfg)
+                with self._presentation_lock:
+                    if self._stop.is_set() or generation != self._model_generation:
+                        return
+                    # Freeze model preferences, not revoked network consent.
+                    # This may restrict a queued request, never grant it more.
+                    if not self.cfg.allow_network:
+                        cfg = replace(cfg, allow_network=False)
+                    if needs_download and cfg.allow_network:
+                        self._model_caption = DOWNLOADING
+                        self._refresh_model_presentation()
+                load_model(cfg, chosen)
+                phase = "ready"
+                log.info("Speech model loaded")
+            except Exception:
+                phase = "failed"
+                log.exception("Speech model failed to load")
+            with self._presentation_lock:
+                if self._stop.is_set() or generation != self._model_generation:
+                    return
+                self._model_phase = phase
+                self._model_caption = ""
+                self._refresh_model_presentation()
+
+    def _refresh_model_presentation(self) -> None:
+        """Model progress is durable but lower priority than current activity."""
+        with self._presentation_lock:
+            if (self._stop.is_set() or self.state != "idle" or self._job_running
+                    or self._tail_timer is not None):
+                return
+            if self._display_color == "error" and self._display_badge != "engine":
+                return
+            if self._display_badge in LINGER:
+                return
+            self._idle_presentation()
+
+    def _idle_presentation(self) -> None:
+        """Restore applied-model state without changing capture ownership."""
+        with self._presentation_lock:
+            if self._model_phase == "failed" and engine_ready(self.cfg):
+                # An explicit transcription may have successfully retried it.
+                self._model_phase = "ready"
+            if self._model_phase == "loading":
+                self._set_icon("busy", LOADING, badge="loading", caption=self._model_caption)
+            elif self._model_phase == "failed":
+                self._set_icon("idle", ENGINE_FAILED, badge="engine",
+                               caption="Open Settings → Speech & privacy to check the model, or Help for diagnostics.")
+            else:
+                self._set_icon("idle", status_hint(self.cfg), badge="hide")
 
     def start_recording(self) -> None:
         with self._capture_lock:
@@ -700,7 +789,7 @@ class Utterleaf:
                     discarded.close()
                 self.recorder.close()
                 log.info("Cancelled")
-                self._set_icon("idle", badge="hide")
+                self._idle_presentation()
                 beep("err", self.cfg.beep)
                 return
             if self.state == "busy":
@@ -1284,8 +1373,17 @@ class Utterleaf:
         generation = self._indicator_generation
 
         def hide() -> None:
-            if self.state == "idle" and generation == self._indicator_generation:
-                self.indicator.set("hide")
+            with self._presentation_lock:
+                if (self._stop.is_set() or self.state != "idle"
+                        or generation != self._indicator_generation):
+                    return
+                if self._display_badge in LINGER and self._display_badge not in {
+                    "no_mic", "capture_error", "transcribe", "no_paste",
+                }:
+                    self._idle_presentation()
+                else:
+                    # Hide the temporary overlay, not an unresolved tray error.
+                    self.indicator.set("hide")
 
         timer = threading.Timer(seconds, hide)
         timer.daemon = True
@@ -1314,7 +1412,13 @@ class Utterleaf:
                 "capture_error": "recording interrupted — check the capture error and recovery",
                 "uncertain": "delivery unconfirmed — check the field before retrying",
             }.get(badge, status_hint(self.cfg))
-            self._set_icon("idle", status, badge="no_paste" if badge == "uncertain" else badge, caption=caption)
+            color = "idle"
+            if badge not in {"no_mic", "capture_error", "transcribe", "no_paste", "uncertain"}:
+                if self._model_phase == "loading":
+                    color, status = "busy", LOADING
+                elif self._model_phase == "failed":
+                    color, status = "error", ENGINE_FAILED
+            self._set_icon(color, status, badge="no_paste" if badge == "uncertain" else badge, caption=caption)
             self._hide_after(linger)
             return
         self._idle()
@@ -1322,13 +1426,7 @@ class Utterleaf:
     def _idle(self) -> None:
         with self._lock:
             self.state = "idle"
-        if self._status == LOADING:
-            self._set_icon("idle", LOADING, badge="loading")
-            return
-        if self._status == ENGINE_FAILED:
-            self._set_icon("idle", ENGINE_FAILED, badge="engine")
-            return
-        self._set_icon("idle", status_hint(self.cfg), badge="hide")
+        self._idle_presentation()
 
     def _set_icon(
         self,
@@ -1337,21 +1435,33 @@ class Utterleaf:
         badge: str | None = None,
         caption: str = "",
     ) -> None:
-        if status is not None:
-            self._status = status
-        if color == "idle" and self._status == LOADING:
-            color = "busy"
-        if badge in {"no_mic", "capture_error", "engine", "transcribe", "no_paste"}:
-            color = "error"
-        if self.icon is not None:
-            self.icon.icon = leaf_image(color)
-            self.icon.title = tray_title(self._status)
-        if badge is not None:
-            self._indicator_generation += 1
-            self.indicator.set(badge, caption)
+        with self._presentation_lock:
+            if self._stop.is_set():
+                return
+            if status is not None:
+                self._status = status
+            if color == "idle" and self._status == LOADING:
+                color = "busy"
+            if badge in {"no_mic", "capture_error", "engine", "transcribe", "no_paste"}:
+                color = "error"
+            self._display_color = color
+            self._reported_status = presentation_reply(color)
+            if self.icon is not None:
+                self.icon.icon = leaf_image(color)
+                self.icon.title = tray_title(self._status)
+            if badge is not None:
+                self._display_badge, self._display_caption = badge, caption
+                self._indicator_generation += 1
+                self.indicator.set(badge, caption)
 
     def quit(self) -> None:
         self._stop.set()
+        with self._presentation_lock:
+            # Result captions can contain dictated text. Late publishers see
+            # the stop flag, and waiting here prevents an earlier publisher
+            # from restoring its cached copy after shutdown clears it.
+            self._display_caption = ""
+            self._model_caption = ""
         self._cancel_speech_endpoint()
         with self._review_lock:
             self._close_review()
@@ -1382,6 +1492,35 @@ class Utterleaf:
         if self.icon is not None:
             self.icon.stop()
 
+    def _status_snapshot(self) -> str:
+        """One nonblocking read of applied preferences and matching load proof.
+
+        This is not an in-flight take's engine identity. Read neither captions
+        nor native model objects, and never wait for the presentation/load lanes.
+        Detected changes during sampling invalidate the entire combined claim.
+        """
+        if self._stop.is_set():
+            return snapshot_reply("unknown", None)
+        applied = self.cfg
+        cfg = replace(applied)
+        generation = self._model_generation
+        phase = self._model_phase
+        reported = self._reported_status
+        token = loaded_model_token(cfg) if phase != "loading" else None
+        if (self._stop.is_set() or self.cfg is not applied or self.cfg != cfg
+                or self._model_generation != generation or self._model_phase != phase
+                or self._reported_status != reported):
+            return snapshot_reply("unknown", None)
+        state = reported.removeprefix("status-v1:") if reported.startswith("status-v1:") else "unknown"
+        if state == "idle":
+            if phase == "loading":
+                state = "processing"
+            elif phase == "failed":
+                state = "attention"
+            elif phase == "ready" and token is not None:
+                state = "ready"
+        return snapshot_reply(state, token)
+
     def _handle_ipc(self, command: str) -> str:
         command = command.strip().lower()
         # Recording commands can block for seconds inside PortAudio probing
@@ -1407,6 +1546,19 @@ class Utterleaf:
             return "ok"
         if command == "ping":
             return "ok"
+        if command == "status-detail":
+            return self._status_snapshot()
+        if command == "status":
+            reply = getattr(self, "_reported_status", "status-v1:unknown")
+            if reply == "status-v1:idle":
+                phase = getattr(self, "_model_phase", None)
+                if phase == "loading":
+                    return "status-v1:processing"
+                if phase == "failed":
+                    return "status-v1:attention"
+                if phase == "ready" and engine_ready(self.cfg):
+                    return "status-v1:ready"
+            return reply
         if command == "copy-last":
             return "ok" if self.copy_last_dictation() else "error"
         if command == "forget-last":
@@ -1418,6 +1570,11 @@ class Utterleaf:
         return "unknown"
 
     def reload_config(self) -> None:
+        with self._reload_lock:
+            if not self._stop.is_set():
+                self._reload_config()
+
+    def _reload_config(self) -> None:
         from utterleaf.config import load
 
         old = self.cfg
@@ -1458,31 +1615,9 @@ class Utterleaf:
         )
         self._sync_indicator()
         if model_changed:
-            reset_engine()
-            self._set_icon("busy", LOADING, badge="loading")
-
-            def warmup() -> None:
-                try:
-                    chosen = pick(self.cfg)
-                    if self._needs_download(chosen):
-                        self.indicator.set("loading", DOWNLOADING)
-                    load_model(self.cfg, chosen)
-                    log.info("Model ready after settings change")
-                    self._set_icon("idle", status_hint(self.cfg), badge="hide")
-                except Exception:
-                    log.exception("Model failed to reload")
-                    self._show_error(
-                        "engine",
-                        ENGINE_FAILED,
-                        "Open Settings → Help & diagnostics to check your device and model.",
-                        seconds=None,
-                    )
-
-            threading.Thread(target=warmup, daemon=True).start()
-        elif self._status == ENGINE_FAILED:
-            self._set_icon("idle", ENGINE_FAILED, badge="engine")
+            self._start_model_warmup(reset=True)
         else:
-            self._set_icon("idle", status_hint(self.cfg), badge="hide")
+            self._refresh_model_presentation()
         if self.icon is not None:
             self.icon.update_menu()
 
@@ -1495,6 +1630,9 @@ class Utterleaf:
         self.indicator.close()
         self.indicator = Indicator(enabled=want)
         self.indicator.start()
+        with self._presentation_lock:
+            if not self._stop.is_set():
+                self.indicator.set(self._display_badge, self._display_caption)
 
     def toggle_indicator(self) -> None:
         """Change only the overlay preference; preserve other saved settings."""
@@ -1554,27 +1692,7 @@ class Utterleaf:
         threading.Thread(target=self._ipc_loop, daemon=True).start()
         self._ensure_endpoint_detector()
 
-        def warmup() -> None:
-            try:
-                self.indicator.set("loading")
-                chosen = pick(self.cfg)
-                log.info("Device: %s via %s (%s)", chosen.kind, chosen.backend, chosen.name)
-                if self._needs_download(chosen):
-                    self.indicator.set("loading", DOWNLOADING)
-                load_model(self.cfg, chosen)
-                log.info("Model ready")
-                if self.state == "idle":
-                    self._set_icon("idle", status_hint(self.cfg), badge="hide")
-            except Exception:
-                log.exception("Model failed to load")
-                self._show_error(
-                    "engine",
-                    ENGINE_FAILED,
-                    "Open Settings → Help & diagnostics to check your device and model.",
-                    seconds=None,
-                )
-
-        threading.Thread(target=warmup, daemon=True).start()
+        self._start_model_warmup()
 
         self.hotkey = HotkeyWatcher(
             self.cfg.hotkey,

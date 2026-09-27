@@ -1,5 +1,21 @@
-**Utterleaf 0.4.6 RC2 is a Windows desktop preview** for trying the new dictation
-and long-recording workflows. The stable release remains v0.4.5.
+**Utterleaf 0.4.6 RC3 is a Windows desktop release candidate** for trying the
+modernized local utility, recovery, dictation, and long-recording workflows. The
+stable release remains v0.4.5.
+
+- **Clearer operational state:** the landing surface and Utterling language make
+  Ready, Listening, Processing, and Error understandable without reading logs.
+- **Quieter desktop shell:** stable navigation, bounded content widths, keyboard
+  access, visible focus, Settings search, and consistent action hierarchy reduce
+  control-panel density without replacing the established Tk architecture.
+- **Guided recovery:** microphone, model, save, diagnostic, backup, and file
+  failures explain their impact and offer a next action while keeping technical
+  details optional.
+- **Safer device handling:** selected microphones remain explicit, disappeared or
+  ambiguous devices fail closed, and the OS default is re-resolved at each
+  deliberate stream preparation instead of silently reusing a stale route.
+- **Local model clarity:** the fixed model catalog presents human-readable names,
+  purpose, size, installation readiness, and guided downloads without treating
+  raw model files as the primary interface.
 
 - **Keep speaking:** manually started recording has no scheduled duration cutoff.
   Audio is temporarily stored on local disk and recognized in bounded batches
@@ -51,6 +67,6 @@ editor coverage, accessibility and performance on additional hardware remain
 under validation. Source and packaged fixture checks are not certification of
 every microphone or application.
 
-[User guide](https://github.com/RioPlay/utterleaf/blob/desktop-v0.4.6-rc.2/docs/user-guide.md) ·
-[Long-file transcription](https://github.com/RioPlay/utterleaf/blob/desktop-v0.4.6-rc.2/docs/desktop-file-transcription.md) ·
+[User guide](https://github.com/RioPlay/utterleaf/blob/desktop-v0.4.6-rc.3/docs/user-guide.md) ·
+[Long-file transcription](https://github.com/RioPlay/utterleaf/blob/desktop-v0.4.6-rc.3/docs/desktop-file-transcription.md) ·
 [Earlier releases](https://github.com/RioPlay/utterleaf/releases)

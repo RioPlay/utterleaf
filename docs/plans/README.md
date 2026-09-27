@@ -4,10 +4,14 @@ Substantial in-flight work lives here so a new session can continue without the
 previous chat. One-line fixes do not need a plan.
 
 Start with [workspaces](../workspaces.md) and the platform roadmap's **Now**
-section, not the first filename in `active/`. Android alpha19 is published. Continue the roadmap design follow-ups;
-[physical issues are reported manually](completed/android-alpha18-phone-acceptance.md),
-and a dedicated phone acceptance campaign is no longer required. Desktop is parked; on resumption refresh/check draft PR #37, followed
-by sequential replay of #38–42. Other active
+section, not the first filename in `active/`. Android alpha19 is published;
+continue the roadmap design follow-ups and report physical issues through the
+[manual issue path](completed/android-alpha18-phone-acceptance.md). The separate
+[desktop modernization stream](active/desktop-modernization.md)
+is active, with [0.4.6 RC3 release readiness](active/desktop-0.4.6-rc3-release-readiness.md)
+tracking candidate identity, packaging, CI, and the publication boundary. Desktop
+OBS remains parked; on resumption refresh/check draft PR #37,
+followed by sequential replay of #38–42 in its owning worktree. Other active
 plans retain longer-running work or acceptance gates; they are not permission
 to start a different feature. Completed records preserve historical evidence
 and point unresolved device/release limits back to the roadmaps.

@@ -4,14 +4,24 @@
 
 [Documentation](README.md) · [Development boundaries](development-boundaries.md) · [Execution plan](execution-plan.md)
 
-Updated September 19, 2026. This is the planning hub, not a list of released features.
+Updated September 26, 2026. This is the planning hub, not a list of released features.
 **Security first, privacy second, convenience third.** Accessibility and reliability
 are requirements throughout development, not finishing touches.
 
 ## Now
 
 - Android is the priority. [Signed alpha19](mobile.md) ships Backspace interaction fixes, direct Settings, visible Tools and visual corrections. Next: roadmap design follow-ups and [manually reported issues](plans/completed/android-alpha18-phone-acceptance.md). Emulator verification suffices; physical test campaigns are no longer required.
-- Desktop is parked. Pairing/enrollment merged in PR #36. When resumed, refresh draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37) onto current `main`, review/check it, then replay #38. Keep #38–42 parked until each is rebased and verified.
+- A bounded [desktop modernization](plans/active/desktop-modernization.md)
+  stream is active alongside the parked OBS stack. Its baseline records current
+  screens and dynamic presentation states; tested source slices cover landing
+  information, readable page width, keyboard navigation, and clearer microphone/
+  model recovery, and authenticated last-reported app status without polling.
+  Keyboard page scrolling makes long reference pages usable without a mouse.
+  Oversized-editor focus and compact model-control reflow are covered; model
+  summaries now use consistent names with explicit technical Details.
+  Applied-model readiness now requires a matching successful load, separate from
+  unsaved model choices; physical-device and accessibility acceptance remain open.
+- Desktop OBS remains parked. Pairing/enrollment merged in PR #36. When resumed, refresh draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37) onto current `main`, review/check it, then replay #38. Keep #38–42 parked until each is rebased and verified.
 - Start from the [workspace table](workspaces.md) and the platform roadmap below. Completed plans are historical evidence; the mobile roadmap records exact alpha19 build/signing receipts.
 
 ## Choose a workstream

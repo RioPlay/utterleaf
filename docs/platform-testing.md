@@ -1,6 +1,27 @@
 # Platform testing
 
-## Current validation — September 9, 2026
+## Current source work — September 26, 2026
+
+The [desktop roadmap](desktop-roadmap.md) and
+[modernization plan](plans/active/desktop-modernization.md) record the current
+unreleased desktop source checks, captures, and independent reviews. Those
+Windows/Tk checks do not establish native macOS/Linux, physical device/display,
+screen-reader, installed-build, or whole-app performance acceptance. A bounded
+Settings-only CPU/memory comparison is recorded separately in the plan, with
+all samples and limitations; it is not tray or speech-engine clearance. Keep the direct
+platform checklist below open until its own evidence is collected.
+
+The [0.4.6 RC3 readiness plan](plans/active/desktop-0.4.6-rc3-release-readiness.md)
+is the candidate-specific ledger. The latest managed-sandbox full-suite attempt
+passed 1,345 tests with 11 expected skips before the unchanged Windows OBS native
+pipe fixture exceeded its eight-second connection watchdog. A diagnostic temporary-
+directory permission shim allowed the other 2,642 tests to pass with 14 skips but
+invalidated 20 security-sensitive OBS ACL/pipe checks, so it is not a clean
+current-head full-suite receipt. Focused current-source checks remain recorded in
+the modernization plan; CI or a clean native environment must close the full-suite
+gate for the immutable candidate.
+
+## Historical validation — September 9, 2026
 
 Desktop v0.4.0 candidate: Windows **494 passed, 1 skipped** and AlmaLinux/WSL
 **493 passed, 2 skipped** before final release review. New checks cover file exports,

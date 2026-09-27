@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import logging
 import threading
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
 
 from utterleaf.clean import prepare
 from utterleaf.config import Config
+from utterleaf.model_presentation import model_token
 from utterleaf.transcript import Segment, Transcript, TranscriptionCancelled
 from utterleaf.hardware import (
     Accelerator,
@@ -27,6 +29,9 @@ log = logging.getLogger("utterleaf")
 
 _engine = None
 _engine_key: tuple | None = None
+# Published only after a successful load. Keep this immutable so readiness
+# readers never wait behind native model loading or inference.
+_engine_config_key: tuple[str, str, str, str] | None = None
 _lock = threading.Lock()
 _infer_lock = threading.Lock()
 # Set while a real paste decode is in flight so the live draft does not start another infer.
@@ -52,6 +57,38 @@ def resolve_name(cfg: Config) -> str:
     if cfg.language.lower() in {"en", "english"} and name in EN_ONLY:
         return f"{name}.en"
     return name
+
+
+def _config_key(cfg: Config) -> tuple[str, str, str, str]:
+    return (resolve_name(cfg), cfg.device, cfg.compute_type, cfg.language)
+
+
+def engine_ready(cfg: Config) -> bool:
+    """Whether the last successful load matches this request, without blocking.
+
+    Requested preferences identify CPU fallback too; the actual backend remains
+    in ``_engine_key``. This snapshot does not probe devices or open a microphone.
+    """
+    return _engine_config_key == _config_key(cfg)
+
+
+def loaded_model_token(cfg: Config) -> str | None:
+    """Snapshot matching successful-load proof without waiting on native work.
+
+    This describes requested preferences, including a successful CPU fallback,
+    not the backend or the engine retained by an already-running transcription.
+    Detected replacement or preference changes invalidate this read.
+    """
+    loaded_key = _engine_config_key
+    if loaded_key is None:
+        return None
+    requested_key = _config_key(cfg)
+    if loaded_key != requested_key:
+        return None
+    token = model_token(loaded_key[0])
+    if _config_key(cfg) != requested_key or _engine_config_key is not loaded_key:
+        return None
+    return token
 
 
 class CTranslateEngine:
@@ -217,8 +254,9 @@ def download_weights(cfg: Config) -> list[Path]:
 
 
 def reset_engine() -> None:
-    global _engine, _engine_key
+    global _engine, _engine_key, _engine_config_key
     with _lock:
+        _engine_config_key = None
         _engine = None
         _engine_key = None
 
@@ -234,20 +272,21 @@ def _cuda_runtime_error(exc: BaseException) -> bool:
 
 def load_model(cfg: Config, accel: Accelerator | None = None):
     """Load (or reuse) the local engine. Downloads once if the cache is empty."""
-    global _engine, _engine_key
-    name = resolve_name(cfg)
+    global _engine, _engine_key, _engine_config_key
+    cfg = replace(cfg)
+    config_key = _config_key(cfg)
+    name = config_key[0]
     with _lock:
         if (
-            accel is None
-            and _engine is not None
-            and _engine_key is not None
-            and _engine_key[0] == name
+            _engine is not None
+            and _engine_config_key == config_key
+            and (accel is None or _engine_key == (name, accel.kind, accel.backend))
         ):
             return _engine
+        # Clear before hardware selection or loading: either can fail, and a
+        # failed replacement must not leave an older model marked ready.
+        _engine_config_key = None
         chosen = accel or pick(cfg)
-        key = (name, chosen.kind, chosen.backend)
-        if _engine is not None and _engine_key == key:
-            return _engine
         try:
             if chosen.backend == "openvino":
                 _engine = _load_openvino(cfg, chosen)
@@ -262,6 +301,7 @@ def load_model(cfg: Config, accel: Accelerator | None = None):
             chosen = CPU
             _engine = _load_ctranslate(cfg, chosen)
         _engine_key = (name, chosen.kind, chosen.backend)
+        _engine_config_key = config_key
         return _engine
 
 
