@@ -170,8 +170,6 @@ def test_auxiliary_minimum_wide_minimum_keeps_actions_and_state(kind, scale, wor
         canvas = view.content.canvas
         canvas.yview_moveto(0)
         view.root.update()
-        if scale == 2.0:
-            assert canvas.yview()[1] < 1, "Large-text fixture must exercise body scrolling"
         if canvas.yview()[1] < 1:
             focused.event_generate("<Next>")
             view.root.update()

@@ -75,6 +75,17 @@ evidence for its security-sensitive ACL tests.
   use Python 3.14.7/Tk 9.0 with refreshed CPython license and DLL hashes. The
   appearance roundtrip passed five fresh-process runs on that runtime; the full
   hosted matrix remains the publication authority.
+- macOS can fit the decoder surface at 200% text without body scrolling. The
+  auxiliary test still validates Page Down/Home whenever overflow exists, but
+  no longer treats the absence of unnecessary scrolling as a failure.
+- Hosted run `36318483021` passed Linux tests, Linux packaging, macOS packaging,
+  and the complete Windows pytest suite on Python 3.14.7. Its two remaining
+  failures were the corrected macOS no-scroll assumption and Windows notice
+  review stopping on Python 3.14.7's refreshed native payloads.
+- The Python 3.14.7 package retains OpenSSL 3.5.7 and SQLite 3.50.4, while zlib
+  advances to 1.3.2. The exact zlib tag, updated license, zlib DLL, and rebuilt
+  SQLite DLL are recorded in the runtime manifest. A fresh Windows frozen build
+  now collects all 43 package notice trees and its diagnostic CLI starts.
 
 ## Non-goals
 

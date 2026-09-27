@@ -2234,19 +2234,19 @@
     },
     "zlib": {
       "name": "zlib",
-      "version": "1.3.1",
+      "version": "1.3.2",
       "license": "Zlib",
       "review_status": "complete",
       "files": [
         {
           "path": "runtime/zlib/LICENSE",
           "destination": "LICENSE",
-          "sha256": "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243",
-          "source": "https://github.com/madler/zlib/blob/51b7f2abdade71cd9bb0e7a373ef2610ec6f9daf/LICENSE"
+          "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2",
+          "source": "https://github.com/madler/zlib/blob/da607da739fa6047df13e66a2af6b8bec7c2a498/LICENSE"
         }
       ],
       "payloads": {
-        "zlib1.dll": "1dd27f0411ebb31bd148a61589cee254410915f1e6c37aa3ffa52fac71a5426c"
+        "zlib1.dll": "f07195206534ebb1fe75093d4ec6c54a7a9227281b0c09d2113465b71da9e900"
       }
     },
     "sqlite": {
@@ -2263,7 +2263,7 @@
         }
       ],
       "payloads": {
-        "sqlite3.dll": "3557565665e608cd24726730e52690a131efcb0e2d5090337b2e05fb89d49c76"
+        "sqlite3.dll": "9a8fb79d6b7e581d127314028dcecf754b8d7fe4aca1247f82c1f33ee8fccc7e"
       }
     },
     "portaudio": {
