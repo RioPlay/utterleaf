@@ -66,8 +66,15 @@ evidence for its security-sensitive ACL tests.
 - Candidate `afdbed39a6651dcc3777751f61e2673b3e8b5c92` cleared Linux tests and
   Linux/macOS packaging. Its macOS suite completed without the prior Aqua hang;
   the remaining failures showed the hosted desktop clamps a 700-pixel requested
-  height to 645 pixels. Wide-layout fixtures now use 620 pixels, above every
-  compact minimum while retaining the 1000-pixel wide-layout stimulus.
+  height to 645 pixels. Wide-layout fixtures now use a realizable 640 pixels;
+  the taller backup review accepts a window-manager clamp above its 620-pixel
+  minimum while retaining the 1000-pixel wide-layout stimulus.
+- Windows Python 3.14.6 produced two independent native-runtime failures across
+  reruns: intermittent Tcl library initialization and a native breakpoint during
+  audio-owner garbage collection. Windows validation and preview packaging now
+  use Python 3.14.7/Tk 9.0 with refreshed CPython license and DLL hashes. The
+  appearance roundtrip passed five fresh-process runs on that runtime; the full
+  hosted matrix remains the publication authority.
 
 ## Non-goals
 

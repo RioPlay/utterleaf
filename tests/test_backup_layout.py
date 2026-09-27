@@ -23,11 +23,16 @@ def dialog_fixture(state, scale=1.0):
                 dialog.root.destroy()
 
 
-def resize(dialog, size):
+def resize(dialog, size, *, minimum_height=None):
     dialog.root.geometry(f"{size[0]}x{size[1]}+70+50")
     dialog.root.deiconify()
     dialog.root.update()
-    assert (dialog.root.winfo_width(), dialog.root.winfo_height()) == size
+    realized = (dialog.root.winfo_width(), dialog.root.winfo_height())
+    assert realized[0] == size[0]
+    if minimum_height is None:
+        assert realized[1] == size[1]
+    else:
+        assert minimum_height <= realized[1] <= size[1]
 
 
 def state(dialog):
@@ -66,8 +71,8 @@ def test_backup_compact_wide_compact_keeps_whole_controls_and_review(kind, scale
                                      if str(widget.cget("variable")) == str(dialog.include_vocabulary))
             assert "comments excluded" in vocabulary_choice.cget("text").lower()
         compact_rows = None
-        for size in ((480, 460), (1000, 620), (480, 460)):
-            resize(dialog, size)
+        for size in ((480, 460), (1000, 700), (480, 460)):
+            resize(dialog, size, minimum_height=620 if size == (1000, 700) else None)
             for action in actions:
                 assert_bounds(action, dialog.root)
             assert dialog.options_canvas.winfo_height() >= 64
@@ -75,10 +80,16 @@ def test_backup_compact_wide_compact_keeps_whole_controls_and_review(kind, scale
             assert dialog.preview.winfo_width() >= 64
             preview_geometry = dialog.preview.winfo_geometry()
             action_geometry = [action.winfo_geometry() for action in actions]
+            # Start traversal from a mapped control. Tk 9 may unmap canvas
+            # descendants that remain fully above the viewport after resize.
+            dialog.options_canvas.yview_moveto(0)
+            dialog.root.update()
             for choice in choices:
                 choice.focus_force()
                 dialog.root.update()
-                assert dialog.root.focus_get() == choice
+                assert dialog.root.focus_get() == choice, (
+                    size, str(choice), choice.state(), choice.winfo_ismapped(), choice.winfo_geometry()
+                )
                 assert_bounds(choice, dialog.options_canvas)
                 assert dialog.preview.winfo_geometry() == preview_geometry
                 assert [action.winfo_geometry() for action in actions] == action_geometry
@@ -168,8 +179,8 @@ def test_backup_preview_native_tab_leaves_readonly_text(kind, sequence, directio
 @pytest.mark.parametrize("kind", ["export", "import"])
 def test_backup_cancel_remains_no_write_after_resize_and_preview_traversal(kind, working_tk_display):
     with dialog_fixture(kind, 2.0) as (dialog, runtime):
-        for size in ((480, 460), (1000, 620), (480, 460)):
-            resize(dialog, size)
+        for size in ((480, 460), (1000, 700), (480, 460)):
+            resize(dialog, size, minimum_height=620 if size == (1000, 700) else None)
         cancel = next(widget for widget in capture_backup.descendants(dialog.root)
                       if widget.winfo_class() == "TButton" and widget.cget("text") == "Cancel")
         cancel.focus_force()

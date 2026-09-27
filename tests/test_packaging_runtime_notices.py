@@ -225,7 +225,7 @@ def test_general_windows_ci_uses_the_reviewed_runtime_inputs():
         (root / "packaging" / "notices" / "runtime-manifest.json").read_text(encoding="utf-8")
     )
 
-    assert 'python-version: "3.14.6"' in workflow
+    assert 'python-version: "3.14.7"' in workflow
     assert "pip install --require-hashes -r packaging\\requirements-windows-preview.txt" in workflow
     assert "pip install --no-deps --no-build-isolation -e ." in workflow
     assert "ctranslate2==4.8.1" in lock

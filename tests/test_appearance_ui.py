@@ -48,7 +48,7 @@ def test_artwork_all_tabs_actions_and_content_survive_compact_roundtrip(scale, w
     with guide_fixture(scale) as (guide, runtime):
         entries = dict(guide.entries)
         photos = tuple(guide.photos)
-        for size in ((720, 540), (1000, 620), (720, 540)):
+        for size in ((720, 540), (1000, 640), (720, 540)):
             resize(guide, size)
             assert len(guide.tabs.tabs()) == 5
             for name in capture_appearance.TABS:
