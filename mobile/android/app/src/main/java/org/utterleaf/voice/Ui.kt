@@ -12,6 +12,14 @@ import android.widget.*
 object Ui {
     data class Palette(val background: Int, val key: Int, val utility: Int, val ink: Int,
         val muted: Int, val accent: Int, val accentInk: Int)
+    object KeyboardTokens {
+        const val keyRadiusDp = 8
+        const val brandedPillRadiusDp = 23
+        const val secondaryHintSp = 9f
+        const val bottomModeWidthDp = 58
+        const val bottomPunctuationWidthDp = 48
+        const val bottomActionWidthDp = 64
+    }
     fun palette(context: Context, options: KeyboardOptions = KeyboardOptions.load(context)): Palette {
         val mode = when (options.theme) {
             ThemeMode.SYSTEM -> if (options.resolvedLight(context)) ThemeMode.LIGHT else ThemeMode.DARK
