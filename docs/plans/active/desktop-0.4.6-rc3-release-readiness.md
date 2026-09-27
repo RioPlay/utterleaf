@@ -153,17 +153,12 @@ installation is not accepted as proof for the candidate source.
   included; it is not tray-only idle or recognition-latency clearance. Receipt:
   `.grok/performance/companion-close-fix-grace-whole-family-20260927T2145Z/receipt.json`,
   SHA-256 `04a0e3fce1aad33b1543641282084bd26924b0400eb4d9f62be093fa1ca6b877`.
-- PR source revision `3dd958dab26aa59fc14f66f6ef4d7de9e101386f`
+- Exact PR revision `ee39b937360ba2f1f3321f27613f24f1ca5906ad`
   passed all five hosted jobs in
-  [run 36349620833](https://github.com/RioPlay/utterleaf/actions/runs/36349620833):
-  Windows tests/package, macOS tests/package, and Linux X11/Wayland tests plus
-  extracted-package startup. That Windows workflow still ran only frozen CLI
-  help and a non-blocking doctor check; it did **not** run the repository's full
-  frozen Windows smoke. The downloaded exact-run artifact separately passed that
-  smoke locally and its three executable hashes matched both packaged checksum
-  files. The workflow is now corrected to require the full smoke, but subsequent
-  recovery/lifecycle changes need a new exact-head hosted run. Public tag or
-  prerelease creation remains explicitly unauthorized.
+  [run 36356378028](https://github.com/RioPlay/utterleaf/actions/runs/36356378028):
+  Windows tests/package/full frozen smoke, macOS tests/package, and Linux
+  X11/Wayland tests plus extracted-package startup. Public tag or prerelease
+  creation remains explicitly unauthorized.
 
 ## Non-goals
 

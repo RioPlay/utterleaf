@@ -2148,8 +2148,8 @@ Implementation and verification, September 27, 2026:
   including Linux extracted-package startup. The hosted Windows job built and
   packaged successfully but only exercised CLI help plus a non-blocking doctor;
   the downloaded exact-run artifact passed the full frozen smoke locally. The
-  workflow now requires that full smoke. Later recovery/lifecycle source still
-  needs exact-head CI. Recognition quality for every language, physical
+  workflow now requires that full smoke. The later recovery/lifecycle exact-head
+  receipt is recorded below. Recognition quality for every language, physical
   accessibility and public release authorization remain separate gates.
 
 ### Closeout recovery, lifecycle and accessibility audit
@@ -2209,6 +2209,10 @@ Implementation and verification, September 27, 2026:
   prerequisite skips**. A fresh 48-package Windows onedir build contains no model
   weights; the full frozen release smoke passed help, polish, doctor, spoken-list
   formatting and a persistent Settings launch.
+- Exact PR revision `ee39b937360ba2f1f3321f27613f24f1ca5906ad`
+  passed all five hosted jobs in
+  [run 36356378028](https://github.com/RioPlay/utterleaf/actions/runs/36356378028),
+  including the required full frozen Windows smoke and Linux X11/Wayland checks.
 - A fresh Windows UIA audit is adverse: all 12 inspected surfaces expose only a
   window and unnamed panes, with zero UIA-focusable or named-focusable controls.
   This is a product/toolkit accessibility defect, not merely missing manual proof.

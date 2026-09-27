@@ -206,7 +206,9 @@ intended field, with understandable local processing and minimal interruption.
   smoke. A whole-family rebuilt-package probe then closed every process without
   harness intervention in all four samples; the 60-second sample includes visible
   first-run Settings and is not tray-only idle or recognition-latency evidence.
-  A new exact-head hosted run is still required.
+  Exact PR revision `ee39b93` passed all five desktop jobs in
+  [CI 36356378028](https://github.com/RioPlay/utterleaf/actions/runs/36356378028),
+  including the required full frozen Windows smoke and Linux X11/Wayland checks.
   A fresh Windows UI Automation audit found zero focusable or named-focusable
   controls across all 12 inspected Tk surfaces. That is an actionable toolkit
   accessibility blocker: implement a real UIA provider/bridge or a Windows-native
