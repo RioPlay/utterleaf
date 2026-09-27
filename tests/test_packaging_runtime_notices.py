@@ -206,6 +206,67 @@ def test_reviewed_native_payload_accepts_each_explicit_host_variant(runtime):
     assert (output / "example" / "PROVENANCE.json").is_file()
 
 
+def test_signed_windows_payload_requires_the_reviewed_microsoft_signer(runtime, monkeypatch):
+    module, manifest, entry, output = runtime
+    signed = module.DIST / "_internal" / "host-runtime.dll"
+    signed.write_bytes(b"host-specific signed runtime")
+    entry["signed_payloads"] = [signed.name]
+    subject = "CN=Microsoft Corporation, O=Microsoft Corporation, C=US"
+    entry["signature_policy"] = {"subjects": [subject]}
+
+    monkeypatch.setattr(module.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(
+        returncode=0,
+        stdout=json.dumps({
+            "name": signed.name,
+            "status": "Valid",
+            "subject": subject,
+        }),
+    ))
+
+    module.copy_windows_runtime_notices(output)
+    assert (output / "example" / "PROVENANCE.json").is_file()
+
+
+def test_signed_windows_payload_rejects_an_untrusted_signer(runtime, monkeypatch):
+    module, _, entry, output = runtime
+    signed = module.DIST / "_internal" / "host-runtime.dll"
+    signed.write_bytes(b"host-specific unsigned runtime")
+    entry["signed_payloads"] = [signed.name]
+    entry["signature_policy"] = {
+        "subjects": ["CN=Microsoft Corporation, O=Microsoft Corporation, C=US"]
+    }
+    monkeypatch.setattr(module.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(
+        returncode=0,
+        stdout=json.dumps({
+            "name": signed.name,
+            "status": "Valid",
+            "subject": "CN=Lookalike, O=Microsoft Corporation Example, C=US",
+        }),
+    ))
+
+    with pytest.raises(SystemExit, match="Microsoft runtime signature review failed"):
+        module.copy_windows_runtime_notices(output)
+    assert not output.exists()
+
+
+def test_signed_windows_payload_times_out_closed(runtime, monkeypatch):
+    module, _, entry, output = runtime
+    signed = module.DIST / "_internal" / "host-runtime.dll"
+    signed.write_bytes(b"host-specific signed runtime")
+    entry["signed_payloads"] = [signed.name]
+    entry["signature_policy"] = {
+        "subjects": ["CN=Microsoft Corporation, O=Microsoft Corporation, C=US"]
+    }
+
+    def timeout(*args, **kwargs):
+        raise module.subprocess.TimeoutExpired(args[0], kwargs["timeout"])
+
+    monkeypatch.setattr(module.subprocess, "run", timeout)
+    with pytest.raises(SystemExit, match="Microsoft runtime signature review failed"):
+        module.copy_windows_runtime_notices(output)
+    assert not output.exists()
+
+
 @pytest.mark.parametrize("name", ["libportaudio64bit-asio.dll", "LIBPORTAUDIO32BIT-ASIO.DLL"])
 def test_asio_binary_is_rejected_even_if_a_build_hook_reintroduces_it(runtime, name):
     module, _, _, _ = runtime
@@ -247,6 +308,21 @@ def test_general_windows_ci_uses_the_reviewed_runtime_inputs():
     assert "pip install --no-deps --no-build-isolation -e ." in workflow
     assert "ctranslate2==4.8.1" in lock
     assert manifest["packages"]["ctranslate2"]["targets"] == ["win32:x86_64"]
+
+
+def test_microsoft_runtime_provenance_distinguishes_pinned_and_host_payloads():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads(
+        (root / "packaging" / "notices" / "runtime-manifest.json").read_text(encoding="utf-8")
+    )
+    runtime = manifest["windows_runtime"]["microsoft_runtime"]
+
+    assert set(runtime["payloads"]) == {"vcruntime140.dll", "vcruntime140_1.dll"}
+    assert len(runtime["signed_payloads"]) == 46
+    assert "host-supplied" in runtime["version"].lower()
+    assert "host-supplied" in runtime["binary_provenance"].lower()
+    assert "exact, hash-pinned" in runtime["binary_provenance"]
+    assert "Valid Authenticode signature" in runtime["binary_provenance"]
 
 
 def test_posix_ci_uses_the_reviewed_tokenizers_source_and_targets():

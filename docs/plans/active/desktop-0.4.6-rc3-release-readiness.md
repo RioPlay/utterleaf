@@ -92,6 +92,13 @@ evidence for its security-sensitive ACL tests.
   but did not reject an additional root runtime DLL. The final candidate now
   inventories all 58 root DLLs, records Microsoft, libffi, Tcl/Tk, LibTomMath,
   and embedded zlib-ng terms, and fails closed if a future build adds another.
+- Microsoft UCRT/MSVC redistributables legitimately vary between the local
+  Windows host and GitHub's Windows Server runner. Those 46 host-supplied DLLs
+  are therefore bound to the exact reviewed filename inventory and must pass
+  Windows Authenticode validation for `Microsoft Corporation`; deterministic
+  Python and third-party payloads remain byte-pinned. Unknown names, missing
+  files, invalid signatures, unreviewed signers, and changed pinned hashes fail
+  packaging before notices or archives are produced.
 
 ## Non-goals
 
