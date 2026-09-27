@@ -11,7 +11,7 @@ state safety, one-handed use, editing speed, offline dictation and progressive
 disclosure. Visual polish follows those invariants.
 
 Status remains in the [mobile roadmap](../../mobile-roadmap.md). This plan
-reconciles the current alpha20 candidate with the longer-running
+reconciles the published alpha20 baseline and alpha21 release candidate with the longer-running
 [keyboard rebuild](android-keyboard-rebuild.md); it does not make release or
 physical-device claims from emulator results.
 
@@ -145,7 +145,12 @@ matches the result, and remaining device-only validation is stated explicitly.
   exact regression, and the complete **18/18** suggestion class pass locally. A
   subsequent 238-case local run passed the original regression but stopped at
   **237/238** on a different default-IME readiness fixture that passed in the
-  preceding class run; a new exact-main gate remains required after integration.
+  preceding class run. PR #65 merged the safeguard at `eb4cfd2`; exact-main run
+  [36344294106](https://github.com/RioPlay/utterleaf/actions/runs/36344294106)
+  then passed the complete emulator privacy/inference, packaging and release-input
+  gate on its failed-job rerun. The first attempt's two unrelated live timing
+  failures each passed exact isolated reruns. This closes the bounded integration
+  gate, not the physical-device or final A–M redesign gates.
 
 ## Milestones
 
