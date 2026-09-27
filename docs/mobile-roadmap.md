@@ -32,16 +32,32 @@ wait for the editor, privacy and testing foundation.
 ## Now
 
 - **Checkout:** `android-keyboard-hardening`, branch `codex/android-polish-alpha20`.
-- **Released:** [signed alpha19](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha19), including Backspace hold-to-swipe, direct Settings, visible Tools, searchable settings and Cut/Dictate visual fixes (PR #59).
-- **Next:** promote the bounded alpha20 preview through [release readiness](plans/active/android-alpha20-release-readiness.md): local regression/build/package review passed and remote promotion is authorized; protected signing/publication still require offline key-backup confirmation. Editor-bound dictation recovery and the daily/Tools replacement remain subsequent feature work unless the release scope changes. Android remains the priority; desktop is parked.
-- **Verified for alpha19:** exact-candidate CI passed 186/186 emulator tests; protected signing and independent signed alpha18-to-alpha19 upgrade/reinstall preserved synthetic preferences and model-storage markers.
+- **Released:** [signed alpha20](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha20), including the bounded uncertain-dictation insertion correction, deterministic IME test cleanup and signed-reinstall preservation coverage (PR #61).
+- **Next:** complete the workflow-only Node.js/action and runner-image maintenance recorded in [alpha20 release readiness](plans/completed/android-alpha20-release-readiness.md#post-release-ci-maintenance-memory), then resume the [capability and experience plan](plans/active/android-experience-refresh.md). Editor-bound dictation recovery and the daily/Tools replacement remain subsequent feature work unless the scope changes. Android remains the priority; desktop is parked.
+- **Verified for alpha20:** exact-main CI [run 36271277037](https://github.com/RioPlay/utterleaf/actions/runs/36271277037) passed; protected signing [run 36335155637](https://github.com/RioPlay/utterleaf/actions/runs/36335155637) preserved the established signer, passed the signed alpha03 upgrade and same-version installation smoke tests, and published the prerelease.
 - **Manual feedback:** physical typing/latency, TalkBack/Switch Access, phone landscape/three-button navigation and real Obtainium behavior are handled through user reports, not mandatory test gates. Emulator success does not establish physical-device verification. See the [manual reporting policy](plans/completed/android-alpha18-phone-acceptance.md).
+- **CI maintenance after alpha20:** update Node.js-20-based actions (including
+  deprecated `actions/setup-java@v4`) to supported Node.js 24 releases, and pin or
+  validate the runner image before `ubuntu-latest` begins moving to Ubuntu 26 on
+  October 19, 2026. This is a separate workflow-only follow-up; see the
+  [release-readiness memory](plans/completed/android-alpha20-release-readiness.md#post-release-ci-maintenance-memory).
 
 **Acceptance policy — September 26, 2026:** routine increments and preview releases use the applicable automated regression, privacy/security, build and signed-release checks without making unobserved device claims. The A–M redesign is not complete until its named compatibility, performance and final accessibility audits pass. Physical-device and assistive-technology work need not block every bounded source slice, but unperformed checks remain open and can never be reported as passed.
 
 ## Current status
 
-- **Alpha20 local release candidate passed — September 26, 2026:** **236/236**
+- **Alpha20 signed prerelease published — September 27, 2026:** reviewed source
+  `ff3bfbf03dfee12304baf6e24540d1d259a52029` passed exact-main Android CI
+  [run 36271277037](https://github.com/RioPlay/utterleaf/actions/runs/36271277037).
+  Annotated tag `android-v0.1.0-alpha20` resolves to that revision. Protected
+  signing/publication [run 36335155637](https://github.com/RioPlay/utterleaf/actions/runs/36335155637)
+  passed package/signer/version checks, signed alpha03 upgrade, same-version
+  installation smoke testing and publication. The public APK SHA-256 is
+  `2b96fca709f71ecda9372ec918dcd93d2b648ae7d985f85ce9c66cc7a05833de`;
+  downloaded checksum, version code **20** and established certificate fingerprint
+  were independently rechecked against the public assets.
+
+- **Alpha20 local release candidate evidence — September 26, 2026:** **236/236**
   ordinary app emulator tests, **2/2** independent host/process-recovery tests,
   **50 JVM** and **26 tooling** tests; app lint has zero errors / 51 warnings
   (host: zero / 5). Unsigned release build and packaged identity, permissions,
@@ -51,9 +67,8 @@ wait for the editor, privacy and testing foundation.
   now permits one insertion attempt; uncertain results stay selectable for
   explicit Copy without re-arming Insert after edits. Exact hashes, first-run
   failure, final reports and remote handoff are in
-  [release readiness](plans/active/android-alpha20-release-readiness.md#final-local-candidate).
-  This is a locally verified candidate, not a signed or published alpha20, full
-  A–M completion, or physical-phone acceptance.
+  [release readiness](plans/completed/android-alpha20-release-readiness.md#final-local-candidate).
+  Publication does not establish full A–M completion or physical-phone acceptance.
 
 - **Editor capability foundation implemented in the current working tree:** one
   metadata-only `EditorCapabilities` snapshot now classifies field kind,
@@ -631,8 +646,11 @@ channel, certificate identity and update acceptance work.
   The [alpha05 signing/publishing run](https://github.com/RioPlay/utterleaf/actions/runs/34432995380)
   also passed with the same certificate: signed alpha03-to-alpha05 emulator upgrade,
   same-version reinstall and setup launch. Preference/model retention was not tested.
-  Later alpha19 signing and preservation evidence is recorded above. CI debug keys
-  remain disposable; independently protected offline key backup remains required.
+  Alpha20 signing and preservation evidence is recorded above. CI debug keys remain
+  disposable. The persistent signer was recovered and certificate-verified, and a
+  byte-exact copy plus its Windows-protected password companion was placed in the
+  user-authorized sync backup. Synced storage is not a disconnected offline backup;
+  that additional recovery copy remains required.
   Physical updates and real Obtainium behavior stay unverified follow-up work
   under the routine-preview manual-report policy, not inferred automated passes.
 
