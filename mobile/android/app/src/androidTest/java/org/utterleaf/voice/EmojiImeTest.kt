@@ -224,7 +224,7 @@ class EmojiImeTest {
                 activity.editor.setText(original)
                 Selection.setSelection(activity.editor.text, selectionStart, selectionEnd)
             }
-            press("Emoji")
+            press("Keyboard tools"); press("Emoji")
             press("Search emoji")
             typeQuery("woman health worker medium skin tone") {
                 main {
@@ -276,7 +276,7 @@ class EmojiImeTest {
     @Test fun hideFieldChangeRawAndPasswordClearOrGateEmojiState() = withKeyboard { manager ->
         var activity = launch()
         try {
-            press("Emoji")
+            press("Keyboard tools"); press("Emoji")
             press("Search emoji")
             typeQuery("wave")
             assertEquals("wave", queryText())
@@ -303,7 +303,7 @@ class EmojiImeTest {
 
         activity = launch()
         try {
-            press("Emoji")
+            press("Keyboard tools"); press("Emoji")
             press("Search emoji")
             typeQuery("wave")
             assertEquals("wave", queryText())
@@ -314,8 +314,8 @@ class EmojiImeTest {
             Thread.sleep(200)
             assertEquals("", main { activity.editor.text.toString() })
             main { manager.showSoftInput(activity.editor, InputMethodManager.SHOW_IMPLICIT) }
-            await("Typing keyboard did not return after hide") { findNode("Emoji")?.isEnabled == true }
-            press("Emoji")
+            await("Typing keyboard did not return after hide") { findNode("Keyboard tools")?.isEnabled == true }
+            press("Keyboard tools"); press("Emoji")
             press("Search emoji")
             assertEquals("Search emoji · English names", queryText())
         } finally {
@@ -324,6 +324,7 @@ class EmojiImeTest {
 
         activity = launch(raw = true)
         try {
+            press("Keyboard tools")
             val emoji = checkNotNull(findNode("Emoji"))
             assertFalse(emoji.isEnabled)
             assertFalse(emoji.performAction(AccessibilityNodeInfo.ACTION_CLICK))
@@ -351,7 +352,7 @@ class EmojiImeTest {
 
         activity = launch()
         try {
-            press("Emoji")
+            press("Keyboard tools"); press("Emoji")
             press("Search emoji")
             assertEquals("Search emoji · English names", queryText())
             assertEquals("", main { activity.editor.text.toString() })
@@ -372,7 +373,7 @@ class EmojiImeTest {
                     else if (supportsNarrowColumn) "narrow" else "fallback-full"
                 val state = "emoji-${if (light) "light" else "dark"}-${alignment.stored}-$width"
                 try {
-                    press("Emoji")
+                    press("Keyboard tools"); press("Emoji")
                     await("Browse view did not load") { findNode("grinning face") != null }
                     val browse = captureOwnedKeyboard("$state-browse", captureName)
                     assertAlignedGeometry(state, alignment, browse)

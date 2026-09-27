@@ -307,16 +307,18 @@ class SensitiveTypingPanelTest {
                 openDraft = { draftCalls++ },
             )
             ordinary.reset(allowVoice = true, numeric = false, action = "Enter")
-            val stale = listOf(
+            val stale = mutableListOf(
                 key(ordinary, "a"),
-                key(ordinary, "Paste"),
                 key(ordinary, "Keyboard tools"),
                 key(ordinary, "Editing tools"),
-                key(ordinary, "Emoji"),
-                key(ordinary, "Private draft"),
                 key(ordinary, "Dictate"),
-                key(ordinary, "Extra keys"),
             )
+            key(ordinary, "Keyboard tools").performClick()
+            stale += key(ordinary, "Emoji")
+            stale += key(ordinary, "Private draft")
+            key(ordinary, "Editing tools").performClick()
+            stale += key(ordinary, "Paste")
+            stale += key(ordinary, "Extra keys")
             ordinary.dispose()
 
             val sensitive = TypingPanel(
@@ -407,11 +409,20 @@ class SensitiveTypingPanelTest {
             val raw = panel(raw = true)
             val private = panel(privateEditing = true)
             assertTrue(descriptions(ordinary).containsAll(
-                setOf("Keyboard tools", "Editing tools", "Emoji", "Private draft", "Dictate")))
+                setOf("Keyboard tools", "Editing tools", "Dictate")))
             assertTrue(descriptions(raw).containsAll(
-                setOf("Keyboard tools", "Editing tools", "Emoji", "Extra keys")))
+                setOf("Keyboard tools", "Editing tools", "Dictate")))
             assertTrue(descriptions(private).containsAll(
-                setOf("Keyboard tools", "Editing tools", "Emoji")))
+                setOf("Keyboard tools", "Editing tools")))
+            assertFalse(descriptions(private).any {
+                it in setOf("Switch keyboard", "Private draft", "Dictate")
+            })
+            key(ordinary, "Keyboard tools").performClick()
+            assertTrue(descriptions(ordinary).containsAll(setOf("Emoji", "Private draft", "Extra keys")))
+            key(raw, "Keyboard tools").performClick()
+            assertTrue(descriptions(raw).containsAll(setOf("Emoji", "Extra keys")))
+            key(private, "Keyboard tools").performClick()
+            assertTrue(descriptions(private).containsAll(setOf("Emoji", "Extra keys")))
             assertFalse(descriptions(private).any {
                 it in setOf("Switch keyboard", "Private draft", "Dictate")
             })
