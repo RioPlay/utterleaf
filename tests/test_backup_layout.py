@@ -87,6 +87,8 @@ def test_backup_compact_wide_compact_keeps_whole_controls_and_review(kind, scale
             action_geometry = [action.winfo_geometry() for action in actions]
             # Start traversal from a mapped control. Tk 9 may unmap canvas
             # descendants that remain fully above the viewport after resize.
+            actions[0].focus_force()
+            dialog.root.update()
             dialog.options_canvas.yview_moveto(0)
             dialog.root.update()
             for choice in choices:
