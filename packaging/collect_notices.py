@@ -257,12 +257,26 @@ def copy_windows_runtime_notices(licenses_dir: Path) -> list[tuple[str, str, str
     actual_python = ".".join(str(part) for part in sys.version_info[:3])
     if actual_python != manifest["python_version"]:
         raise SystemExit("collect_notices: Windows Python runtime version requires a new notice review")
-    rows = []
-    for key, entry in manifest["windows_runtime"].items():
+    declared_root_dlls = set()
+    for entry in manifest["windows_runtime"].values():
         for relative, expected in entry["payloads"].items():
             payload = DIST / "_internal" / relative
             if not payload.is_file() or hashlib.sha256(payload.read_bytes()).hexdigest() != expected:
                 raise SystemExit(f"collect_notices: unreviewed Windows runtime payload: {relative}")
+            normalized = relative.replace("\\", "/")
+            if "/" not in normalized and normalized.lower().endswith(".dll"):
+                declared_root_dlls.add(normalized.casefold())
+    actual_root_dlls = {
+        path.name.casefold()
+        for path in (DIST / "_internal").glob("*.dll")
+        if path.is_file()
+    }
+    if unexpected := sorted(actual_root_dlls - declared_root_dlls):
+        raise SystemExit(
+            "collect_notices: unreviewed Windows runtime payload(s): " + ", ".join(unexpected)
+        )
+    rows = []
+    for key, entry in manifest["windows_runtime"].items():
         copy_reviewed_notice_files(entry, licenses_dir / key)
         rows.append((entry["name"], entry["version"], entry["license"],
                      f"Reviewed native component; full texts and provenance: licenses/{key}/."))

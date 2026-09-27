@@ -165,7 +165,7 @@ def test_unfinished_component_review_prevents_distribution(runtime):
         module.copy_reviewed_notice_files(entry, output)
 
 
-@pytest.mark.parametrize("problem", ["pending", "version", "missing", "changed"])
+@pytest.mark.parametrize("problem", ["pending", "version", "missing", "changed", "extra"])
 def test_unreviewed_windows_native_closure_prevents_distribution(runtime, problem):
     module, manifest, _, output = runtime
     payload = module.DIST / "_internal" / "example.dll"
@@ -175,6 +175,8 @@ def test_unreviewed_windows_native_closure_prevents_distribution(runtime, proble
         manifest["python_version"] = "3.14.7"
     elif problem == "missing":
         payload.rename(payload.with_suffix(".unavailable"))
+    elif problem == "extra":
+        (module.DIST / "_internal" / "surprise.dll").write_bytes(b"undeclared runtime")
     else:
         payload.write_bytes(b"different build")
     with pytest.raises(SystemExit):

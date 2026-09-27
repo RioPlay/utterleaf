@@ -86,6 +86,12 @@ evidence for its security-sensitive ACL tests.
   advances to 1.3.2. The exact zlib tag, updated license, zlib DLL, and rebuilt
   SQLite DLL are recorded in the runtime manifest. A fresh Windows frozen build
   now collects all 43 package notice trees and its diagnostic CLI starts.
+- Candidate `f250818b0ac1cc59fd6bc452f2ffdde76fee4dbf` passed all five hosted
+  build/test jobs in run `36319194906`, including Windows packaging and notices.
+  A follow-up provenance audit found that the checker validated declared DLLs
+  but did not reject an additional root runtime DLL. The final candidate now
+  inventories all 58 root DLLs, records Microsoft, libffi, Tcl/Tk, LibTomMath,
+  and embedded zlib-ng terms, and fails closed if a future build adds another.
 
 ## Non-goals
 
