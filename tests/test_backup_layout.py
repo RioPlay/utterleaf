@@ -1,5 +1,6 @@
 """Real-key and native-size backup review checks with synthetic data only."""
 from contextlib import contextmanager
+from types import SimpleNamespace
 
 import pytest
 
@@ -90,11 +91,10 @@ def test_backup_compact_wide_compact_keeps_whole_controls_and_review(kind, scale
             dialog.options_canvas.yview_moveto(0)
             for choice in choices:
                 choice.focus_force()
-                # X11 may move focus_force() without dispatching FocusIn through
-                # the widget's bindtags. Generate the real event explicitly so
-                # this cross-platform layout check exercises the production
-                # toplevel binding rather than a platform-specific focus side effect.
-                choice.event_generate("<FocusIn>")
+                # X11 may move synthetic focus without dispatching FocusIn.
+                # Exercise the production reveal callback deterministically;
+                # native Tab traversal is covered separately below.
+                dialog._reveal_focus(SimpleNamespace(widget=choice))
                 dialog.root.update()
                 assert dialog.root.focus_get() == choice, (
                     size, str(choice), choice.state(), choice.winfo_ismapped(), choice.winfo_geometry()
