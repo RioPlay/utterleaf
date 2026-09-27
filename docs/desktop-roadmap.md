@@ -21,9 +21,13 @@ intended field, with understandable local processing and minimal interruption.
   Tk surfaces exposed only a Window and unnamed panes, with no semantic controls.
   The [active accessibility-shell plan](plans/active/desktop-windows-accessibility-shell.md)
   starts an isolated, opt-in standard-Win32 proof while preserving the existing
-  speech/configuration architecture and Tk on macOS/Linux. It cannot become the
-  default or satisfy the release gate until complete automated UIA, Narrator,
-  NVDA, physical DPI, packaging and regression acceptance passes.
+  speech/configuration architecture and Tk on macOS/Linux. A frozen version-6
+  common-controls probe and the restored opt-in Dictation shell passed an
+  independent native UIA inventory for names, focusability and standard
+  interaction patterns. The proof has no product I/O or dispatch and is not yet
+  integrated. It cannot become the default or satisfy the release gate until
+  complete automated UIA, Narrator, NVDA, physical DPI, packaging and regression
+  acceptance passes.
 - **Active bounded desktop stream:** the
   [desktop modernization plan](plans/active/desktop-modernization.md) starts with
   a deterministic [UI baseline](desktop-ui-baseline.md): 39 Settings captures and
