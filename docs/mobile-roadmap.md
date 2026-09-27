@@ -2,7 +2,7 @@
 
 [Roadmap hub](roadmap.md) · [Execution plan](execution-plan.md) · [Current mobile preview](mobile.md) · [Ideas](ideas.md)
 
-Updated September 26, 2026. Product direction: a complete, customizable Utterleaf
+Updated September 27, 2026. Product direction: a complete, customizable Utterleaf
 keyboard with integrated offline speech, its own identity, and security first.
 The design uses historical public documentation as research context, not as a
 specification, dependency or source of product identity.
@@ -31,10 +31,11 @@ wait for the editor, privacy and testing foundation.
 
 ## Now
 
-- **Checkout:** `android-keyboard-hardening`, branch `codex/android-daily-layout`.
+- **Checkout:** `android-keyboard-hardening`, branch `codex/android-alpha21-release`.
 - **Released:** [signed alpha20](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha20), including the bounded uncertain-dictation insertion correction, deterministic IME test cleanup and signed-reinstall preservation coverage (PR #61).
-- **Next:** review and integrate the current daily-surface reset, then complete the
-  workflow-only Node.js/action and runner-image maintenance recorded in
+- **Next:** promote the merged daily-surface reset and live-selection safeguard as
+  the bounded signed alpha21 preview, then complete the workflow-only Node.js/action
+  and runner-image maintenance recorded in
   [alpha20 release readiness](plans/completed/android-alpha20-release-readiness.md#post-release-ci-maintenance-memory).
   Editor-bound dictation recovery and the remaining Tools architecture work stay
   in the [capability and experience plan](plans/active/android-experience-refresh.md).
@@ -51,8 +52,9 @@ wait for the editor, privacy and testing foundation.
 
 ## Current status
 
-- **Daily-surface clean-room reset implemented in the current working tree —
-  September 27, 2026:** the ordinary keyboard now has one compact
+- **Daily-surface clean-room reset merged and exact-main verified —
+  September 27, 2026:** PR [#64](https://github.com/RioPlay/utterleaf/pull/64)
+  merged the ordinary keyboard's one compact
   Tools/Edit/suggestion/Dictate strip instead of the permanent two-row action
   wall. Secondary editing, Emoji, draft and specialist destinations use explicit
   disclosure; the Tools hub retains the same default height. The bottom-left dead
@@ -60,9 +62,18 @@ wait for the editor, privacy and testing foundation.
   period/action row outside the intentional split channel. FUTO's public source
   informed only behavioral principles; no FUTO code, assets, labels, constants or
   theme values were copied. Tooling, JVM, lint and the 76-case affected emulator
-  bundle pass; two complete 238-case runs each had a different isolated live-test
-  timing failure that passed on immediate targeted rerun, so a wholly green full
-  run is not claimed. Emulator renders do not establish physical-phone comfort.
+  bundle pass; two complete 238-case local runs each had a different isolated
+  live-test timing failure that passed on immediate targeted rerun. Exact-main run
+  [36341409976](https://github.com/RioPlay/utterleaf/actions/runs/36341409976)
+  then reproduced the selected-text completion race. The follow-up fix verifies
+  the connection's current selection at tap time before editing; its exact test,
+  all 18 suggestion tests, tooling, JVM and lint checks pass locally. PR #65 merged
+  the safeguard at `eb4cfd2`. Its exact-main run
+  [36344294106](https://github.com/RioPlay/utterleaf/actions/runs/36344294106)
+  passed the complete emulator privacy/inference phase, packaging and release-input
+  retention on a failed-job rerun. The first attempt's two unrelated live timing
+  failures each passed exact isolated reruns; no product change was made between
+  attempts. Emulator runs and renders do not establish physical-phone comfort.
 
 - **Alpha20 signed prerelease published — September 27, 2026:** reviewed source
   `ff3bfbf03dfee12304baf6e24540d1d259a52029` passed exact-main Android CI
@@ -520,8 +531,8 @@ wait for the editor, privacy and testing foundation.
   verified locally; cached layouts retain immutable keyboard-only editor metadata.
   Remaining lifecycle/cache, native hardening and framework recovery
   checks continue. It is not yet integrated
-  into the shipping keyboard; the independent alpha19 channel remains the
-  published implementation while alpha20 is prepared.
+  into the shipping keyboard; the independent alpha20 channel remains the
+  published implementation while alpha21 is prepared.
 
 - **Released alpha12:** compact [quick editing actions](android-quick-actions.md).
   Revision `aec275b` passed [Android CI 34498263015](https://github.com/RioPlay/utterleaf/actions/runs/34498263015):

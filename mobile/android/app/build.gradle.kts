@@ -10,8 +10,8 @@ android {
         applicationId = "org.utterleaf.voice"
         minSdk = 26
         targetSdk = 36
-        versionCode = 20
-        versionName = "0.1.0-alpha20"
+        versionCode = 21
+        versionName = "0.1.0-alpha21"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         if (providers.gradleProperty("utterleafPerformance").orNull == "true") {
             // An explicit opt-in can run only this fixture; it can never add
