@@ -57,7 +57,7 @@ class KeyboardGeometryTest {
         val ordinary = panel(KeyboardOptions())
         ordinary.reset(false, false, "Enter")
         val ordinaryHeight = layout(ordinary, 320)
-        val ordinaryKeys = listOf("Keyboard tools", "Editing tools", "Dictate", "Emoji",
+        val ordinaryKeys = listOf("Keyboard tools", "Editing tools", "Dictate",
             "Switch letters and symbols", "Space", "Enter")
         ordinaryKeys.forEach { label ->
             val rect = bounds(ordinary, label)
@@ -294,9 +294,9 @@ class KeyboardGeometryTest {
                     }
                 }
             }
-            capture("normal", listOf("Keyboard tools", "Editing tools", "Emoji", "Dictate", "Space", "Done"))
-            val fullLeft = screenBounds("Undo").left
-            val fullRight = screenBounds("Extra keys").right
+            capture("normal", listOf("Keyboard tools", "Editing tools", "Dictate", "Space", "Done"))
+            val fullLeft = screenBounds("Keyboard tools").left
+            val fullRight = screenBounds("Dictate").right
             val horizontalPadding = Ui.dp(app, 3) * 2
             val fullAvailableWidth = fullRight - fullLeft + horizontalPadding
             closeEditor()
@@ -357,8 +357,8 @@ class KeyboardGeometryTest {
                 val side = alignment.name.lowercase(java.util.Locale.ROOT)
                 val daily = listOf("Editing tools", "Dictate", "Space", "Done", "q", "p")
                 capture("$side-normal", daily)
-                val sideLeft = screenBounds("Undo").left
-                val sideRight = screenBounds("Extra keys").right
+                val sideLeft = screenBounds("Keyboard tools").left
+                val sideRight = screenBounds("Dictate").right
                 val expectedColumn = if (fullAvailableWidth <= Ui.dp(app, 320)) fullAvailableWidth
                     else (fullAvailableWidth * .82).toInt().coerceIn(Ui.dp(app, 320), Ui.dp(app, 360))
                 assertEquals("Live column width violates the layout contract", expectedColumn.toDouble(),
@@ -410,8 +410,8 @@ class KeyboardGeometryTest {
                 await("Full-width keyboard did not finish relayout") {
                     node("Editing tools") != null && node("Dictate") != null
                 }
-                assertEquals(fullLeft, screenBounds("Undo").left)
-                assertEquals(fullRight, screenBounds("Extra keys").right)
+                assertEquals(fullLeft, screenBounds("Keyboard tools").left)
+                assertEquals(fullRight, screenBounds("Dictate").right)
             }
             for (alignment in KeyboardAlignment.entries) {
                 closeEditor()
@@ -419,8 +419,8 @@ class KeyboardGeometryTest {
                     large = true).save(app)
                 activity = launch()
                 var expectedText = ""
-                val left = screenBounds("Undo").left
-                val right = screenBounds("Extra keys").right
+                val left = screenBounds("Keyboard tools").left
+                val right = screenBounds("Dictate").right
                 for (layout in LetterLayout.entries) {
                     val state = "${layout.stored}-${alignment.stored}"
                     val choices = LetterLayout.entries.map { "${it.label} letter layout" }

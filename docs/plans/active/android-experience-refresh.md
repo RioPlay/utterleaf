@@ -64,7 +64,7 @@ compatibility, performance and accessibility audit. Unperformed work stays
 | --- | --- | --- |
 | A — IME foundation | Central capabilities/actions, minimal sensitive surface, named lifecycle boundaries and fail-closed degraded-editor policy pass the current automated gauntlet. | Physical hardware configuration/OEM and named third-party behavior remain unverified; see scoped evidence below. |
 | B — testing | Native cells now carry scoped Pass/Partial records; P1 archives a reproducible pre-visual emulator baseline. | Named real-application matrix, real-host dictation insertion timing and matched post-change performance comparison. |
-| C — daily keyboard | Alpha20 has themes, stable actions, one-hand and purposeful landscape/split layouts. | Resolve permanent 2×6 toolbar density against the calmer hierarchy through task evidence. |
+| C — daily keyboard | The current working tree has themes, one-hand and purposeful landscape/split layouts plus the clean-room one-row daily surface and continuous bottom row recorded below. | Integrate the reviewed slice; matched post-change performance and final device/accessibility evidence remain part of the redesign gate. |
 | D — suggestions | Fixed geometry/off-main-thread work; literal email/URI suppression has live native tests; generation/render timing recorded in P1. | Live numeric/search/unsupported-editor and named-host evidence beyond resolver/component policy. |
 | E — Tools | Edit, navigation, modifiers, Fn and terminal surfaces exist. | Validate category/rail design without slowing mixed modifier-navigation tasks. |
 | F — editing | Existing gestures plus owned-draft grapheme navigation/deletion, including interior combining/ZWJ caret positions, pass automated tests. | Host RTL, line crossing, punctuation and broader named-host acceptance. |
@@ -75,6 +75,66 @@ compatibility, performance and accessibility audit. Unperformed work stays
 | K — recovery | Local fail-closed feedback avoids layout jumps. | Action-specific What/Affected/Next messages. |
 | L — accessibility | Automated semantics, contrast, geometry and orientation checks exist. | A final audit record is required. Physical and live assistive-technology evidence remains optional for routine releases; absent evidence limits claims. |
 | M — release | Offline/privacy/signing/upgrade gates are established. | Compatibility and performance gates below must pass before redesign completion. |
+
+## Implemented in the current working tree — C daily-surface clean-room reset
+
+**Goal** — Restore a calm, familiar daily keyboard: one compact action/suggestion
+strip, a continuous bottom row with no dead slot, and advanced editing or terminal
+controls available only when requested.
+
+**Area** — `TypingPanel.kt`, its focused geometry/toolbar instrumentation tests,
+and the IME root background only if inset validation proves a separate system-area
+seam.
+
+**Constraints** — [FUTO Keyboard's public source mirror](https://github.com/futo-org/android-keyboard)
+is behavioral research under its own source-first license, not an implementation
+source. Do not copy its code, assets, labels,
+constants, layouts or theme values. Preserve Utterleaf's privacy policy, editor
+session guards, preference IDs, dynamic action behavior, typing path and specialist
+Tools capabilities. Sensitive fields remain minimal.
+
+**Acceptance** — Ordinary portrait and landscape use one 48dp daily strip; Tools
+and Edit remain one tap away; suggestions occupy stable inline geometry; advanced
+destinations remain reachable through Tools; every non-split bottom-row region is
+an actionable key; only the explicit split channel may be inert; key targets and
+sensitive-field profiles retain their contracts.
+
+**Verification** — Run `python -m unittest discover -s mobile/android/tools -p
+test_*.py`, `gradlew testDebugUnitTest`, then the focused connected classes
+`DailyToolbarContractTest`, `KeyboardSpacingTest`, `KeyboardGeometryTest` and
+`CompactLayerTest`. Follow with the affected editing/lifecycle bundle and
+`lintDebug`; capture portrait and landscape emulator renders for human review.
+
+**Non-goals** — Prediction/swipe input, a new dictation state machine, wholesale
+Tools navigation redesign, or claims about physical-device comfort.
+
+**Stop** — Stop when the focused contract and affected regression bundle pass,
+renders show no dead bottom-row hole or duplicated daily chrome, documentation
+matches the result, and remaining device-only validation is stated explicitly.
+
+### Working-tree evidence — September 27, 2026
+
+- The ordinary daily surface now uses one 48dp row for Tools, Edit, three stable
+  inline suggestion slots and Dictate. Undo/Redo, clipboard, Emoji, draft and
+  specialist keys moved behind the existing explicit Tools/Edit routes. Sensitive
+  fields keep their separate minimal row.
+- The non-split bottom row is fully assigned to mode switch, comma, Space, period
+  and the dynamic editor action. Split landscape retains only its documented
+  center channel. A geometry regression covers portrait/landscape and all three
+  alignment choices, rejecting inert non-split cells or discontinuities.
+- The Tools hub remains no taller than the default number-row keyboard. Caps is
+  in its header; Edit, Emoji, private draft/password manager, Extra Keys, number
+  row, accents/compose, alignment and letter layouts remain explicitly reachable.
+- Android tooling passed **26/26**; JVM tests passed **50/50**; the affected
+  emulator bundle passed **76/76**; the disclosure-transition group passed
+  **24/24**; and lint reports **0 errors / 58 warnings**. A fresh API 35 portrait
+  render was inspected and contains no bottom-left void or second action row.
+- Two complete **238-test** emulator runs each reached **237/238** with different
+  one-off live-fixture failures: selected-text suggestion rejection in the first
+  run and raw-terminal ASCII delivery in the second. Each exact failed case passed
+  immediately in isolation; the second full run also passed the first case. These
+  failures remain recorded as test-environment timing evidence, not converted into
+  a green full-suite claim. No physical-device usability claim is made.
 
 ## Milestones
 

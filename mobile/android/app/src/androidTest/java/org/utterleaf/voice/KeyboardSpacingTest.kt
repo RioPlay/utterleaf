@@ -1,10 +1,13 @@
 package org.utterleaf.voice
 
+import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Rect
 import android.os.Build
 import android.view.View
 import android.view.WindowInsets
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -71,13 +74,14 @@ class KeyboardSpacingTest {
     }
 
     private fun panel(
+        panelContext: Context = app,
         options: KeyboardOptions = KeyboardOptions(),
         state: () -> SuggestionEngine.SuggestionState = {
             SuggestionEngine.SuggestionState.EMPTY
         },
         enabled: Boolean = true,
     ): TypingPanel = TypingPanel(
-        app, options, { true }, {}, {}, {}, {}, {}, {},
+        panelContext, options, { true }, {}, {}, {}, {}, {}, {},
         suggest = if (enabled) state else null,
         completeWord = if (enabled) { _, _ -> true } else null)
 
@@ -148,8 +152,8 @@ class KeyboardSpacingTest {
         val enabled = panel()
         enabled.reset(false, false, "Enter")
         val enabledHeight = measure(enabled)
-        assertEquals("Enabled letters reserve the fixed strip", Ui.dp(app, 40).toDouble(),
-            (enabledHeight - disabledHeight).toDouble(), 1.0)
+        assertEquals("Inline suggestions must not add another toolbar row",
+            disabledHeight, enabledHeight)
 
         val symbols = panel()
         symbols.reset(false, true, "Enter")
@@ -161,6 +165,43 @@ class KeyboardSpacingTest {
             it is Button && it.contentDescription?.toString()?.startsWith("Complete with ") == true
         })
         assertEquals("Symbols must not reserve a suggestion strip", symbolsDisabledHeight, symbolsHeight)
+    }
+
+    @Test fun bottomRowHasNoUnassignedTouchRegionOutsideExplicitSplitChannel() = main {
+        val configurations = listOf(
+            Configuration.ORIENTATION_PORTRAIT to 360,
+            Configuration.ORIENTATION_LANDSCAPE to 700,
+        )
+        for ((orientation, widthDp) in configurations) {
+            val configured = Configuration(app.resources.configuration).apply {
+                this.orientation = orientation
+            }
+            val panelContext = app.createConfigurationContext(configured)
+            for (alignment in KeyboardAlignment.entries) {
+                val panel = panel(panelContext,
+                    KeyboardOptions(numberRow = false, alignment = alignment), enabled = false)
+                panel.reset(false, false, "Enter")
+                val width = Ui.dp(panelContext, widthDp)
+                panel.view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+                panel.view.layout(0, 0, width, panel.view.measuredHeight)
+
+                val bottom = key(panel, "Space").parent as LinearLayout
+                val children = (0 until bottom.childCount).map { bottom.getChildAt(it) }
+                assertTrue("$orientation/$alignment bottom row contains an inert slot",
+                    children.all { it is Button && it.isClickable && it.isFocusable })
+                assertEquals(0, children.first().left)
+                assertEquals(bottom.width, children.last().right)
+                children.zipWithNext().forEach { (left, right) ->
+                    assertEquals("$orientation/$alignment bottom row has a dead gap",
+                        left.right, right.left)
+                }
+                assertTrue(descendants(panel.view).filterIsInstance<Button>()
+                    .mapNotNull { it.contentDescription?.toString() }
+                    .containsAll(setOf(",", "Space", ".")))
+                panel.dispose()
+            }
+        }
     }
 
     @Test fun explicitBottomSpacingAddsOnlyTheRequestedPanelSpace() = main {
