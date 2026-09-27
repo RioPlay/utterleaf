@@ -88,10 +88,13 @@ def test_backup_compact_wide_compact_keeps_whole_controls_and_review(kind, scale
             # Start traversal from a mapped control. Tk 9 may unmap canvas
             # descendants that remain fully above the viewport after resize.
             dialog.options_canvas.yview_moveto(0)
-            actions[0].focus_force()
-            dialog.root.update()
             for choice in choices:
                 choice.focus_force()
+                # X11 may move focus_force() without dispatching FocusIn through
+                # the widget's bindtags. Generate the real event explicitly so
+                # this cross-platform layout check exercises the production
+                # toplevel binding rather than a platform-specific focus side effect.
+                choice.event_generate("<FocusIn>")
                 dialog.root.update()
                 assert dialog.root.focus_get() == choice, (
                     size, str(choice), choice.state(), choice.winfo_ismapped(), choice.winfo_geometry()
