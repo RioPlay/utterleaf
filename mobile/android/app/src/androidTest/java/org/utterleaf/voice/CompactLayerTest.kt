@@ -265,6 +265,7 @@ class CompactLayerTest {
             val normalHeight = fixture.height()
             fixture.capture("normal")
             // A tap opens the emoji picker, never the tools hub.
+            fixture.tap(fixture.key("Keyboard tools"))
             fixture.tap(fixture.key("Emoji"))
             assertFalse(fixture.has("Close tools and settings"))
             assertTrue(fixture.calls.inserted.isEmpty())
@@ -273,9 +274,9 @@ class CompactLayerTest {
             assertEquals(normalHeight, fixture.height())
 
             // Hidden long-press navigation is gone; Settings stays visible in Tools.
+            fixture.tap(fixture.key("Keyboard tools"))
             val emojiKey = fixture.key("Emoji")
             assertFalse(main { emojiKey.performLongClick() })
-            fixture.tap(fixture.key("Keyboard tools"))
             fixture.tap(fixture.key("Keyboard settings"))
             assertEquals(1, fixture.calls.settings)
             fixture.tap(fixture.key("Close tools and settings"))
@@ -314,8 +315,8 @@ class CompactLayerTest {
 
     @Test fun toolsRemainReachableWithoutExtraKeysAndStaleEmojiCannotOpenSettings() {
         withPanel(KeyboardOptions(extraKeys = false)) { fixture ->
-            val oldEmoji = fixture.key("Emoji")
             fixture.tap(fixture.key("Keyboard tools"))
+            val oldEmoji = fixture.key("Emoji")
             assertTrue(fixture.has("Latin compose"))
             assertTrue(fixture.has("Accents and alternate characters"))
             assertFalse(main { oldEmoji.performLongClick() })
@@ -324,6 +325,7 @@ class CompactLayerTest {
             assertEquals(1, fixture.calls.settings)
             fixture.tap(fixture.key("Close tools and settings"))
             assertFalse(fixture.has("Extra keys"))
+            fixture.tap(fixture.key("Keyboard tools"))
             val emoji = fixture.key("Emoji")
             main { fixture.panel.dispose() }
             assertFalse(main { emoji.performLongClick() })

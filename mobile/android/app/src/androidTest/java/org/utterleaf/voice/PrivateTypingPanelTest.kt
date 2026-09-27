@@ -76,6 +76,7 @@ class PrivateTypingPanelTest {
             assertTrue(listOf("Caps lock off", "Accents and alternate characters", "Latin compose").all { it in tools })
             assertForbiddenControlsAbsent(tools)
             key(panel, "Close tools and settings").performClick()
+            key(panel, "Editing tools").performClick()
             key(panel, "Extra keys").performClick()
             key(panel, "Accessory keys").performClick()
             key(panel, "Left arrow").performClick()
@@ -97,6 +98,7 @@ class PrivateTypingPanelTest {
             key(panel, "Editing tools").performClick()
             key(panel, "Select neighboring word").performClick()
             key(panel, "Close editing tools").performClick()
+            key(panel, "Editing tools").performClick()
             key(panel, "Extra keys").performClick()
             buttons(panel).first { it.contentDescription == "Shift off" }.performClick()
             key(panel, "Accessory keys").performClick()
@@ -214,6 +216,7 @@ class PrivateTypingPanelTest {
             emojiPanel = TypingPanel(context, KeyboardOptions(), { inserted += it; true },
                 {}, {}, {}, {}, {}, {}, privateEditing = true)
             emojiPanel.reset(allowVoice = true, numeric = false, action = "Enter")
+            key(emojiPanel, "Keyboard tools").performClick()
             key(emojiPanel, "Emoji").performClick()
             staleReturn = key(emojiPanel, "Return from emoji to letters")
         }

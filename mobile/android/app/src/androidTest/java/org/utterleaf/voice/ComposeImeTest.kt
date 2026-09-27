@@ -246,10 +246,10 @@ class ComposeImeTest {
         val activity = launch(raw = true)
         try {
             // Raw fields disable emoji and composition even though Tools remains reachable.
+            press("Keyboard tools")
             val emoji = checkNotNull(findNode("Emoji"))
             assertFalse(emoji.isEnabled)
             assertFalse(emoji.performAction(AccessibilityNodeInfo.ACTION_CLICK))
-            press("Keyboard tools")
             val compose = checkNotNull(findNode("Latin compose unavailable in raw input"))
             assertFalse(compose.isEnabled)
             assertFalse(compose.performAction(AccessibilityNodeInfo.ACTION_CLICK))

@@ -497,13 +497,17 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         refreshSuggestionsRow()
     }
 
-    /** The mockup's suggestion strip: stable height, completions of the current word. */
-    private fun suggestionRow() {
+    /** Stable inline completion area inside the daily toolbar. */
+    private fun suggestionStrip(row: LinearLayout) {
         if (sensitiveField) return
-        val row = row()
-        row.minimumHeight = Ui.dp(context, 40)
         suggestionRow = row
         refreshSuggestionsRow()
+    }
+
+    private fun emptyDailyStrip(row: LinearLayout) {
+        row.addView(View(context).apply {
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }, LinearLayout.LayoutParams(0, Ui.dp(context, 48), 3f))
     }
 
     private fun refreshSuggestionsRow(request: Boolean = true) {
@@ -514,7 +518,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         renderedSuggestions = state
         if (suggestionChips.isEmpty()) {
             repeat(3) { index ->
-                suggestionChips += key(row, "", "", height = 40, compact = true,
+                suggestionChips += key(row, "", "", height = 48, compact = true,
                     chordable = false, labelSizeSp = 16) {
                     renderedSuggestions.candidates.getOrNull(index)?.let { candidate ->
                         completeChip(renderedSuggestions.composing, candidate)
@@ -533,7 +537,8 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
                 created.gravity = Gravity.CENTER
                 created.includeFontPadding = false
                 suggestionEmpty = created
-                row.addView(created, 0, LinearLayout.LayoutParams(0, Ui.dp(context, 40), 3f))
+                row.addView(created, row.indexOfChild(suggestionChips.first()),
+                    LinearLayout.LayoutParams(0, Ui.dp(context, 48), 3f))
             }
             empty.text = if (state.composing.isEmpty()) "Type a word" else "No completions"
             empty.contentDescription = empty.text
@@ -950,44 +955,13 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             return
         }
         val actions = row()
-        toolbarEditorAction(actions, EditorAction.UNDO, R.drawable.ic_undo)
-        toolbarEditorAction(actions, EditorAction.REDO, R.drawable.ic_redo)
-        if (privateEditing) {
-            repeat(3) { spacer(actions, 1f) }
-        } else {
-            toolbarEditorAction(actions, EditorAction.CUT, R.drawable.ic_cut)
-            toolbarEditorAction(actions, EditorAction.COPY, R.drawable.ic_copy)
-            toolbarEditorAction(actions, EditorAction.PASTE, R.drawable.ic_paste)
-        }
-        selectActionKey(actions)
-
-        // A single 12-position strip keeps the typing rows visible in landscape.
-        // Portrait retains two rows so every target stays at least 48dp wide.
-        val destinations = if (context.resources.configuration.orientation ==
-            Configuration.ORIENTATION_LANDSCAPE) actions else row()
-        key(destinations, "Tools", "Keyboard tools", utility = true, height = 48,
-            chordable = false, compact = true) { openHub() }
-        key(destinations, "Edit", "Editing tools", utility = true, height = 48,
-            chordable = false, compact = true) { openEdit() }
-        toolbarIcon(destinations, R.drawable.ic_emoji, "Emoji", enabled = emojiAllowed) { showEmoji() }
-        if (!privateEditing && openPasswordManager != null) {
-            toolbarIcon(destinations, R.drawable.ic_key, "Open password manager") {
-                if (openPasswordManager?.invoke() != true) unavailable()
-            }
-        } else if (!privateEditing && openDraft != null) {
-            toolbarIcon(destinations, R.drawable.ic_draft, "Private draft") { openDraft?.invoke() }
-        } else spacer(destinations, 1f)
+        toolbarKey(actions, "Tools", "Keyboard tools", widthDp = 58) { openHub() }
+        toolbarKey(actions, "Edit", "Editing tools", widthDp = 58) { openEdit() }
+        if (suggest != null && !symbols) suggestionStrip(actions) else emptyDailyStrip(actions)
         if (!privateEditing) {
-            toolbarIcon(destinations, R.drawable.utterling_mic, "Dictate", primary = true, pill = true,
+            toolbarIcon(actions, R.drawable.utterling_mic, "Dictate", primary = true, pill = true,
                 enabled = voiceAllowed, iconSizeDp = 34, tintIcon = false) { dictate() }
-        } else {
-            spacer(destinations, 1f)
         }
-        if (options.extraKeys) toolbarIcon(destinations, R.drawable.ic_expand_open,
-            if (extraKeysOpen) "Close extra keys" else "Extra keys", selected = extraKeysOpen) {
-            if (extraKeysOpen) toggleExtraKeysPanel() else openExtraKeys()
-        }
-        else spacer(destinations, 1f)
         toolbarStatus = null
     }
 
@@ -1021,6 +995,20 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         header.addView(toolbarStatus, LinearLayout.LayoutParams(0, Ui.dp(context, 48), 1f))
     }
 
+    private fun hubHeader() {
+        val header = row()
+        toolbarKey(header, "ABC", "Close tools and settings", 58) { returnToTyping() }
+        toolbarStatus = TextView(context).apply {
+            text = "Tools"; textSize = 14f; setTextColor(ink); gravity = Gravity.CENTER_VERTICAL
+            setPadding(Ui.dp(context, 10), 0, Ui.dp(context, 8), 0)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+        header.addView(toolbarStatus, LinearLayout.LayoutParams(0, Ui.dp(context, 48), 1f))
+        capsKey = toolbarKey(header, "Caps", if (caps) "Caps lock on" else "Caps lock off", 62) {
+            caps = !caps; returnToTyping()
+        }.apply { isSelected = caps }
+    }
+
     private fun hubRows() {
         val actions = row()
         if (!privateEditing) {
@@ -1030,23 +1018,20 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             // Keep the hub height stable while omitting all host exits in a draft.
             spacer(actions, 2f)
         }
-        capsKey = key(actions, "Caps", if (caps) "Caps lock on" else "Caps lock off",
-            utility = true, height = 48, chordable = false) { caps = !caps; returnToTyping() }.apply { isSelected = caps }
-        val destinations = row()
         if (!privateEditing && openPasswordManager != null) {
-            key(destinations, "Passwords", "Open password manager", utility = true, height = 48,
+            key(actions, "Passwords", "Open password manager", utility = true, height = 48,
                 chordable = false) { if (openPasswordManager?.invoke() != true) unavailable() }
         } else if (!privateEditing && openDraft != null) {
-            key(destinations, "Draft", "Private draft", utility = true, height = 48,
+            key(actions, "Draft", "Private draft", utility = true, height = 48,
                 chordable = false) { openDraft?.invoke() }
-        } else spacer(destinations, 1f)
+        } else spacer(actions, 1f)
+        val destinations = row()
+        key(destinations, "Edit", "Editing tools", utility = true, height = 48,
+            chordable = false) { openEdit() }
+        key(destinations, "Emoji", "Emoji", utility = true, height = 48,
+            chordable = false) { showEmoji() }.apply { isEnabled = emojiAllowed }
         key(destinations, "Extra keys", "Extra keys", utility = true, height = 48,
             chordable = false) { openExtraKeys() }
-        if (!privateEditing) {
-            key(destinations, "123 row", if (options.numberRow) "Number row on" else "Number row off",
-                utility = true, height = 48, chordable = false) { toggleNumberRow() }
-                .apply { isSelected = options.numberRow }
-        } else spacer(destinations, 1f)
         val text = row()
         key(text, "Accents", "Accents and alternate characters", utility = true, height = 48, chordable = false) {
             cancelForGeometryChange(); cancelCompose(); hubOpen = false
@@ -1056,7 +1041,11 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         }
         key(text, "Compose", if (rawField) "Latin compose unavailable in raw input" else "Latin compose",
             utility = true, height = 48, chordable = false) { beginCompose() }.apply { isEnabled = !rawField }
-        spacer(text, 1f)
+        if (!privateEditing) {
+            key(text, "123 row", if (options.numberRow) "Number row on" else "Number row off",
+                utility = true, height = 48, chordable = false) { toggleNumberRow() }
+                .apply { isSelected = options.numberRow }
+        } else spacer(text, 1f)
         if (privateEditing) {
             // Keep the layer stable while host preferences stay out of a draft.
             repeat(2) { row().minimumHeight = Ui.dp(context, 48) }
@@ -1085,7 +1074,10 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
 
     /** One grouped specialist row keeps the typing surface and daily toolbar visible. */
     private fun extraKeyRows() {
-        addExtraKeyControls(row())
+        val specialist = row()
+        key(specialist, "ABC", "Close extra keys", utility = true, height = 48, widthDp = 48,
+            compact = true, labelSizeSp = 12, chordable = false) { toggleExtraKeysPanel() }
+        addExtraKeyControls(specialist)
     }
 
     private fun landscapeExtraHeader() {
@@ -1197,7 +1189,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         val landscapeExtra = extraKeysOpen && context.resources.configuration.orientation ==
             Configuration.ORIENTATION_LANDSCAPE
         when {
-            hubOpen -> layerHeader("All tools", "Close tools and settings")
+            hubOpen -> hubHeader()
             editOpen -> layerHeader("Edit", "Close editing tools")
             extraKeysOpen -> if (landscapeExtra) landscapeExtraHeader() else normalToolbar()
             composeChoosingMark -> layerHeader("Compose: choose a mark", "Return to typing") {
@@ -1214,7 +1206,6 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             }
             else -> {
                 normalToolbar()
-                if (!sensitiveField && suggest != null && !symbols) suggestionRow()
             }
         }
         if (hubOpen) { hubRows(); updateCase(); return }
@@ -1277,7 +1268,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         updateCase()
     }
 
-    /** Mockup bottom row: ?123, emoji/settings, labeled space, period, Enter pill. */
+    /** Continuous daily row: mode, punctuation, Space, punctuation and editor action. */
     private fun renderBottomRow() {
         val bottom = row()
         key(bottom, if (symbols) "ABC" else "?123", "Switch letters and symbols", 1.5f, utility = true) {
@@ -1285,7 +1276,20 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             extraKeysOpen = false; extraKeyGroup = ExtraKeyGroup.ACCESSORY
             cancelCompose(); alternateMode = false; alternateKey = null; render()
         }
-        // Daily destinations live in the stable toolbar; keep this row focused on typing.
+        fun addPunctuation(label: String, description: String, value: Char) =
+            key(bottom, label, description) {
+                if (alternateMode) openAlternates(value) else if (type(value.toString())) afterCommit(value.toString())
+            }.also { punctuation ->
+                view.registerOrdinaryKey(punctuation)
+                val generation = layoutGeneration
+                punctuation.setOnLongClickListener {
+                    if (generation != layoutGeneration) false else { openAlternates(value); true }
+                }
+                gestures.attachLetter(punctuation, { AlternateCharacters.punctuation }) { selected ->
+                    if (generation == layoutGeneration) type(selected)
+                }
+            }
+        addPunctuation(",", ",", ',')
         val spaces = mutableListOf<Button>()
         fun addSpace(weight: Float) = key(bottom, spaceLabel ?: "", "Space", weight, labelSizeSp = 14) {
             if (type(" ")) refreshSuggestionsRow()
@@ -1297,24 +1301,13 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             gestures.attachSpace(space) { left -> if (generation == layoutGeneration) navigate(left) }
         }
         if (splitLandscape()) {
-            spacer(bottom, 1f)
             addSpace(2.5f)
             splitGap(bottom)
             addSpace(2.5f)
         } else {
-            spacer(bottom, 1.5f)
             addSpace(5f)
         }
-        key(bottom, ".") { if (alternateMode) openAlternates('.') else if (type(".")) afterCommit(".") }.also { period ->
-            view.registerOrdinaryKey(period)
-            val generation = layoutGeneration
-            period.setOnLongClickListener {
-                if (generation != layoutGeneration) false else { openAlternates('.'); true }
-            }
-            gestures.attachLetter(period, { AlternateCharacters.punctuation }) { value ->
-                if (generation == layoutGeneration) type(value)
-            }
-        }
+        addPunctuation(".", ".", '.')
         key(bottom, if (actionLabel == "Enter") "↵" else actionLabel, actionLabel, 1.5f, primary = true, pill = true) {
             if (!sensitiveField && (ctrl || alt)) special(KeyEvent.KEYCODE_ENTER)
             else {

@@ -31,9 +31,14 @@ wait for the editor, privacy and testing foundation.
 
 ## Now
 
-- **Checkout:** `android-keyboard-hardening`, branch `codex/android-polish-alpha20`.
+- **Checkout:** `android-keyboard-hardening`, branch `codex/android-daily-layout`.
 - **Released:** [signed alpha20](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha20), including the bounded uncertain-dictation insertion correction, deterministic IME test cleanup and signed-reinstall preservation coverage (PR #61).
-- **Next:** complete the workflow-only Node.js/action and runner-image maintenance recorded in [alpha20 release readiness](plans/completed/android-alpha20-release-readiness.md#post-release-ci-maintenance-memory), then resume the [capability and experience plan](plans/active/android-experience-refresh.md). Editor-bound dictation recovery and the daily/Tools replacement remain subsequent feature work unless the scope changes. Android remains the priority; desktop is parked.
+- **Next:** review and integrate the current daily-surface reset, then complete the
+  workflow-only Node.js/action and runner-image maintenance recorded in
+  [alpha20 release readiness](plans/completed/android-alpha20-release-readiness.md#post-release-ci-maintenance-memory).
+  Editor-bound dictation recovery and the remaining Tools architecture work stay
+  in the [capability and experience plan](plans/active/android-experience-refresh.md).
+  Android remains the priority; desktop is parked.
 - **Verified for alpha20:** exact-main CI [run 36271277037](https://github.com/RioPlay/utterleaf/actions/runs/36271277037) passed; protected signing [run 36335155637](https://github.com/RioPlay/utterleaf/actions/runs/36335155637) preserved the established signer, passed the signed alpha03 upgrade and same-version installation smoke tests, and published the prerelease.
 - **Manual feedback:** physical typing/latency, TalkBack/Switch Access, phone landscape/three-button navigation and real Obtainium behavior are handled through user reports, not mandatory test gates. Emulator success does not establish physical-device verification. See the [manual reporting policy](plans/completed/android-alpha18-phone-acceptance.md).
 - **CI maintenance after alpha20:** update Node.js-20-based actions (including
@@ -45,6 +50,19 @@ wait for the editor, privacy and testing foundation.
 **Acceptance policy — September 26, 2026:** routine increments and preview releases use the applicable automated regression, privacy/security, build and signed-release checks without making unobserved device claims. The A–M redesign is not complete until its named compatibility, performance and final accessibility audits pass. Physical-device and assistive-technology work need not block every bounded source slice, but unperformed checks remain open and can never be reported as passed.
 
 ## Current status
+
+- **Daily-surface clean-room reset implemented in the current working tree —
+  September 27, 2026:** the ordinary keyboard now has one compact
+  Tools/Edit/suggestion/Dictate strip instead of the permanent two-row action
+  wall. Secondary editing, Emoji, draft and specialist destinations use explicit
+  disclosure; the Tools hub retains the same default height. The bottom-left dead
+  slot is replaced by a real comma key, producing a continuous mode/comma/Space/
+  period/action row outside the intentional split channel. FUTO's public source
+  informed only behavioral principles; no FUTO code, assets, labels, constants or
+  theme values were copied. Tooling, JVM, lint and the 76-case affected emulator
+  bundle pass; two complete 238-case runs each had a different isolated live-test
+  timing failure that passed on immediate targeted rerun, so a wholly green full
+  run is not claimed. Emulator renders do not establish physical-phone comfort.
 
 - **Alpha20 signed prerelease published — September 27, 2026:** reviewed source
   `ff3bfbf03dfee12304baf6e24540d1d259a52029` passed exact-main Android CI

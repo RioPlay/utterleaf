@@ -209,7 +209,7 @@ class PrivateDraftImeTest {
             openDraft()
             press("a")
             press("b")
-            press("Emoji")
+            press("Keyboard tools"); press("Emoji")
             press("grinning face")
             press("Return from emoji to letters")
             press("Enter")

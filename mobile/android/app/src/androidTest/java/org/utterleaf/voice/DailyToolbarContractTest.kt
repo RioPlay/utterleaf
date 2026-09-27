@@ -44,22 +44,24 @@ class DailyToolbarContractTest {
 
     @Test fun dailyActionsHaveExplicitFieldProfileContracts() {
         instrumentation.runOnMainSync {
-            val common = setOf("Undo", "Redo", "Select neighboring word", "Keyboard tools",
-                "Editing tools", "Emoji", "Extra keys")
+            val daily = setOf("Keyboard tools", "Editing tools")
+            val advanced = setOf("Undo", "Redo", "Select neighboring word", "Cut", "Copy",
+                "Paste", "Emoji", "Extra keys", "Private draft", "Open password manager")
 
             val ordinary = panel()
-            assertTrue(descriptions(ordinary).containsAll(
-                common + setOf("Cut", "Copy", "Paste", "Private draft", "Dictate")))
+            assertTrue(descriptions(ordinary).containsAll(daily + "Dictate"))
+            assertTrue("Advanced actions must not crowd the daily surface",
+                descriptions(ordinary).intersect(advanced).isEmpty())
 
             val password = panel(allowVoice = false, sensitive = true, draft = null, password = { true })
             val passwordActions = descriptions(password)
-            val toolbarActions = common + setOf("Cut", "Copy", "Paste", "Private draft", "Dictate",
-                "Open password manager", "Switch keyboard")
-            assertTrue(passwordActions.intersect(toolbarActions) ==
+            assertTrue(passwordActions.intersect(daily + advanced + setOf("Dictate", "Switch keyboard")) ==
                 setOf("Paste", "Open password manager", "Switch keyboard"))
 
             val raw = panel(allowVoice = false, raw = true, draft = null) { false }
-            assertTrue(descriptions(raw).containsAll(common + setOf("Cut", "Copy", "Paste", "Dictate")))
+            assertTrue(descriptions(raw).containsAll(daily + "Dictate"))
+            assertTrue(descriptions(raw).intersect(advanced).isEmpty())
+            buttons(raw.view).single { it.contentDescription == "Editing tools" }.performClick()
             for (action in listOf("Undo", "Redo", "Cut", "Copy", "Paste", "Select neighboring word")) {
                 assertFalse("$action must explain unavailability by being disabled in raw input",
                     buttons(raw.view).single { it.contentDescription == action }.isEnabled)
@@ -69,7 +71,7 @@ class DailyToolbarContractTest {
                 action in setOf(EditorAction.UNDO, EditorAction.REDO, EditorAction.SELECT_ALL)
             }
             val privateActions = descriptions(private)
-            assertTrue(privateActions.containsAll(common))
+            assertTrue(privateActions.containsAll(daily))
             assertTrue(privateActions.intersect(setOf("Cut", "Copy", "Paste", "Private draft", "Dictate",
                 "Open password manager")).isEmpty())
 
@@ -77,7 +79,7 @@ class DailyToolbarContractTest {
         }
     }
 
-    @Test fun sixStableActionsKeepAtLeastFortyEightDpInPortraitAndLandscapeWidths() {
+    @Test fun dailyStripKeepsAccessibleTargetsInPortraitAndLandscapeWidths() {
         instrumentation.runOnMainSync {
             val configurations = listOf(
                 Configuration.ORIENTATION_PORTRAIT to listOf(320, 360, 411),
@@ -93,8 +95,7 @@ class DailyToolbarContractTest {
                 panel.view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
                 panel.view.layout(0, 0, width, panel.view.measuredHeight)
-                for (description in listOf("Undo", "Redo", "Cut", "Copy", "Paste", "Select neighboring word",
-                    "Keyboard tools", "Editing tools", "Emoji", "Private draft", "Dictate", "Extra keys")) {
+                for (description in listOf("Keyboard tools", "Editing tools", "Dictate")) {
                     val button = buttons(panel.view).single { it.contentDescription == description }
                     assertTrue("$description was narrower than 48dp at ${widthDp}dp width",
                         button.measuredWidth >= Ui.dp(panelContext, 48))
@@ -103,6 +104,21 @@ class DailyToolbarContractTest {
                 }
                 panel.dispose()
             }
+        }
+    }
+
+    @Test fun toolsDisclosesSecondaryDestinationsAndEditReturnsInOneTap() {
+        instrumentation.runOnMainSync {
+            val panel = panel()
+            buttons(panel.view).single { it.contentDescription == "Keyboard tools" }.performClick()
+            assertTrue(descriptions(panel).containsAll(setOf("Editing tools", "Emoji", "Private draft", "Extra keys")))
+
+            buttons(panel.view).single { it.contentDescription == "Editing tools" }.performClick()
+            assertTrue(descriptions(panel).containsAll(setOf("Undo", "Redo", "Cut", "Copy", "Paste",
+                "Select neighboring word", "Close editing tools")))
+            buttons(panel.view).single { it.contentDescription == "Close editing tools" }.performClick()
+            assertTrue(descriptions(panel).containsAll(setOf("Keyboard tools", "Editing tools", "Dictate")))
+            panel.dispose()
         }
     }
 }

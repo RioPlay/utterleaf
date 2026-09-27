@@ -97,7 +97,7 @@ class TypingPanelLifecycleTest {
 
     private fun assertDailyLetters(panel: TypingPanel, action: String) {
         val labels = descriptions(panel)
-        assertTrue(listOf("Keyboard tools", "Editing tools", "Emoji", "a", "Shift off", "Space", action)
+        assertTrue(listOf("Keyboard tools", "Editing tools", "a", "Shift off", "Space", action)
             .all { it in labels })
         assertTrue(listOf(
             "Close tools and settings", "Close editing tools", "Close extra keys", "F1",
@@ -145,6 +145,7 @@ class TypingPanelLifecycleTest {
                 reattach(host, panel)
                 assertDailyLetters(panel, "Done")
 
+                key(panel, "Editing tools").performClick()
                 key(panel, "Extra keys").performClick()
                 key(panel, "Control off").performClick()
                 key(panel, "Alt off").performClick()
@@ -154,6 +155,7 @@ class TypingPanelLifecycleTest {
                 assertTrue("F1" in descriptions(panel))
                 reattach(host, panel)
                 assertDailyLetters(panel, "Done")
+                key(panel, "Editing tools").performClick()
                 key(panel, "Extra keys").performClick()
                 assertFalse(key(panel, "Control off").isSelected)
                 assertFalse(key(panel, "Alt off").isSelected)
@@ -176,6 +178,7 @@ class TypingPanelLifecycleTest {
                 reattach(host, panel)
                 assertDailyLetters(panel, "Done")
 
+                key(panel, "Keyboard tools").performClick()
                 key(panel, "Emoji").performClick()
                 assertTrue("Return from emoji to letters" in descriptions(panel))
                 reattach(host, panel)
