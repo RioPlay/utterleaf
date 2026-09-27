@@ -31,10 +31,14 @@ wait for the editor, privacy and testing foundation.
 
 ## Now
 
-- **Checkout:** `android-keyboard-hardening`, branch `codex/android-alpha21-release-record`.
+- **Checkout:** `android-keyboard-hardening`, branch `codex/android-comfort-pass`.
 - **Released:** [signed alpha21](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha21), including the clean-room daily-surface reset and live selected-text completion safeguard (PRs #64–#66).
-- **Next:** complete the workflow-only Node.js/action and runner-image maintenance recorded in
-  [alpha20 release readiness](plans/completed/android-alpha20-release-readiness.md#post-release-ci-maintenance-memory).
+- **Current:** finish review and exact-main validation of the bounded
+  [daily-keyboard comfort pass](plans/active/android-comfort-pass.md). It quiets
+  suggestions, improves hint hierarchy, guarantees bottom-row touch widths and
+  unifies the action-key shape without changing typing, privacy or editor logic.
+- **Next:** complete the workflow-only Node.js/action and runner-image maintenance
+  recorded in [alpha20 release readiness](plans/completed/android-alpha20-release-readiness.md#post-release-ci-maintenance-memory).
   Editor-bound dictation recovery and the remaining Tools architecture work stay
   in the [capability and experience plan](plans/active/android-experience-refresh.md).
   Android remains the priority; desktop is parked.
@@ -49,6 +53,18 @@ wait for the editor, privacy and testing foundation.
 **Acceptance policy — September 26, 2026:** routine increments and preview releases use the applicable automated regression, privacy/security, build and signed-release checks without making unobserved device claims. The A–M redesign is not complete until its named compatibility, performance and final accessibility audits pass. Physical-device and assistive-technology work need not block every bounded source slice, but unperformed checks remain open and can never be reported as passed.
 
 ## Current status
+
+- **Daily-keyboard comfort candidate verified locally — September 27, 2026:**
+  suggestions now use quiet, borderless fixed slots and clear stale hidden text;
+  empty states add no filler. Secondary hints use the palette's muted color at
+  9 sp, ordinary keys have explicit pressed fills, and the dynamic action uses
+  the standard key radius. Fixed mode/punctuation/action widths guarantee at
+  least 48 dp bottom-row targets while Space absorbs the remainder. Android
+  tooling passed **26/26**, JVM/lint passed, and the focused emulator bundle
+  passed **58/58** after exact reruns documented in the
+  [comfort plan](plans/active/android-comfort-pass.md#status--september-27-2026).
+  Final empty/one/three-candidate renders were inspected. No physical-device or
+  live assistive-technology claim is made.
 
 - **Alpha21 signed prerelease published — September 27, 2026:** PR #66 merged
   release metadata as exact main revision
