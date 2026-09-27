@@ -4,7 +4,7 @@
 
 <img src="assets/brand/utterling-default.png" width="80" alt="Utterling welcoming you to setup" />
 
-Binary releases are built for Windows 11 x64, macOS (Apple Silicon), and Linux x64 (Ubuntu 24.04 or compatible). You need a microphone; internet is used only when you explicitly install a speech model. An NVIDIA GPU is optional. Extract the entire release archive, then open `Utterleaf\utterleaf.exe` on Windows or `./Utterleaf/utterleaf` on macOS/Linux. Keep the `_internal` folder beside the executables. Python is not needed for the binary release.
+Binary releases are built for Windows 11 x64, macOS (Apple Silicon), and Linux x64 (Ubuntu 24.04 or compatible). You need a microphone. Fresh profiles use internet only when you explicitly install a speech model; an existing **Allow missing model downloads** preference remains effective after an upgrade. An NVIDIA GPU is optional. Extract the entire release archive, then open `Utterleaf\utterleaf.exe` on Windows or `./Utterleaf/utterleaf` on macOS/Linux. Keep the `_internal` folder beside the executables. Python is not needed for the binary release.
 
 From PowerShell in the extracted `Utterleaf` folder:
 

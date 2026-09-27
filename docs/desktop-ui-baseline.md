@@ -383,7 +383,7 @@ tests in 192.20 seconds without skips**. Separate configuration/privacy/boundary
 startup/presentation checks passed 81; one existing Linux startup symlink test
 was skipped for unavailable Windows symlink privilege. This is not native
 platform clearance or real storage-failure evidence.
-The latest integration refresh is **55 images** in
+That integration refresh is **55 images** in
 `artifacts/screenshots/desktop-save-settings-20260926`. Clean and partial-save
 views were inspected; the ordinary footer stays unchanged. All six reviewed
 save-source hashes still match after that capture.
@@ -488,6 +488,23 @@ in `desktop-section-reset-settings-final-20260926`, including the inspected
 staged Recording feedback reset. Its manifest records the current Settings hash
 `6bb4ec8e…` and capture helper `8592d1a8…`. Physical-DPI and screen-reader
 acceptance remain separate.
+
+## Explicit model-consent follow-up
+
+A later source-matched refresh records the first-run privacy correction without
+replacing the historical baseline. Fresh profiles now leave missing-model network
+access off and direct the user to **Download selected model…**; Help gives the
+same next action. Existing saved preferences remain visible and editable.
+
+`artifacts/screenshots/desktop-explicit-model-consent-20260927` contains **56
+images**. Visual review covered Speech & privacy standard and lower views, Help,
+and compact 2× Engine overview. The opt-in explanation, first-launch recovery,
+navigation and fixed footer remain readable without clipping. The captured PNG
+set was checked against Settings SHA-256 `dce20f1e620fdcdea291c5b35d99b85f…`
+and capture helper `bd88f73d7786d3f6def1c0b9cba8fa4d…`. Capture guards
+performed no microphone, model/network or preference operation. These images are
+presentation evidence, not screen-reader, native-dialog, mixed-DPI or physical
+device acceptance.
 
 ## Baseline conclusion
 

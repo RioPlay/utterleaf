@@ -26,26 +26,26 @@ out of scope.
   intended `desktop-v0.4.6-rc.3` tag.
 - The modernization source is committed on top of current `origin/main`.
 - Focused audio, Settings/recovery, privacy/config/boundary, and packaging tests pass.
-- A fresh Windows onedir package passes offline doctor and release smoke checks;
-  its contents, checksums, notices, and absence of bundled model weights are verified.
+- A fresh Windows onedir package starts without network consent, passes doctor
+  and release smoke checks; its contents, checksums, notices, and absence of
+  bundled model weights are verified.
 - CI results are tied to the exact candidate commit.
 - Remaining native/signing/publication gates are recorded rather than implied away.
 
 ## Verification
 
 ```powershell
-C:\Users\unknown\Projects\Utterleaf\.venv\Scripts\python.exe -m pytest tests/test_audio.py tests/test_app_readiness.py tests/test_transcribe_readiness.py
-C:\Users\unknown\Projects\Utterleaf\.venv\Scripts\python.exe -m pytest tests/test_section_reset_ui.py
-C:\Users\unknown\Projects\Utterleaf\.venv\Scripts\python.exe -m pytest tests/test_privacy.py tests/test_config.py tests/test_repo_boundaries.py
-C:\Users\unknown\Projects\Utterleaf\.venv\Scripts\python.exe -m pytest tests/test_packaging_media.py tests/test_packaging_notices.py tests/test_packaging_runtime_notices.py
+.\.venv\Scripts\python.exe -m pytest tests/test_audio.py tests/test_app_readiness.py tests/test_transcribe_readiness.py
+.\.venv\Scripts\python.exe -m pytest tests/test_section_reset_ui.py
+.\.venv\Scripts\python.exe -m pytest tests/test_privacy.py tests/test_config.py tests/test_repo_boundaries.py
+.\.venv\Scripts\python.exe -m pytest tests/test_packaging_media.py tests/test_packaging_notices.py tests/test_packaging_runtime_notices.py
 .\packaging\build.ps1
-.\dist\Utterleaf\utterleaf-cli.exe --doctor --offline
+.\dist\Utterleaf\utterleaf-cli.exe --doctor
 ```
 
 The complete current-head suite must also run in CI or a clean native environment.
-The managed local sandbox's unchanged OBS named-pipe fixture currently exceeds its
-eight-second connection watchdog; directory-permission shims are not acceptable
-evidence for its security-sensitive ACL tests.
+Cross-process tests must import the active checkout explicitly; an ambient package
+installation is not accepted as proof for the candidate source.
 
 ## CI receipts
 
@@ -99,6 +99,45 @@ evidence for its security-sensitive ACL tests.
   Python and third-party payloads remain byte-pinned. Unknown names, missing
   files, invalid signatures, unreviewed signers, and changed pinned hashes fail
   packaging before notices or archives are produced.
+- A fresh packaged-profile check exposed that the old default could download a
+  missing speech model before explicit approval. Fresh profiles now write
+  `allow_network = false`; malformed string or numeric values also fail closed,
+  while an explicit Boolean `true` survives save/load. Startup tests deny both
+  downloader entry points and require actionable missing-model recovery.
+- Pre-ledger source revision `06e00279e56aa1b32412947fa1df53baf910b175`
+  is on top of `origin/main` `3545a8eca01c81d81d351f41d48303058cecd855`.
+  The full desktop suite passed **2,685 tests with 14 documented prerequisite
+  skips in 384.11 seconds**. The checkout-local child-process correction also
+  passed all six Windows pairing-owner tests alone.
+- The rebuilt Windows onedir package passed three isolated fresh-profile starts.
+  All wrote `allow_network = false`; polling saw no established external TCP
+  socket owned by the parent app process; no download request was logged and no
+  model weight was written. All reached authenticated IPC,
+  and quit cleanly in 49.85–58.36 ms. IPC readiness was 1,607 ms for the first
+  sequential sample and 562–610 ms for the next two; OS/file cache state was not
+  controlled. Ten-second tray-idle samples consumed 0.250–0.313 CPU seconds, or
+  0.154–0.194% of this 16-logical-CPU machine.
+  Working set was 98.1–98.5 MB. This is bounded Windows evidence, not sustained,
+  recognition-latency, macOS or Linux performance clearance.
+- The measured `utterleaf.exe` SHA-256 is
+  `d546667ab61b06d7f05c6813139e941fdd2d5467ecfc65e5b87fc651c0d4ee36`.
+  Its ignored raw receipt is
+  `artifacts/packaged-offline-first-run/fixed-20260927T142007/receipt.json`
+  (SHA-256 `b600db2bced7874d63460cdf35b32021526260bda85dd60f9ad27097145b1e81`).
+  The unforced packaged doctor reports both missing backends as explicit Settings
+  installations and `allow_network: False`; local polish, executable checksums,
+  48-package notices, and zero bundled `.bin`/`.safetensors`/`.gguf` files pass.
+- The updated privacy/help copy has **56 source-matched Settings captures** in
+  `artifacts/screenshots/desktop-explicit-model-consent-20260927`. Speech &
+  privacy standard/lower, Help, and compact 2× views were inspected without
+  clipping. Settings source SHA-256 is `dce20f1e…`; capture-helper SHA-256 is
+  `bd88f73d…`. No microphone, model download or preference mutation occurred.
+- The local performance receipt embeds the executable hash but not the source
+  revision or dirty state; the older local build manifest is stale. It is bounded
+  runtime evidence, not immutable candidate provenance. The exact-final hosted
+  build and tag-bound archive must supply that binding.
+- Exact final-candidate hosted CI is still required after the ledger commit is
+  pushed. Public tag or prerelease creation remains explicitly unauthorized.
 
 ## Non-goals
 

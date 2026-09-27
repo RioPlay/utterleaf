@@ -100,7 +100,7 @@ small reviewable slices with its own acceptance evidence.
 | D | Home/status surface | Dictation and Help name the matching loaded model for applied settings in one last-checked runtime snapshot, separate from the selected draft and local files. Custom paths remain private; Ready needs successful matching proof. Compact actions stack without changing navigation. Physical microphone availability and active-take identity remain separate. |
 | E | State communication | Fixed, text-free snapshots preserve active capture/processing and failures across model warmup/reload. Loading/failure returns after brief result feedback. Stale/quit callbacks cannot publish. Shared artwork and indicator labels align Listening/model-failure/shared-attention terminology; wider tray controls remain open. |
 | F | Device management | Settings refresh/test feedback is serialized; input changes invalidate old check results and enumeration failures offer retry and optional Details. Worker-start failures restore controls without probing or recording; failed background checks no longer abandon Settings construction. Cached capture now revalidates a within-process numeric route between explicit takes, including OS-default and same-name route changes; named duplicates/missing devices fail closed. Persistent native identity, rename continuity, monitoring and physical failure acceptance remain. |
-| G | Model management | Canonical names and factual language support appear in summaries/download feedback. An explicitly refreshed inventory lists guided installations, measured setup-file sizes and compatible draft-only selection; download dispatch/confirmation/stale callbacks recover safely. Cached Model details keeps identifiers/paths optional. Runtime load proof is separate from inventory; neither identifies an active take. No download-size or reclaimable-space claim. Removal/Update is gated on trusted immutable revisions/hashes, managed-path defenses, shared leases, active-take unload acknowledgement and quarantine/rollback; it must not be improvised from file presence. |
+| G | Model management | Canonical names and factual language support appear in summaries/download feedback. Fresh profiles stay offline until an explicit model installation; malformed persisted consent fails closed. An explicitly refreshed inventory lists guided installations, measured setup-file sizes and compatible draft-only selection; download dispatch/confirmation/stale callbacks recover safely. Cached Model details keeps identifiers/paths optional. Runtime load proof is separate from inventory; neither identifies an active take. No download-size or reclaimable-space claim. Removal/Update is gated on trusted immutable revisions/hashes, managed-path defenses, shared leases, active-take unload acknowledgement and quarantine/rollback; it must not be improvised from file presence. |
 | H | Settings | The Recording feedback section now has one explicitly scoped reset for indicator, live preview and sounds; real isolated-storage tests preserve unrelated drafts, global reset semantics and saved data. Broader regrouping still requires a persistence/reset migration contract. |
 | I | Keyboard shortcuts | Window-local page navigation, F1 Help, Page Up/Down/Home/End and Ctrl+F/Command+F Settings search accompany Save/Close/focus movement. Static search covers all 21 preferences and five destinations without indexing private values. Native editing keys remain untouched; broader platform shortcut validation remains. |
 | J | Tray | Current tray keeps status, Settings, two-minute recovery, indicator, secondary Tools and Quit. Tray start/stop and microphone switching remain gated: clicking the tray changes focus, so paste-target ownership and per-platform menu/keyboard behavior need an explicit contract before those controls are safe. |
@@ -109,7 +109,7 @@ small reviewable slices with its own acceptance evidence.
 | M | Empty states | Explain why dictation is unavailable and offer one next action for missing microphones/models. Avoid decorative art that adds no comprehension. |
 | N | Window/layout | Readable widths, responsive model/sidebar layout and fixed wrapping auxiliary actions are implemented. File/decoder/review content scrolls; compact/wide round trips cover 1×/1.5×/2× Tk text scales. Physical scaling, maximized/mixed-monitor DPI and other native platforms remain open. |
 | O | Accessibility | Reference-page scrolling, oversized-editor insertion/validation-line reveal, held-key repeats, and read-only report Tab traversal have source coverage. An intermittent Tcl Tab-command failure is recorded, not waived by later green runs. Names, dialogs, screen readers, physical scaling and Windows UI Automation acceptance remain open. |
-| P | Performance | A bounded real-Tk Settings-only baseline/candidate comparison records construction, 12-second idle CPU and memory on named Windows hardware. Full application startup, tray overhead, sustained use and recognition latency remain unmeasured gates; no full performance clearance is claimed. |
+| P | Performance | A bounded real-Tk Settings comparison records construction, 12-second idle CPU and memory on named Windows hardware. Three fresh packaged starts now record authenticated readiness, ten-second tray-idle CPU/memory and clean shutdown; polling saw no established external TCP socket owned by the app process, and no model write occurred. Source tests separately deny both downloader entry points. Sustained use, recognition latency, cross-platform behavior and a packaged baseline comparison remain open; no full performance clearance is claimed. |
 | Q | Framework decision | Consider a migration only after the current toolkit fails a measured accessibility, DPI, integration, maintenance, or required-interaction gate. Reuse the speech-service boundary. |
 | R | Mobile/desktop convergence | Align terminology, semantic colors/icons, privacy/error/model/help language. Keep navigation, density, layout, input, and system integration platform-native. |
 
@@ -131,16 +131,18 @@ items are intentionally not converted into speculative code:
   Windows UI Automation, keyboard focus under real assistive technology,
   maximized/mixed-monitor DPI and OS text scaling require physical/native runs;
   Tk source and screenshot checks are not certification.
-- **Whole-product performance:** measure cold app startup, tray idle CPU/memory,
-  sustained use and recognition latency on release hardware. The Settings-only
-  sample cannot clear these gates.
+- **Whole-product performance:** the bounded Windows package receipt now measures
+  three sequential fresh-profile starts plus tray-idle CPU/memory. OS/file cache
+  state was not controlled. Sustained use,
+  recognition latency, other release hardware/platforms and a packaged baseline
+  comparison remain open; neither the Settings nor three-start sample clears them.
 - **Tray/notifications:** start/stop from a tray must not paste into a target lost
   when the menu took focus. Notification permission, lifetime, suppression and
   recovery behavior need platform contracts and user-value evidence.
-- **Release:** packaging, signed binaries, package doctor, multi-OS CI and manual
-  device/accessibility acceptance remain release activities. The managed host's
-  Windows OBS native-pipe/private-DACL tests are currently blocked by sandbox
-  timing/ACL semantics; security checks are not weakened to manufacture a pass.
+- **Release:** a local unsigned Windows onedir build, unforced doctor, fresh-profile
+  startup and full desktop suite now pass. Exact-final hosted multi-OS CI, signing,
+  public tag/publication authorization and manual device/accessibility acceptance
+  remain release activities. Security checks are not weakened to manufacture a pass.
 
 ## Milestone A acceptance
 
@@ -1318,7 +1320,7 @@ section tests `b7759a7014784bc93e9d8616afda8473f7a0dd22ec3592807e5e0283f3bff1d9`
 capture helper `8592d1a814b2856431a4e1ff255d9a1a4ab13d41bc3af03716e26db79adb34bd`.
 No preference, model, vocabulary, IPC, microphone or framework behavior changed.
 
-Current-source broad-suite note: a normal final run reached **1,345 passed and
+Historical section-reset-stage broad-suite note: a normal run reached **1,345 passed and
 11 expected skips** before the existing Windows OBS native child-pipe fixture
 hit its eight-second self-expiry; the exact test failed again in isolation before
 the product assertion path. A diagnostic remainder run completed **2,642 other
@@ -2000,3 +2002,68 @@ held fixed but are not exhaustively hashed by this local harness.
 This measured candidate precedes the final sidebar-tagline fit correction; that
 small later layout change has separate regression/capture evidence, not a fresh
 timing claim. Do not present this receipt as exact-final-source performance QA.
+
+### Explicit model-consent and packaged first-run follow-up
+
+Goal: fresh desktop profiles must not contact a model provider or write model
+weights until the user explicitly approves an installation. Existing explicit
+Boolean preferences remain local and repeatable; malformed consent fails closed.
+This slice does not migrate saved `true` preferences, redesign model lifecycle,
+remove/update models, activate recording or broaden network access.
+
+Source behavior and tests:
+
+- `Config.allow_network` now defaults to `False`. Loading accepts only a real
+  Boolean for this consent; strings and numbers fall back to the safe default.
+  Explicit `true` survives the normal atomic save/load path.
+- CT2 and OpenVINO missing-model paths both refuse offline installation. A fresh
+  config/startup integration denies both provider functions, never runs the
+  download probe, reaches the existing recoverable model-failure state and points
+  to Speech & privacy rather than exposing a raw exception.
+- Primary help, setup, diagnostic and preview language now directs users to
+  **Download selected model…**. Fresh-profile claims are scoped so upgrades with
+  an already saved preference are described honestly.
+- Focused config/model/readiness tests passed **103 tests** after the final test
+  correction. The broader privacy/config/readiness/Settings/boundary run passed
+  **204 tests** before the stricter parsing follow-up; the complete final run below
+  subsumes both.
+
+Final local verification on Windows build 26200, Ryzen 7 5800X3D, 32 GiB RAM,
+Python 3.14.7 and Tk 9.0.4:
+
+- `.\.venv\Scripts\python.exe -m pytest -p no:cacheprovider` from the owning
+  worktree: **2,685 passed, 14 skipped in 384.11 seconds**. The skips remain 11
+  verified-FFmpeg codec prerequisites, one absent local public JFK fixture, one
+  Windows symlink-privilege prerequisite and one opt-in isolated-clipboard check.
+  No Tk or product assertion skipped.
+- A direct-script child import failure first produced two OBS ownership failures.
+  Children now prepend the active checkout to `PYTHONPATH`; the six-test ownership
+  module and the complete suite pass without relying on an ambient installation.
+- `packaging/build.ps1` completed, generated all three executable checksums and
+  48-package notices, and found no bundled speech-recognition weights. The
+  unforced isolated-profile doctor exits zero, reports `allow_network: False`,
+  describes both missing backends as explicit Settings installs, and local polish
+  exits zero.
+- Three packaged fresh profiles all reached authenticated IPC, recorded no
+  established external TCP socket owned by the parent app process during polling,
+  download log marker or model weight, and quit normally. This polling does not
+  cover UDP/DNS, short-lived sockets or child processes; source tests separately
+  deny both downloader entry points.
+  IPC readiness was 1,606.6 ms for the first sequential sample then 562.0/609.5
+  ms for the next two; OS/file cache state was not controlled. Quit took
+  49.9–58.4 ms. Ten-second idle CPU was 0.250–0.313 seconds (2.47–3.11% of one
+  logical CPU, 0.154–0.194% of this 16-thread machine); working set was
+  98.1–98.5 MB. Private commit was about 573 MB and has no packaged baseline, so
+  memory-regression clearance is not claimed. Raw ignored receipt and hashes are
+  recorded in the RC3 readiness plan.
+- `tests/capture_settings.py --output
+  artifacts/screenshots/desktop-explicit-model-consent-20260927` produced **56
+  images**. Speech & privacy standard/lower, Help standard and compact 2× Engine
+  overview were inspected; the opt-in and first-launch copy is readable without
+  clipping. Settings hash `dce20f1e…`; capture helper `bd88f73d…`.
+
+This closes the discovered automatic-download release blocker and provides the
+first packaged startup/tray-idle sample. Exact-final hosted CI, immutable tagged
+archive construction, signing, physical devices, screen readers/UI Automation,
+native dialogs, mixed-monitor DPI, sustained/recognition performance, trusted
+model removal/update inputs and public release authorization remain separate gates.

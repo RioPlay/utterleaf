@@ -4,7 +4,7 @@
 
 Scope: Windows, macOS, and Linux desktop application only.
 
-Updated September 26, 2026. Priorities follow the
+Updated September 27, 2026. Priorities follow the
 [offline STT user research](offline-stt-user-research-2026-09-08.md).
 This is an ordered development plan, not a promise of release dates.
 
@@ -171,11 +171,22 @@ intended field, with understandable local processing and minimal interruption.
   **145 focused audio lifecycle checks** plus independent review. Next: stable
   native identity/physical device acceptance, gated model lifecycle, full-plan
   performance and native release gates.
+  Fresh profiles now keep missing-model network access off until an explicit
+  installation. Malformed persisted consent fails closed; explicit Boolean
+  consent still round-trips. A merged-head Windows onedir package passed three
+  isolated launches where polling saw no established external TCP socket owned
+  by the app process, download marker or model weight, then authenticated quit.
+  Source tests separately deny both downloader entry points. The unforced doctor reports the opt-in
+  default and explicit Settings recovery. The final local desktop suite passed
+  **2,685 tests with 14 documented prerequisite skips**, and **56 source-matched
+  Settings captures** refresh the privacy/help copy. The package also supplies a
+  bounded startup/tray-idle receipt; sustained/recognition and packaged-baseline
+  performance remain open rather than inferred.
   Active-take identity and safe removal/update are not inferred from a local
   file inventory or a generic app-status response.
   These are unreleased source results. Physical readiness, accessibility,
   remaining auxiliary/native-dialog acceptance, device/model lifecycle, physical DPI,
-  and whole-app/tray/recognition performance remain open.
+  and sustained/recognition/cross-platform performance remain open.
 - **Landed:** native pairing/vendor integration and desktop enrollment UI, PR #36 (`aa296c9`); [CI 35366314920](https://github.com/RioPlay/utterleaf/actions/runs/35366314920) passed all five desktop jobs.
 - **Parked while Android is prioritized:** `desktop-obs-bridge` on `feat/obs-session-arm`, draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37). Its earlier green check was against `aa296c9`; refresh onto current `main` and rerun checks before review/landing, then replay #38 onto the resulting `main`.
 - **Parked:** #38 PCM, #39 disarm, #40 controller, #41 provenance, #42 timelines. Each must be rebased, retargeted and verified in order; do not merge the old stack as-is. See [workspaces](workspaces.md).

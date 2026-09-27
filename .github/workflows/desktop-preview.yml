@@ -99,12 +99,24 @@ jobs:
       - name: Run frozen diagnostics
         run: |
           $env:APPDATA = Join-Path $env:RUNNER_TEMP 'utterleaf-preview-smoke'
-          $doctorJson = .\.venv\Scripts\python.exe -c "import json,subprocess; p=subprocess.run([r'dist\Utterleaf\utterleaf-cli.exe','--doctor','--offline'],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding='utf-8',errors='replace',timeout=45); print(json.dumps({'exit':p.returncode,'lines':p.stdout.splitlines()}))"
+          $doctorJson = .\.venv\Scripts\python.exe -c "import json,subprocess; p=subprocess.run([r'dist\Utterleaf\utterleaf-cli.exe','--doctor'],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding='utf-8',errors='replace',timeout=45); print(json.dumps({'exit':p.returncode,'lines':p.stdout.splitlines()}))"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $doctorResult = $doctorJson | ConvertFrom-Json
           $lines = @($doctorResult.lines)
           $doctorExit = [int]$doctorResult.exit
           $lines | Write-Output
+          if (-not ($lines | Where-Object { $_ -eq 'allow_network: False (only for a missing model fetch)' })) {
+              Write-Error 'Fresh packaged profile did not keep missing-model network access off.'
+          }
+          if (-not ($lines | Where-Object { $_ -match '^  .+: missing \(install from Settings' })) {
+              Write-Error 'Fresh packaged profile did not report explicit model installation recovery.'
+          }
+          $config = Join-Path $env:APPDATA 'Utterleaf\config.toml'
+          if (-not (Select-String -LiteralPath $config -Pattern '^allow_network = false$' -Quiet)) {
+              Write-Error 'Fresh packaged config did not persist the offline model default.'
+          }
+          $weights = @(Get-ChildItem -LiteralPath $env:APPDATA -Recurse -File | Where-Object { $_.Extension -in @('.bin', '.safetensors', '.gguf') })
+          if ($weights.Count -ne 0) { Write-Error 'Fresh packaged doctor wrote model weights.' }
           if ($doctorExit -eq 0) {
               "DOCTOR_STATUS=passed" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
               exit 0
