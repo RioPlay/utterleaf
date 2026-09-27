@@ -66,7 +66,7 @@ def test_backup_compact_wide_compact_keeps_whole_controls_and_review(kind, scale
                                      if str(widget.cget("variable")) == str(dialog.include_vocabulary))
             assert "comments excluded" in vocabulary_choice.cget("text").lower()
         compact_rows = None
-        for size in ((480, 460), (1000, 700), (480, 460)):
+        for size in ((480, 460), (1000, 620), (480, 460)):
             resize(dialog, size)
             for action in actions:
                 assert_bounds(action, dialog.root)
@@ -168,7 +168,7 @@ def test_backup_preview_native_tab_leaves_readonly_text(kind, sequence, directio
 @pytest.mark.parametrize("kind", ["export", "import"])
 def test_backup_cancel_remains_no_write_after_resize_and_preview_traversal(kind, working_tk_display):
     with dialog_fixture(kind, 2.0) as (dialog, runtime):
-        for size in ((480, 460), (1000, 700), (480, 460)):
+        for size in ((480, 460), (1000, 620), (480, 460)):
             resize(dialog, size)
         cancel = next(widget for widget in capture_backup.descendants(dialog.root)
                       if widget.winfo_class() == "TButton" and widget.cget("text") == "Cancel")

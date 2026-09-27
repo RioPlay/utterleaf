@@ -63,6 +63,11 @@ evidence for its security-sensitive ACL tests.
 - The Help recovery action was shortened to `Restore defaults…` after the Linux
   high-text-scale check found genuine clipping. A clean CI rerun is required for
   the replacement candidate.
+- Candidate `afdbed39a6651dcc3777751f61e2673b3e8b5c92` cleared Linux tests and
+  Linux/macOS packaging. Its macOS suite completed without the prior Aqua hang;
+  the remaining failures showed the hosted desktop clamps a 700-pixel requested
+  height to 645 pixels. Wide-layout fixtures now use 620 pixels, above every
+  compact minimum while retaining the 1000-pixel wide-layout stimulus.
 
 ## Non-goals
 
