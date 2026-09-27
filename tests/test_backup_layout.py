@@ -53,6 +53,21 @@ def assert_bounds(widget, container):
     assert height >= widget.winfo_reqheight(), detail
 
 
+def assert_canvas_bounds(widget, canvas, body):
+    """Check an embedded widget against the canvas's logical viewport."""
+    x = widget.winfo_rootx() - body.winfo_rootx()
+    y = widget.winfo_rooty() - body.winfo_rooty()
+    width, height = widget.winfo_width(), widget.winfo_height()
+    left, top = canvas.canvasx(0), canvas.canvasy(0)
+    right, bottom = left + canvas.winfo_width(), top + canvas.winfo_height()
+    detail = (str(widget), widget.winfo_geometry(), (x, y), (left, top, right, bottom))
+    assert widget.winfo_ismapped(), detail
+    assert left <= x and x + width <= right, detail
+    assert top <= y and y + height <= bottom, detail
+    assert width >= widget.winfo_reqwidth(), detail
+    assert height >= widget.winfo_reqheight(), detail
+
+
 @pytest.mark.parametrize("kind", ["export", "import", "error"])
 @pytest.mark.parametrize("scale", [1.0, 1.5, 2.0])
 def test_backup_compact_wide_compact_keeps_whole_controls_and_review(kind, scale, working_tk_display):
@@ -104,7 +119,7 @@ def test_backup_compact_wide_compact_keeps_whole_controls_and_review(kind, scale
                 assert dialog.root.focus_get() == choice, (
                     size, str(choice), choice.state(), choice.winfo_ismapped(), choice.winfo_geometry()
                 )
-                assert_bounds(choice, dialog.options_canvas)
+                assert_canvas_bounds(choice, dialog.options_canvas, dialog.options_body)
                 assert dialog.preview.winfo_geometry() == preview_geometry
                 assert [action.winfo_geometry() for action in actions] == action_geometry
             assert state(dialog) == original
