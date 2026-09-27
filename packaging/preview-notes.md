@@ -42,9 +42,11 @@ want to return to v0.4.5. Default shortcut: **Ctrl+Win**.
 
 This is a portable Windows x64 CPU build; Python is included. Speech recognition
 runs locally. Speech-model weights and optional CUDA libraries are separate;
-model setup may download the selected model. FFmpeg and PyAV native codecs are
-not included. Third-party notices and executable checksums are inside the archive;
-the separate `Utterleaf-windows-x64-cpu.zip.sha256` verifies the download.
+fresh profiles keep missing-model downloads off until you explicitly approve an
+installation in Settings. Existing saved preferences are preserved. FFmpeg and
+PyAV native codecs are not included. Third-party notices and executable checksums
+are inside the archive; the separate
+`Utterleaf-windows-x64-cpu.zip.sha256` verifies the download.
 
 **The preview is unsigned.** Windows may show a SmartScreen reputation warning.
 This release does not include new macOS, Linux or Android binaries.

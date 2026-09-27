@@ -53,8 +53,8 @@ class Config:
     language: str = "en"  # ISO code, or "auto"
     # auto = denoise only when the take looks noisy. Whisper prefers raw audio when it's already clean.
     denoise: str = "auto"  # auto | on | off
-    # True = may fetch missing weights once. After that the app stays offline.
-    allow_network: bool = True
+    # Missing weights stay offline until the user explicitly allows a download.
+    allow_network: bool = False
     # Empty = OS default input. A name from Settings / --doctor pins a specific mic.
     microphone: str = ""
 
@@ -134,9 +134,10 @@ def load() -> Config:
     raw = _parse_toml(path.read_text(encoding="utf-8"))
     known = {f.name for f in fields(Config)}
     values = {k: v for k, v in raw.items() if k in known}
-    # These opt-ins can trigger an automatic stop or insertion. A malformed or
-    # hand-edited file must fail closed instead of treating truthy strings as consent.
-    for key in ("speech_end_enabled", "speech_end_insert"):
+    # These opt-ins can trigger network access, an automatic stop or insertion.
+    # A malformed or hand-edited file must fail closed instead of treating
+    # truthy strings or numbers as consent.
+    for key in ("allow_network", "speech_end_enabled", "speech_end_insert"):
         if key in values and type(values[key]) is not bool:
             values.pop(key)
     pause = values.get("speech_end_pause_seconds", 1.2)

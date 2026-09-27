@@ -8,6 +8,8 @@ import pytest
 
 from utterleaf import app as app_module
 from utterleaf.app import DOWNLOADING, ENGINE_FAILED
+from utterleaf.config import Config, ensure_files
+from utterleaf.models import ensure_ct2
 from test_app import _app
 
 
@@ -142,6 +144,65 @@ def test_public_startup_uses_shared_deferred_model_warmup(model_app, monkeypatch
     assert app._model_generation == 1
     assert app._model_phase == "loading"
     assert model_app.calls == []
+
+
+def test_default_config_never_probes_missing_model_for_download(model_app, monkeypatch):
+    app = model_app.app
+    app.cfg = Config()
+    assert app.cfg.allow_network is False
+    monkeypatch.setattr(
+        app,
+        "_needs_download",
+        lambda *_args, **_kwargs: pytest.fail("offline startup probed a model download"),
+    )
+
+    app._start_model_warmup()
+    model_app.workers[0].run()
+
+    loaded_cfg = next(call[1] for call in model_app.calls if call[0] == "load")
+    assert loaded_cfg.allow_network is False
+    assert ("loading", DOWNLOADING) not in app.indicator.calls
+
+
+def test_fresh_profile_missing_model_fails_actionably_without_download(
+    model_app, monkeypatch, tmp_path
+):
+    monkeypatch.setattr("utterleaf.config.data_dir", lambda: tmp_path)
+    monkeypatch.setattr("utterleaf.config.config_path", lambda: tmp_path / "config.toml")
+    monkeypatch.setattr("utterleaf.config.dictionary_path", lambda: tmp_path / "dictionary.txt")
+    monkeypatch.setattr("utterleaf.models.models_dir", lambda: tmp_path / "models")
+    monkeypatch.setattr(
+        "faster_whisper.utils.download_model",
+        lambda *_args, **_kwargs: pytest.fail("fresh startup attempted a CT2 download"),
+    )
+    monkeypatch.setattr(
+        "huggingface_hub.snapshot_download",
+        lambda *_args, **_kwargs: pytest.fail("fresh startup attempted an OpenVINO download"),
+    )
+    app = model_app.app
+    app.cfg = ensure_files()
+    monkeypatch.setattr(
+        app,
+        "_needs_download",
+        lambda *_args, **_kwargs: pytest.fail("offline startup probed a download"),
+    )
+    monkeypatch.setattr(
+        app_module,
+        "load_model",
+        lambda cfg, _chosen: ensure_ct2("tiny.en", allow_network=cfg.allow_network),
+    )
+
+    app._start_model_warmup()
+    model_app.workers[0].run()
+
+    assert app.cfg.allow_network is False
+    assert app._model_phase == "failed"
+    assert app._handle_ipc("status") == "status-v1:attention"
+    assert app._status == ENGINE_FAILED
+    badge, recovery = app.indicator.calls[-1]
+    assert badge == "engine"
+    assert "Settings → Speech & privacy" in recovery
+    assert ("loading", DOWNLOADING) not in app.indicator.calls
 
 
 def test_warmup_freezes_config_for_selection_download_check_and_load(model_app, monkeypatch):

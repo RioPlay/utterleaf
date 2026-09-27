@@ -1,6 +1,6 @@
 # Build an onedir distribution:  pyinstaller packaging/utterleaf.spec
-# Output lands in dist/Utterleaf. The app downloads its own model on first run,
-# so nothing heavy is bundled here. Works on Windows, macOS, and Linux hosts.
+# Output lands in dist/Utterleaf. Models are installed separately after explicit
+# approval, so nothing heavy is bundled here. Works on Windows, macOS, and Linux hosts.
 #
 # Windows defaults to a GUI executable. utterleaf-cli is the explicit diagnostic
 # console entry, and utterleafw remains a windowless compatibility entry.

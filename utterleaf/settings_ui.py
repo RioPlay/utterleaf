@@ -879,7 +879,7 @@ class SettingsWindow:
                       "and is not saved to a recording history. The latest output has a two-minute recovery slot in memory. "
                       "Use Forget last dictation in the tray menu to clear it sooner. No account is required.")
         self._check(p, "Allow missing model downloads", "allow_network",
-                    "Only model files are downloaded. Turn off to require an already installed model.")
+                    "Off by default. Install with Download selected model, or turn this on to fetch a missing selection automatically.")
         self._check(p, "Restore my clipboard after pasting", "restore_clipboard")
         if sys.platform == "win32":
             p = self._section(page, "OBS pairing", "Manage the private pairing saved for this Windows user. Live OBS transcription is still in development.")
@@ -1060,7 +1060,7 @@ class SettingsWindow:
         p = self._section(page, "Quick checks", "No text? Click an editable text field before dictating.\n"
                       "Lost a result? Use Copy last dictation in the tray menu within two minutes.\n"
                       "No audio? Choose a microphone on the Dictation page and run a check.\n"
-                      "First launch? Allow the speech model to finish downloading and loading.")
+                      "First launch? Open Speech & privacy and choose Download selected model.")
         modifier = "Command" if sys.platform == "darwin" else "Alt"
         save_modifier = "Command" if sys.platform == "darwin" else "Ctrl"
         self._section(page, "Keyboard shortcuts",

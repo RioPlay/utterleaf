@@ -61,7 +61,7 @@ Click the tray icon (or right-click → **Settings…**) to open Settings. First
 - **Dictation:** choose your shortcut, hold or press mode, microphone, recording feedback, and start at login. A five-second microphone check shows input levels without saving audio. The current source layout also groups Output style here; the published Windows RC2 keeps it under Vocabulary.
 - **Vocabulary:** add names and custom terms, choose text cleanup options, and preview the result on a sample before saving.
 - **Voice commands:** browse the built-in editing and punctuation commands.
-- **Speech & privacy:** choose a model, processing device, language, noise reduction, and clipboard behavior. Missing model downloads can be disabled.
+- **Speech & privacy:** choose a model, processing device, language, noise reduction, and clipboard behavior. Fresh profiles keep missing-model downloads off; use **Download selected model…** for an explicit installation.
 - **Help:** check whether the app is running, generate a device report, and save it wherever you choose.
 
 In current unreleased source, device-report and GPU-guidance checks run one at

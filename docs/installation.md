@@ -4,7 +4,7 @@
 
 <img src="assets/brand/utterling-default.png" width="80" alt="Utterling welcoming you to setup" />
 
-Binary releases are built for Windows 11 x64, macOS (Apple Silicon), and Linux x64 (Ubuntu 24.04 or compatible). You need a microphone and internet for the first model download; an NVIDIA GPU is optional. Extract the entire release archive, then open `Utterleaf\utterleaf.exe` on Windows or `./Utterleaf/utterleaf` on macOS/Linux. Keep the `_internal` folder beside the executables. Python is not needed for the binary release.
+Binary releases are built for Windows 11 x64, macOS (Apple Silicon), and Linux x64 (Ubuntu 24.04 or compatible). You need a microphone; internet is used only when you explicitly install a speech model. An NVIDIA GPU is optional. Extract the entire release archive, then open `Utterleaf\utterleaf.exe` on Windows or `./Utterleaf/utterleaf` on macOS/Linux. Keep the `_internal` folder beside the executables. Python is not needed for the binary release.
 
 From PowerShell in the extracted `Utterleaf` folder:
 
@@ -75,7 +75,7 @@ A binary release on Linux uses the distro's NVIDIA toolkit instead: install `cud
 
 Don't know the exact command for your distro? Run `utterleaf --cuda-setup` (or open **Settings → Help → Set up NVIDIA GPU…**) for steps matched to this machine, or run the helper script `scripts/cuda-setup.sh` from the repo, which detects the package manager and installs CUDA for you.
 
-First launch downloads Whisper `small.en` into the app data folder (~500 MB). The tray shows loading status; the optional overlay also explains the download. After that recognition works offline.
+On first launch, open **Speech & privacy** and choose **Download selected model…** to approve installing Whisper `small.en` into the app data folder (~500 MB). The tray shows installation status; the optional overlay explains it too. After that recognition works offline. Fresh profiles do not download a model automatically.
 
 - Windows: `%APPDATA%\Utterleaf\models`
 - macOS: `~/Library/Application Support/Utterleaf/models`
