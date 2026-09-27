@@ -3,16 +3,16 @@
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
 An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha20 is an unreleased development candidate.** Its stable daily
-productivity strip in ordinary fields keeps Undo, Redo, Cut, Copy, Paste, Select, Tools, Edit,
-Emoji, Private Draft, Voice, and Extra Keys directly reachable. Portrait uses
-two rows; landscape uses one row to protect vertical typing space. System,
+**0.1.0-alpha20 is the current signed preview; alpha21 is the release candidate.**
+The alpha21 ordinary surface uses one compact daily row for Tools, Edit, three
+stable suggestion positions and Dictate. Secondary editing, Emoji, Private Draft
+and specialist controls appear only when requested. Its continuous bottom row is
+?123, comma, Space, period and the dynamic action key. System,
 Light, Dark, and true-black OLED themes now
 apply across the keyboard, Settings, setup, emoji, private draft, and voice review.
-A grouped Accessory/F-key strip keeps specialist controls to one row, preserves
-held modifier-arrow chords, and responsively replaces the toolbar in landscape so
-Space and Enter remain visible. The complete additional-symbol set is split across
-readable rows instead of being compressed into one line.
+A grouped Accessory/F-key strip keeps specialist controls to one row and preserves
+held modifier-arrow chords when opened from Tools. The complete additional-symbol
+set is split across readable rows instead of being compressed into one line.
 An optional **Split keyboard in landscape** layout adds a non-interactive center
 channel across number, letter, symbol, and dual-Space rows. It falls back to the
 standard layout in portrait; choosing Left or Right hand alignment turns split
@@ -128,8 +128,8 @@ prediction, accessibility and device coverage remain on the
 
 1. Choose an Android APK from a [published signed preview](https://github.com/RioPlay/utterleaf/releases)
    for Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Alpha20 described here is an unreleased development candidate; use the build
-   instructions below to test this working tree, not a presumed alpha20 release link.
+   Alpha20 is the current published preview. Until alpha21 is published, use the
+   build instructions below only to test its release candidate.
    If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
    then install the signed preview. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
@@ -148,7 +148,7 @@ prediction, accessibility and device coverage remain on the
    preview quick controls and Reset, wait for Apply. **Cancel** discards them.
    Theme/layout choices update the preview immediately. Rotating Settings keeps
    pending preferences in memory, while practice text is cleared.
-   In the alpha20 candidate, **Customized** marks values that differ from defaults,
+   In alpha20 and later, **Customized** marks values that differ from defaults,
    not merely unsaved edits. Individual **Reset** and **Reset category** actions
    also wait for Apply; Cancel discards them. They leave unrelated settings and
    installed models untouched. Search accepts terms such as `reset number row`.
@@ -192,7 +192,7 @@ Compact English**, **Use Medium English** or **Use Large English**. Their rows s
 offers the installed choices when there is more than one. Switching is allowed
 between takes, not during recording, processing or import.
 
-The alpha20 candidate presents **Compact English** (77.7 MB, lowest resource use),
+Alpha20 and later present **Compact English** (77.7 MB, lowest resource use),
 **Medium English** (148.0 MB, moderate resource use), and **Large English**
 (487.6 MB, highest resource use). These names do not promise accuracy or measured
 phone speed. **Show technical model details** reveals the stable identifier, original

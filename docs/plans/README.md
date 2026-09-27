@@ -4,7 +4,9 @@ Substantial in-flight work lives here so a new session can continue without the
 previous chat. One-line fixes do not need a plan.
 
 Start with [workspaces](../workspaces.md) and the platform roadmap's **Now**
-section, not the first filename in `active/`. Android alpha20 is published. Continue the roadmap design follow-ups;
+section, not the first filename in `active/`. Android alpha20 is published and
+[alpha21 release readiness](active/android-alpha21-release-readiness.md) is the
+current bounded promotion task. Continue the roadmap design follow-ups afterward;
 [physical issues are reported manually](completed/android-alpha18-phone-acceptance.md),
 and a dedicated phone acceptance campaign is no longer required. Desktop is parked; on resumption refresh/check draft PR #37, followed
 by sequential replay of #38–42. Other active
