@@ -88,7 +88,7 @@ def test_backup_compact_wide_compact_keeps_whole_controls_and_review(kind, scale
             # Start traversal from a mapped control. Tk 9 may unmap canvas
             # descendants that remain fully above the viewport after resize.
             dialog.options_canvas.yview_moveto(0)
-            dialog.root.update_idletasks()
+            dialog.root.update()
             for choice in choices:
                 choice.focus_force()
                 dialog.root.update()
