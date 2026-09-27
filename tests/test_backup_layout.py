@@ -1,6 +1,5 @@
 """Real-key and native-size backup review checks with synthetic data only."""
 from contextlib import contextmanager
-from types import SimpleNamespace
 
 import pytest
 
@@ -89,12 +88,9 @@ def test_backup_compact_wide_compact_keeps_whole_controls_and_review(kind, scale
             # Start traversal from a mapped control. Tk 9 may unmap canvas
             # descendants that remain fully above the viewport after resize.
             dialog.options_canvas.yview_moveto(0)
+            dialog.root.update_idletasks()
             for choice in choices:
                 choice.focus_force()
-                # X11 may move synthetic focus without dispatching FocusIn.
-                # Exercise the production reveal callback deterministically;
-                # native Tab traversal is covered separately below.
-                dialog._reveal_focus(SimpleNamespace(widget=choice))
                 dialog.root.update()
                 assert dialog.root.focus_get() == choice, (
                     size, str(choice), choice.state(), choice.winfo_ismapped(), choice.winfo_geometry()
