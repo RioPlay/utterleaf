@@ -103,6 +103,9 @@ class KeyboardIme : InputMethodService() {
         if (!currentUiSession(generation)) return false
         val connection = currentInputConnection ?: return false
         if (!selectionKnown || selectionStart != selectionEnd) return false
+        // onUpdateSelection can trail a fast host-side selection change. Confirm
+        // against the connection at tap time before issuing any destructive edit.
+        if (!selectedEditorTextIsEmpty(connection)) return false
         return completeSuggestionTransaction(connection, composing, candidate, true)
     }
     private fun commit(value: String, generation: Long): Boolean {
@@ -276,6 +279,19 @@ class KeyboardIme : InputMethodService() {
     override fun onFinishInput() { clear(); super.onFinishInput() }
     override fun onWindowHidden() { clear(); super.onWindowHidden() }
     override fun onDestroy() { clear(); suggestionWork.close(); super.onDestroy() }
+}
+
+/** Checks only whether the editor currently exposes selected text, without copying it. */
+internal fun selectedEditorTextIsEmpty(connection: InputConnection): Boolean {
+    return try {
+        val selected = connection.getSelectedText(0) ?: return true
+        selected.length == 0
+    } catch (_: InterruptedException) {
+        Thread.currentThread().interrupt()
+        false
+    } catch (_: RuntimeException) {
+        false
+    }
 }
 
 /** Performs the bounded, balanced completion transaction after session checks. */

@@ -52,7 +52,8 @@ wait for the editor, privacy and testing foundation.
 ## Current status
 
 - **Daily-surface clean-room reset implemented in the current working tree —
-  September 27, 2026:** the ordinary keyboard now has one compact
+  September 27, 2026:** PR [#64](https://github.com/RioPlay/utterleaf/pull/64)
+  merged the ordinary keyboard's one compact
   Tools/Edit/suggestion/Dictate strip instead of the permanent two-row action
   wall. Secondary editing, Emoji, draft and specialist destinations use explicit
   disclosure; the Tools hub retains the same default height. The bottom-left dead
@@ -62,7 +63,14 @@ wait for the editor, privacy and testing foundation.
   theme values were copied. Tooling, JVM, lint and the 76-case affected emulator
   bundle pass; two complete 238-case runs each had a different isolated live-test
   timing failure that passed on immediate targeted rerun, so a wholly green full
-  run is not claimed. Emulator renders do not establish physical-phone comfort.
+  run is not claimed. Exact-main run
+  [36341409976](https://github.com/RioPlay/utterleaf/actions/runs/36341409976)
+  then reproduced the selected-text completion race. The follow-up fix verifies
+  the connection's current selection at tap time before editing; its exact test,
+  all 18 suggestion tests, tooling, JVM and lint checks pass locally. A later full
+  local run passed that regression and had one unrelated default-IME readiness
+  failure, so exact-main CI must still turn green after the fix is integrated.
+  Emulator renders do not establish physical-phone comfort.
 
 - **Alpha20 signed prerelease published — September 27, 2026:** reviewed source
   `ff3bfbf03dfee12304baf6e24540d1d259a52029` passed exact-main Android CI

@@ -135,6 +135,17 @@ matches the result, and remaining device-only validation is stated explicitly.
   immediately in isolation; the second full run also passed the first case. These
   failures remain recorded as test-environment timing evidence, not converted into
   a green full-suite claim. No physical-device usability claim is made.
+- PR [#64](https://github.com/RioPlay/utterleaf/pull/64) merged the daily-surface
+  reset as `3545a8e`. Exact-main run
+  [36341409976](https://github.com/RioPlay/utterleaf/actions/runs/36341409976)
+  reproduced the selected-text case: Android's selection callback could trail the
+  host selection while a completion was tapped. The follow-up now confirms the
+  connection's current selected-text state before any destructive completion edit
+  and fails closed on an unreadable check. Tooling **26/26**, JVM tests, lint, the
+  exact regression, and the complete **18/18** suggestion class pass locally. A
+  subsequent 238-case local run passed the original regression but stopped at
+  **237/238** on a different default-IME readiness fixture that passed in the
+  preceding class run; a new exact-main gate remains required after integration.
 
 ## Milestones
 
