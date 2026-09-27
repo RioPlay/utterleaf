@@ -191,6 +191,21 @@ def test_reviewed_native_payload_receives_its_notice_tree(runtime):
     assert (output / "example" / "dependency" / "LICENSE").read_text() == "Complete dependency terms"
 
 
+def test_reviewed_native_payload_accepts_each_explicit_host_variant(runtime):
+    module, manifest, _, output = runtime
+    payload = module.DIST / "_internal" / "example.dll"
+    alternate = hashlib.sha256(b"alternate reviewed host build").hexdigest()
+    manifest["windows_runtime"]["example"]["payloads"]["example.dll"] = [
+        hashlib.sha256(payload.read_bytes()).hexdigest(),
+        alternate,
+    ]
+    payload.write_bytes(b"alternate reviewed host build")
+
+    module.copy_windows_runtime_notices(output)
+
+    assert (output / "example" / "PROVENANCE.json").is_file()
+
+
 @pytest.mark.parametrize("name", ["libportaudio64bit-asio.dll", "LIBPORTAUDIO32BIT-ASIO.DLL"])
 def test_asio_binary_is_rejected_even_if_a_build_hook_reintroduces_it(runtime, name):
     module, _, _, _ = runtime

@@ -258,14 +258,22 @@ def copy_windows_runtime_notices(licenses_dir: Path) -> list[tuple[str, str, str
     if actual_python != manifest["python_version"]:
         raise SystemExit("collect_notices: Windows Python runtime version requires a new notice review")
     declared_root_dlls = set()
+    mismatched_payloads = []
     for entry in manifest["windows_runtime"].values():
         for relative, expected in entry["payloads"].items():
             payload = DIST / "_internal" / relative
-            if not payload.is_file() or hashlib.sha256(payload.read_bytes()).hexdigest() != expected:
-                raise SystemExit(f"collect_notices: unreviewed Windows runtime payload: {relative}")
+            expected_hashes = expected if isinstance(expected, list) else [expected]
+            actual = hashlib.sha256(payload.read_bytes()).hexdigest() if payload.is_file() else "missing"
+            if actual not in expected_hashes:
+                mismatched_payloads.append(f"{relative}={actual}")
             normalized = relative.replace("\\", "/")
             if "/" not in normalized and normalized.lower().endswith(".dll"):
                 declared_root_dlls.add(normalized.casefold())
+    if mismatched_payloads:
+        raise SystemExit(
+            "collect_notices: unreviewed Windows runtime payload(s): "
+            + ", ".join(mismatched_payloads)
+        )
     actual_root_dlls = {
         path.name.casefold()
         for path in (DIST / "_internal").glob("*.dll")
