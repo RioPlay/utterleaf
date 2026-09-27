@@ -11,7 +11,9 @@ import numpy as np
 
 from utterleaf.clean import prepare
 from utterleaf.config import Config
+from utterleaf.languages import normalize_language
 from utterleaf.model_presentation import model_token
+from utterleaf.model_selection import resolve_model_selection
 from utterleaf.transcript import Segment, Transcript, TranscriptionCancelled
 from utterleaf.hardware import (
     Accelerator,
@@ -37,7 +39,6 @@ _infer_lock = threading.Lock()
 # Set while a real paste decode is in flight so the live draft does not start another infer.
 _final_requested = threading.Event()
 
-EN_ONLY = {"tiny", "base", "small", "medium"}
 # Drafts only the tail so a long hold cannot occupy the GPU when the user releases.
 PREVIEW_SECONDS = 4.0
 
@@ -53,14 +54,16 @@ def _dictionary_prompt() -> str:
 
 
 def resolve_name(cfg: Config) -> str:
-    name = cfg.model.strip()
-    if cfg.language.lower() in {"en", "english"} and name in EN_ONLY:
-        return f"{name}.en"
-    return name
+    return resolve_model_selection(cfg.model, cfg.language)
 
 
 def _config_key(cfg: Config) -> tuple[str, str, str, str]:
-    return (resolve_name(cfg), cfg.device, cfg.compute_type, cfg.language)
+    return (resolve_name(cfg), cfg.device, cfg.compute_type, normalize_language(cfg.language))
+
+
+def _requested_language(cfg: Config) -> str | None:
+    language = normalize_language(cfg.language)
+    return None if language in {"auto", ""} else language
 
 
 def engine_ready(cfg: Config) -> bool:
@@ -107,7 +110,7 @@ class CTranslateEngine:
             check_cancel()
         try:
             check_cancel()
-            language = None if cfg.language.lower() in {"auto", ""} else cfg.language
+            language = _requested_language(cfg)
             segments, info = self.model.transcribe(
                 audio, language=language, vad_filter=len(audio) >= 22400,
                 beam_size=5, condition_on_previous_text=False,
@@ -124,7 +127,7 @@ class CTranslateEngine:
             _infer_lock.release()
 
     def transcribe(self, audio: np.ndarray, cfg: Config) -> str:
-        language = None if cfg.language.lower() in {"auto", ""} else cfg.language
+        language = _requested_language(cfg)
         seconds = float(len(audio)) / 16000.0
         prompt = _dictionary_prompt()
         kwargs = {
@@ -168,7 +171,7 @@ def transcribe_preview(audio: np.ndarray, cfg: Config) -> str:
     engine = peek_engine()
     if not isinstance(engine, CTranslateEngine):
         return ""
-    language = None if cfg.language.lower() in {"auto", ""} else cfg.language
+    language = _requested_language(cfg)
     if not _infer_lock.acquire(blocking=False):
         return ""
     try:
@@ -193,8 +196,9 @@ class OpenVinoEngine:
 
     def transcribe(self, audio: np.ndarray, cfg: Config) -> str:
         kwargs: dict = {}
-        if cfg.language.lower() not in {"auto", ""}:
-            kwargs["language"] = cfg.language
+        language = _requested_language(cfg)
+        if language is not None:
+            kwargs["language"] = language
         result = self.pipe.generate(np.ascontiguousarray(audio, dtype=np.float32), **kwargs)
         if isinstance(result, str):
             return result.strip()

@@ -9,6 +9,7 @@ from test_settings_ui import tk_root, window
 from utterleaf.model_inventory import ModelInstallation
 from utterleaf.config import Config
 from utterleaf.settings_ui import SettingsWindow
+from utterleaf.model_selection import explicit_model_selection
 
 
 @pytest.fixture(autouse=True)
@@ -45,15 +46,14 @@ def test_compatible_inventory_entry_stages_only_model(window, name, language, de
     row = entry(name, backend)
     assert window._inventory_selection_reason(row) is None
     window._use_inventory_model(row)
-    assert window._snapshot() == {**before, "model": name}
+    selection = explicit_model_selection(name, "auto")
+    assert window._snapshot() == {**before, "model": selection}
     assert window._selected_model() == (name, backend)
     assert window.cfg is cfg and window.baseline == baseline
     assert window.save_button.instate(["!disabled"])
 
 
 @pytest.mark.parametrize("row,language,device,reason", [
-    (entry("base"), "en", "cpu", "Language"),
-    (entry("base"), "english", "cpu", "Language"),
     (entry("base"), " en ", "cpu", "Language"),
     (entry("base"), "", "cpu", "Language"),
     (entry("base.en"), "fr", "cpu", "Language"),
@@ -131,7 +131,7 @@ def test_default_reset_stays_staged_and_preserves_inventory_files(window, tmp_pa
     baseline, cfg = dict(window.baseline), window.cfg
     monkeypatch.setattr("utterleaf.settings_ui.messagebox.askyesno", lambda *a, **k: True)
     window.restore_defaults()
-    assert window.vars["model"].get() == Config().model
+    assert window.vars["model"].get() == explicit_model_selection(Config().model, Config().language)
     assert window.cfg is cfg and window.baseline == baseline
     assert marker.read_bytes() == b"local model placeholder"
 
@@ -177,7 +177,7 @@ def test_inventory_controls_use_real_settings_keyboard_reveal_after_resize(tk_ro
             assert app.vars["language"].get() == Config().language
             assert app.vars["device"].get() == Config().device
             assert len(jobs) == 1
-            assert app.baseline["model"] == Config().model
+            assert app.baseline["model"] == explicit_model_selection(Config().model, Config().language)
 
         # At 2x the download error Details can be below the initial viewport.
         # Reach it through actual Tab keys, not a manually aligned screenshot.

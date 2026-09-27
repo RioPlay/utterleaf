@@ -47,7 +47,9 @@ class Config:
     suppress_hotkey: bool = False
 
     # Small on-device model. auto device = NPU, then GPU, then CPU.
-    model: str = "small"  # tiny, base, small, medium, large-v3, distil-small.en
+    # Settings saves explicit .multilingual or .en pack selections. Bare sizes
+    # remain compatible with configs written before explicit pack selection.
+    model: str = "small"  # guided sizes/scopes, or a custom local model identifier
     device: str = "auto"  # auto | npu | gpu | cpu
     compute_type: str = "auto"  # auto | int8 | float16 | int8_float16
     language: str = "en"  # ISO code, or "auto"
@@ -98,7 +100,7 @@ def _dump_toml(cfg: Config) -> str:
         f'mode = {quote(cfg.mode)}',
         f"suppress_hotkey = {str(cfg.suppress_hotkey).lower()}",
         "",
-        "# Small local model. device=auto uses NPU, then GPU, then CPU.",
+        "# Local model pack. Settings distinguishes multilingual and English-only packs.",
         f'model = {quote(cfg.model)}',
         f'device = {quote(cfg.device)}',
         f'compute_type = {quote(cfg.compute_type)}',

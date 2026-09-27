@@ -132,6 +132,8 @@ CAPTURE_INVENTORY = (
     "model-cancelled.png",
     "model-installed.png",
     "model-error.png",
+    "model-multilingual-french.png",
+    "model-language-incompatible.png",
     "engine-compact-text-scale-2x-synthetic-overview.png",
     "engine-compact-text-scale-2x-synthetic-cancel-focused.png",
     "save-clean.png",
@@ -786,6 +788,15 @@ def main(output: Path = OUTPUT) -> None:
             with _window(runtime, model_state=model_state) as window:
                 _stage_model(window, runtime, name)
                 _record(captured, capture(window, f"{name}.png", "Engine"))
+
+        for filename, cfg in (
+            ("model-multilingual-french.png",
+             Config(model="small.multilingual", language="fr")),
+            ("model-language-incompatible.png",
+             Config(model="small.en", language="fr")),
+        ):
+            with _window(runtime, cfg=cfg) as window:
+                _record(captured, capture(window, filename, "Engine"))
 
         for filename, focus_cancel in (
             ("engine-compact-text-scale-2x-synthetic-overview.png", False),

@@ -19,6 +19,19 @@ _MODEL_NAMES = {
 }
 PUBLIC_MODEL_TOKENS = frozenset(_MODEL_NAMES)
 
+MODEL_PACK_LABELS = {
+    "tiny.multilingual": "Tiny · multilingual",
+    "tiny.en": "Tiny · English only",
+    "base.multilingual": "Base · multilingual",
+    "base.en": "Base · English only",
+    "small.multilingual": "Small · multilingual",
+    "small.en": "Small · English only",
+    "medium.multilingual": "Medium · multilingual",
+    "medium.en": "Medium · English only",
+    "large-v3": "Large v3 · multilingual",
+    "distil-small.en": "Distilled Small · English only",
+}
+
 
 def model_token(name: str) -> str:
     """Return an exact public identifier or a fixed, privacy-safe fallback."""

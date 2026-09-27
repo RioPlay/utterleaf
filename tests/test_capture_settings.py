@@ -40,7 +40,7 @@ def working_tk_display():
 
 def test_capture_inventory_is_explicit_complete_and_unique():
     inventory = capture_settings.CAPTURE_INVENTORY
-    assert len(inventory) == 56
+    assert len(inventory) == 58
     for filename, *_ in capture_settings.SEARCH_CAPTURES:
         assert filename in inventory
     assert len(inventory) == len(set(inventory))
@@ -58,6 +58,8 @@ def test_capture_inventory_is_explicit_complete_and_unique():
     assert (
         "engine-compact-text-scale-2x-synthetic-cancel-focused.png" in inventory
     )
+    assert "model-multilingual-french.png" in inventory
+    assert "model-language-incompatible.png" in inventory
     for filename, _reply in capture_settings.APP_STATUS_CAPTURES:
         assert filename in inventory
     assert "save-partial-failure-post-dialog.png" in inventory

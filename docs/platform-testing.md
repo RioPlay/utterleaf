@@ -12,8 +12,9 @@ all samples and limitations; it is not tray or speech-engine clearance. Keep the
 platform checklist below open until its own evidence is collected.
 
 The [0.4.6 RC3 readiness plan](plans/active/desktop-0.4.6-rc3-release-readiness.md)
-is the candidate-specific ledger. The final local worktree run passed **2,685
-tests with 14 documented prerequisite skips** in 384.11 seconds, including the
+is the candidate-specific ledger. After the multilingual model-pack follow-up,
+the final local worktree run passed **2,693 tests with 14 documented prerequisite
+skips** in 370.55 seconds, including the
 Windows OBS ownership/ACL checks. Child-process tests explicitly import the active
 checkout rather than an ambient installation. The earlier interrupted 1,345-test
 run and invalid diagnostic permission shim remain historical evidence in the

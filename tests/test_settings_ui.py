@@ -606,7 +606,7 @@ def test_reset_saves_advanced_defaults_and_reloads_app(window, monkeypatch):
     # Reset must still be dirty when all visible values already matched defaults.
     assert window._reset_pending
     window.save()
-    assert saved == [Config()]
+    assert saved == [Config(model="small.en")]
     assert names == ["utter leaf = Utterleaf"]
     assert startup == [False]
     assert commands == ["reload"]

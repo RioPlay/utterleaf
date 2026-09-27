@@ -5,11 +5,18 @@ from utterleaf.transcribe import (
     CTranslateEngine,
     PREVIEW_SECONDS,
     _cuda_runtime_error,
+    _requested_language,
     clear_final,
     request_final,
     transcribe,
     transcribe_preview,
 )
+
+
+def test_requested_language_uses_canonical_engine_codes() -> None:
+    assert _requested_language(Config(language=" YUE ")) == "yue"
+    assert _requested_language(Config(language="English")) == "en"
+    assert _requested_language(Config(language="auto")) is None
 
 
 def test_cuda_runtime_error_detects_cublas() -> None:

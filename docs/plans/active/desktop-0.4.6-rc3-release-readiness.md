@@ -112,8 +112,10 @@ installation is not accepted as proof for the candidate source.
 - The rebuilt Windows onedir package passed three isolated fresh-profile starts.
   All wrote `allow_network = false`; polling saw no established external TCP
   socket owned by the parent app process; no download request was logged and no
-  model weight was written. All reached authenticated IPC,
-  and quit cleanly in 49.85–58.36 ms. IPC readiness was 1,607 ms for the first
+  model weight was written. All parent app processes reached authenticated IPC
+  and quit in 49.85–58.36 ms. The harness did not own the separate first-run
+  Settings process, and three such processes remained afterward; the prior
+  whole-process shutdown claim is withdrawn. IPC readiness was 1,607 ms for the first
   sequential sample and 562–610 ms for the next two; OS/file cache state was not
   controlled. Ten-second tray-idle samples consumed 0.250–0.313 CPU seconds, or
   0.154–0.194% of this 16-logical-CPU machine.
@@ -132,10 +134,15 @@ installation is not accepted as proof for the candidate source.
   privacy standard/lower, Help, and compact 2× views were inspected without
   clipping. Settings source SHA-256 is `dce20f1e…`; capture-helper SHA-256 is
   `bd88f73d…`. No microphone, model download or preference mutation occurred.
+- Revision `978154b3f04e766f1441e9824ad3c9035ce3d17a` passed all five hosted
+  jobs in [run 36345884893](https://github.com/RioPlay/utterleaf/actions/runs/36345884893).
+  The multilingual model-pack follow-up was added afterward, so this remains a
+  historical pre-feature receipt rather than current-head release evidence.
 - The local performance receipt embeds the executable hash but not the source
   revision or dirty state; the older local build manifest is stale. It is bounded
-  runtime evidence, not immutable candidate provenance. The exact-final hosted
-  build and tag-bound archive must supply that binding.
+  parent-process runtime evidence, not immutable candidate provenance or a
+  whole-process lifecycle receipt. The exact-final hosted build and tag-bound
+  archive must supply that binding.
 - Exact final-candidate hosted CI is still required after the ledger commit is
   pushed. Public tag or prerelease creation remains explicitly unauthorized.
 

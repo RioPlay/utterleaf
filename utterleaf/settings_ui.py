@@ -13,7 +13,13 @@ from types import SimpleNamespace
 from utterleaf import theme
 from utterleaf.config import Config, load
 from utterleaf.host import login_label, settings_blurb, ui_font, is_wayland
-from utterleaf.model_presentation import model_display_name, model_purpose
+from utterleaf.languages import LANGUAGE_LABELS, language_guidance
+from utterleaf.model_presentation import MODEL_PACK_LABELS, model_display_name, model_purpose
+from utterleaf.model_selection import (
+    explicit_model_selection,
+    model_language_scope,
+    model_language_compatible,
+)
 from utterleaf.polish import dictionary_text, polish_local
 from utterleaf.save_presentation import save_failure
 from utterleaf.settings import SYSTEM_DEFAULT, FormValidationError, SettingsSaveError, apply_form, hotkey_presets
@@ -121,6 +127,9 @@ class SettingsWindow:
             value = getattr(cfg, key)
             cls = tk.BooleanVar if isinstance(value, bool) else tk.StringVar
             self.vars[key] = cls(root, value=value)
+        # Present legacy bare-size configs as the exact pack they already use.
+        # This is a draft-only migration until the user chooses Save changes.
+        self.vars["model"].set(explicit_model_selection(cfg.model, cfg.language))
         self.vars["microphone"].set(cfg.microphone or SYSTEM_DEFAULT)
         self.vars["start_at_login"] = tk.BooleanVar(root, value=startup_enabled())
         self.status = tk.StringVar(root, value="Your voice. Your device.")
@@ -536,11 +545,37 @@ class SettingsWindow:
         display = self.vars[key]
         if labels:
             display = tk.StringVar(self.root, value=labels.get(self.vars[key].get(), self.vars[key].get()))
-            self.vars[key].trace_add("write", lambda *_: display.set(labels.get(self.vars[key].get(), self.vars[key].get())))
+            reverse = {value: value_key for value_key, value in labels.items()}
+            syncing = False
+
+            def show_value(*_):
+                nonlocal syncing
+                if syncing:
+                    return
+                syncing = True
+                try:
+                    value = self.vars[key].get()
+                    display.set(labels.get(value, value))
+                finally:
+                    syncing = False
+
+            def store_value(*_):
+                nonlocal syncing
+                if syncing:
+                    return
+                syncing = True
+                try:
+                    value = display.get()
+                    self.vars[key].set(reverse.get(value, value) if editable else reverse.get(value, self.vars[key].get()))
+                finally:
+                    syncing = False
+
+            self.vars[key].trace_add("write", show_value)
+            if editable:
+                display.trace_add("write", store_value)
         box = ttk.Combobox(row, textvariable=display, values=list(labels.values()) if labels else values, width=24,
                            state="normal" if editable else "readonly")
         if labels:
-            reverse = {value: key for key, value in labels.items()}
             box.bind("<<ComboboxSelected>>", lambda _: self.vars[key].set(reverse[display.get()]))
         box.grid(row=0, column=1, sticky="ew")
         stacked = None
@@ -830,10 +865,13 @@ class SettingsWindow:
         p = self._section(page, "Model & installation",
                       "Choose a model and language, then check its local installation. "
                       "Save changes applies your selection; downloading does not save other edits.")
-        self._choice(p, "Model", "model", ["tiny", "base", "small", "medium", "large-v3", "distil-small.en"], editable=True)
-        self._choice(p, "Language", "language", ["en", "auto", "es", "fr", "de", "it", "pt", "ja", "zh"], editable=True)
-        ttk.Label(p, text="Use auto to detect the language, or enter a language code. English-only models require English.",
-                  style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=8)
+        self._choice(p, "Model pack", "model", tuple(MODEL_PACK_LABELS), editable=True,
+                     labels=MODEL_PACK_LABELS)
+        self._choice(p, "Language", "language", tuple(LANGUAGE_LABELS), editable=True,
+                     labels=LANGUAGE_LABELS)
+        self.language_status = tk.StringVar(self.root)
+        ttk.Label(p, textvariable=self.language_status, style="Hint.TLabel",
+                  wraplength=520).pack(anchor="w", pady=8)
         self.model_status = tk.StringVar(self.root)
         ttk.Label(p, textvariable=self.model_status, wraplength=520).pack(anchor="w", pady=(8, 4))
         self.model_action_status = tk.StringVar(self.root)
@@ -903,8 +941,6 @@ class SettingsWindow:
 
     def _inventory_selection_reason(self, entry):
         """Never change language or hardware implicitly to match a local row."""
-        from dataclasses import replace
-        from utterleaf.model_setup import model_name
         if self.closed:
             return "Settings is closing."
         if entry.state not in {"installed", "incomplete"}:
@@ -918,16 +954,15 @@ class SettingsWindow:
             return "Choose CPU, NVIDIA GPU or Automatic under Processing device to use this installation."
         if not language.strip() or language != language.strip():
             return "Enter a Language without leading or trailing spaces first."
-        if entry.name.endswith(".en") and language.lower() not in {"en", "english", "auto"}:
-            return "This model recognizes English only. Choose en or auto under Language first."
-        cfg = replace(self.cfg, model=entry.name, language=language)
-        if model_name(cfg) != entry.name:
-            return "Language is set to English, which selects the English-only model. Choose auto or another language to use this multilingual installation."
+        selection = explicit_model_selection(entry.name, "auto")
+        if not model_language_compatible(selection, language):
+            return "This model recognizes English only. Choose English or Automatic detection under Language first."
         return None
 
     def _use_inventory_model(self, entry):
         if self._inventory_selection_reason(entry) is None:
-            self.vars["model"].set(entry.name)
+            selection = explicit_model_selection(entry.name, "auto")
+            self.vars["model"].set(selection)
 
     def refresh_model_status(self, *_):
         from utterleaf.model_setup import inspect_model
@@ -939,12 +974,24 @@ class SettingsWindow:
                     "incomplete": "Incomplete — required files are missing or invalid. Download to finish setup.",
                     "unsupported": "Guided setup is unavailable for this model/device. Choose a listed model or CPU."}
         display = model_display_name(name)
-        self.model_status.set(f"{display}\n{model_purpose(name)}\n{messages[state.state]}")
+        compatible = model_language_compatible(self.vars["model"].get(), self.vars["language"].get())
+        self.language_status.set(language_guidance(
+            self.vars["language"].get(), model_scope=model_language_scope(
+                self.vars["model"].get(), self.vars["language"].get())
+        ))
+        compatibility = "" if compatible else "\nChoose a multilingual pack for this language."
+        self.model_status.set(f"{display}\n{model_purpose(name)}\n{messages[state.state]}{compatibility}")
         summary = {"installed": "Installed files · loading not checked",
                    "missing": "Install needed", "incomplete": "Repair needed",
                    "unsupported": "Choose a supported model and device"}
-        self.model_summary.set(f"{display} · {summary[state.state]}")
-        self.model_download_button.configure(state="normal" if not self.model_downloading and state.state in {"missing", "incomplete"} else "disabled")
+        self.model_summary.set(
+            f"{display} · {summary[state.state]}" if compatible
+            else f"{display} · Choose a multilingual pack"
+        )
+        self.model_download_button.configure(
+            state="normal" if compatible and not self.model_downloading
+            and state.state in {"missing", "incomplete"} else "disabled"
+        )
         self.model_inventory.preferences_changed()
 
     def show_model_details(self):
@@ -984,6 +1031,9 @@ class SettingsWindow:
         if self.model_downloading or self.closed or self._model_download_operation is not None:
             return
         from utterleaf.model_setup import inspect_model, run_download
+        if not model_language_compatible(self.vars["model"].get(), self.vars["language"].get()):
+            self.refresh_model_status()
+            return
         name, backend = self._selected_model()
         if inspect_model(name, backend).state not in {"missing", "incomplete"}:
             self.refresh_model_status()
@@ -1290,7 +1340,7 @@ class SettingsWindow:
         if not messagebox.askyesno(
             "Restore default settings?",
             "Restore app defaults, including advanced settings?\n\n"
-            "This selects the system microphone, automatic hardware, English, and the small model; "
+            "This selects the system microphone, automatic hardware, English, and the Small English-only model pack; "
             "and turns off start at login and the floating indicator.\n\n"
             "Your download and clipboard preferences are kept, along with vocabulary and models. "
             "Nothing changes on disk until you choose Save changes.",
@@ -1303,6 +1353,8 @@ class SettingsWindow:
         self.mic_stop.set()
         for key, var in self.vars.items():
             value = privacy[key] if key in privacy else False if key == "start_at_login" else getattr(defaults, key)
+            if key == "model":
+                value = explicit_model_selection(defaults.model, defaults.language)
             var.set(SYSTEM_DEFAULT if key == "microphone" else value)
         self._dirty()
         self.status.set("Defaults ready to review · Save changes to apply")

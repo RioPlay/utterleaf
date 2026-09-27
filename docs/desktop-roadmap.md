@@ -175,13 +175,22 @@ intended field, with understandable local processing and minimal interruption.
   installation. Malformed persisted consent fails closed; explicit Boolean
   consent still round-trips. A merged-head Windows onedir package passed three
   isolated launches where polling saw no established external TCP socket owned
-  by the app process, download marker or model weight, then authenticated quit.
+  by the parent app process, download marker or model weight, then authenticated
+  parent-process quit. The first-run harness left the separately launched Settings
+  processes alive, so that receipt is not whole-process shutdown evidence.
   Source tests separately deny both downloader entry points. The unforced doctor reports the opt-in
   default and explicit Settings recovery. The final local desktop suite passed
   **2,685 tests with 14 documented prerequisite skips**, and **56 source-matched
   Settings captures** refresh the privacy/help copy. The package also supplies a
   bounded startup/tray-idle receipt; sustained/recognition and packaged-baseline
   performance remain open rather than inferred.
+  Desktop Settings now also exposes Automatic detection and the complete
+  100-language Whisper catalog with explicit multilingual versus English-only
+  guided packs. Legacy saved sizes retain their behavior, custom identifiers stay
+  editable, and incompatible English-only/non-English pairs cannot download or
+  save. The final local suite passed **2,693 tests with 14 documented prerequisite
+  skips**; a fresh package smoke and **58 source-matched Settings captures** passed.
+  Exact-head hosted CI and per-language recognition quality remain open.
   Active-take identity and safe removal/update are not inferred from a local
   file inventory or a generic app-status response.
   These are unreleased source results. Physical readiness, accessibility,

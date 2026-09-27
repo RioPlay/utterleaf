@@ -61,7 +61,13 @@ Click the tray icon (or right-click → **Settings…**) to open Settings. First
 - **Dictation:** choose your shortcut, hold or press mode, microphone, recording feedback, and start at login. A five-second microphone check shows input levels without saving audio. The current source layout also groups Output style here; the published Windows RC2 keeps it under Vocabulary.
 - **Vocabulary:** add names and custom terms, choose text cleanup options, and preview the result on a sample before saving.
 - **Voice commands:** browse the built-in editing and punctuation commands.
-- **Speech & privacy:** choose a model, processing device, language, noise reduction, and clipboard behavior. Fresh profiles keep missing-model downloads off; use **Download selected model…** for an explicit installation.
+- **Speech & privacy:** choose an explicit multilingual or English-only model pack,
+  any of the 100 languages supported by the bundled Whisper engine (or Automatic
+  detection), processing device, noise reduction, and clipboard behavior. One
+  multilingual pack is shared across its supported languages; switching languages
+  does not require a separate copy of the same model size. Fresh profiles keep
+  missing-model downloads off; use **Download selected model…** for an explicit
+  installation.
 - **Help:** check whether the app is running, generate a device report, and save it wherever you choose.
 
 In current unreleased source, device-report and GPU-guidance checks run one at
@@ -109,7 +115,12 @@ inspect hardware, load a model, or send your words or device information.
 choice, independent of the app's applied settings. Installed files alone do not
 prove that this selected model has loaded successfully.
 Speech & privacy uses the same human-readable model name and describes its
-language support. **Model details…** shows the selected draft's last file check,
+language support. The model picker distinguishes multilingual and English-only
+packs. The language picker shows human names and codes, and blocks an English-only
+pack from being saved or downloaded for another language. Existing configurations
+that used a bare size such as `small` keep their prior behavior; choosing a guided
+pack in Settings records the scope explicitly. **Model details…** shows the
+selected draft's last file check,
 including its identifier, processing backend, expected local folder, and missing
 files. Custom model identifiers remain editable. Details can include local paths;
 review them before sharing. **Download error details…** is a separate action that
@@ -414,9 +425,9 @@ Created on first run. Everyday use is Settings. The toml is for people who want 
 ```toml
 hotkey = "ctrl+win"     # macOS/Linux default is "ctrl+shift+space"
 mode = "hold"           # hold | toggle
-model = "small"         # tiny, base, small, distil-small.en
+model = "small.en"      # or small.multilingual; other guided sizes work likewise
 device = "auto"         # auto | gpu | cpu
-language = "en"
+language = "en"         # or auto / another supported language code
 microphone = ""         # empty = system default
 ```
 

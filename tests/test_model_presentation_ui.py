@@ -41,6 +41,49 @@ def test_custom_model_primary_copy_is_fixed_and_entry_remains_editable(window, m
         assert "ready" not in primary.lower()
 
 
+def test_guided_pack_and_complete_language_choices_store_canonical_values(window):
+    model = window.fields["model"]
+    language = window.fields["language"]
+    model_values = tuple(model.cget("values"))
+    language_values = tuple(language.cget("values"))
+    assert model_values == (
+        "Tiny · multilingual", "Tiny · English only",
+        "Base · multilingual", "Base · English only",
+        "Small · multilingual", "Small · English only",
+        "Medium · multilingual", "Medium · English only",
+        "Large v3 · multilingual", "Distilled Small · English only",
+    )
+    assert len(language_values) == 101
+    assert "Automatic detection" in language_values
+    assert "French (fr)" in language_values
+    assert "Cantonese (yue)" in language_values
+
+    model.set("Small · multilingual")
+    model.event_generate("<<ComboboxSelected>>")
+    language.set("French (fr)")
+    language.event_generate("<<ComboboxSelected>>")
+    window.root.update()
+    assert window.vars["model"].get() == "small.multilingual"
+    assert window.vars["language"].get() == "fr"
+    assert window._selected_model()[0] == "small"
+    assert window.language_status.get() == "French will use the selected multilingual model pack."
+
+
+def test_english_only_pack_blocks_incompatible_download_without_mutation(window, monkeypatch):
+    window.vars["model"].set("small.en")
+    window.vars["language"].set("fr")
+    before = window._snapshot()
+    monkeypatch.setattr("utterleaf.model_setup.run_download",
+                        lambda *_a, **_k: pytest.fail("Incompatible pack must not download"))
+    monkeypatch.setattr(window, "_worker",
+                        lambda *_a, **_k: pytest.fail("Incompatible pack must not start a worker"))
+    assert window.model_download_button.instate(["disabled"])
+    assert window.model_summary.get() == "Small English · Choose a multilingual pack"
+    assert window.language_status.get() == "French requires a multilingual model pack."
+    window.download_model()
+    assert window._snapshot() == before
+
+
 @pytest.mark.parametrize("model,language,device,resolved,backend,display", [
     ("tiny", "en", "cpu", "tiny.en", "ctranslate2", "Tiny English"),
     ("base", "auto", "cpu", "base", "ctranslate2", "Base"),

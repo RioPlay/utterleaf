@@ -109,7 +109,7 @@ small reviewable slices with its own acceptance evidence.
 | M | Empty states | Explain why dictation is unavailable and offer one next action for missing microphones/models. Avoid decorative art that adds no comprehension. |
 | N | Window/layout | Readable widths, responsive model/sidebar layout and fixed wrapping auxiliary actions are implemented. File/decoder/review content scrolls; compact/wide round trips cover 1×/1.5×/2× Tk text scales. Physical scaling, maximized/mixed-monitor DPI and other native platforms remain open. |
 | O | Accessibility | Reference-page scrolling, oversized-editor insertion/validation-line reveal, held-key repeats, and read-only report Tab traversal have source coverage. An intermittent Tcl Tab-command failure is recorded, not waived by later green runs. Names, dialogs, screen readers, physical scaling and Windows UI Automation acceptance remain open. |
-| P | Performance | A bounded real-Tk Settings comparison records construction, 12-second idle CPU and memory on named Windows hardware. Three fresh packaged starts now record authenticated readiness, ten-second tray-idle CPU/memory and clean shutdown; polling saw no established external TCP socket owned by the app process, and no model write occurred. Source tests separately deny both downloader entry points. Sustained use, recognition latency, cross-platform behavior and a packaged baseline comparison remain open; no full performance clearance is claimed. |
+| P | Performance | A bounded real-Tk Settings comparison records construction, 12-second idle CPU and memory on named Windows hardware. Three fresh packaged starts record authenticated readiness and ten-second parent-process tray-idle CPU/memory; polling saw no established external TCP socket owned by the parent app process, and no model write occurred. The harness left the separately launched first-run Settings processes alive, so it is not whole-process shutdown evidence. Source tests separately deny both downloader entry points. Sustained use, recognition latency, cross-platform behavior and a packaged baseline comparison remain open; no full performance clearance is claimed. |
 | Q | Framework decision | Consider a migration only after the current toolkit fails a measured accessibility, DPI, integration, maintenance, or required-interaction gate. Reuse the speech-service boundary. |
 | R | Mobile/desktop convergence | Align terminology, semantic colors/icons, privacy/error/model/help language. Keep navigation, density, layout, input, and system integration platform-native. |
 
@@ -2046,9 +2046,11 @@ Python 3.14.7 and Tk 9.0.4:
   exits zero.
 - Three packaged fresh profiles all reached authenticated IPC, recorded no
   established external TCP socket owned by the parent app process during polling,
-  download log marker or model weight, and quit normally. This polling does not
-  cover UDP/DNS, short-lived sockets or child processes; source tests separately
-  deny both downloader entry points.
+  download log marker or model weight, and their parent app processes quit
+  normally. This polling does not cover UDP/DNS, short-lived sockets or child
+  processes; the harness left three separately launched first-run Settings
+  processes alive, so the receipt is not whole-process shutdown evidence. Source
+  tests separately deny both downloader entry points.
   IPC readiness was 1,606.6 ms for the first sequential sample then 562.0/609.5
   ms for the next two; OS/file cache state was not controlled. Quit took
   49.9–58.4 ms. Ten-second idle CPU was 0.250–0.313 seconds (2.47–3.11% of one
@@ -2067,3 +2069,79 @@ first packaged startup/tray-idle sample. Exact-final hosted CI, immutable tagged
 archive construction, signing, physical devices, screen readers/UI Automation,
 native dialogs, mixed-monitor DPI, sustained/recognition performance, trusted
 model removal/update inputs and public release authorization remain separate gates.
+
+### Explicit multilingual model-pack follow-up
+
+**Goal:** let desktop users choose the language they dictate and the exact guided
+model-pack scope, including multilingual English, without an implicit switch to
+an English-only pack.
+
+**Area:** pure language/model-selection rules; transcription and hardware model
+resolution; Speech & privacy pickers/status; Settings validation; focused model,
+configuration, runtime and real-Tk tests; desktop user documentation.
+
+**Constraints:** preserve legacy bare-size configuration behavior; keep downloads
+explicit and provider telemetry disabled; do not silently change language or
+hardware; do not claim a separate weight pack exists per language; keep custom
+model identifiers editable and out of primary status copy; do not change Android.
+
+**Acceptance:** Settings offers human-readable Automatic detection plus the 100
+languages supported by the bundled Whisper tokenizer; guided sizes distinguish
+multilingual and English-only packs; a multilingual pack can be selected for
+English; incompatible English-only/language pairs cannot download or save;
+inventory selection stages the exact installed scope; legacy configs resolve as
+before; save, reset, cancellation and offline consent remain intact.
+
+**Verification:** focused language/model/configuration tests, the broader
+transcription/hardware/readiness/Settings gauntlet, a deterministic Settings
+capture with the language list and incompatible recovery state, then the full
+desktop suite because model identity participates in load caching and readiness.
+
+**Non-goals:** downloading one duplicate model per language, automatic model
+downloads, raw provider repository selection, model removal/update, translation,
+Android changes, or claims of recognition quality for every listed language.
+
+**Stop:** stop editing when the acceptance checks pass, docs match behavior and
+remaining recognition-quality/native accessibility evidence is explicit.
+
+Implementation and verification, September 27, 2026:
+
+- Added an explicit guided pack identity for multilingual and English-only
+  Whisper sizes while preserving the historical meaning of bare saved sizes.
+  Custom identifiers remain editable and do not acquire inferred language scope.
+- The Speech & privacy page now offers Automatic detection and all 100 language
+  codes supported by the bundled Whisper tokenizer. Human names are shown first;
+  canonical codes are saved and passed to recognition. English can explicitly use
+  either pack scope. Incompatible English-only/non-English pairs cannot download
+  or save and include an actionable explanation.
+- **108 focused checks** passed, followed by a **476-test** runtime/readiness/UI
+  regression. The full desktop suite passed **2,693 tests with 14 documented
+  prerequisite skips in 370.55 seconds**.
+- `tests/capture_settings.py --output
+  artifacts/screenshots/desktop-language-packs-20260927` produced **58 images**.
+  The multilingual French state, incompatible recovery, standard Engine page and
+  compact 2× overview were inspected. Capture performed no microphone access,
+  download or preference save. SHA-256: Settings source
+  `448452b2925763b33bd3fa7135e3af5878a2fb6bfb80b0396a33c9b925061ff5`,
+  language catalog `1c49fad4a267a7e93db27406534076f3de0d39e6e9118bd091e7286691ccc13f`,
+  model-selection rules
+  `3f6c80b7f37add9394624eac2120a60ecff1fa369ed1891bc7be42777b649683`,
+  capture helper
+  `86bc17fb472845c0f674c90702e2ffd3dff0581140a7cc433d361646656efa9a`.
+- A fresh Windows onedir build completed with 48-package notices and no bundled
+  speech-model weights. Frozen help, polish, doctor, spoken-list formatting and
+  Settings launch smoke passed. The packaged executable SHA-256 values are
+  `f1756085676bc69e9dcd3328913dc068b1efde6e2766b365fcfafe2557b03a0b`
+  (`utterleaf.exe`),
+  `b8a637eb136d127cf886c2443fe99b10bf6649b47a39df96c3667dea42132c4d`
+  (`utterleaf-cli.exe`) and
+  `607c769c6cc5b94e5e0f22861d5805b1c9b61ae260a77b2a932e4bd4a2c45fb9`
+  (`utterleafw.exe`). These are local unsigned package results, not publication.
+- Independent review found no blocking correctness or privacy issue. Its copy
+  correction names the exact reset pack, and a direct multilingual-English NPU
+  regression was added; **six targeted checks** passed afterward. An attempted
+  full rerun encountered the documented Windows pytest temporary-directory ACL
+  failure before product assertions, so it is not counted as a product result.
+- Exact-head hosted CI is required after the feature commit. Recognition quality
+  for every language, physical accessibility and public release authorization
+  remain separate gates.
