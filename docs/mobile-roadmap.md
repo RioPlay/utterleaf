@@ -31,7 +31,7 @@ wait for the editor, privacy and testing foundation.
 
 ## Now
 
-- **Checkout:** `android-keyboard-hardening`, branch `codex/android-comfort-pass`.
+- **Checkout:** `android-keyboard-hardening`, branch `codex/android-space-geometry`.
 - **Released:** [signed alpha21](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha21), including the clean-room daily-surface reset and live selected-text completion safeguard (PRs #64–#66).
 - **Current:** finish review and exact-main validation of the bounded
   [daily-keyboard comfort pass](plans/active/android-comfort-pass.md). It quiets
@@ -53,6 +53,21 @@ wait for the editor, privacy and testing foundation.
 **Acceptance policy — September 26, 2026:** routine increments and preview releases use the applicable automated regression, privacy/security, build and signed-release checks without making unobserved device claims. The A–M redesign is not complete until its named compatibility, performance and final accessibility audits pass. Physical-device and assistive-technology work need not block every bounded source slice, but unperformed checks remain open and can never be reported as passed.
 
 ## Current status
+
+- **Comfort integration correction in progress — September 27, 2026:** PR #68
+  merged as `28a3a27b9abb14cc81fc19dd15a71ede03159268`, but exact-main
+  [run 36360119761](https://github.com/RioPlay/utterleaf/actions/runs/36360119761)
+  found the 320 dp Space key narrower than the established four-letter-key
+  contract. This is a real regression adjacent to the new fixed bottom widths,
+  not a timing failure. Alpha22 promotion is paused while the mode/action targets
+  are reduced to the 48 dp minimum and the letter grid gains small symmetric
+  gutters. All rows remain inside their established columns while both broad
+  Space and minimum touch targets are preserved. The exact failing geometry case
+  plus live column checks pass **11/11**, the complete affected bundle passes
+  **59/59**, Android tooling passes **26/26**, and JVM/lint pass. Two intermediate
+  variants were rejected because they changed the full live-column width or let
+  one-hand/full bottom controls escape their column; neither was retained. A new
+  complete exact-main run is required; no alpha22 tag or artifact exists.
 
 - **Daily-keyboard comfort candidate verified locally — September 27, 2026:**
   suggestions now use quiet, borderless fixed slots and clear stale hidden text;

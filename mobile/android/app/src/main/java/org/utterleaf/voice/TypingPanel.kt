@@ -844,7 +844,9 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private fun characterRow(sequence: String) {
         val line = row()
         if (!splitLandscape()) {
+            spacer(line, 0.2f)
             characters(line, sequence)
+            spacer(line, 0.2f)
             return
         }
         val split = (sequence.length + 1) / 2
@@ -1260,16 +1262,17 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             characterRow(layout.top)
             val home = row()
             val homeEdge = (10 - layout.home.length) / 2f
-            spacer(home, homeEdge)
+            val rowEdge = if (splitLandscape()) 0f else 0.2f
+            spacer(home, homeEdge + rowEdge)
             if (splitLandscape()) {
                 val split = (layout.home.length + 1) / 2
                 characters(home, layout.home.take(split)); splitGap(home); characters(home, layout.home.drop(split))
                 if (layout.home.length % 2 != 0) spacer(home, 1f)
             } else characters(home, layout.home)
-            spacer(home, homeEdge)
+            spacer(home, homeEdge + rowEdge)
             val third = row()
             val bottomEdge = (10 - layout.bottom.length) / 2f
-            val shiftButton = key(third, "⇧", "Shift off", bottomEdge, utility = true) { tapShift() }
+            val shiftButton = key(third, "⇧", "Shift off", bottomEdge + rowEdge, utility = true) { tapShift() }
             shiftButton.tag = "⇧"
             shiftKeys.add(shiftButton)
             letterShiftKey = shiftButton
@@ -1279,7 +1282,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
                 characters(third, layout.bottom.take(split)); splitGap(third); characters(third, layout.bottom.drop(split))
                 if (layout.bottom.length % 2 != 0) spacer(third, 1f)
             } else characters(third, layout.bottom)
-            key(third, "⌫", "Delete", bottomEdge, utility = true) { delete() }
+            key(third, "⌫", "Delete", bottomEdge + rowEdge, utility = true) { delete() }
         }
         renderBottomRow()
         updateCase()
@@ -1326,7 +1329,12 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             addSpace(5f)
         }
         addPunctuation(".", ".", '.')
-        key(bottom, if (actionLabel == "Enter") "↵" else actionLabel, actionLabel, primary = true,
+        val displayedAction = when (actionLabel) {
+            "Enter" -> "↵"
+            "Previous" -> "Prev"
+            else -> actionLabel
+        }
+        key(bottom, displayedAction, actionLabel, primary = true,
             widthDp = Ui.KeyboardTokens.bottomActionWidthDp, visualRole = KeyVisualRole.ACTION) {
             if (!sensitiveField && (ctrl || alt)) special(KeyEvent.KEYCODE_ENTER)
             else {

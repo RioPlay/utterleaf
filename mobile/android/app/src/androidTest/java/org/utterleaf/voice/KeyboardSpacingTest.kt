@@ -299,6 +299,26 @@ class KeyboardSpacingTest {
         }
     }
 
+    @Test fun narrowFullWidthKeepsBroadSpaceAlongsideMinimumSideTargets() = main {
+        val panel = panel(options = KeyboardOptions(alignment = KeyboardAlignment.FULL), enabled = false)
+        panel.reset(false, false, "Previous")
+        measure(panel, 320)
+
+        val letterWidth = bounds(panel, "q").width()
+        val spaceWidth = bounds(panel, "Space").width()
+        assertTrue("320dp Space must remain at least four letter keys wide",
+            spaceWidth >= letterWidth * 4)
+        listOf("Switch letters and symbols", ",", ".", "Previous").forEach { description ->
+            assertTrue("320dp $description must retain a 48dp target",
+                bounds(panel, description).width() >= Ui.dp(app, 48))
+        }
+        val action = key(panel, "Previous")
+        val availableLabelWidth = action.width - action.compoundPaddingLeft - action.compoundPaddingRight
+        assertTrue("Previous action label must fit its minimum target",
+            action.paint.measureText(action.text.toString()) <= availableLabelWidth + 1)
+        panel.dispose()
+    }
+
     @Test fun explicitBottomSpacingAddsOnlyTheRequestedPanelSpace() = main {
         fun height(bottomPaddingDp: Int): Int {
             val panel = panel(
