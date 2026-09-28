@@ -93,5 +93,25 @@ Verification:
 - Final emulator renders for empty, no-match, one- and three-candidate states
   were inspected locally under `.grok/validation/comfort-final-2/`.
 
+PR #68 merged as `28a3a27b9abb14cc81fc19dd15a71ede03159268`, but its first
+exact-main Android run [36360119761](https://github.com/RioPlay/utterleaf/actions/runs/36360119761)
+found a real 320 dp integration regression: the fixed 58/64 dp mode/action widths
+left Space narrower than the established four-letter-key contract. Packaging and
+release-input retention did not run. Release promotion is paused. The correction
+uses 48 dp mode/action targets and small symmetric letter-grid gutters, preserving
+the existing column bounds, minimum-target and broad-Space invariants; focused
+and complete validation must pass before release preparation resumes.
+
+The longest dynamic action label keeps its full `Previous` accessibility/action
+name and uses the compact visible label `Prev`, which fits the 48 dp target.
+
+The final constrained correction passes the exact failing geometry case plus
+live full/one-hand column checks (**11/11**), the complete affected emulator
+bundle (**59/59**), Android tooling (**26/26**), JVM tests and lint. Two earlier
+local variants were rejected: removing the container inset changed a separate
+live-column width contract, and extending the bottom row beyond that column let
+full/one-hand controls escape their bounds. Neither variant was retained. The
+remaining gate is review, merge and a complete exact-main Android run.
+
 This is emulator evidence only. Physical-phone comfort and live assistive-
 technology review remain unverified.
