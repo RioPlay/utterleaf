@@ -24,8 +24,10 @@ intended field, with understandable local processing and minimal interruption.
   speech/configuration architecture and Tk on macOS/Linux. A frozen version-6
   common-controls probe and the restored opt-in Dictation shell passed an
   independent native UIA inventory for names, focusability and standard
-  interaction patterns. The proof has no product I/O or dispatch and is not yet
-  integrated. It cannot become the default or satisfy the release gate until
+    interaction patterns. Its second stage now shares the complete Settings draft
+    and guarded save controller with Tk; the native shell still has no production
+    dispatch and cannot discover product state or dependencies on its own. It is
+    not yet integrated. It cannot become the default or satisfy the release gate until
   complete automated UIA, Narrator, NVDA, physical DPI, packaging and regression
   acceptance passes.
 - **Active bounded desktop stream:** the

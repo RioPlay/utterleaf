@@ -23,6 +23,7 @@ from utterleaf.model_selection import (
 from utterleaf.polish import dictionary_text, polish_local
 from utterleaf.save_presentation import save_failure
 from utterleaf.settings import SYSTEM_DEFAULT, FormValidationError, SettingsSaveError, apply_form, hotkey_presets
+from utterleaf.settings_controller import SettingsController, SettingsDraft
 from utterleaf.startup import enabled as startup_enabled
 from utterleaf.ui_feedback import RecoveryFeedback, technical_details
 
@@ -40,14 +41,6 @@ class _SearchTarget:
     section: str
     widget: tk.Misc
     terms: str
-
-
-@dataclass(frozen=True)
-class _SaveOutcome:
-    config: Config | None = None
-    error: Exception | None = None
-    reply: str | None = None
-    reload_error: Exception | None = None
 
 
 # Search only product terminology, never the value of a preference or editor.
@@ -1785,20 +1778,10 @@ class SettingsWindow:
         self.status.set("Saving changes…")
         def commit():
             from utterleaf import ipc
-            try:
-                cfg = apply_form(Config() if reset_pending else load(), **snapshot)
-            except SettingsSaveError as exc:
-                reload_error = None
-                if exc.saved:
-                    try:
-                        ipc.send("reload")
-                    except Exception as notification_error:
-                        reload_error = notification_error
-                return _SaveOutcome(error=exc, reload_error=reload_error)
-            try:
-                return _SaveOutcome(config=cfg, reply=ipc.send("reload"))
-            except Exception as exc:
-                return _SaveOutcome(config=cfg, reload_error=exc)
+            return SettingsController(load, apply_form, ipc.send).commit(
+                SettingsDraft.from_mapping(snapshot),
+                reset_defaults=reset_pending,
+            )
         def done(result, *, started=True):
             if self.closed or self._save_operation is not operation:
                 return

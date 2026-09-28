@@ -90,12 +90,15 @@ provider. Do not add a product-specific client proxy.
 Implementation and verification, September 27, 2026:
 
 - Added an unconnected `utterleaf.windows_ui` experiment. Importing it performs no
-  I/O. It represents only a local Dictation draft and cannot read or save product
-  preferences, enumerate devices, open audio, use the clipboard, start IPC or
-  access the network. The production application does not dispatch to it.
+  I/O. The production application does not dispatch to it. Stage 1 represented a
+  local Dictation draft only; Stage 2 now requires an explicit caller to inject
+  the complete draft, defaults and save controller. The shell still cannot
+  discover preferences, enumerate devices, open audio, use the clipboard, start
+  IPC or access the network on its own.
 - The proof uses only standard Static, Button, Edit and ComboBox HWND controls,
   stable IDs, native dialog-key handling and deterministic same-thread teardown.
-  Save and Cancel return an in-memory result; Reset changes only that draft.
+  Stage 1 Save and Cancel returned an in-memory result; Reset changed only that
+  draft. Stage 2 behavior is recorded below.
 - **Three focused checks passed with one non-applicable platform branch skipped:**
   named/stable metadata, actual Windows control classes, draft/reset round-trip,
   Save/Cancel outcomes, and four repeated complete HWND teardowns.
@@ -114,10 +117,36 @@ Implementation and verification, September 27, 2026:
 
 ### Stage 2 — shared behavior
 
-- Extract a UI-neutral Settings draft/controller and Save outcome.
-- Existing Tk behavior delegates to it with no persistence, validation,
-  cancellation, reset, model/language or device regression.
-- The Windows proof uses the same controller and cannot bypass product guards.
+- **Passed locally September 27, 2026:** extracted a UI-neutral complete
+  `SettingsDraft`, injected `SettingsController` and structured `SaveOutcome`.
+  The draft includes every persisted Settings field, including independent
+  language and model-pack choices, and rejects missing or extra presentation
+  fields before persistence.
+- The existing Tk Save worker now delegates to that controller while preserving
+  its operation token, cancellation, validation presentation, partial-save
+  recovery, reload notification and staged Reset semantics. Existing monkeypatch
+  boundaries remain intact.
+- The native proof now requires that same controller plus caller-supplied complete
+  current/default drafts. Its visible Dictation controls replace only their three
+  represented fields, preserving hidden language/model and other settings. Reset
+  stages the complete supplied defaults; Save passes through `settings.apply_form`
+  when production dependencies are injected. A failed save keeps the window open,
+  returns focus to Save and exposes safe recovery text rather than the raw error.
+- **181 focused controller/native/Settings/recovery checks passed** (one expected
+  non-Windows branch skipped), followed by **135 language/model, privacy, config
+  and repository-boundary checks**. The frozen proof rebuilt with PyInstaller
+  6.22.2 and the independent native UIA acceptance mode again found the exact
+  seven named, visible, focusable app controls with required Invoke, Value,
+  ExpandCollapse and Toggle patterns and exited successfully.
+- The required complete desktop regression then passed **2,727 tests with 15
+  documented prerequisite/platform skips** in 417.39 seconds.
+- The no-microphone Settings capture smoke completed all **58 baseline images**.
+  The multilingual French and incompatible English-only model/language states
+  were inspected and showed explicit pack compatibility, recovery guidance and
+  disabled unsafe download action without clipping.
+- This completes shared behavior, not product dispatch. Complete Settings pages,
+  recovery dialogs, packaging integration, automated interaction, Narrator/NVDA
+  and physical DPI acceptance remain Stages 3–5.
 
 ### Stage 3 — complete Settings and recovery
 

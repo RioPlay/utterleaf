@@ -6,7 +6,6 @@ no I/O and never opens a window.
 
 from .native_settings import (
     CONTROL_SPECS,
-    NativeSettingsDraft,
     NativeSettingsResult,
     NativeSettingsShell,
     create_native_settings_shell,
@@ -16,7 +15,6 @@ from .native_settings import (
 
 __all__ = [
     "CONTROL_SPECS",
-    "NativeSettingsDraft",
     "NativeSettingsResult",
     "NativeSettingsShell",
     "create_native_settings_shell",

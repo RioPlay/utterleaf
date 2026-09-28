@@ -1,8 +1,9 @@
 """Isolated standard-Win32 Settings accessibility proof.
 
 The production application does not dispatch to this module. The proof owns no
-configuration, audio, model, clipboard, network, IPC, or telemetry behavior; it
-only returns a local draft when its caller explicitly runs it.
+configuration, audio, model, clipboard, network, IPC, or telemetry behavior.
+An explicit caller must inject the complete draft, defaults, and shared save
+controller; this module neither discovers nor constructs product dependencies.
 
 The active Windows accessibility-shell plan records independent native
 ``CUIAutomation`` evidence from a frozen, version-6 common-controls probe. That
@@ -16,9 +17,11 @@ from __future__ import annotations
 
 import ctypes
 from ctypes import wintypes
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import sys
 from typing import Final
+
+from utterleaf.settings_controller import SaveOutcome, SettingsController, SettingsDraft
 
 
 WINDOW_TITLE: Final = "Utterleaf Settings — native accessibility proof"
@@ -76,9 +79,12 @@ CONTROL_SPECS: Final = (
         "privacy_note",
         150,
         "Static",
-        "This proof does not open the microphone or change saved settings.",
-        "This proof does not open the microphone or change saved settings.",
+        "Settings are saved only when you choose Save.",
+        "Settings are saved only when you choose Save.",
         "Text",
+    ),
+    NativeControlSpec(
+        "save_status", 160, "Static", "No unsaved changes.", "Save status", "Text"
     ),
     NativeControlSpec(
         "reset", 900, "Button", "&Reset to defaults", "Reset to defaults", "Button", True
@@ -89,20 +95,12 @@ CONTROL_SPECS: Final = (
 
 
 @dataclass(frozen=True)
-class NativeSettingsDraft:
-    """The deliberately small, local-only state represented by the proof."""
-
-    hotkey: str = "Ctrl+Win"
-    microphone: str = "System default"
-    stop_after_speech: bool = False
-
-
-@dataclass(frozen=True)
 class NativeSettingsResult:
-    """Outcome returned to an explicit caller; this module never persists it."""
+    """Outcome returned to the explicit caller."""
 
     action: str
-    draft: NativeSettingsDraft
+    draft: SettingsDraft
+    outcome: SaveOutcome | None = None
 
 
 _SPEC_BY_KEY: Final = {spec.key: spec for spec in CONTROL_SPECS}
@@ -277,18 +275,24 @@ def _register_window_class() -> None:
 
 
 class NativeSettingsShell:
-    """One thread-owned, inert native Settings window."""
+    """One thread-owned native Settings proof with injected product boundaries."""
 
     def __init__(
         self,
-        draft: NativeSettingsDraft | None = None,
+        draft: SettingsDraft,
+        defaults: SettingsDraft,
+        controller: SettingsController,
         microphones: tuple[str, ...] | list[str] | None = None,
         *,
         visible: bool = True,
     ) -> None:
         _require_windows()
         _register_window_class()
-        self._original = draft or NativeSettingsDraft()
+        self._original = draft
+        self._base_draft = draft
+        self._defaults = defaults
+        self._controller = controller
+        self._reset_pending = False
         supplied = tuple(
             str(item).strip()
             for item in (microphones or ("System default",))
@@ -422,14 +426,16 @@ class NativeSettingsShell:
         self._move("microphone", content_x, 208, min(400, content_width), 180)
         self._move("stop_after_speech", content_x, 260, content_width, 30)
         self._move("privacy_note", content_x, 306, content_width, 36)
+        self._move("save_status", content_x, 348, content_width, 42)
 
         footer_y = height - 58
         self._move("reset", content_x, footer_y, 134, 32)
         self._move("cancel", max(content_x + 150, width - margin - 190), footer_y, 84, 32)
         self._move("save", width - margin - 96, footer_y, 96, 32)
 
-    def write_draft(self, draft: NativeSettingsDraft) -> None:
+    def write_draft(self, draft: SettingsDraft) -> None:
         self._assert_owner_thread()
+        self._base_draft = draft
         user32.SetWindowTextW(self._controls["hotkey"], draft.hotkey)
         try:
             microphone_index = self._microphones.index(draft.microphone)
@@ -441,11 +447,11 @@ class NativeSettingsShell:
         user32.SendMessageW(
             self._controls["stop_after_speech"],
             BM_SETCHECK,
-            BST_CHECKED if draft.stop_after_speech else 0,
+            BST_CHECKED if draft.speech_end_enabled else 0,
             0,
         )
 
-    def read_draft(self) -> NativeSettingsDraft:
+    def read_draft(self) -> SettingsDraft:
         self._assert_owner_thread()
         hotkey = self._window_text(self._controls["hotkey"])
         index = int(
@@ -461,7 +467,12 @@ class NativeSettingsShell:
                 self._controls["stop_after_speech"], BM_GETCHECK, 0, 0
             )
         )
-        return NativeSettingsDraft(hotkey, microphone, checked == BST_CHECKED)
+        return replace(
+            self._base_draft,
+            hotkey=hotkey,
+            microphone=microphone,
+            speech_end_enabled=checked == BST_CHECKED,
+        )
 
     @staticmethod
     def _window_text(hwnd: int) -> str:
@@ -471,9 +482,11 @@ class NativeSettingsShell:
         return buffer.value
 
     def reset_to_defaults(self) -> None:
-        """Reset only the local draft; no preferences or user data are touched."""
+        """Stage complete defaults locally; persistence still requires Save."""
 
-        self.write_draft(NativeSettingsDraft())
+        self.write_draft(self._defaults)
+        self._reset_pending = True
+        user32.SetWindowTextW(self._controls["save_status"], "Defaults ready to save.")
 
     def invoke(self, key: str) -> None:
         """Exercise the same command path as a native button click."""
@@ -484,10 +497,30 @@ class NativeSettingsShell:
         spec = _SPEC_BY_KEY[key]
         user32.SendMessageW(self._hwnd, WM_COMMAND, spec.control_id, self._controls[key])
 
-    def _finish(self, action: str, draft: NativeSettingsDraft) -> None:
-        self._result = NativeSettingsResult(action, draft)
+    def _finish(
+        self,
+        action: str,
+        draft: SettingsDraft,
+        outcome: SaveOutcome | None = None,
+    ) -> None:
+        self._result = NativeSettingsResult(action, draft, outcome)
         if self._hwnd:
             user32.DestroyWindow(self._hwnd)
+
+    def _save(self) -> None:
+        draft = self.read_draft()
+        outcome = self._controller.commit(
+            draft,
+            reset_defaults=self._reset_pending,
+        )
+        if outcome.error is not None:
+            user32.SetWindowTextW(
+                self._controls["save_status"],
+                "Could not save changes. Review the settings and try again.",
+            )
+            user32.SetFocus(self._controls["save"])
+            return
+        self._finish("save", draft, outcome)
 
     def _handle_message(self, message: int, wparam: int, lparam: int) -> int:
         if message == WM_COMMAND:
@@ -495,7 +528,7 @@ class NativeSettingsShell:
             notification = (int(wparam) >> 16) & 0xFFFF
             if notification == BN_CLICKED:
                 if control_id == _SPEC_BY_KEY["save"].control_id:
-                    self._finish("save", self.read_draft())
+                    self._save()
                     return 0
                 if control_id == _SPEC_BY_KEY["cancel"].control_id:
                     self._finish("cancel", self._original)
@@ -524,7 +557,7 @@ class NativeSettingsShell:
         return user32.DefWindowProcW(self._hwnd, message, wparam, lparam)
 
     def run(self) -> NativeSettingsResult:
-        """Run the dialog loop and return local state without persisting it."""
+        """Run the dialog loop; Save uses only the injected controller."""
 
         self._assert_owner_thread()
         if not self._hwnd:
@@ -564,23 +597,39 @@ class NativeSettingsShell:
 
 
 def create_native_settings_shell(
-    draft: NativeSettingsDraft | None = None,
+    draft: SettingsDraft,
+    defaults: SettingsDraft,
+    controller: SettingsController,
     microphones: tuple[str, ...] | list[str] | None = None,
     *,
     visible: bool = True,
 ) -> NativeSettingsShell:
     """Create the opt-in proof; callers remain responsible for its lifetime."""
 
-    return NativeSettingsShell(draft, microphones, visible=visible)
+    return NativeSettingsShell(
+        draft,
+        defaults,
+        controller,
+        microphones,
+        visible=visible,
+    )
 
 
 def run_native_settings_shell(
-    draft: NativeSettingsDraft | None = None,
+    draft: SettingsDraft,
+    defaults: SettingsDraft,
+    controller: SettingsController,
     microphones: tuple[str, ...] | list[str] | None = None,
 ) -> NativeSettingsResult:
-    """Explicitly show the proof and return, but never save, its local state."""
+    """Explicitly show the proof; only its injected controller may persist."""
 
-    return create_native_settings_shell(draft, microphones, visible=True).run()
+    return create_native_settings_shell(
+        draft,
+        defaults,
+        controller,
+        microphones,
+        visible=True,
+    ).run()
 
 
 def live_native_window_count() -> int:
