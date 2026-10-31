@@ -23,6 +23,47 @@ not a current migration instruction. They do not establish that LatinIME or FUTO
 is universally defective, insecure or slower. No LatinIME source is linked into
 the shipping `mobile/android` app.
 
+## Independent implementation and resource provenance
+
+October 31, 2026: the product target is FUTO-class capability with Utterleaf's own
+implementation and identity. A complete Android redesign is authorized, including
+the renderer, layout and input/language boundaries. Compare evolution of the
+working app with the existing Next candidate using the same task contracts;
+select one product core before expanding it. The experimental LatinIME port
+remains historical evidence, not the default replacement.
+
+The reviewed FUTO Keyboard [0.1.30 license](https://github.com/futo-org/android-keyboard/blob/0.1.30/LICENSE.md)
+and current master license both identify **FUTO Source First License 1.1-kb**
+(license blob `8ad8a52d80c205c35318b1823a4315f164ed2f78`). Its modification and
+redistribution grants are limited to noncommercial purposes; distribution must
+be free, payment functionality and notices must remain, and modified copies need
+a modification notice. Renaming a fork would not remove those conditions.
+
+Utterleaf therefore uses the following engineering boundary:
+
+- Derive task requirements from public documentation and observed behavior;
+  implement against Android APIs, public standards and original tests. Do not
+  copy or translate FUTO implementation code, including through AI rewriting.
+- Create Utterleaf's own artwork, themes, wording and branding. Do not imply FUTO
+  affiliation or treat familiar behavior as permission to duplicate distinctive
+  visual assets.
+- Review each third-party engine, dictionary, word list, model, dataset, layout
+  and font separately. Record origin, pinned version/hash, applicable license,
+  intended uses, redistribution/notice requirements and approval or unresolved
+  status before inclusion. A permissive engine license does not license weights
+  or training data. Neither source visibility nor a successful import is approval.
+- Preserve notices for approved components and keep their license inventory with
+  the distributed artifact. Unresolved resources stay outside release packages;
+  an original implementation or separately licensed alternative can proceed.
+
+The U.S. Copyright Office distinguishes protected program expression from
+[functional aspects](https://www.copyright.gov/circs/circ61.pdf). This supports
+using functionality as a design target, not a blanket clearance of any proposed
+copy, patent, trademark or contract issue. This record is an engineering/provenance
+policy, not a legal opinion or patent clearance. Prior source inspection is not
+evidence of a formally separated clean-room process; describe work and reuse
+accurately rather than asserting that label as a guarantee.
+
 ## Source reviewed
 
 The review used the AOSP repository's `main` branch at commit `127336e9f29d69607eab55982324b210279ae8c5`, resolved with `git ls-remote` on September 10, 2026. The repository is [platform/packages/inputmethods/LatinIME](https://android.googlesource.com/platform/packages/inputmethods/LatinIME/+/127336e9f29d69607eab55982324b210279ae8c5/). `main` is a moving branch; pin this SHA or a named Android release tag for any future evaluation.
