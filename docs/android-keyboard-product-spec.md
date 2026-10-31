@@ -21,6 +21,19 @@ is authorized when it resolves the underlying interaction or architectural
 weaknesses. Existing rendering, layouts and internal boundaries are candidates
 for replacement, not requirements to preserve.
 
+FUTO is the leading **usability and capability reference**, not an authority for
+implementation correctness or a licensing model for Utterleaf.
+
+| Decision | Basis |
+| --- | --- |
+| Usability and feature coverage | FUTO's user-facing workflows, direct user needs and observed task outcomes; adapt choices that improve Utterleaf's experience |
+| Code correctness and security | Android platform contracts, relevant standards, threat analysis and tests of Utterleaf's implementation, including failure and recovery |
+| Licensing and provenance | Utterleaf's own licensing requirements plus the actual terms of each included component or resource; FUTO's license is a reuse constraint, not a product target |
+
+A useful FUTO interaction does not validate its internal implementation or require
+copying it. This distinction makes no claim that FUTO's code is incorrect. Its
+usability choices also remain open to testing and improvement.
+
 The target includes offline correction/prediction, swipe, multilingual resources,
 voice, emoji search, editing/selection gestures, number and arrow controls,
 one-hand/split/floating modes, and useful layout/theme customization. A small

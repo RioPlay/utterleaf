@@ -32,6 +32,11 @@ working app with the existing Next candidate using the same task contracts;
 select one product core before expanding it. The experimental LatinIME port
 remains historical evidence, not the default replacement.
 
+FUTO's reference role is user-facing usability and capability. Correctness and
+security must be established for Utterleaf against platform contracts, standards
+and direct tests. The license review below defines a compliance boundary for
+potential reuse; it does not prescribe FUTO's licensing approach for Utterleaf.
+
 The reviewed FUTO Keyboard [0.1.30 license](https://github.com/futo-org/android-keyboard/blob/0.1.30/LICENSE.md)
 and current master license both identify **FUTO Source First License 1.1-kb**
 (license blob `8ad8a52d80c205c35318b1823a4315f164ed2f78`). Its modification and
