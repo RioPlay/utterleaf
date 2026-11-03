@@ -101,6 +101,26 @@ def test_files_and_settings_activate_independently(tmp_path, monkeypatch):
         settings.close()
 
 
+def test_authenticated_close_request_is_distinct_and_namespace_scoped(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings_instance, "data_dir", lambda: tmp_path)
+    settings_activate, settings_close = threading.Event(), threading.Event()
+    files_activate, files_close = threading.Event(), threading.Event()
+    settings = settings_instance.SettingsInstance()
+    files = settings_instance.SettingsInstance("files")
+    try:
+        assert settings.acquire(settings_activate.set, settings_close.set)
+        assert files.acquire(files_activate.set, files_close.set)
+        assert settings_instance.request_close()
+        assert settings_close.wait(1)
+        assert not settings_activate.is_set() and not files_close.is_set()
+        assert settings_instance.request_close("files")
+        assert files_close.wait(1)
+        assert not files_activate.is_set()
+    finally:
+        files.close()
+        settings.close()
+
+
 def test_files_second_process_activates_owner(tmp_path, monkeypatch):
     monkeypatch.setattr(settings_instance, "data_dir", lambda: tmp_path)
     activated = threading.Event()
@@ -129,3 +149,5 @@ def test_window_namespace_is_constrained():
         settings_instance.SettingsInstance("../arbitrary")
     with pytest.raises(ValueError):
         settings_instance.activate("../arbitrary")
+    with pytest.raises(ValueError):
+        settings_instance.request_close("../arbitrary")

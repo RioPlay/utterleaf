@@ -37,12 +37,40 @@ def test_control_socket_rejects_unauthenticated_clients_and_survives_timeout(tmp
     assert not worker.is_alive()
 
 
+def test_status_command_uses_authenticated_loopback_and_fixed_reply(tmp_path, monkeypatch):
+    monkeypatch.setattr(ipc, "data_dir", lambda: tmp_path)
+    server = ipc.bind()
+    app = object.__new__(Utterleaf)
+    app._server = server
+    app._stop = threading.Event()
+    app._reported_status = "status-v1:listening"
+    app.last_text = "private transcript"
+    app.last_app = "private field name"
+    worker = threading.Thread(target=app._ipc_loop, daemon=True)
+    worker.start()
+    port = server.getsockname()[1]
+    try:
+        for request in (b"status\n", b'{"token":"wrong","command":"status"}\n'):
+            with socket.create_connection((ipc.HOST, port), timeout=4) as client:
+                client.sendall(request)
+                assert client.recv(128).strip() == b"unauthorized"
+        assert ipc.send("status", timeout=4) == "status-v1:listening"
+        assert app._reported_status == "status-v1:listening"
+    finally:
+        app._stop.set()
+        server.close()
+        worker.join(3)
+        ipc.clear()
+    assert not worker.is_alive()
+
+
 def test_legacy_endpoint_never_receives_control_commands(tmp_path, monkeypatch):
     monkeypatch.setattr(ipc, "data_dir", lambda: tmp_path)
     ipc.port_file().write_text(json.dumps({"port": 12345}))
     monkeypatch.setattr(ipc.socket, "create_connection", lambda *a, **k: (_ for _ in ()).throw(AssertionError("Downgraded authentication")))
     assert ipc.send("toggle") == "restart-required"
     assert ipc.send("copy-last") == "restart-required"
+    assert ipc.send("status") == "restart-required"
 
 
 def test_endpoint_token_and_private_permissions(tmp_path, monkeypatch):

@@ -99,6 +99,16 @@ def test_npu_skips_unknown_model() -> None:
     assert chosen.kind == "cpu"
 
 
+def test_npu_accepts_explicit_multilingual_pack_for_english() -> None:
+    accels = [
+        Accelerator("npu", "Intel AI Boost", "openvino", True),
+        Accelerator("cpu", "CPU", "ctranslate2", True),
+    ]
+    chosen = pick(Config(model="small.multilingual", language="en"), accels)
+    assert chosen.kind == "npu"
+    assert chosen.backend == "openvino"
+
+
 def test_missing_cublas_marks_cuda_not_ready() -> None:
     import utterleaf.hardware as hardware
 

@@ -61,8 +61,22 @@ Click the tray icon (or right-click → **Settings…**) to open Settings. First
 - **Dictation:** choose your shortcut, hold or press mode, microphone, recording feedback, and start at login. A five-second microphone check shows input levels without saving audio. The current source layout also groups Output style here; the published Windows RC2 keeps it under Vocabulary.
 - **Vocabulary:** add names and custom terms, choose text cleanup options, and preview the result on a sample before saving.
 - **Voice commands:** browse the built-in editing and punctuation commands.
-- **Speech & privacy:** choose a model, processing device, language, noise reduction, and clipboard behavior. Missing model downloads can be disabled.
+- **Speech & privacy:** choose an explicit multilingual or English-only model pack,
+  any of the 100 languages supported by the bundled Whisper engine (or Automatic
+  detection), processing device, noise reduction, and clipboard behavior. One
+  multilingual pack is shared across its supported languages; switching languages
+  does not require a separate copy of the same model size. Fresh profiles keep
+  missing-model downloads off; use **Download selected model…** for an explicit
+  installation.
 - **Help:** check whether the app is running, generate a device report, and save it wherever you choose.
+
+In current unreleased source, device-report and GPU-guidance checks run one at
+a time. Device reports use saved settings, not unsaved choices. A failed check
+retains the previous report and offers retry guidance; **Details…** shows optional
+technical information. Review device names and local paths before sharing a
+report. **Save report…** saves the report selected when the picker opened, even
+if a pending check finishes meanwhile. Cancelling does not write a file. A failed
+save keeps the preview for retry, but the chosen file may be incomplete.
 
 Prefer a clear screen? **Tray icon only** is the default. Switch the overlay on
 from the tray's **Floating indicator** toggle, or choose **Tray + floating indicator**
@@ -72,10 +86,134 @@ Controls are grouped by task, with Save and Close visible while you scroll.
 
 **Help → Icons & artwork** explains every icon and mascot, previews them on light
 and dark surfaces, and exports a complete asset pack with transparent PNG cutouts.
+In current unreleased source, its five tabs are Tray, Badges, Marks, Utterling
+and Wordmark. Page Up/Down and Home/End scroll the selected reference; native
+notebook navigation remains available. Export and Close stay visible at larger
+text sizes. Export failures show retry guidance in the window; **Details…**
+opens optional technical information that may contain a local path. Cancelling
+the destination picker does not export anything. Closing the guide does not
+cancel an export you have already requested.
 
 The window resizes and scrolls, with Save always accessible. **Ctrl+S** (or **Command+S** on macOS) saves without closing; closing with unsaved changes asks before discarding them. Device checks run in the background.
+In current unreleased source, Dictation shows the app's applied settings at the
+last check separately from the selected speech model's local-file status.
+**Refresh status** checks for Ready, Idle, Listening, Processing, or Needs
+attention. **Ready · applied speech model loaded** means the app successfully
+loaded a model for its applied model, requested processing device, compute type
+and language settings; the existing CPU fallback can still apply. It does not
+test microphone availability or promise the next take will succeed. Idle remains
+possible when matching model-load proof is
+unavailable. **Loaded model for applied settings** names the matching model in
+that same check; custom names and paths are shown only as **Custom model**.
+**Not confirmed** means matching load proof is unavailable. This does not name
+the model held by an already-running dictation. Changing or saving preferences
+does not update this last-check result: use Refresh status to check again.
+Older app versions may provide status without a loaded model name, or only
+report that they are running. The app status check does not open the microphone,
+inspect hardware, load a model, or send your words or device information.
+**Manage model…** opens Speech & privacy. Its selected model can be an unsaved
+choice, independent of the app's applied settings. Installed files alone do not
+prove that this selected model has loaded successfully.
+Speech & privacy uses the same human-readable model name and describes its
+language support. The model picker distinguishes multilingual and English-only
+packs. The language picker shows human names and codes, and blocks an English-only
+pack from being saved or downloaded for another language. Existing configurations
+that used a bare size such as `small` keep their prior behavior; choosing a guided
+pack in Settings records the scope explicitly. **Model details…** shows the
+selected draft's last file check,
+including its identifier, processing backend, expected local folder, and missing
+files. Custom model identifiers remain editable. Details can include local paths;
+review them before sharing. **Download error details…** is a separate action that
+appears after a failed download.
+
+**Local model files → Refresh local list** checks guided installations on request.
+It does not load a model or use the network. The list distinguishes installed,
+incomplete and unreadable/changing files. **Setup file size** measures recognized
+setup files only: it excludes extra files and the shared download cache, and is
+not a download estimate or reclaimable disk space. Custom locations are not listed.
+Refresh again after a download or an external file change.
+
+**Use this model** stages the model field; choose **Save changes** to apply it.
+Language and processing-device choices never change automatically. If they do
+not match the chosen installation, the list explains which existing control to
+change first. Automatic processing can still use a separate NPU installation.
+This inventory is a last-checked file snapshot, not the running app's active model.
+
+Current source separates a successful microphone check from speech-model
+readiness. Refresh and Test run one at a time; **Stop** remains available during
+a check. Changing the input clears the previous check result, and a missing
+named microphone is never silently replaced. Device-list and model-download
+failures explain how to retry. **Details…** appears only after a failure and
+opens technical text locally; it may include device names or paths, so review
+it before sharing. Retrying clears the old details. Each model-download retry
+still asks for one-time permission and does not change the network preference.
+If the download worker cannot start, no download begins and the controls recover
+for a fresh attempt. Closing Settings cancels a pending download; partial files
+are kept for retry. A download that already finished remains successful even if
+Cancel was clicked just before its completion appeared.
+
+Before each explicit take, current source re-resolves the system-default or
+saved input route. If the OS default moved to another enumerated endpoint, the
+cached stream is closed and reopened between takes, even when the display name
+is unchanged. A missing or ambiguous duplicate-name saved input fails closed;
+choose an unambiguous input rather than falling back silently. This is a
+within-process route check, not background hotplug monitoring or durable device
+identity across rename, unplug, reboot or sleep.
+
+If a microphone refresh, microphone test or app-status check cannot start,
+Settings restores the controls and offers a retry. This does not mean the
+microphone is unavailable: that check has not run. Your selected input and
+unsaved settings stay unchanged. Failed startup checks do not prevent Settings
+from opening, and no retry runs automatically.
+
+If the audio driver reports an unsupported format, current source explains that
+the microphone cannot use the requested audio format. Choose another input in
+Dictation, select Test, and Save changes to apply it. No different microphone is
+selected automatically. Technical driver text stays behind Details; unknown
+errors retain general microphone-access guidance instead of guessing a cause.
+
+Current source keeps text within a readable width on large windows. Use
+**Alt+1–5** (**Command+1–5** on macOS) to open pages in sidebar order, or **F1** for
+Help and the shortcut reference. These shortcuts apply only within Settings and
+keep pending edits. Compact layouts scroll while Save and Close stay visible.
+Choose **Find setting…** or press **Ctrl+F** (**Command+F** on macOS) to search
+setting names and help terms. Search never indexes your vocabulary, device names,
+model paths or other entered values. Use the arrow keys and **Enter** to open a
+result; **Escape** or **Back** returns to your previous focus without discarding
+drafts. If a setting needs another option enabled first, search explains that
+requirement and focuses its enabling control without changing it. The search
+query is cleared when you leave search and is not saved.
+Model form rows and download actions stack when larger text needs more room.
+The optional sidebar tagline disappears in a short window when it cannot fit;
+all five navigation destinations and privacy settings remain available.
+With focus on a sidebar item or button, use **Page Up/Down** to scroll and
+**Home/End** to reach the page top/bottom. Text fields keep their usual editing
+keys. This also lets you read the full Voice commands reference without a mouse.
 If a field is invalid, Settings opens its page and focuses it. Invalid vocabulary
 lines are selected for correction; validation happens before any files are saved.
+Oversized editors keep the insertion or selected validation line in view as you
+move the cursor. The read-only device report is reachable with Tab; typing there
+does not alter the report.
+
+If Save fails, the alert explains which steps are confirmed saved, which failed
+and which were not attempted. If progress cannot be confirmed, it says so.
+Your form entries stay available for correction and retry. **Save details…**
+shows optional technical information locally; it may include private file paths.
+If the settings were saved but the running app could not be notified, quit and
+reopen Utterleaf to use them. Any edits made after starting that save remain
+unsaved. Settings, vocabulary and start-at-login changes are separate steps,
+not one all-or-nothing operation.
+
+Backup review also keeps its preview read-only. Use **Tab** or **Shift+Tab** to
+leave the preview; choices and action buttons wrap when larger text needs room.
+You still choose what to include or import, review the result, and explicitly
+confirm before applying it. Resizing or cancelling does not save anything.
+
+Under Dictation → Recording feedback, **Reset Recording feedback…** stages the
+defaults for only the floating indicator, live preview and start/stop sounds.
+It leaves every other form edit unchanged. Review the result, then choose
+**Save changes** to save all pending edits; closing without saving discards it.
+This section reset is intentionally narrower than the app-wide reset below.
 
 To recover from unwanted configuration changes, use **Help → Restore default
 settings…**. Confirm, review the form, then choose **Save changes**. This resets
@@ -234,6 +372,23 @@ Windows RC1 preview.
 
 ## Model setup and windows
 
+In the unreleased desktop source, file transcription, file-format setup and
+dictation review keep their action buttons visible in compact windows and at
+larger text sizes. Long content scrolls. Use Tab/Shift+Tab to enter and leave
+read-only transcript previews; their arrow and text-navigation keys still work.
+With focus on an action button, Page Up/Down and Home/End scroll the content.
+These layout changes do not change file export, decoder consent or insertion
+verification, and are not part of the published RC2 binary.
+
+Current source also explains file transcription, export and file-format setup
+failures with a next action. **Details…** opens bounded technical information
+only when requested; it can contain private paths, so review it before sharing.
+Changing the operation's status clears old details. An export failure keeps
+the transcript preview available for retry; check the destination before
+retrying because a failed export does not prove that nothing was written.
+Choosing FFmpeg still requires explicit trust confirmation, and forgetting it
+removes only Utterleaf's selection, not the installed program.
+
 To check model installation, open **Settings → Speech & privacy → Model &
 installation**. The status distinguishes missing or incomplete files from an
 installed selection. **Download selected model** authorizes a single download;
@@ -270,9 +425,9 @@ Created on first run. Everyday use is Settings. The toml is for people who want 
 ```toml
 hotkey = "ctrl+win"     # macOS/Linux default is "ctrl+shift+space"
 mode = "hold"           # hold | toggle
-model = "small"         # tiny, base, small, distil-small.en
+model = "small.en"      # or small.multilingual; other guided sizes work likewise
 device = "auto"         # auto | gpu | cpu
-language = "en"
+language = "en"         # or auto / another supported language code
 microphone = ""         # empty = system default
 ```
 

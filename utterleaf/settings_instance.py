@@ -20,8 +20,10 @@ def _namespace(namespace: str) -> str:
     return namespace
 
 
-def activate(namespace: str = "settings") -> bool:
+def _request(namespace: str, command: str) -> bool:
     namespace = _namespace(namespace)
+    if command not in {"activate", "close"}:
+        raise ValueError("Window command must be activate or close")
     try:
         with (data_dir() / f"{namespace}-instance.json").open("rb") as stream:
             payload = stream.read(2049)
@@ -32,11 +34,22 @@ def activate(namespace: str = "settings") -> bool:
             return False
         with socket.create_connection(("127.0.0.1", int(endpoint["port"])), timeout=0.3) as client:
             from utterleaf.window_activation import allow_activation
-            allow_activation(endpoint.get("pid"))
-            client.sendall((endpoint["token"] + "\n").encode("ascii"))
+            if command == "activate":
+                allow_activation(endpoint.get("pid"))
+            suffix = "" if command == "activate" else " close"
+            client.sendall((endpoint["token"] + suffix + "\n").encode("ascii"))
             return client.recv(16) == b"ok\n"
     except (OSError, ValueError, KeyError, TypeError, UnicodeError):
         return False
+
+
+def activate(namespace: str = "settings") -> bool:
+    return _request(namespace, "activate")
+
+
+def request_close(namespace: str = "settings") -> bool:
+    """Ask an authenticated companion window to close on its Tk thread."""
+    return _request(namespace, "close")
 
 
 class SettingsInstance:
@@ -53,7 +66,7 @@ class SettingsInstance:
         self.stopped = threading.Event()
         self.endpoint = data_dir() / f"{self.namespace}-instance.json"
 
-    def acquire(self, on_activate) -> bool:
+    def acquire(self, on_activate, on_close=None) -> bool:
         data_dir().mkdir(parents=True, exist_ok=True)
         handle = (data_dir() / f"{self.namespace}.lock").open("a+b")
         handle.seek(0, 2)
@@ -97,13 +110,16 @@ class SettingsInstance:
                         with client:
                             client.settimeout(0.3)
                             request = bytearray()
-                            while len(request) <= 65 and not request.endswith(b"\n"):
-                                part = client.recv(66 - len(request))
+                            while len(request) <= 71 and not request.endswith(b"\n"):
+                                part = client.recv(72 - len(request))
                                 if not part:
                                     break
                                 request.extend(part)
                             if request == (token + "\n").encode("ascii"):
                                 on_activate()
+                                client.sendall(b"ok\n")
+                            elif on_close is not None and request == (token + " close\n").encode("ascii"):
+                                on_close()
                                 client.sendall(b"ok\n")
                     except OSError:
                         continue

@@ -15,6 +15,7 @@ import hashlib
 import json
 import platform
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -225,6 +226,60 @@ def _is_native_library(name: str) -> bool:
             or ".so." in lower)
 
 
+def verify_windows_signed_payloads(entry: dict) -> None:
+    """Require every host-varying Microsoft runtime DLL to have a valid signature."""
+    relatives = entry.get("signed_payloads", [])
+    if not relatives:
+        return
+    policy = entry.get("signature_policy", {})
+    allowed_subjects = set(policy.get("subjects", []))
+    if not allowed_subjects:
+        raise SystemExit("collect_notices: signed runtime payload has no signer policy")
+    paths = [DIST / "_internal" / relative for relative in relatives]
+    if any(not path.is_file() for path in paths):
+        raise SystemExit("collect_notices: signed Windows runtime payload is missing")
+    script = """
+$ErrorActionPreference = 'Stop'
+$paths = [Console]::In.ReadToEnd() | ConvertFrom-Json
+$items = foreach ($path in $paths) {
+    $signature = Get-AuthenticodeSignature -LiteralPath $path
+    [pscustomobject]@{
+        name = [IO.Path]::GetFileName($path)
+        status = [string]$signature.Status
+        subject = [string]$signature.SignerCertificate.Subject
+    }
+}
+$items | ConvertTo-Json -Compress
+"""
+    powershell = shutil.which("pwsh.exe") or "powershell.exe"
+    try:
+        result = subprocess.run(
+            [powershell, "-NoProfile", "-NonInteractive", "-Command", script],
+            input=json.dumps([str(path) for path in paths]),
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        raise SystemExit("collect_notices: Microsoft runtime signature review failed") from None
+    try:
+        inspected = json.loads(result.stdout) if result.returncode == 0 else []
+    except json.JSONDecodeError:
+        inspected = []
+    if isinstance(inspected, dict):
+        inspected = [inspected]
+    expected_names = {path.name.casefold() for path in paths}
+    actual_names = {str(item.get("name", "")).casefold() for item in inspected}
+    valid = (
+        actual_names == expected_names
+        and all(item.get("status") == "Valid" for item in inspected)
+        and all(str(item.get("subject", "")) in allowed_subjects for item in inspected)
+    )
+    if not valid:
+        raise SystemExit("collect_notices: Microsoft runtime signature review failed")
+
+
 def copy_reviewed_notice_files(entry: dict, out_dir: Path) -> None:
     """Keep complete texts and their upstream provenance together."""
     if entry.get("review_status") != "complete":
@@ -257,12 +312,40 @@ def copy_windows_runtime_notices(licenses_dir: Path) -> list[tuple[str, str, str
     actual_python = ".".join(str(part) for part in sys.version_info[:3])
     if actual_python != manifest["python_version"]:
         raise SystemExit("collect_notices: Windows Python runtime version requires a new notice review")
-    rows = []
-    for key, entry in manifest["windows_runtime"].items():
+    declared_root_dlls = set()
+    mismatched_payloads = []
+    for entry in manifest["windows_runtime"].values():
         for relative, expected in entry["payloads"].items():
             payload = DIST / "_internal" / relative
-            if not payload.is_file() or hashlib.sha256(payload.read_bytes()).hexdigest() != expected:
-                raise SystemExit(f"collect_notices: unreviewed Windows runtime payload: {relative}")
+            expected_hashes = expected if isinstance(expected, list) else [expected]
+            actual = hashlib.sha256(payload.read_bytes()).hexdigest() if payload.is_file() else "missing"
+            if actual not in expected_hashes:
+                mismatched_payloads.append(f"{relative}={actual}")
+            normalized = relative.replace("\\", "/")
+            if "/" not in normalized and normalized.lower().endswith(".dll"):
+                declared_root_dlls.add(normalized.casefold())
+        verify_windows_signed_payloads(entry)
+        declared_root_dlls.update(
+            relative.replace("\\", "/").casefold()
+            for relative in entry.get("signed_payloads", [])
+            if "/" not in relative.replace("\\", "/") and relative.lower().endswith(".dll")
+        )
+    if mismatched_payloads:
+        raise SystemExit(
+            "collect_notices: unreviewed Windows runtime payload(s): "
+            + ", ".join(mismatched_payloads)
+        )
+    actual_root_dlls = {
+        path.name.casefold()
+        for path in (DIST / "_internal").glob("*.dll")
+        if path.is_file()
+    }
+    if unexpected := sorted(actual_root_dlls - declared_root_dlls):
+        raise SystemExit(
+            "collect_notices: unreviewed Windows runtime payload(s): " + ", ".join(unexpected)
+        )
+    rows = []
+    for key, entry in manifest["windows_runtime"].items():
         copy_reviewed_notice_files(entry, licenses_dir / key)
         rows.append((entry["name"], entry["version"], entry["license"],
                      f"Reviewed native component; full texts and provenance: licenses/{key}/."))

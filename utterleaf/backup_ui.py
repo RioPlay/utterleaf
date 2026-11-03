@@ -6,6 +6,8 @@ from utterleaf import theme
 
 from utterleaf.backup import PORTABLE_PREFERENCES, export_backup
 from utterleaf.backup_store import apply_import, prepare_import, write_backup
+from utterleaf.ui_feedback import RecoveryFeedback
+from utterleaf.ui_layout import ActionRow, readonly_preview, wrapped_label
 
 LABELS = {"text_cleanup": "Text cleanup", "remove_fillers": "Remove fillers",
           "fix_corrections": "Fix spoken corrections", "beep": "Sound feedback",
@@ -42,38 +44,37 @@ class BackupDialog:
         options_scroll.grid(row=0, column=1, sticky="ns")
         self.options_canvas.configure(yscrollcommand=options_scroll.set)
         options_body = ttk.Frame(self.options_canvas)
+        options_body.columnconfigure(0, weight=1)
         self.options_body = options_body
         options_window = self.options_canvas.create_window((0, 0), window=options_body, anchor="nw")
         options_body.bind("<Configure>", lambda _event: self.options_canvas.configure(
             scrollregion=self.options_canvas.bbox("all")))
         self.options_canvas.bind("<Configure>", lambda event: self.options_canvas.itemconfigure(
             options_window, width=event.width))
-        self.intro = ttk.Label(options_body, text="Choose portable preferences and vocabulary. Vocabulary may contain personal "
-                  "information. Network, clipboard, microphone, hotkeys and model settings stay unchanged.",
-                  wraplength=610)
+        self.intro = wrapped_label(options_body, text="Choose portable preferences and vocabulary. Vocabulary may contain personal "
+                  "information. Network, clipboard, microphone, hotkeys and model settings stay unchanged.")
         self.intro.grid(row=0, column=0, sticky="ew", padx=18, pady=8)
-        choices = ttk.Frame(options_body)
+        choices = ActionRow(options_body)
         choices.grid(row=1, column=0, sticky="ew", padx=18)
         available = dict(plan.preferences) if plan is not None else {key: getattr(cfg, key) for key in PORTABLE_PREFERENCES}
         self.selected = {}
-        for index, key in enumerate(available):
+        for key in available:
             var = tk.BooleanVar(self.root, value=plan is None)
             self.selected[key] = var
-            ttk.Checkbutton(choices, text=LABELS[key], variable=var, command=self.refresh).grid(
-                row=index // 2, column=index % 2, sticky="w", padx=(0, 14), pady=3)
-        vocabulary_row = ttk.Frame(options_body)
+            choices.add(ttk.Checkbutton(choices, text=LABELS[key], variable=var, command=self.refresh))
+        vocabulary_row = ActionRow(options_body)
         vocabulary_row.grid(row=2, column=0, sticky="ew", padx=18, pady=6)
         self.mode = tk.StringVar(self.root, value="keep")
         self.include_vocabulary = tk.BooleanVar(self.root, value=True)
         if plan is None:
-            ttk.Checkbutton(vocabulary_row, text="Include vocabulary (comments excluded)",
-                            variable=self.include_vocabulary, command=self.refresh).pack(anchor="w")
+            vocabulary_row.add(ttk.Checkbutton(vocabulary_row, text="Include vocabulary\n(comments excluded)",
+                            variable=self.include_vocabulary, command=self.refresh))
         else:
-            ttk.Label(vocabulary_row, text="Vocabulary decision:").pack(side="left")
+            vocabulary_row.add(ttk.Label(vocabulary_row, text="Vocabulary decision:"))
             picker = ttk.Combobox(vocabulary_row, textvariable=self.mode,
                                  values=("keep",) if plan.vocabulary is None else ("keep", "merge", "replace"),
                                  state="readonly", width=12)
-            picker.pack(side="left", padx=8)
+            vocabulary_row.add(picker)
             picker.bind("<<ComboboxSelected>>", lambda _event: self.refresh())
         frame = ttk.Frame(self.root)
         frame.grid(row=1, column=0, sticky="nsew", padx=18)
@@ -88,31 +89,29 @@ class BackupDialog:
         scroll = ttk.Scrollbar(frame, command=self.preview.yview)
         scroll.grid(row=0, column=1, sticky="ns")
         self.preview.configure(yscrollcommand=scroll.set)
+        readonly_preview(self.preview)
         self.status = tk.StringVar(self.root)
-        self.status_label = ttk.Label(self.root, textvariable=self.status, wraplength=610)
-        self.status_label.grid(row=2, column=0, sticky="ew", padx=18, pady=5)
-        actions = ttk.Frame(self.root)
-        actions.grid(row=3, column=0, sticky="e", padx=18, pady=(0, 9))
-        ttk.Button(actions, text="Cancel", command=self.root.destroy).pack(side="left", padx=8)
+        self.feedback = RecoveryFeedback(self.root, self.status)
+        self.feedback.grid(row=2, column=0, sticky="ew", padx=18, pady=5)
+        actions = ActionRow(self.root)
+        actions.grid(row=3, column=0, sticky="ew", padx=18, pady=(0, 9))
+        actions.add(ttk.Button(actions, text="Cancel", command=self.root.destroy))
         self.confirm = ttk.Button(actions, text="Apply reviewed import…" if plan is not None else "Save new backup…",
                                   command=self.confirm_action, style="Primary.TButton")
-        self.confirm.pack(side="left")
+        actions.add(self.confirm)
         self.root.bind("<Escape>", lambda _event: self.root.destroy())
-        self.root.bind("<Configure>", self.resize)
         self.refresh()
         self.root.grab_set()
         self.confirm.focus_set()
 
-    def resize(self, event):
-        if event.widget is self.root:
-            for label in (self.intro, self.status_label):
-                label.configure(wraplength=max(200, event.width - 36))
-
     def _reveal_focus(self, event):
         widget = event.widget
-        if not hasattr(self, "options_canvas") or widget is self.root:
+        # Ancestor FocusIn events must not scroll a whole row under the pointer
+        # between a control's mouse press and release.
+        if (not hasattr(self, "options_canvas")
+                or widget.winfo_class() not in {"TCheckbutton", "TCombobox"}):
             return
-        if str(widget).startswith(str(self.options_body)):
+        if str(widget).startswith(str(self.options_body) + "."):
             self.root.update_idletasks()
             top = self.options_canvas.winfo_rooty()
             bottom = top + self.options_canvas.winfo_height()
@@ -160,9 +159,14 @@ class BackupDialog:
                 content = "\n".join(lines)
                 self.status.set("Nothing is saved until you apply and confirm. Replace removes the current vocabulary.")
             self.confirm.configure(state="normal")
-        except Exception:
+        except Exception as error:
             content = "Could not build a safe preview. Check the selected file and current vocabulary, then reopen this dialog."
-            self.status.set("No changes saved.")
+            self.feedback.error(
+                "Backup preview unavailable",
+                "No changes were saved.",
+                "Review the file and reopen this dialog.",
+                error,
+            )
             self.confirm.configure(state="disabled")
         self.preview.configure(state="normal")
         self.preview.delete("1.0", "end")
@@ -194,5 +198,8 @@ class BackupDialog:
             messagebox.showerror("Choose a new filename", "An existing file will not be overwritten. Choose a different filename.", parent=self.root)
         except Exception as error:
             from utterleaf.backup import BackupError
-            message = str(error) if isinstance(error, BackupError) else "The file operation failed. Check access and free disk space."
-            messagebox.showerror("Backup could not finish", message, parent=self.root)
+            impact = ("No backup was saved." if self.plan is None
+                      else "No changes were applied.")
+            recovery = ("Review the backup and try again." if isinstance(error, BackupError)
+                        else "Check storage access and try again.")
+            self.feedback.error("Backup could not finish", impact, recovery, error)

@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import logging
 import threading
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
 
 from utterleaf.clean import prepare
 from utterleaf.config import Config
+from utterleaf.languages import normalize_language
+from utterleaf.model_presentation import model_token
+from utterleaf.model_selection import resolve_model_selection
 from utterleaf.transcript import Segment, Transcript, TranscriptionCancelled
 from utterleaf.hardware import (
     Accelerator,
@@ -27,12 +31,14 @@ log = logging.getLogger("utterleaf")
 
 _engine = None
 _engine_key: tuple | None = None
+# Published only after a successful load. Keep this immutable so readiness
+# readers never wait behind native model loading or inference.
+_engine_config_key: tuple[str, str, str, str] | None = None
 _lock = threading.Lock()
 _infer_lock = threading.Lock()
 # Set while a real paste decode is in flight so the live draft does not start another infer.
 _final_requested = threading.Event()
 
-EN_ONLY = {"tiny", "base", "small", "medium"}
 # Drafts only the tail so a long hold cannot occupy the GPU when the user releases.
 PREVIEW_SECONDS = 4.0
 
@@ -48,10 +54,44 @@ def _dictionary_prompt() -> str:
 
 
 def resolve_name(cfg: Config) -> str:
-    name = cfg.model.strip()
-    if cfg.language.lower() in {"en", "english"} and name in EN_ONLY:
-        return f"{name}.en"
-    return name
+    return resolve_model_selection(cfg.model, cfg.language)
+
+
+def _config_key(cfg: Config) -> tuple[str, str, str, str]:
+    return (resolve_name(cfg), cfg.device, cfg.compute_type, normalize_language(cfg.language))
+
+
+def _requested_language(cfg: Config) -> str | None:
+    language = normalize_language(cfg.language)
+    return None if language in {"auto", ""} else language
+
+
+def engine_ready(cfg: Config) -> bool:
+    """Whether the last successful load matches this request, without blocking.
+
+    Requested preferences identify CPU fallback too; the actual backend remains
+    in ``_engine_key``. This snapshot does not probe devices or open a microphone.
+    """
+    return _engine_config_key == _config_key(cfg)
+
+
+def loaded_model_token(cfg: Config) -> str | None:
+    """Snapshot matching successful-load proof without waiting on native work.
+
+    This describes requested preferences, including a successful CPU fallback,
+    not the backend or the engine retained by an already-running transcription.
+    Detected replacement or preference changes invalidate this read.
+    """
+    loaded_key = _engine_config_key
+    if loaded_key is None:
+        return None
+    requested_key = _config_key(cfg)
+    if loaded_key != requested_key:
+        return None
+    token = model_token(loaded_key[0])
+    if _config_key(cfg) != requested_key or _engine_config_key is not loaded_key:
+        return None
+    return token
 
 
 class CTranslateEngine:
@@ -70,7 +110,7 @@ class CTranslateEngine:
             check_cancel()
         try:
             check_cancel()
-            language = None if cfg.language.lower() in {"auto", ""} else cfg.language
+            language = _requested_language(cfg)
             segments, info = self.model.transcribe(
                 audio, language=language, vad_filter=len(audio) >= 22400,
                 beam_size=5, condition_on_previous_text=False,
@@ -87,7 +127,7 @@ class CTranslateEngine:
             _infer_lock.release()
 
     def transcribe(self, audio: np.ndarray, cfg: Config) -> str:
-        language = None if cfg.language.lower() in {"auto", ""} else cfg.language
+        language = _requested_language(cfg)
         seconds = float(len(audio)) / 16000.0
         prompt = _dictionary_prompt()
         kwargs = {
@@ -131,7 +171,7 @@ def transcribe_preview(audio: np.ndarray, cfg: Config) -> str:
     engine = peek_engine()
     if not isinstance(engine, CTranslateEngine):
         return ""
-    language = None if cfg.language.lower() in {"auto", ""} else cfg.language
+    language = _requested_language(cfg)
     if not _infer_lock.acquire(blocking=False):
         return ""
     try:
@@ -156,8 +196,9 @@ class OpenVinoEngine:
 
     def transcribe(self, audio: np.ndarray, cfg: Config) -> str:
         kwargs: dict = {}
-        if cfg.language.lower() not in {"auto", ""}:
-            kwargs["language"] = cfg.language
+        language = _requested_language(cfg)
+        if language is not None:
+            kwargs["language"] = language
         result = self.pipe.generate(np.ascontiguousarray(audio, dtype=np.float32), **kwargs)
         if isinstance(result, str):
             return result.strip()
@@ -217,8 +258,9 @@ def download_weights(cfg: Config) -> list[Path]:
 
 
 def reset_engine() -> None:
-    global _engine, _engine_key
+    global _engine, _engine_key, _engine_config_key
     with _lock:
+        _engine_config_key = None
         _engine = None
         _engine_key = None
 
@@ -234,20 +276,21 @@ def _cuda_runtime_error(exc: BaseException) -> bool:
 
 def load_model(cfg: Config, accel: Accelerator | None = None):
     """Load (or reuse) the local engine. Downloads once if the cache is empty."""
-    global _engine, _engine_key
-    name = resolve_name(cfg)
+    global _engine, _engine_key, _engine_config_key
+    cfg = replace(cfg)
+    config_key = _config_key(cfg)
+    name = config_key[0]
     with _lock:
         if (
-            accel is None
-            and _engine is not None
-            and _engine_key is not None
-            and _engine_key[0] == name
+            _engine is not None
+            and _engine_config_key == config_key
+            and (accel is None or _engine_key == (name, accel.kind, accel.backend))
         ):
             return _engine
+        # Clear before hardware selection or loading: either can fail, and a
+        # failed replacement must not leave an older model marked ready.
+        _engine_config_key = None
         chosen = accel or pick(cfg)
-        key = (name, chosen.kind, chosen.backend)
-        if _engine is not None and _engine_key == key:
-            return _engine
         try:
             if chosen.backend == "openvino":
                 _engine = _load_openvino(cfg, chosen)
@@ -262,6 +305,7 @@ def load_model(cfg: Config, accel: Accelerator | None = None):
             chosen = CPU
             _engine = _load_ctranslate(cfg, chosen)
         _engine_key = (name, chosen.kind, chosen.backend)
+        _engine_config_key = config_key
         return _engine
 
 

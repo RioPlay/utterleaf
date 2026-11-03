@@ -8,8 +8,15 @@ section, not the first filename in `active/`. Android alpha21 is published; its
 [release record](completed/android-alpha21-release-readiness.md) preserves the
 exact promotion evidence. Continue the roadmap design follow-ups;
 [physical issues are reported manually](completed/android-alpha18-phone-acceptance.md),
-and a dedicated phone acceptance campaign is no longer required. Desktop is parked; on resumption refresh/check draft PR #37, followed
-by sequential replay of #38–42. Other active
+and a dedicated phone acceptance campaign is no longer required. The separate
+[desktop modernization stream](active/desktop-modernization.md) is active, with
+[0.4.6 RC3 release readiness](active/desktop-0.4.6-rc3-release-readiness.md)
+tracking candidate identity, packaging, CI, and the publication boundary. Desktop
+Windows accessibility work is isolated in the
+[native presentation-shell plan](active/desktop-windows-accessibility-shell.md);
+the proof remains opt-in until its UIA and assistive-technology gates pass. Desktop
+OBS remains parked; on resumption refresh/check draft PR #37, followed by
+sequential replay of #38–42 in its owning worktree. Other active
 plans retain longer-running work or acceptance gates; they are not permission
 to start a different feature. Completed records preserve historical evidence
 and point unresolved device/release limits back to the roadmaps.

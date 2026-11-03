@@ -108,6 +108,8 @@ def test_apply_form_rejects_bad_hotkey(monkeypatch) -> None:
 
 
 @pytest.mark.parametrize("invalid", [{"model": " "}, {"device": "cloud"}, {"language": ""},
+                                     {"language": "not-supported"},
+                                     {"model": "small.en", "language": "fr"},
                                      {"denoise": "invalid"}, {"names": "missing separator"}])
 def test_invalid_settings_do_not_write_any_files(monkeypatch, invalid):
     written = []
@@ -119,6 +121,20 @@ def test_invalid_settings_do_not_write_any_files(monkeypatch, invalid):
     with pytest.raises(ValueError):
         apply_form(Config(), **{**values, **invalid})
     assert not written
+
+
+def test_supported_language_is_normalized_and_multilingual_pack_is_explicit(monkeypatch):
+    saved = []
+    monkeypatch.setattr("utterleaf.settings.save", saved.append)
+    monkeypatch.setattr("utterleaf.settings.set_startup", lambda _on: None)
+    cfg = apply_form(
+        Config(), hotkey="f8", mode="hold", model="small.multilingual",
+        device="auto", language=" YUE ", denoise="auto", beep=True,
+        indicator=True, start_at_login=False,
+    )
+    assert cfg.model == "small.multilingual"
+    assert cfg.language == "yue"
+    assert saved == [cfg]
 
 
 def test_speech_end_preferences_validate_and_save(monkeypatch):

@@ -41,6 +41,8 @@ def test_missing_partial_and_installed_are_local_only(cache, monkeypatch):
 def test_model_language_resolution_and_custom_path_rejection(cache):
     assert setup.model_name(Config(model="small", language="en")) == "small.en"
     assert setup.model_name(Config(model="small", language="auto")) == "small"
+    assert setup.model_name(Config(model="small.multilingual", language="en")) == "small"
+    assert setup.model_name(Config(model="small.en", language="fr")) == "small.en"
     assert setup.inspect_model("../../outside").state == "unsupported"
     assert setup.download_selected("../../outside", "ctranslate2") == 2
     assert list(cache.iterdir()) == []

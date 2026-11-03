@@ -13,9 +13,9 @@ DARK = "#07191D"
 MARK_COLORS = {"green": "#137D40", "black": DARK, "gray": "#5C696D", "light": "#B9C4C7", "inverse": "#FFFFFF"}
 STATE_LABELS = {
     "idle": ("Ready", "Ready to dictate, including offline. No audio is being captured."),
-    "recording": ("Recording", "The microphone is capturing your take. A solid dot accompanies the color."),
-    "busy": ("Processing", "Opening a device, loading the model, or transcribing. The tooltip gives the exact status."),
-    "error": ("Needs attention", "Microphone, engine, transcription, or delivery failure. Read the status message for details."),
+    "recording": ("Listening", "The microphone is capturing your take. A solid dot accompanies the color."),
+    "busy": ("Processing", "Opening a device, loading the speech model, or transcribing. The tooltip gives the exact status."),
+    "error": ("Needs attention", "Microphone, speech model, transcription, or delivery failure. Read the status message for details."),
 }
 MASCOT_LABELS = {
     "default": ("Welcome", "Dictation header and stopped microphone checks."),

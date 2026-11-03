@@ -1,6 +1,36 @@
 # Platform testing
 
-## Current validation — September 9, 2026
+## Current source work — September 26, 2026
+
+The [desktop roadmap](desktop-roadmap.md) and
+[modernization plan](plans/active/desktop-modernization.md) record the current
+unreleased desktop source checks, captures, and independent reviews. Those
+Windows/Tk checks do not establish native macOS/Linux, physical device/display,
+screen-reader, installed-build, or whole-app performance acceptance. A bounded
+Settings-only CPU/memory comparison is recorded separately in the plan, with
+all samples and limitations; it is not tray or speech-engine clearance. Keep the direct
+platform checklist below open until its own evidence is collected.
+
+The [0.4.6 RC3 readiness plan](plans/active/desktop-0.4.6-rc3-release-readiness.md)
+is the candidate-specific ledger. After the multilingual model-pack follow-up,
+the multilingual worktree run passed **2,693 tests with 14 documented prerequisite
+skips** in 370.55 seconds, including the
+Windows OBS ownership/ACL checks. Child-process tests explicitly import the active
+checkout rather than an ambient installation. The earlier interrupted 1,345-test
+run and invalid diagnostic permission shim remain historical evidence in the
+modernization plan, not current blockers. The later integrated recovery/lifecycle
+source passed **2,714 tests with the same 14 prerequisite skips**, followed by a
+fresh Windows onedir build and full local frozen smoke. Exact-final hosted CI must
+still bind the immutable candidate across Windows, macOS and Linux.
+
+A fresh Windows UI Automation inventory is a release blocker rather than a manual
+evidence gap: all 12 audited Tk surfaces exposed zero focusable or named-focusable
+controls and no Button/Edit/CheckBox/ComboBox semantics. A provider/bridge or
+Windows presentation shell must exist before Narrator/NVDA, modal focus and
+physical mixed-DPI acceptance can be meaningful. The ignored raw report is
+`.grok/accessibility/report-20260927.md`.
+
+## Historical validation — September 9, 2026
 
 Desktop v0.4.0 candidate: Windows **494 passed, 1 skipped** and AlmaLinux/WSL
 **493 passed, 2 skipped** before final release review. New checks cover file exports,

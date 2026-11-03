@@ -11,6 +11,7 @@ from utterleaf import theme
 from utterleaf.obs_pairing_store import (
     ObsPairingStore, PairingStoreCancelled, PairingStoreCommitError,
 )
+from utterleaf.ui_layout import ActionRow
 
 
 @dataclass(frozen=True)
@@ -126,12 +127,12 @@ class ObsPairingDialog:
                     "Choose that file here on the same Windows account.", "Subtitle.TLabel", pady=(16, 10))
         footer = ttk.Frame(self.root, padding=(20, 12))
         footer.grid(row=1, column=0, sticky="ew")
-        self.refresh_button = ttk.Button(footer, text="Refresh", command=self.refresh)
-        self.refresh_button.pack(side="left")
-        self.forget_button = ttk.Button(footer, text="Forget…", command=self.forget_pairing)
-        self.forget_button.pack(side="left", padx=8)
-        self.close_button = ttk.Button(footer, text="Close", command=self.close)
-        self.close_button.pack(side="right")
+        footer.columnconfigure(0, weight=1)
+        actions = ActionRow(footer)
+        actions.grid(row=0, column=0, sticky="ew")
+        self.refresh_button = actions.add(ttk.Button(actions, text="Refresh", command=self.refresh))
+        self.forget_button = actions.add(ttk.Button(actions, text="Forget…", command=self.forget_pairing))
+        self.close_button = actions.add(ttk.Button(actions, text="Close", command=self.close))
         self.cancel_button = ttk.Button(card, text="Cancel import", command=self.cancel_import)
         self.root.protocol("WM_DELETE_WINDOW", self.close)
         self.root.bind("<Escape>", lambda _e: self.close())

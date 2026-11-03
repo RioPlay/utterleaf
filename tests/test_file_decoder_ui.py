@@ -55,15 +55,34 @@ def test_declining_executable_selection_does_not_remember_it(dialog, monkeypatch
     assert not (tmp_path / "decoder.json").exists()
 
 
-def test_setup_instructions_and_actions_fit_compact_dialog(dialog):
-    dialog.root.geometry("560x500")
-    dialog.root.update()
-    assert dialog.root.cget("background") == theme.SURFACE
+def test_setup_instructions_and_actions_fit_compact_dialog(dialog, root):
     def descendants(widget):
         for child in widget.winfo_children():
             yield child
             yield from descendants(child)
-    for widget in descendants(dialog.root):
-        if widget.winfo_class() == "TButton":
+
+    try:
+        root.deiconify()
+        root.update()
+        dialog.root.deiconify()
+        dialog.root.geometry("560x500")
+        dialog.root.update()
+        assert dialog.root.winfo_ismapped()
+        assert (dialog.root.winfo_width(), dialog.root.winfo_height()) == (560, 500)
+        assert dialog.root.cget("background") == theme.SURFACE
+        assert not dialog.feedback.details_button.winfo_ismapped()
+        assert dialog.feedback.details_button.instate(["disabled"])
+        buttons = [widget for widget in descendants(dialog.root)
+                   if widget.winfo_class() == "TButton" and widget is not dialog.feedback.details_button]
+        assert len(buttons) == 4
+        for widget in buttons:
+            assert widget.winfo_ismapped()
+            assert widget.winfo_width() >= widget.winfo_reqwidth()
+            assert widget.winfo_height() >= widget.winfo_reqheight()
+            assert widget.winfo_rootx() >= dialog.root.winfo_rootx()
+            assert widget.winfo_rooty() >= dialog.root.winfo_rooty()
             assert widget.winfo_rooty() + widget.winfo_height() <= dialog.root.winfo_rooty() + dialog.root.winfo_height()
             assert widget.winfo_rootx() + widget.winfo_width() <= dialog.root.winfo_rootx() + dialog.root.winfo_width()
+    finally:
+        dialog.root.withdraw()
+        root.withdraw()

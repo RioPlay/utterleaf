@@ -8,6 +8,8 @@ import webbrowser
 
 from utterleaf import theme
 from utterleaf.file_decoder import DOWNLOAD_URL, decoder_selection, forget_decoder, select_decoder
+from utterleaf.ui_layout import ActionRow, ScrollableContent, wrapped_label
+from utterleaf.ui_feedback import RecoveryFeedback
 
 
 class DecoderDialog:
@@ -18,17 +20,23 @@ class DecoderDialog:
         self.root.minsize(560, 500)
         self.root.transient(parent)
         theme.apply(self.root)
-        page = ttk.Frame(self.root, padding=24)
-        page.pack(fill="both", expand=True)
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
+        self.content = ScrollableContent(self.root, padding=24)
+        self.content.grid(row=0, column=0, sticky="nsew")
+        page = self.content.body
         page.columnconfigure(0, weight=1)
-        page.rowconfigure(5, weight=1)
-        ttk.Label(page, text="MP3, M4A and video files", style="Section.TLabel").grid(row=0, column=0, sticky="w")
-        self.labels = []
+        wrapped_label(page, text="MP3, M4A and video files", style="Section.TLabel").grid(
+            row=0, column=0, sticky="ew")
+
         def label(text, row):
-            widget = ttk.Label(page, text=text, wraplength=625, justify="left")
+            widget = wrapped_label(page, text=text, justify="left")
             widget.grid(row=row, column=0, sticky="ew", pady=(12, 0))
-            self.labels.append(widget)
-        label("Connect FFmpeg once to decode common audio and video locally. PCM WAV already works without it. No audio is uploaded.", 1)
+
+        self.status = tk.StringVar(self.root)
+        self.feedback = RecoveryFeedback(page, self.status)
+        self.feedback.grid(row=1, column=0, sticky="ew", pady=(12, 0))
+        label("Connect FFmpeg once to decode common audio and video locally. PCM WAV already works without it. No audio is uploaded.", 2)
         if sys.platform == "win32":
             instructions = ("1. Open the download page below. Under Windows, choose gyan.dev.\n"
                             "2. Download the release essentials ZIP, then use Extract All.\n"
@@ -41,29 +49,17 @@ class DecoderDialog:
             instructions = ("1. Install FFmpeg from your distribution's package manager. On Ubuntu/Debian: sudo apt install ffmpeg\n"
                             "2. Find its path with: command -v ffmpeg\n"
                             "3. Choose that ffmpeg executable below (usually /usr/bin/ffmpeg).")
-        label(instructions, 2)
-        label("Choose a current FFmpeg build you trust and verify its publisher checksum. Selecting it permits Utterleaf to run that program for your files. Setup does not run installers.", 3)
-        self.status = tk.StringVar()
-        current = ttk.Label(page, textvariable=self.status, wraplength=625)
-        current.grid(row=4, column=0, sticky="ew", pady=(16, 0))
-        self.labels.append(current)
+        label(instructions, 3)
+        label("Choose a current FFmpeg build you trust and verify its publisher checksum. Selecting it permits Utterleaf to run that program for your files. Setup does not run installers.", 4)
         self.refresh()
-        actions = ttk.Frame(page)
-        actions.grid(row=6, column=0, sticky="ew", pady=(16, 0))
-        ttk.Button(actions, text="Download page…", command=self.download_page).pack(side="left")
-        ttk.Button(actions, text="Choose FFmpeg…", style="Primary.TButton", command=self.choose).pack(side="left", padx=8)
-        secondary = ttk.Frame(page)
-        secondary.grid(row=7, column=0, sticky="ew", pady=(10, 0))
-        ttk.Button(secondary, text="Forget selection", command=self.forget).pack(side="left")
-        ttk.Button(secondary, text="Done", command=self.root.destroy).pack(side="right")
-        self.root.bind("<Configure>", self.resize)
+        actions = ActionRow(self.root)
+        actions.grid(row=1, column=0, sticky="ew", padx=24, pady=(12, 20))
+        actions.add(ttk.Button(actions, text="Download page…", command=self.download_page))
+        actions.add(ttk.Button(actions, text="Choose FFmpeg…", style="Primary.TButton", command=self.choose))
+        actions.add(ttk.Button(actions, text="Forget selection", command=self.forget))
+        actions.add(ttk.Button(actions, text="Done", command=self.root.destroy))
         self.root.bind("<Escape>", lambda _event: self.root.destroy())
         self.root.grab_set()
-
-    def resize(self, event):
-        if event.widget is self.root:
-            for label in self.labels:
-                label.configure(wraplength=max(200, event.width - 48))
 
     def refresh(self):
         try:
@@ -71,14 +67,22 @@ class DecoderDialog:
             self.status.set("Selected: " + Path(selected["path"]).name + ". Choose again after updating it."
                             if selected else "No FFmpeg selected. WAV remains available.")
         except Exception as exc:
-            self.status.set(str(exc))
+            self.feedback.error(
+                "Couldn't read file-format setup",
+                "Extra audio and video formats may be unavailable; PCM WAV still works.",
+                "Choose a trusted FFmpeg executable again, or forget the stored selection.",
+                exc,
+            )
 
     def download_page(self):
         try:
             if not webbrowser.open(DOWNLOAD_URL):
-                self.status.set(f"Open {DOWNLOAD_URL} in your browser.")
-        except Exception:
-            self.status.set(f"Open {DOWNLOAD_URL} in your browser.")
+                raise RuntimeError("The browser did not accept the request.")
+            self.status.set("Download page opened. Install and verify FFmpeg, then choose its executable here.")
+        except Exception as exc:
+            self.feedback.error("Couldn't open download page", "The browser could not open the page.",
+                                f"Open {DOWNLOAD_URL} in your browser.", exc)
+        self.content.reveal(self.feedback)
 
     def choose(self):
         name = filedialog.askopenfilename(parent=self.root, title="Choose the installed ffmpeg executable",
@@ -94,11 +98,23 @@ class DecoderDialog:
             select_decoder(name)
             self.refresh()
         except Exception as exc:
-            self.status.set(str(exc))
+            self.feedback.error(
+                "Couldn't use that FFmpeg installation",
+                "The requested setup did not complete.",
+                "Verify the installation and publisher checksum, then choose FFmpeg again.",
+                exc,
+            )
+        self.content.reveal(self.feedback)
 
     def forget(self):
         try:
             forget_decoder()
             self.refresh()
-        except OSError:
-            self.status.set("Could not forget the selection. Check access to the app's settings folder.")
+        except OSError as exc:
+            self.feedback.error(
+                "Couldn't forget file-format setup",
+                "Utterleaf could not confirm that the stored selection was removed.",
+                "Check access to Utterleaf's settings folder, then choose Forget selection again.",
+                exc,
+            )
+        self.content.reveal(self.feedback)
