@@ -54,6 +54,17 @@ wait for the editor, privacy and testing foundation.
 
 ## Current status
 
+- **Dependency security remediation — November 4, 2026:** the isolated
+  [Android security candidate](plans/active/android-dependency-security.md)
+  updates Gradle to 8.14.6, hash-pinned whisper.cpp to 1.9.5 and affected
+  AGP/lint/test-tool Maven transitives. CI now resolves all app/test/buildscript
+  graphs and matches public Maven advisories locally without uploading inventory.
+  Initial patched JVM/lint/debug checks and 36 tooling tests passed; final
+  release/lifecycle-host and advisory results are recorded in the plan. This is
+  unpublished source work. Three focused API 35 emulator native/model tests passed;
+  independent review reproduced the corrected audit and cleared the bounded diff.
+  Hosted CI, ARM64 runtime and physical-device acceptance remain unverified.
+
 - **Daily-keyboard comfort candidate verified locally — September 27, 2026:**
   suggestions now use quiet, borderless fixed slots and clear stale hidden text;
   empty states add no filler. Secondary hints use the palette's muted color at
