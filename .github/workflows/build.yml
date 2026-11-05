@@ -35,10 +35,10 @@ jobs:
       run:
         shell: powershell
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: "3.14.6"
+          python-version: "3.14.10"
       - name: Install
         run: |
           python -m venv .venv
@@ -60,7 +60,7 @@ jobs:
         run: |
           Compress-Archive -Path dist\Utterleaf -DestinationPath dist\Utterleaf-windows-x64-cpu.zip
           Copy-Item dist\Utterleaf\SHA256SUMS.txt dist\SHA256SUMS.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Utterleaf-windows-x64-cpu
           path: |
@@ -72,7 +72,7 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install system Python, Tk, audio and X11 test tools
         run: |
           sudo apt-get update
@@ -101,7 +101,7 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install Python with matching Tk and PortAudio
         run: |
           brew install python@3.14 python-tk@3.14 portaudio
@@ -122,7 +122,7 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install Python with matching Tk and PortAudio
         run: |
           brew install python@3.14 python-tk@3.14 portaudio
@@ -140,7 +140,7 @@ jobs:
         run: ./.venv/bin/python packaging/collect_notices.py
       - name: Package
         run: tar -czf dist/Utterleaf-macos-arm64.tar.gz -C dist Utterleaf
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Utterleaf-macos-arm64
           path: dist/Utterleaf-macos-arm64.tar.gz
@@ -151,7 +151,7 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install system Python, Tk and audio libraries
         run: |
           sudo apt-get update
@@ -180,7 +180,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           xvfb-run -a ./.venv/bin/python tests/smoke_linux_release.py extracted-release/Utterleaf
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Utterleaf-linux-x64
           path: dist/Utterleaf-linux-x64.tar.gz
@@ -192,8 +192,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           merge-multiple: true
           path: dist

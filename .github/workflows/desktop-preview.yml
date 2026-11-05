@@ -36,9 +36,18 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Read the selected tag's reviewed Python runtime
+        id: runtime
+        run: |
+          $runtime = (Get-Content packaging/notices/runtime-manifest.json -Raw | ConvertFrom-Json).python_version
+          if ($runtime -notmatch '^3\.[0-9]+\.[0-9]+$') {
+              throw 'Invalid reviewed Python runtime version.'
+          }
+          "python=$runtime" >> $env:GITHUB_OUTPUT
+
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: "3.14.6"
+          python-version: ${{ steps.runtime.outputs.python }}
           cache: pip
           cache-dependency-path: |
             pyproject.toml
