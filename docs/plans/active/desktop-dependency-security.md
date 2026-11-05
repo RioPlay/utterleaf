@@ -22,7 +22,7 @@ Initial audit: installed inventory and 43 Windows pins reported 54 entries acros
 - Resolved metadata inventories for Windows Python 3.11, Linux Python 3.11 with POSIX constraints, macOS ARM64 Python 3.14 with POSIX constraints and macOS 14 minimum, and Windows CUDA/NPU extras all scanned without known PyPI advisories. These are resolver/advisory checks, not execution on those targets or accelerator acceptance.
 - The initial installed CPython 3.14.7 was superseded during this work by the verified latest security release, **3.14.10**. The official Windows runtime ZIP and release manifest were checked against published SHA-256 values; its Python binaries have a valid PSF signature. Only the isolated checkout environment was upgraded; no global Python installation or preserved checkpoint environment was changed.
 - Final full desktop regression on Python 3.14.10: **1,675 passed, 14 skipped**. Canonical Windows CPU build passed, including all notice/payload checks and speech-model exclusion; frozen `utterleaf-cli.exe --doctor` exited 0 and selected CPU. GPU libraries are absent in this CPU build, so CUDA execution is unverified.
-- Exact runtime manifest now binds CPython 3.14.10/OpenSSL 3.5.9 DLLs, SQLite 3.50.4 and zlib-ng 2.2.4 in zlib compatibility mode. Upstream complete license texts were verified/retained, including the previously missing zlib-ng attribution. Native notice checks remain fail closed. Preview workflows select the reviewed runtime from the selected tag; old release tags keep their historical interpreter inputs.
+- Exact runtime manifest binds CPython 3.14.10/OpenSSL 3.5.9 DLLs, SQLite 3.50.4 and Tcl's separate zlib 1.3.2 DLL. Python's built-in zlib module uses zlib-ng 2.2.4 in compatibility mode and its attribution ships with the Python notice. Native notice checks remain fail closed.
 - Existing desktop CI actions now use immutable, upstream-verified commits. New strict dependency workflow covers exact Windows pins and resolved base/dev graphs on Windows/Linux at Python 3.11/3.14. YAML/PowerShell structure and equivalent local audit commands passed; remote workflow jobs have not run for these uncommitted changes.
 - GitHub dependency alerts and automatic security fixes were enabled and read back successfully. Secret scanning/push protection remain enabled. The initial alert list was empty; that does not establish a completed repository scan. Dependabot configuration suppresses routine version-update PRs and permits security fixes.
 - Independent review found no material desktop defects. Reviewer independently checked final packaged DLL/license hashes, runtime provenance/signatures and the runtime/workflow consistency test. Full test/build/audit logs and provenance remain local in the preserved root's `.grok/security-audit-20261104/`.
@@ -40,6 +40,19 @@ Desktop fixes are reviewable in `audit/dependency-security-20261104`. Android fi
 Local contribution preparation is complete. The ignored checkout directory `.grok/submission-security-20261104/` contains a draft PR description, an exact patch including new files, and a SHA-256 manifest of changed files and supporting receipts. Preparation reconciled the actual diff with the existing test/build/audit evidence; it did not repeat the full suite or build or change application behavior. Verify the manifest again after any further edits. The next contribution step is coordinator review and separately authorized submission, followed by hosted platform CI; the local package is neither a submitted PR nor a release.
 
 Remaining work: native upstream fixes above, remote Windows/Linux/macOS CI on the final changes before release, and version/signing/publication as a separate authorized release task. Optional accelerator runtime behavior and physical-device acceptance are not established by metadata scans or emulator tests.
+
+The initial hosted Windows build of draft PR #73 failed the native notice check on
+`zlib1.dll`. The GitHub Python 3.14.10 x64 package uses the official executable
+installer. Its embedded Tcl/Tk MSI contains zlib 1.3.2 with SHA-256
+`f07195206534ebb1fe75093d4ec6c54a7a9227281b0c09d2113465b71da9e900`.
+The reviewed Python.org ZIP's Tcl zlib DLL also reports 1.3.2 but has SHA-256
+`7be5c2af1d33f631b2962393a088f182a580410173955323ca47a692f76b241d`.
+Canonical Windows CI now checks the SHA-256 of the reviewed Python.org ZIP before
+extraction. The preview workflow uses that ZIP when the selected tag's manifest
+has an archive hash and keeps its installer-based setup for historical tags.
+The first preview, `desktop-v0.4.6-rc.1`, used Python 3.14.6 and predates the
+manifest, so its original version is selected explicitly when the file is absent.
+The packaged payload hashes still have to pass the native notice gate.
 
 An existing AlmaLinux 10 WSL target was probed for additional Linux verification. WSL reported mirrored-network setup failure `0x8007054f` and fell back to no networking; the environment had Python 3.12.12 but no Tk, Xvfb, compiler or uv. No Linux runtime checks or system changes were performed. This is a verification limitation, not a passing Linux result.
 

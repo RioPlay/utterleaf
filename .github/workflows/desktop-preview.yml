@@ -36,28 +36,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Read the selected tag's reviewed Python runtime
-        id: runtime
-        run: |
-          $runtime = (Get-Content packaging/notices/runtime-manifest.json -Raw | ConvertFrom-Json).python_version
-          if ($runtime -notmatch '^3\.[0-9]+\.[0-9]+$') {
-              throw 'Invalid reviewed Python runtime version.'
-          }
-          "python=$runtime" >> $env:GITHUB_OUTPUT
-
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with:
-          python-version: ${{ steps.runtime.outputs.python }}
-          cache: pip
-          cache-dependency-path: |
-            pyproject.toml
-            packaging/requirements-windows-preview.txt
-
-      - name: Verify preview tag, revision, and version
+      - name: Verify preview tag and revision
+        id: tag
         run: |
           $pattern = '^desktop-v(?<major>0|[1-9][0-9]*)\.(?<minor>0|[1-9][0-9]*)\.(?<patch>0|[1-9][0-9]*)-rc\.(?<rc>[1-9][0-9]*)$'
-          if ($env:PREVIEW_TAG -notmatch $pattern) {
-              Write-Error 'Preview tag must use desktop-vMAJOR.MINOR.PATCH-rc.NUMBER.'
+          if ($env:PREVIEW_TAG -cnotmatch $pattern) {
+              throw 'Preview tag must use desktop-vMAJOR.MINOR.PATCH-rc.NUMBER.'
           }
           $expectedVersion = "$($Matches.major).$($Matches.minor).$($Matches.patch)rc$($Matches.rc)"
           $tagRevision = git rev-parse "refs/tags/$env:PREVIEW_TAG^{commit}"
@@ -65,13 +49,52 @@ jobs:
           $headRevision = git rev-parse HEAD
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ($tagRevision -ne $headRevision) {
-              Write-Error 'Checked-out revision does not match the requested preview tag.'
+              throw 'Checked-out revision does not match the requested preview tag.'
           }
+          "version=$expectedVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Read the selected tag's reviewed Python runtime
+        id: runtime
+        run: |
+          $manifestPath = 'packaging/notices/runtime-manifest.json'
+          if ($env:PREVIEW_TAG -ceq 'desktop-v0.4.6-rc.1' -and -not (Test-Path -LiteralPath $manifestPath)) {
+              # This tag predates the runtime manifest and used Python 3.14.6.
+              $runtime = '3.14.6'
+              $useArchive = $false
+          } else {
+              $manifest = Get-Content -LiteralPath $manifestPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+              $runtime = $manifest.python_version
+              $useArchive = $null -ne $manifest.PSObject.Properties['python_windows_x64_archive_sha256']
+          }
+          if ($runtime -notmatch '^3\.[0-9]+\.[0-9]+$') {
+              throw 'Invalid reviewed Python runtime version.'
+          }
+          "python=$runtime", "use_archive=$($useArchive.ToString().ToLowerInvariant())" |
+              Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Set up the reviewed Windows Python runtime
+        if: steps.runtime.outputs.use_archive == 'true'
+        run: .\packaging\setup-windows-python.ps1
+
+      # Older tags were reviewed against the installer-based runtime.
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        if: steps.runtime.outputs.use_archive == 'false'
+        with:
+          python-version: ${{ steps.runtime.outputs.python }}
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            packaging/requirements-windows-preview.txt
+
+      - name: Verify preview version
+        env:
+          EXPECTED_VERSION: ${{ steps.tag.outputs.version }}
+        run: |
           $projectVersion = python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $moduleVersion = python -c "import ast; tree=ast.parse(open('utterleaf/__init__.py', encoding='utf-8').read()); print(next(n.value.value for n in tree.body if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == '__version__' for t in n.targets)))"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if ($projectVersion -ne $expectedVersion -or $moduleVersion -ne $expectedVersion) {
+          if ($projectVersion -ne $env:EXPECTED_VERSION -or $moduleVersion -ne $env:EXPECTED_VERSION) {
               Write-Error 'Preview tag, project version, and module version do not match.'
           }
 
