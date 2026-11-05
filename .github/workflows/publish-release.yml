@@ -25,7 +25,7 @@ jobs:
       RELEASE_TAG: ${{ inputs.tag }}
       BUILD_RUN: ${{ inputs.build_run }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
       - name: Verify tag, source revision, and all platform checks
@@ -41,7 +41,7 @@ jobs:
           for job in windows macos-build linux-build macos-tests linux-tests; do
             jq -e --arg job "$job" '.jobs | any(.name == $job and .conclusion == "success")' jobs.json
           done
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.build_run }}

@@ -30,7 +30,9 @@ No runtime/UI entry is exposed until the authenticated transport can satisfy the
 complete capture contract.
 
 The control increment uses the maintained `websockets` library, pinned to 16.1.1
-to preserve Python 3.10 support. Its BSD-3-Clause notice must enter the desktop
+originally to preserve Python 3.10 support. The November 2026 dependency-security
+update raises the source minimum to Python 3.11; the tested transport pin remains.
+Its BSD-3-Clause notice must enter the desktop
 notice inventory. The library has no runtime dependencies. Verification uses a
 harmless synthetic server bound to an ephemeral loopback port, never the user's
 OBS configuration, password or audio. The client rejects nonlocal addresses,

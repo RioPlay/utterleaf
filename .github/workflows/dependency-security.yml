@@ -1,0 +1,104 @@
+name: desktop dependency security
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - pyproject.toml
+      - 'packaging/**'
+      - '.github/workflows/dependency-security.yml'
+      - '.github/dependabot.yml'
+  pull_request:
+    paths:
+      - pyproject.toml
+      - 'packaging/**'
+      - '.github/workflows/dependency-security.yml'
+      - '.github/dependabot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-pins:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+      - name: Install isolated scanner
+        run: |
+          python -m venv .audit-tools
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./.audit-tools/Scripts/python.exe -m pip install pip-audit==2.10.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Audit every exact Windows package pin
+        # No resolution here: this file is a complete platform closure. The
+        # packaging build separately downloads and verifies the wheel hashes.
+        run: ./.audit-tools/Scripts/python.exe -m pip_audit --strict --require-hashes --disable-pip --no-deps --progress-spinner off -r packaging/requirements-windows-preview.txt
+
+  resolved:
+    name: resolved ${{ matrix.os }} Python ${{ matrix.python }} ${{ matrix.profile }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+        python: ['3.11', '3.14']
+        profile: [base, dev]
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Create separate application and scanner environments
+        run: |
+          python -m venv .audit-app
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m venv .audit-tools
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($IsWindows) {
+            'APP_PYTHON=./.audit-app/Scripts/python.exe' >> $env:GITHUB_ENV
+            'AUDIT_PYTHON=./.audit-tools/Scripts/python.exe' >> $env:GITHUB_ENV
+          } else {
+            'APP_PYTHON=./.audit-app/bin/python' >> $env:GITHUB_ENV
+            'AUDIT_PYTHON=./.audit-tools/bin/python' >> $env:GITHUB_ENV
+          }
+      - name: Resolve and install the complete application dependency graph
+        env:
+          AUDIT_PROFILE: ${{ matrix.profile }}
+        run: |
+          & $env:APP_PYTHON -m pip install --upgrade pip setuptools
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $project = if ($env:AUDIT_PROFILE -eq 'dev') { '.[dev]' } else { '.' }
+          $constraints = if ($IsWindows) { @() } else { @('--constraint', 'packaging/constraints-posix.txt') }
+          & $env:APP_PYTHON -m pip install @constraints -e $project
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:APP_PYTHON -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install isolated scanner
+        run: |
+          & $env:AUDIT_PYTHON -m pip install pip-audit==2.10.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Audit installed transitive dependencies
+        run: |
+          # Export installed versions, not declared minimums. Exclude only the
+          # local application; strict auditing must still fail on unknown deps.
+          & $env:APP_PYTHON -m pip list --format=freeze --exclude utterleaf | Set-Content -Encoding utf8 resolved-dependencies.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-Content resolved-dependencies.txt
+          & $env:AUDIT_PYTHON -m pip_audit --strict --disable-pip --no-deps --progress-spinner off -r resolved-dependencies.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

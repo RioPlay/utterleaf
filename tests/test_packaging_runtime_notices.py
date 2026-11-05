@@ -220,12 +220,19 @@ def test_checked_in_ct2_platform_reviews_have_verified_distinct_closures(tmp_pat
 def test_general_windows_ci_uses_the_reviewed_runtime_inputs():
     root = Path(__file__).resolve().parents[1]
     workflow = (root / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
+    preview = (root / ".github" / "workflows" / "desktop-preview.yml").read_text(encoding="utf-8")
     lock = (root / "packaging" / "requirements-windows-preview.txt").read_text(encoding="utf-8")
     manifest = json.loads(
         (root / "packaging" / "notices" / "runtime-manifest.json").read_text(encoding="utf-8")
     )
 
-    assert 'python-version: "3.14.6"' in workflow
+    assert len(bytes.fromhex(manifest["python_windows_x64_archive_sha256"])) == 32
+    assert r"run: .\packaging\setup-windows-python.ps1" in workflow
+    assert r"run: .\packaging\setup-windows-python.ps1" in preview
+    assert preview.index('git rev-parse "refs/tags/') < preview.index(
+        r"run: .\packaging\setup-windows-python.ps1"
+    )
+    assert "if: steps.runtime.outputs.use_archive == 'false'" in preview
     assert "pip install --require-hashes -r packaging\\requirements-windows-preview.txt" in workflow
     assert "pip install --no-deps --no-build-isolation -e ." in workflow
     assert "ctranslate2==4.8.1" in lock

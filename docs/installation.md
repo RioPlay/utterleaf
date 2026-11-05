@@ -13,7 +13,9 @@ From PowerShell in the extracted `Utterleaf` folder:
 .\utterleaf-cli.exe --download-model
 ```
 
-For source installs below, use [Python 3.10+](https://www.python.org/downloads/). CI uses Python 3.14 on Windows/macOS and Ubuntu's system Python on Linux; the instructions below are for source installs.
+For source installs below, use [Python 3.11+](https://www.python.org/downloads/). Python 3.10 reached end of life in October 2026; the patched image and file-lock dependencies require Python 3.11 or newer. CI uses Python 3.14 on Windows/macOS and Ubuntu's system Python on Linux; the instructions below are for source installs.
+
+Use the latest security patch for your Python series, not an old 3.11/3.14 installer. The reviewed Windows build now uses Python 3.14.10. Python and its bundled native libraries need updates independently of pip packages; see [dependency security and coverage limits](dependency-security.md).
 
 ### Windows
 
