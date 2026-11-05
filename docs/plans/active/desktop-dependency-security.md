@@ -44,7 +44,8 @@ Remaining work: native upstream fixes above, remote Windows/Linux/macOS CI on th
 An existing AlmaLinux 10 WSL target was probed for additional Linux verification. WSL reported mirrored-network setup failure `0x8007054f` and fell back to no networking; the environment had Python 3.12.12 but no Tk, Xvfb, compiler or uv. No Linux runtime checks or system changes were performed. This is a verification limitation, not a passing Linux result.
 
 Continuation read-back: upstream main remains `ddf7c78`. GitHub's dependency graph
-now reports 30 open alerts on main across certifi, filelock, Pillow and setuptools;
+reports 55 open alerts on main across certifi, filelock, Pillow and setuptools
+(verified with complete pagination; an earlier first-page read showed only 30);
 these refer to the existing unmerged versions, not the patched local inventories.
 Dependabot opened overlapping certifi [PR #72](https://github.com/RioPlay/utterleaf/pull/72)
 and filelock [PR #71](https://github.com/RioPlay/utterleaf/pull/71). The reviewed
