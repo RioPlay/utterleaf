@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
-  "python_version": "3.14.6",
+  "python_version": "3.14.10",
+  "python_windows_x64_archive_sha256": "cc28026a650970cc1570bb127312f1f9634eb67abfe157ae6ca1acbbc627d091",
   "windows_review_status": "complete",
   "packages": {
     "ctranslate2": {
@@ -2198,7 +2199,7 @@
   "windows_runtime": {
     "python": {
       "name": "CPython Windows runtime",
-      "version": "3.14.6",
+      "version": "3.14.10",
       "license": "PSF-2.0 and incorporated component terms",
       "review_status": "complete",
       "files": [
@@ -2206,17 +2207,24 @@
           "path": "runtime/python/LICENSE.txt",
           "destination": "LICENSE.txt",
           "sha256": "935cf13e19f8c31b497d20b05d73623431a226b230c3599bc30fa3348979bc68",
-          "source": "Official CPython 3.14.6 Windows x64 installation LICENSE.txt; upstream https://github.com/python/cpython/tree/c63aec69bd59c55314c06c23f4c22c03de76fe45"
+          "source": "Official hash-verified CPython 3.14.10 Windows x64 runtime zip (PSF signature verified; unchanged license text); upstream https://github.com/python/cpython/tree/b703b2c5e704341d61e367b9b940b77ed11dded0"
+        },
+        {
+          "path": "runtime/zlib/LICENSE-zlib-ng.md",
+          "destination": "LICENSE-zlib-ng.md",
+          "sha256": "6c9f0d975b41afaa34d22f55bb8986ce69e5cb7ad327cb2b28820cd425edf5ee",
+          "source": "https://raw.githubusercontent.com/zlib-ng/zlib-ng/2.2.4/LICENSE.md"
         }
       ],
       "payloads": {
-        "python314.dll": "fde89cdb5c2d08ae65de7ef4abca1876c93ba3796002f5ac0bf7e4d4f5a94da0",
-        "python3.dll": "22c6e46d8bd563cdb072650901461ef68be2ea6cb1e80af859559d9395a27e39"
-      }
+        "python314.dll": "d8a06cc6ca3348925ea29e343e1c5c5895fe0bb433ff913e1cee44caf358aa6a",
+        "python3.dll": "7bb0a7df2d5cb829319dd8d122039843e2a762361bb5a61bb5d24ca34f4040b5"
+      },
+      "binary_provenance": "https://www.python.org/ftp/python/3.14.10/python-3.14.10-amd64.zip; official windows-3.14.10.json SHA-256 47eb0a77a09048a88fae77428122c9190eff664dc14572152b249992bf9bd680. CPython PCbuild uses zlib-ng 2.2.4 in compatibility mode for Python's built-in zlib module, which reports 1.3.1.zlib-ng."
     },
     "openssl": {
       "name": "OpenSSL",
-      "version": "3.5.7",
+      "version": "3.5.9",
       "license": "Apache-2.0",
       "review_status": "complete",
       "files": [
@@ -2224,30 +2232,32 @@
           "path": "runtime/openssl/LICENSE.txt",
           "destination": "LICENSE.txt",
           "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a",
-          "source": "https://github.com/openssl/openssl/blob/8cf17aaeb4599f8af87fefd810b5b5fee90fe69e/LICENSE.txt"
+          "source": "https://raw.githubusercontent.com/openssl/openssl/45e844fa2a14ec92d146bd8f5778ac130b6625fb/LICENSE.txt"
         }
       ],
       "payloads": {
-        "libcrypto-3.dll": "53c529145339fb042a3dcd3a09c2d7753204f8b4fc79d99e0d31e69a33985958",
-        "libssl-3.dll": "b17a87979862d19241edc4318f967e24c3ec356ed6c2368f561179fab2311001"
-      }
+        "libcrypto-3.dll": "75495fe0e079ab00d49be740d3c710a0b94e3f74f9648cb7cc9f768fc7f52319",
+        "libssl-3.dll": "8957182a9c385bfd9f3f790921de2ddc614cf91f99edbed4e9e5446a46504e32"
+      },
+      "binary_provenance": "Official hash-verified CPython 3.14.10 Windows x64 runtime; ssl.OPENSSL_VERSION and CPython PCbuild/python.props identify OpenSSL 3.5.9. License bytes match the retained complete Apache-2.0 text."
     },
     "zlib": {
       "name": "zlib",
-      "version": "1.3.1",
+      "version": "1.3.2",
       "license": "Zlib",
       "review_status": "complete",
       "files": [
         {
           "path": "runtime/zlib/LICENSE",
           "destination": "LICENSE",
-          "sha256": "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243",
-          "source": "https://github.com/madler/zlib/blob/51b7f2abdade71cd9bb0e7a373ef2610ec6f9daf/LICENSE"
+          "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2",
+          "source": "https://raw.githubusercontent.com/madler/zlib/v1.3.2/LICENSE"
         }
       ],
       "payloads": {
-        "zlib1.dll": "1dd27f0411ebb31bd148a61589cee254410915f1e6c37aa3ffa52fac71a5426c"
-      }
+        "zlib1.dll": "7be5c2af1d33f631b2962393a088f182a580410173955323ca47a692f76b241d"
+      },
+      "binary_provenance": "Official hash-verified CPython 3.14.10 Windows x64 runtime ZIP. Tcl's tcl90.dll imports zlib1.dll, whose own zlibVersion() export reports 1.3.2."
     },
     "sqlite": {
       "name": "SQLite",
@@ -2263,8 +2273,9 @@
         }
       ],
       "payloads": {
-        "sqlite3.dll": "3557565665e608cd24726730e52690a131efcb0e2d5090337b2e05fb89d49c76"
-      }
+        "sqlite3.dll": "679cac0aa7dc1f9ba3c188565884c29a954b64f8bfbcc3b0e2163ee05b492b45"
+      },
+      "binary_provenance": "Official hash-verified CPython 3.14.10 Windows x64 runtime zip; CPython PCbuild/python.props and sqlite3.sqlite_version identify SQLite 3.50.4. Same upstream license/version as the previous review; exact DLL hash refreshed."
     },
     "portaudio": {
       "name": "PortAudio (non-ASIO)",
