@@ -4,7 +4,7 @@
 
 Scope: Windows, macOS, and Linux desktop application only.
 
-Updated November 4, 2026. Priorities follow the
+Updated November 12, 2026. Priorities follow the
 [offline STT user research](offline-stt-user-research-2026-09-08.md).
 This is an ordered development plan, not a promise of release dates.
 
@@ -16,7 +16,8 @@ intended field, with understandable local processing and minimal interruption.
 
 ## Now
 
-- **Security remediation prepared (November 4):** patched Python dependency floors and Windows hash pins, reviewed CPython 3.14.10/OpenSSL 3.5.9 packaging inputs, immutable desktop action references and dependency-audit automation are in isolated `audit/dependency-security-20261104`. Final Windows checks: 1,675 tests passed, 14 skipped; CPU build/doctor and independent review passed; scanned Python dependency inventories have no known PyPI advisories. GitHub dependency alerts/security fixes are enabled. [Plan, residual bundled-runtime advisories and release limits](plans/active/desktop-dependency-security.md). Published releases remain unchanged; Android security work has a separate branch and plan.
+- **Windows 0.4.6 RC4 candidate:** the unpublished Windows x64 CPU candidate includes the merged dependency security update, clipboard publication receipt correction, bounded Settings lock recovery, and exact T3 Code prose spacing. Local regression suite passed 1,698 tests with 14 expected skips; the frozen Windows build and controlled clipboard checks passed. Exact hosted CI, the installed T3 two-take retry and publication remain pending. The preview is unsigned and does not update other platforms. Expat 2.9.0 and SQLite 3.50.4 advisories remain documented in the [candidate plan](plans/active/windows-packaged-paste.md). Stable v0.4.5 and published RC2 are unchanged.
+- **Security remediation merged (November 12):** patched Python dependency floors and Windows hash pins, reviewed CPython 3.14.10/OpenSSL 3.5.9 packaging inputs, immutable desktop action references and dependency-audit automation were merged to main in commit `87012a56bb376656fe976476f909a9df2bf72cea`. Final Windows checks: 1,675 tests passed, 14 skipped; CPU build/doctor and independent review passed; scanned Python dependency inventories have no known PyPI advisories. GitHub dependency alerts/security fixes are enabled. [Plan, residual bundled-runtime advisories and release limits](plans/active/desktop-dependency-security.md). The Windows preview candidate remains pending CI and publication; Android security work has a separate branch and plan.
 - **Landed:** native pairing/vendor integration and desktop enrollment UI, PR #36 (`aa296c9`); [CI 35366314920](https://github.com/RioPlay/utterleaf/actions/runs/35366314920) passed all five desktop jobs.
 - **Parked while Android is prioritized:** `desktop-obs-bridge` on `feat/obs-session-arm`, draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37). Its earlier green check was against `aa296c9`; refresh onto current `main` and rerun checks before review/landing, then replay #38 onto the resulting `main`.
 - **Parked:** #38 PCM, #39 disarm, #40 controller, #41 provenance, #42 timelines. Each must be rebased, retargeted and verified in order; do not merge the old stack as-is. See [workspaces](workspaces.md).

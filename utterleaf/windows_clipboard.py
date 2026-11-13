@@ -420,6 +420,7 @@ class _Win32:
         self.user32.SetClipboardData.argtypes = [wintypes.UINT, ctypes.c_void_p]
         self.user32.SetClipboardData.restype = ctypes.c_void_p
         self.user32.GetClipboardSequenceNumber.restype = wintypes.DWORD
+        self.user32.GetClipboardOwner.restype = ctypes.c_void_p
         self.user32.DestroyWindow.argtypes = [wintypes.HWND]
         self.user32.DestroyWindow.restype = wintypes.BOOL
         self.kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
@@ -455,6 +456,9 @@ class _Win32:
 
     def sequence(self) -> int:
         return int(self.user32.GetClipboardSequenceNumber())
+
+    def owner(self) -> int:
+        return int(self.user32.GetClipboardOwner() or 0)
 
     def read_text(self) -> str | None:
         if not self.user32.IsClipboardFormatAvailable(self.CF_UNICODETEXT):
@@ -574,9 +578,19 @@ def _native_write(api, text: str, expected_sequence: int | None) -> Result:
                         result = Result("uncertain")
                     elif api.set_text(handle):
                         handle = 0  # ownership transferred to the system
-                        sequence = api.sequence()
-                        result = (Result("ok", sequence=sequence) if sequence
-                                  else Result("uncertain"))
+                        result = Result("uncertain")
+                        # Close publishes Windows' synthesized text formats and
+                        # can advance the sequence. Reopen before taking the
+                        # receipt, and verify our live window still owns it so
+                        # an intervening user copy cannot become our receipt.
+                        close_ok = bool(api.close_clipboard())
+                        if close_ok:
+                            opened = False
+                            opened = api.open_clipboard(window)
+                            if opened and api.owner() == window:
+                                sequence = api.sequence()
+                                if sequence:
+                                    result = Result("ok", sequence=sequence)
                     else:
                         result = Result("uncertain")
     except Exception:

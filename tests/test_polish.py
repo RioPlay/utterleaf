@@ -358,6 +358,36 @@ def test_codex_is_not_mistaken_for_code_editor() -> None:
     assert result.text == "The first sentence. The second sentence."
 
 
+@pytest.mark.parametrize("app_name", [
+    "T3 Code (Beta).exe T3 Code (Beta)",
+    "T3 Code.exe draft about code and terminal",
+    "t3-code.exe T3 Code",
+    "T3 Code (Beta)",
+    "Draft - T3 Code",
+])
+def test_t3_assistant_uses_prose_formatting(app_name):
+    assert infer_style(app_name) == "default"
+    assert polish_local("we can see period", app_name=app_name).text == "We can see."
+
+
+@pytest.mark.parametrize("app_name", [
+    "Code.exe T3 Code (Beta)", "Windows Terminal.exe T3 Code",
+    "cursor.exe T3 Code", "Draft - Visual Studio Code",
+])
+def test_code_editor_identity_keeps_code_formatting(app_name):
+    assert infer_style(app_name) == "code"
+    assert polish_local("git status", app_name=app_name).text == "git status"
+
+
+@pytest.mark.parametrize("app_name", [
+    "run app.exe - Terminal",
+    "README.md - Tool.exe - Visual Studio Code",
+])
+def test_x11_title_with_executable_text_keeps_editor_identity(app_name):
+    assert infer_style(app_name) == "code"
+    assert polish_local("git status", app_name=app_name, vocab=[]).text == "git status"
+
+
 def test_browser_article_about_code_is_not_code_mode() -> None:
     result = polish_local(
         "The first sentence.The second sentence",

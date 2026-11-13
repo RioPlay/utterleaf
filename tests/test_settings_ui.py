@@ -56,6 +56,26 @@ def test_pages_preserve_edits_and_preview(window):
     assert "um" not in window.preview_result.get().lower()
 
 
+def test_settings_lock_contention_is_reported_without_traceback(monkeypatch):
+    from utterleaf import settings_ui
+    errors = []
+
+    class Contended:
+        def acquire(self, callback):
+            raise RuntimeError("Settings is already opening or not responding. Try again shortly.")
+
+    class Messages:
+        @staticmethod
+        def showerror(title, message):
+            errors.append((title, message))
+
+    monkeypatch.setattr(settings_ui, "messagebox", Messages)
+    monkeypatch.setattr("utterleaf.settings_instance.SettingsInstance", Contended)
+    monkeypatch.setattr(settings_ui.tk, "Tk", lambda: pytest.fail("must not create duplicate Settings window"))
+    assert settings_ui.run() == 1
+    assert errors == [("Settings unavailable", "Settings is already opening or not responding. Try again shortly.")]
+
+
 @pytest.mark.parametrize("interrupted", [False, True])
 def test_microphone_check_cannot_report_ready_after_stream_loss(window, monkeypatch, interrupted):
     import numpy as np

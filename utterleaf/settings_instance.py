@@ -13,6 +13,9 @@ import time
 
 from utterleaf.config import data_dir
 
+_LOCK_WAIT_SECONDS = 5
+_LOCK_RETRY_SECONDS = 0.1
+
 
 def _namespace(namespace: str) -> str:
     if namespace not in {"settings", "files"}:
@@ -61,25 +64,38 @@ class SettingsInstance:
             handle.write(b"0")
             handle.flush()
         handle.seek(0)
-        try:
+        def lock_handle():
             if sys.platform == "win32":
                 import msvcrt
                 msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
             else:
                 import fcntl
                 fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+        try:
+            lock_handle()
         except OSError as exc:
-            handle.close()
             if exc.errno not in (errno.EACCES, errno.EAGAIN):
+                handle.close()
                 raise
             # The winner may still be publishing its endpoint. Never create
             # another window just because activation is temporarily unavailable.
-            deadline = time.monotonic() + 5
+            deadline = time.monotonic() + _LOCK_WAIT_SECONDS
             while time.monotonic() < deadline:
                 if activate(self.namespace):
+                    handle.close()
                     return False
-                time.sleep(0.1)
-            raise RuntimeError(f"{self.namespace.title()} is already opening or not responding. Try again shortly.")
+                try:
+                    lock_handle()
+                    break
+                except OSError as retry_error:
+                    if retry_error.errno not in (errno.EACCES, errno.EAGAIN):
+                        handle.close()
+                        raise
+                time.sleep(_LOCK_RETRY_SECONDS)
+            else:
+                handle.close()
+                raise RuntimeError(f"{self.namespace.title()} is already opening or not responding. Try again shortly.")
         self.lock = handle
         try:
             self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
