@@ -15,6 +15,15 @@ reconciles the published alpha21 baseline with the longer-running
 [keyboard rebuild](android-keyboard-rebuild.md); it does not make release or
 physical-device claims from emulator results.
 
+October 31 clarification: a complete Android redesign is authorized, including
+replacement of rendering and input/language boundaries when justified by the
+task evidence. Follow the [updated product target](../../android-keyboard-product-spec.md#target-clarification)
+and [core-selection slice](android-keyboard-rebuild.md#october-31-parity-and-redesign-clarification).
+The existing Next module is a candidate, not an accepted replacement. Preserve
+useful verified behavior, user data and a working fallback while selecting one
+product core. FUTO capability parity remains subject to the independent
+[provenance boundary](../../android-keyboard-foundation-decision.md#independent-implementation-and-resource-provenance).
+
 Routine Android progress and preview releases follow the roadmap policy: they do
 not require a new physical-phone, live third-party-editor or assistive-technology
 campaign. A final redesign-completion claim still requires a recorded
@@ -23,7 +32,8 @@ compatibility, performance and accessibility audit. Unperformed work stays
 
 ## Area and ownership
 
-- Android only: `mobile/android/`, Android documentation and Android release
+- Android only: `mobile/android/`, the existing `mobile/next-keyboard/` candidate,
+  Android documentation and Android release
   evidence. Desktop source, tests and release artifacts remain separate.
 - Editor/session policy: `EditorCapabilities.kt`, `KeyboardIme.kt`,
   `VoiceIme.kt`, `EditorActions.kt`, `PasswordManagerKey.kt` and focused tests.

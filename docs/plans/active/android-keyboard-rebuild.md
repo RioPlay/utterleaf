@@ -8,9 +8,42 @@ The [product specification](../../android-keyboard-product-spec.md) defines flow
 reference features and quality gates. Status belongs in the
 [mobile roadmap](../../mobile-roadmap.md).
 
+### October 31 parity and redesign clarification
+
+The user has authorized a complete Android redesign to fix the underlying
+experience and architecture. The target remains the full useful capability
+defined in the [product specification](../../android-keyboard-product-spec.md#target-clarification),
+implemented under the [provenance boundary](../../android-keyboard-foundation-decision.md#independent-implementation-and-resource-provenance).
+This is broader than a cosmetic refresh and does not select a new core by itself.
+
+Compare the working Android app and the existing Next candidate on one bounded
+type → correct → restore → continue task before expanding the redesign. Current
+English prefix completions are not autocorrection; the Next literal-input slice
+does not yet establish a production linguistic backend. The earliest expensive
+uncertainty is a compatible, reviewed local language backend and safe composition,
+not another visual mockup. Record a go/no-go decision before scaling that backend.
+
+The first correction slice must keep original spelling recoverable, reject stale
+field/caret results, preserve literal/password behavior, and leave typing usable
+when resources are absent or decoding fails. Use original synthetic fixtures for
+ordinary words, names, contractions, URLs, numbers and mixed-language boundaries;
+measure repair as well as successful replacements. An English feasibility slice
+does not complete multilingual or swipe parity. Use its evidence to select one
+core for further implementation, then carry forward the editing/terminal and
+offline-voice contracts before replacing the working app. A missing baseline
+capability must be recorded; it cannot be scored as a matched comparison.
+
+Keep the working APK as the fallback until the selected successor meets the
+declared feature and migration gates. Verify settings/model preservation and
+rollback without deleting the original installation or user data. Existing local
+work must be reconciled before implementation. No new runtime feature or redesign
+completion is claimed by this documentation update.
+
 ## Area and ownership
 
-Android only: `mobile/android/` source/tests/resources and Android documentation.
+Android only: `mobile/android/`, the existing `mobile/next-keyboard/` candidate,
+their source/tests/resources and Android documentation. Pick one owning core for
+each implementation slice; do not build the same feature in both by default.
 One writer owns pointer/layout changes at a time; editor/session changes require
 agreed callback contracts. Never edit `DeviceTest.kt` and `PrivacyCoreTest.kt` in
 parallel with other Android work. Desktop and shared release infrastructure are

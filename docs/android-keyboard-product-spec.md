@@ -11,6 +11,53 @@ features is a benchmark; Utterleaf owns its implementation and visual identity.
 This specification describes the target. The roadmap records what actually works
 and where it has been verified.
 
+### Target clarification
+
+October 31, 2026: deliver FUTO-class everyday capability under the Utterleaf
+identity, then improve measured typing, repair and power workflows. Familiar
+keyboard conventions are welcome; implementation, visual assets and product copy
+remain independently authored or separately licensed. A complete Android redesign
+is authorized when it resolves the underlying interaction or architectural
+weaknesses. Existing rendering, layouts and internal boundaries are candidates
+for replacement, not requirements to preserve.
+
+FUTO is the leading **usability and capability reference**, not an authority for
+implementation correctness or a licensing model for Utterleaf.
+
+| Decision | Basis |
+| --- | --- |
+| Usability and feature coverage | FUTO's user-facing workflows, direct user needs and observed task outcomes; adapt choices that improve Utterleaf's experience |
+| Code correctness and security | Android platform contracts, relevant standards, threat analysis and tests of Utterleaf's implementation, including failure and recovery |
+| Licensing and provenance | Utterleaf's own licensing requirements plus the actual terms of each included component or resource; FUTO's license is a reuse constraint, not a product target |
+
+A useful FUTO interaction does not validate its internal implementation or require
+copying it. This distinction makes no claim that FUTO's code is incorrect. Its
+usability choices also remain open to testing and improvement.
+
+The target includes offline correction/prediction, swipe, multilingual resources,
+voice, emoji search, editing/selection gestures, number and arrow controls,
+one-hand/split/floating modes, and useful layout/theme customization. A small
+tap-only keyboard does not satisfy this target. Delivery can be incremental;
+missing capabilities remain visible in status rather than silently removed from
+the goal. Preserve Utterleaf's compact, consistently reachable action banner and
+fold-out/replacing Edit/Terminal/Fn surfaces instead of stacking permanent rows.
+
+Privacy boundaries remain deliberate differences: no passive typing collection,
+automatic clipboard history, cloud fallback or unchecked executable imports.
+Offer explicit local vocabulary, snippets and paste where they serve the need.
+For each capability, distinguish planned, source implemented, emulator verified
+and observed on a physical device. Routine build/release checks follow
+[AGENTS.md](../AGENTS.md) and the
+[experience plan](plans/active/android-experience-refresh.md); comparative claims
+need their own matched evidence.
+
+"Better than FUTO" means lower completed-task time, fewer remaining errors or
+less repair effort on declared tasks, without a material regression in privacy,
+accessibility, responsiveness or resource use. Compare pinned builds on the same
+device with comparable layouts, languages, personalization and practice; balance
+test order and repeat sessions. Feature count, model size and one favorable run
+do not establish superiority.
+
 ## Product standard
 
 The core loop is **type → notice → repair → continue**. Switching to speech,
@@ -53,7 +100,8 @@ precedence for shipped status.
 
 FUTO identifies its project as a modified LatinIME fork in its
 [official README](https://github.com/futo-org/android-keyboard). Its
-[privacy policy](https://keyboard.futo.tech/privacy), updated June 19, 2024,
+[privacy policy](https://keyboard.futo.tech/privacy), rechecked October 31, 2026
+and updated October 13, 2026,
 describes no network permission alongside browser-mediated acquisition and optional
 emailed crash reports that may contain typing or dictionary data. These are vendor
 disclosures, not an independent audit. Utterleaf will keep diagnostics free of raw
@@ -62,6 +110,11 @@ input and handle each export or external action as a separate data path.
 Feature parity means meeting useful user tasks. It does not require matching
 automatic clipboard history, passive personalization, arbitrary imports, cloud
 services, external voice providers or another product's licensing/asset choices.
+
+Implementation and resource intake follow the
+[provenance boundary](android-keyboard-foundation-decision.md#independent-implementation-and-resource-provenance).
+FUTO's public documentation and observable behavior supply task requirements;
+they do not authorize importing its implementation, artwork or packaged models.
 
 ## Interaction design
 
@@ -97,10 +150,13 @@ See [Android custom-view accessibility](https://developer.android.com/guide/topi
 
 ## Independent architecture
 
-Evolve the existing Kotlin/Public Android SDK application in small reviewable
-changes. Keep desktop dependencies, tests and releases separate. Keep working
-speech import and session protections while replacing weaknesses in input handling.
-Do not rewrite native speech or introduce a second UI runtime to restyle keys.
+Select and evolve one Kotlin/Public Android SDK implementation in reviewable
+slices. A full Android redesign may replace rendering, input handling and service
+boundaries. Evaluate the existing [Next candidate](android-next/README.md) against
+the working app before creating another core. Preserve useful behavior and tests;
+port verified speech imports and session protections when their host changes.
+Keep desktop dependencies, tests and releases separate. Replacing working speech
+internals or adding another UI runtime needs a demonstrated reason beyond restyling.
 
 | Boundary | Responsibility | Invariant |
 | --- | --- | --- |
