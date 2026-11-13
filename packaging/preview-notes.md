@@ -1,56 +1,28 @@
-**Utterleaf 0.4.6 RC2 is a Windows desktop preview** for trying the new dictation
-and long-recording workflows. The stable release remains v0.4.5.
+**Utterleaf 0.4.6 RC4 is a Windows desktop preview candidate.** Stable v0.4.5 remains the default release. This candidate includes the security dependency update and focused Windows dictation delivery repairs. The candidate is pending final CI and publication.
 
-- **Keep speaking:** manually started recording has no scheduled duration cutoff.
-  Audio is temporarily stored on local disk and recognized in bounded batches
-  after you stop. Stop, Esc and quit remain available.
-- **Transcribe long files:** import recordings without an application total-duration
-  limit, choose an available audio track, review the text and export TXT, SRT or VTT.
-  Common compressed formats require an explicitly selected external decoder;
-  PCM WAV works directly. Separate track exports are not synchronized timelines.
-- **Stop at the end of speech:** optionally enable a local 0.5–3 second pause
-  detector. Each take still starts manually. Review is the default; automatic
-  insertion is a separate choice.
-- **Choose Markdown:** Vocabulary → Output style adds local formatting for explicit
-  headings and lists. Prose remains the default; raw/code input stays literal.
-- **Cleaner delivery:** fixes cover sentence/list boundaries, caret-adjacent spacing
-  in supported native Windows fields, cancellation and uncertain paste results.
+## Changes in this preview
+
+- **Safer Windows dependencies:** the patched Python dependency floors and hash-checked Windows inputs from the merged security update are included. The Windows archive is CPU-only and unsigned.
+- **Reliable clipboard delivery:** Windows paste now obtains its ownership receipt after synthesized clipboard formats are published, while checking that the clipboard still belongs to Utterleaf. Uncertain delivery is not retried automatically.
+- **Settings recovery:** a Settings launch that encounters a briefly held instance lock retries boundedly; persistent contention is handled without an unhandled traceback.
+- **T3 Code formatting:** the exact T3 Code assistant executable identities use prose spacing between dictated takes. General executable parsing remains narrow so code editors and Linux terminal-title cases keep literal formatting.
 
 ## Download and try
 
-Download `Utterleaf-windows-x64-cpu.zip`, extract the entire archive into a new
-folder, then open `Utterleaf/utterleaf.exe`. Quit the older app first. Keep the
-`_internal` folder beside the executables. Settings and previously downloaded
-models remain in their existing local locations; keep the old app folder if you
-want to return to v0.4.5. Default shortcut: **Ctrl+Win**.
+Download `Utterleaf-windows-x64-cpu.zip`, extract the entire archive into a new folder, then open `Utterleaf/utterleaf.exe`. Quit an older Utterleaf process first. Keep the `_internal` folder beside the executables. Existing preferences, vocabulary and downloaded models stay in their local locations. The preview does not delete user data.
 
-This is a portable Windows x64 CPU build; Python is included. Speech recognition
-runs locally. Speech-model weights and optional CUDA libraries are separate;
-model setup may download the selected model. FFmpeg and PyAV native codecs are
-not included. Third-party notices and executable checksums are inside the archive;
-the separate `Utterleaf-windows-x64-cpu.zip.sha256` verifies the download.
+This is a portable Windows x64 CPU build; Python is included. Speech recognition runs locally. Speech-model weights and optional CUDA libraries are separate. Model setup may download the selected model. FFmpeg and PyAV native codecs are not included. Third-party notices and executable checksums are inside the archive; the separate `Utterleaf-windows-x64-cpu.zip.sha256` verifies the download.
 
-**The preview is unsigned.** Windows may show a SmartScreen reputation warning.
-This release does not include new macOS, Linux or Android binaries.
+**The preview is unsigned.** Windows may show a SmartScreen reputation warning. This preview contains no new macOS, Linux or Android binaries. Stable v0.4.5 remains the default download; the Windows preview is a prerelease and must be published with `latest=false`.
 
 ## Preview limits
 
-Continuous recording uses temporary, unencrypted local audio files, approximately
-220–660 MiB per hour depending on the input rate. They are removed on completion
-or cancellation; this is not secure erasure. Free disk space and system resources
-still limit session length, and transcript text grows with the recording.
+The included Python 3.14.10 runtime still contains Expat 2.9.0, and SQLite remains 3.50.4. Known upstream advisories for these native components remain; their presence does not establish exploitability in Utterleaf. This preview is not described as fully secure or free of known vulnerabilities. See the [dependency security notes](https://github.com/RioPlay/utterleaf/blob/main/docs/plans/active/desktop-dependency-security.md) for scope and details.
 
-The two-minute text recovery/review window remains separate from recording length.
-Verified review insertion and caret-aware corrections require a supported native
-Windows Edit field. Browsers and other unsupported review targets use Copy.
-Ordinary dictation paste remains guarded at the window level. Check the target
-field before retrying any delivery reported as uncertain.
+Continuous recording uses temporary, unencrypted local audio files, approximately 220 to 660 MiB per hour depending on input rate. They are removed on completion or cancellation; this is not secure erasure. Free disk space and system resources limit session length, and transcript text grows with the recording.
 
-Live OBS transcription is not available yet. Real microphone endurance, broad
-editor coverage, accessibility and performance on additional hardware remain
-under validation. Source and packaged fixture checks are not certification of
-every microphone or application.
+The two-minute text recovery/review window remains separate from recording length. Verified review insertion and caret-aware corrections require a supported native Windows Edit field. Browsers and other unsupported review targets use Copy. Ordinary dictation paste remains guarded at the window level. Check the target field before retrying any delivery reported as uncertain.
 
-[User guide](https://github.com/RioPlay/utterleaf/blob/desktop-v0.4.6-rc.2/docs/user-guide.md) ·
-[Long-file transcription](https://github.com/RioPlay/utterleaf/blob/desktop-v0.4.6-rc.2/docs/desktop-file-transcription.md) ·
-[Earlier releases](https://github.com/RioPlay/utterleaf/releases)
+Live OBS transcription is not available. Automated tests and controlled native-field checks do not establish real microphone performance, broad editor coverage, accessibility, or performance on additional hardware. The final T3 Code two-take retry after installation remains to be confirmed.
+
+[User guide](https://github.com/RioPlay/utterleaf/blob/desktop-v0.4.6-rc.4/docs/user-guide.md) | [Long-file transcription](https://github.com/RioPlay/utterleaf/blob/desktop-v0.4.6-rc.4/docs/desktop-file-transcription.md) | [Earlier releases](https://github.com/RioPlay/utterleaf/releases)
