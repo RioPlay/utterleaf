@@ -4,7 +4,7 @@
 
 Scope: Windows, macOS, and Linux desktop application only.
 
-Updated November 12, 2026. Priorities follow the
+Updated November 13, 2026. Priorities follow the
 [offline STT user research](offline-stt-user-research-2026-09-08.md).
 This is an ordered development plan, not a promise of release dates.
 
@@ -16,12 +16,12 @@ intended field, with understandable local processing and minimal interruption.
 
 ## Now
 
-- **Windows 0.4.6 RC4 candidate:** the unpublished Windows x64 CPU candidate includes the merged dependency security update, clipboard publication receipt correction, bounded Settings lock recovery, and exact T3 Code prose spacing. Local regression suite passed 1,698 tests with 14 expected skips; the frozen Windows build and controlled clipboard checks passed. Exact hosted CI, the installed T3 two-take retry and publication remain pending. The preview is unsigned and does not update other platforms. Expat 2.9.0 and SQLite 3.50.4 advisories remain documented in the [candidate plan](plans/active/windows-packaged-paste.md). Stable v0.4.5 and published RC2 are unchanged.
-- **Security remediation merged (November 12):** patched Python dependency floors and Windows hash pins, reviewed CPython 3.14.10/OpenSSL 3.5.9 packaging inputs, immutable desktop action references and dependency-audit automation were merged to main in commit `87012a56bb376656fe976476f909a9df2bf72cea`. Final Windows checks: 1,675 tests passed, 14 skipped; CPU build/doctor and independent review passed; scanned Python dependency inventories have no known PyPI advisories. GitHub dependency alerts/security fixes are enabled. [Plan, residual bundled-runtime advisories and release limits](plans/active/desktop-dependency-security.md). The Windows preview candidate remains pending CI and publication; Android security work has a separate branch and plan.
+- **Published Windows 0.4.6 RC4:** the unsigned Windows x64 CPU prerelease includes the merged dependency update, clipboard publication receipt correction, bounded Settings lock recovery, and exact T3 Code prose spacing. [Release](https://github.com/RioPlay/utterleaf/releases/tag/desktop-v0.4.6-rc.4) is prerelease `latest=false`; stable v0.4.5 remains the default. [PR #76](https://github.com/RioPlay/utterleaf/pull/76/checks) passed its hosted gates, and the exact-tag [Windows build](https://github.com/RioPlay/utterleaf/actions/runs/43364255809) passed. Its JUnit report records 1,699 passed, 13 skipped, zero failures and errors. The 113,160,790-byte ZIP SHA-256 is `630949d0144bcc4242380addac62d0eca5d9ed2b068c22f229be91c2009f6b2f`; all five uploaded asset digests and sizes matched the reviewed local artifacts, and the public checksum download matched the ZIP. Actual T3 Code two-take dictation after the local fix remains unconfirmed. Expat 2.9.0 and SQLite 3.50.4 advisories remain. Other desktop platforms, live OBS, GPU behavior, physical-device accessibility and unbounded performance are not established. See the [completed release record](plans/completed/windows-packaged-paste.md).
+- **Security remediation merged (November 12):** patched Python dependency floors and Windows hash pins, reviewed CPython 3.14.10/OpenSSL 3.5.9 packaging inputs, immutable desktop action references and dependency-audit automation were merged to main in commit `87012a56bb376656fe976476f909a9df2bf72cea`. Final Windows checks: 1,675 tests passed, 14 skipped; CPU build/doctor and independent review passed; scanned Python dependency inventories have no known PyPI advisories. GitHub dependency alerts/security fixes are enabled. [Plan, residual bundled-runtime advisories and release limits](plans/active/desktop-dependency-security.md). The Windows RC4 preview is published; Android security work has a separate branch and plan.
 - **Landed:** native pairing/vendor integration and desktop enrollment UI, PR #36 (`aa296c9`); [CI 35366314920](https://github.com/RioPlay/utterleaf/actions/runs/35366314920) passed all five desktop jobs.
 - **Parked while Android is prioritized:** `desktop-obs-bridge` on `feat/obs-session-arm`, draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37). Its earlier green check was against `aa296c9`; refresh onto current `main` and rerun checks before review/landing, then replay #38 onto the resulting `main`.
 - **Parked:** #38 PCM, #39 disarm, #40 controller, #41 provenance, #42 timelines. Each must be rebased, retargeted and verified in order; do not merge the old stack as-is. See [workspaces](workspaces.md).
-- **Limits:** Windows RC2 remains the published preview. No released live OBS capture or plugin binary; real OBS, physical-device and accessibility acceptance remain open.
+- **Limits:** Windows RC4 is the current published prerelease; stable v0.4.5 remains the default download. No released live OBS capture or plugin binary; real OBS, physical-device and accessibility acceptance remain open.
 
 ## Evidence and follow-up
 

@@ -1,4 +1,4 @@
-**Utterleaf 0.4.6 RC4 is a Windows desktop preview candidate.** Stable v0.4.5 remains the default release. This candidate includes the security dependency update and focused Windows dictation delivery repairs. The candidate is pending final CI and publication.
+**Utterleaf 0.4.6 RC4 is a published Windows desktop preview.** [Download the Windows x64 CPU prerelease](https://github.com/RioPlay/utterleaf/releases/tag/desktop-v0.4.6-rc.4). Stable v0.4.5 remains the default release. RC4 includes the security dependency update and focused Windows dictation delivery repairs.
 
 ## Changes in this preview
 
@@ -13,7 +13,7 @@ Download `Utterleaf-windows-x64-cpu.zip`, extract the entire archive into a new 
 
 This is a portable Windows x64 CPU build; Python is included. Speech recognition runs locally. Speech-model weights and optional CUDA libraries are separate. Model setup may download the selected model. FFmpeg and PyAV native codecs are not included. Third-party notices and executable checksums are inside the archive; the separate `Utterleaf-windows-x64-cpu.zip.sha256` verifies the download.
 
-**The preview is unsigned.** Windows may show a SmartScreen reputation warning. This preview contains no new macOS, Linux or Android binaries. Stable v0.4.5 remains the default download; the Windows preview is a prerelease and must be published with `latest=false`.
+**The preview is unsigned.** Windows may show a SmartScreen reputation warning. This preview contains no new macOS, Linux or Android binaries. Stable v0.4.5 remains the default download. RC4 is published as a prerelease with `latest=false`, so it does not replace the stable release.
 
 ## Preview limits
 
