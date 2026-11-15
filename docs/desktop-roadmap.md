@@ -31,7 +31,8 @@ intended field, with understandable local processing and minimal interruption.
   A subsequent static integration review restored preview UI-test coverage and
   aligned stable publication with the six explicitly named test/build matrix
   jobs. Publication still requires a successful main run for the exact tag SHA;
-  no test, hosted CI, installation or release ran for that follow-up.
+  the subsequent approved headless run passed **7 CI-contract checks** at
+  `5c2ee71`. Hosted CI, installation and release remain unperformed.
 
 - **Windows accessibility shell:** the September 27 UI Automation audit is a
   measured framework decision gate, not missing documentation: all 12 inspected

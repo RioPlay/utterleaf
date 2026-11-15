@@ -115,8 +115,17 @@ missing-test, failed-job and revision-mismatch cases through the gate. It also
 found a deterministic source-contract assertion mismatch in the preview argument
 list; the missing `sys.executable` prefix was corrected and read back. No
 outstanding material static finding remains. AST/YAML parsing and whitespace
-checks passed. The new source-contract tests and hosted API gate have not run;
-source assertions do not prove runtime positive/negative validation behavior.
+checks passed.
+
+Approved focused verification on November 15, 2026, at source revision `5c2ee71`:
+`python -m pytest tests/test_ci_workflow.py -q -ra
+--junitxml=.grok/verification/ci-contract.xml` passed **7 checks**, with zero
+failures, errors or skips. The UI sentinel remained deselected. The shared Python
+environment used this worktree as `PYTHONPATH`, with plugin autoload disabled.
+The local text/XML receipts are under `.grok/verification/`. No app window,
+screenshot harness, emulator, microphone or model operation ran. The hosted API
+gate remains unexecuted; source assertions do not prove runtime positive/negative
+publisher behavior or installed-build acceptance.
 
 [Desktop roadmap](../../desktop-roadmap.md) ·
 [UI baseline](../../desktop-ui-baseline.md) ·
