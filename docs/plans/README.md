@@ -13,8 +13,9 @@ and a dedicated phone acceptance campaign is no longer required. The separate
 [desktop modernization stream](active/desktop-modernization.md) is active, with
 [0.4.6 RC5 release readiness](active/desktop-0.4.6-rc5-release-readiness.md)
 tracking local candidate identity, correction staging, release checks, and the
-publication boundary. Published Windows RC4 remains the historical latest preview;
-RC5 build and usability acceptance are not claimed. Desktop
+publication boundary. The local RC5 archive and frozen CLI checks are prepared;
+published Windows RC4 remains the latest public preview, and RC5 GUI acceptance
+and publication remain open. Desktop
 Windows accessibility work is isolated in the
 [native presentation-shell plan](active/desktop-windows-accessibility-shell.md);
 the proof remains opt-in until its UIA and assistive-technology gates pass. Desktop

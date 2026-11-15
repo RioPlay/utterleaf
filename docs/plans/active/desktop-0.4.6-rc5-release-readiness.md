@@ -60,8 +60,8 @@ executed commands and results are recorded below, not inferred from exit codes.
 | --- | --- | --- |
 | Current-main and release authority | Luna scout, coordinator integration | RC4 confirmed; main merge committed |
 | Explicit correction staging | Luna runner | Source prepared; helper and callback checks passed |
-| Merge/release input reconciliation | Sol worker | Source resolved; full package closure pending |
-| Release notes, pause and resource budget | Coordinator | Preparing local RC5 candidate |
+| Merge/release input reconciliation | Sol worker | Reviewed runtime selection fixed; rebuilt package passed full closure gate |
+| Release notes, pause and resource budget | Coordinator | Local archive prepared; Android paused; publication and target gates remain open |
 | Independent review | Sol reviewer | Complete; selected-interpreter notice defect fixed and regression checked |
 
 ## Verification evidence
@@ -77,8 +77,8 @@ message before creating `build` or `dist`. The notice collector now follows the
 selected interpreter's `purelib`, verified with both a present and absent
 environment while a conflicting checkout environment exists.
 
-The local Windows CPU package and frozen CLI checks are still pending. Headless
-test results do not establish actual Tk interaction or native device behavior.
+Headless test results do not establish actual Tk interaction or native device
+behavior.
 
 The first executable build completed, but its notice gate rejected two Microsoft
 runtime DLLs selected from the host JDK on PATH. This is a failed package, not
@@ -86,7 +86,58 @@ release evidence. The spec now explicitly selects both DLLs from the selected
 Python base runtime; their existing manifest pins remain unchanged. The base
 runtime bytes match the reviewed Python archive. All 36 affected packaging/media
 checks passed, including valid inputs and each missing-DLL failure. A rebuild
-must prove the collected bytes and complete the full notice gate.
+proved the collected bytes and completed the full notice gate.
+
+## Local package receipt
+
+Package source: `0175d5735a30db5ee902651b3519bd1a3fb63d2c`. Later documentation
+updates do not change this artifact's source identity. The canonical build exited
+zero, produced notices for 48 packages and passed the complete native hash/license
+and media gates. Both collected Microsoft runtime DLLs match the original reviewed
+Python pins. No pins were relaxed to admit the host JDK's copies.
+
+The four frozen CLI cases passed using an isolated APPDATA profile and offline
+environment: help, prose cleanup (`um we should ship it` becomes `We should ship
+it.`), spoken list formatting, and missing polish input rejected with exit 2.
+No Settings window, doctor/device enumeration, microphone, recognition model,
+emulator or installed-app change was used.
+
+Local archive: `dist/Utterleaf-windows-x64-cpu.zip`, 114,996,239 bytes, SHA-256
+`7c1ef41c654a38326b05feba8b5d10cd67a52fcd8dc392d0737ada5961090968`.
+All 620 archive entries match the executed package's hashes. Its sibling `.sha256`
+is ready. Detailed file hashes, CLI results, source identity, adverse first-build
+log and storage read-back stay local under `.grok/verification/rc5/`.
+
+Executed commands, with `$BuildPython` set to the reused Python 3.14.10 environment:
+
+```powershell
+$env:PYTHONPATH = (Get-Location).Path
+$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
+& $BuildPython -m pytest tests/test_vocabulary.py tests/test_settings.py tests/test_config.py tests/test_privacy.py tests/test_ci_workflow.py tests/test_settings_instance.py tests/test_dictation_spacing.py tests/test_delivery_cancellation.py tests/test_packaging_media.py tests/test_packaging_notices.py tests/test_packaging_runtime_notices.py --junitxml=.grok/verification/rc5/focused.xml -q
+& $BuildPython -m pytest tests/test_windows_clipboard.py -k 'not native_job_close and not native_abrupt_parent' --junitxml=.grok/verification/rc5/clipboard.xml -q
+& $BuildPython -m pytest tests/test_packaging_runtime_notices.py tests/test_packaging_media.py --junitxml=.grok/verification/rc5/runtime-selection.xml -q
+$env:UTTERLEAF_BUNDLE_CUDA = '0'
+.\packaging\build.ps1 -PythonPath $BuildPython
+& $BuildPython .grok/verification/rc5/verify-package.py
+```
+
+The final spec change received a fresh independent review with no material
+finding. Its valid-input and each missing-DLL test passed before rebuilding.
+Counts above overlap because affected packaging checks were rerun after the fix;
+they are not a distinct-test total.
+
+Storage read-back: 96,346,120-byte build scratch, 235,479,191-byte unpacked package,
+114,996,239-byte archive, and a 918-byte test profile remain. Archive retention is
+for review and potential delivery. Automatic approval review rejected native
+PowerShell deletion of the temporary build, unpacked package and test profile,
+with only `blocked by policy` supplied as the reason. No alternate deletion was
+attempted. These disposable outputs remain until authorized cleanup can run.
+C: had 91,823,816,704 bytes free after archive creation, above the 10 GiB reserve;
+measured new output remains below 0.5 GiB and no environment was duplicated.
+
+This is an unsigned, unpublished Windows-only local candidate. No hosted CI,
+macOS/Linux candidate, archive installation, physical-device acceptance or public
+push/tag/release was performed. Expat 2.9.0 and SQLite 3.50.4 advisory limits remain.
 
 ## Remaining broader gates and stop
 

@@ -1,7 +1,7 @@
 # Utterleaf 0.4.6 RC5
 
 **Draft release notes for an unpublished Windows desktop candidate.** Stable
-v0.4.5 remains the default release. RC5 has no tag or downloadable package yet.
+v0.4.5 remains the default release. RC5 has no tag or public download.
 The published [Windows RC4 preview](https://github.com/RioPlay/utterleaf/releases/tag/desktop-v0.4.6-rc.4)
 is the historical latest preview; its release evidence and artifact remain
 separate from this draft.
@@ -22,18 +22,30 @@ separate from this draft.
 
 ## Package and acceptance status
 
-Targeted headless source checks have passed. The Windows CPU package and frozen
-CLI checks are pending. Actual Tk focus, undo, Save, Cancel and pointer behavior,
-Windows UI Automation and screen-reader support, microphone, editor and device
-behavior, mixed DPI, and other desktop platforms have not been verified for
-RC5. No build or package usability result is claimed.
+Targeted headless source checks passed. The local Windows CPU archive and frozen
+CLI checks are prepared. Four frozen CLI cases passed, covering `--help`,
+offline polish with expected prose and list output, and rejection of invalid
+`--polish` input with exit code 2. The archive contains 620 entries whose
+hashes match the tested package. It was built from source commit
+`0175d5735a30db5ee902651b3519bd1a3fb63d2c` as
+`dist/Utterleaf-windows-x64-cpu.zip`. Its SHA-256 is
+`7c1ef41c654a38326b05feba8b5d10cd67a52fcd8dc392d0737ada5961090968` and its
+size is 114,996,239 bytes. The full native closure and licenses for 48 packages
+are included; speech weights, CUDA, FFmpeg and ASIO are absent. See the
+[RC5 readiness plan](../docs/plans/active/desktop-0.4.6-rc5-release-readiness.md)
+for verification evidence.
 
-When an RC5 package is prepared, extract the complete Windows x64 CPU archive to
-a new folder and open `Utterleaf/utterleaf.exe`, keeping `_internal` beside the
-executables. The package artifact and its checksums are pending. These
-instructions are prospective and do not identify an available RC5 download.
-The intended package remains unsigned, with Python included, speech-model weights
-and optional CUDA libraries separate, and no FFmpeg or PyAV native codecs.
+The archive is local, unsigned, unpublished and not installed. Actual Tk focus,
+undo, Save, Cancel and pointer behavior, Windows UI Automation and screen-reader
+support, microphone, editor and device behavior, mixed DPI, and other desktop
+platforms have not been verified for RC5. Final CI and native GUI/device gates
+remain open.
+
+If the local RC5 archive is used for review, extract the complete Windows x64
+CPU archive to a new folder and open `Utterleaf/utterleaf.exe`, keeping
+`_internal` beside the executables. Python is included; speech-model weights and
+optional CUDA libraries are separate, and FFmpeg and PyAV native codecs are not
+included. This is not a public download or an installed-app acceptance result.
 
 Android work is paused until a suitable build and validation pipeline is agreed.
 
