@@ -726,3 +726,49 @@ should be installed only for features the user enables.
 Live microphones, external editor delivery, clean-install packaging, and speech
 benchmarks still require direct validation. Automated unit tests do not substitute
 for those checks.
+
+## Layered desktop visual system (unreleased source)
+
+Goal: modernize Dictation and Speech & privacy with layered charcoal surfaces,
+rounded cards, restrained leaf-green selection, clearer typography and taller
+fields on the existing Tk/ttk stack. Shared section primitives also finish the
+other existing Settings pages without adding features.
+
+Area: `theme.py`, `ui_layout.py`, `settings_ui.py` and focused visual tests.
+Constraints: preserve palette imports, native control classes, traversal order,
+focus reveal, text scaling, staged settings and capture/privacy behavior. No
+new dependency, framework, Windows shell work or model/device operations.
+
+Acceptance: unchanged Settings/sidebar/feedback assertions pass, new primitive
+checks exercise keyboard and pointer activation plus disabled rejection, and
+matched before/after captures show readable layered surfaces. Decorative cards,
+headers and dividers intentionally do not add keyboard stops. Radio segments
+retain native radio semantics and their individual existing tab stops.
+
+Verification commands (run from the desktop visual worktree with the shared
+repository virtual environment):
+
+- `python tests/capture_visual.py --phase before`
+- `python tests/capture_visual.py --phase after`
+- `python tests/capture_settings.py`
+- `python -m pytest tests/test_settings_ui.py tests/test_theme.py tests/test_sidebar_layout.py tests/test_ui_feedback.py tests/test_ui_layout.py tests/test_config.py tests/test_privacy.py tests/test_repo_boundaries.py -q`
+- `python -m pytest -q`
+
+Evidence and verification results are recorded below after the final checks.
+Stop after those checks and visual inspection pass. Native file/dialog chrome,
+ordinary action buttons and checkboxes retain ttk semantics and their existing
+layout. Real Windows screen-reader behavior, installed builds and other desktop
+platforms require separate acceptance; Canvas decoration does not establish
+assistive-technology support. No live microphone or model acceptance is claimed.
+
+Verified locally on Windows: the guarded `capture_settings.py` run completed all
+58 baseline frames without microphone, network/model or preference operations.
+Matched `artifacts/screenshots/visual/before/{dictation,speech-privacy}.png` and
+`artifacts/screenshots/visual/after/{dictation,speech-privacy}.png` were inspected.
+The after frames show layered page/card/field surfaces, rounded navigation and
+selection, and retained leaf identity. Final compact Dictation and focused
+2x-text Speech & privacy frames were also inspected for readable controls.
+The requested focused regression command passed, as did the affected compact
+Dictation checks after the card wrapping correction. Existing test assertions
+were retained. Independent review is deferred to integration because this slice
+was explicitly assigned to one implementation worker without subagents.

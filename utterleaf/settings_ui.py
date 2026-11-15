@@ -11,6 +11,7 @@ from tkinter import filedialog, messagebox, ttk
 from types import SimpleNamespace
 
 from utterleaf import theme
+from utterleaf.ui_layout import Card, SectionHeader, SegmentedControl, PillNav, Field
 from utterleaf.config import Config, load
 from utterleaf.host import login_label, settings_blurb, ui_font, is_wayland
 from utterleaf.languages import LANGUAGE_LABELS, language_guidance
@@ -143,7 +144,7 @@ class SettingsWindow:
         except Exception:
             pass
 
-        sidebar = tk.Frame(root, bg=theme.SURFACE_LOW, width=190)
+        sidebar = tk.Frame(root, bg=theme.SURFACE_LOW, width=184)
         sidebar.grid(row=0, column=0, sticky="nsew")
         sidebar.grid_propagate(False)
         from importlib.resources import files
@@ -151,16 +152,16 @@ class SettingsWindow:
         with files("utterleaf").joinpath("assets", "wordmark-inverse.png").open("rb") as stream:
             with Image.open(stream) as source:
                 logo = source.convert("RGBA")
-        logo.thumbnail((154, 46), Image.Resampling.LANCZOS)
+        logo.thumbnail((142, 46), Image.Resampling.LANCZOS)
         self.wordmark = ImageTk.PhotoImage(logo, master=root)
         wordmark_label = tk.Label(sidebar, image=self.wordmark, bg=theme.SURFACE_LOW,
                                   takefocus=False)
-        wordmark_label.pack(anchor="w", padx=18, pady=(20, 22))
+        wordmark_label.pack(anchor="w", padx=16, pady=(20, 22))
         for name in ("Dictation", "Vocabulary", "Voice commands", "Engine", "Help & diagnostics"):
             label = {"Engine": "Speech & privacy", "Help & diagnostics": "Help"}.get(name, name)
-            button = ttk.Button(sidebar, text=label, style="Nav.TButton", padding=(16, 8),
+            button = PillNav(sidebar, text=label, style="Nav.TButton", padding=(12, 8),
                                 command=lambda n=name: self.show_page(n))
-            button.pack(fill="x", padx=12, pady=3)
+            button.pack(fill="x", padx=8, pady=3)
             self.nav[name] = button
         self.privacy_label = tk.Label(sidebar, text="Local dictation.\nNo account.", justify="left",
                  font=(ui_font(), 9), fg=theme.ON_VARIANT, bg=theme.SURFACE_LOW,
@@ -191,7 +192,7 @@ class SettingsWindow:
         search_toolbar.grid(row=0, column=0, columnspan=2, sticky="ew")
         self.search_button = ttk.Button(search_toolbar, text="Find setting…", command=self.open_search)
         self.search_button.pack(anchor="e")
-        self.canvas = tk.Canvas(content, bg=theme.SURFACE_LOW, highlightthickness=0)
+        self.canvas = tk.Canvas(content, bg=theme.SURFACE_BASE, highlightthickness=0)
         self.canvas.grid(row=1, column=0, sticky="nsew")
         scroll = ttk.Scrollbar(content, orient="vertical", command=self.canvas.yview)
         scroll.grid(row=1, column=1, sticky="ns")
@@ -293,7 +294,7 @@ class SettingsWindow:
         panel.rowconfigure(3, weight=1)
         ttk.Label(panel, text="Find a setting", style="Section.TLabel").grid(
             row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))
-        self.search_entry = ttk.Entry(panel, textvariable=self.search_query, width=12,
+        self.search_entry = Field(panel, textvariable=self.search_query, width=12,
                                       exportselection=False)
         self.search_entry.grid(row=1, column=0, sticky="ew")
         self.search_close_button = ttk.Button(panel, text="Back", command=self.close_search)
@@ -491,13 +492,11 @@ class SettingsWindow:
         return True
 
     def _section(self, parent, title, hint=""):
-        border = tk.Frame(parent, bg=theme.SURFACE, highlightthickness=1,
-                          highlightbackground=theme.OUTLINE_VARIANT)
-        border.pack(fill="x", pady=(0, 14))
-        panel = ttk.Frame(border, padding=16)
+        border = Card(parent)
+        border.pack(fill="x", pady=(0, theme.SPACING[2]))
+        panel = border.body
         self._search_sections[panel] = title
-        panel.pack(fill="x")
-        ttk.Label(panel, text=title, style="Section.TLabel").pack(anchor="w", pady=(0, 6))
+        SectionHeader(panel, title).pack(anchor="w", pady=(0, 6))
         if hint:
             ttk.Label(panel, text=hint, style="Hint.TLabel", wraplength=520).pack(anchor="w", pady=(0, 8))
         return panel
@@ -631,8 +630,8 @@ class SettingsWindow:
     def _text(self, parent, height=6):
         box = tk.Text(parent, height=height, wrap="word", undo=True, relief="flat", takefocus=True,
                       bg=theme.SURFACE_LOW, fg=theme.ON_SURFACE, insertbackground=theme.PRIMARY,
-                      highlightthickness=1, highlightbackground=theme.OUTLINE_VARIANT,
-                      highlightcolor=theme.PRIMARY, padx=14, pady=12, font=(ui_font(), 11), width=30)
+                      highlightthickness=theme.FOCUS_WIDTH, highlightbackground=theme.HAIRLINE,
+                      highlightcolor=theme.FOCUS_RING, padx=14, pady=12, font=(ui_font(), 11), width=30)
         box.pack(fill="x", pady=(6, 10))
         # Tab advances through the form; Return is always safe inside an editor.
         box.bind("<Tab>", lambda e: (e.widget.tk_focusNext().focus_set(), "break")[-1])
@@ -686,16 +685,16 @@ class SettingsWindow:
 
         summary.bind("<Configure>", arrange_summary)
         p = page
-        card = tk.Frame(p, bg=theme.PRIMARY_CONTAINER, padx=16, pady=12)
+        card = Card(p, padding=(12, 8))
         self.shortcut_card = card
         card.pack(fill="x", pady=(0, 12))
         self.shortcut_hint = tk.StringVar(self.root)
-        tk.Label(card, textvariable=self.shortcut_hint, bg=theme.PRIMARY_CONTAINER,
+        tk.Label(card.body, textvariable=self.shortcut_hint, bg=theme.SURFACE_CARD,
                  fg=theme.ON_PRIMARY_CONTAINER, font=(ui_font(), 13, "bold"), wraplength=490,
                  justify="left").pack(anchor="w")
         self.shortcut_steps = tk.StringVar(self.root)
-        tk.Label(card, textvariable=self.shortcut_steps,
-                 bg=theme.PRIMARY_CONTAINER, fg=theme.ON_PRIMARY_CONTAINER,
+        tk.Label(card.body, textvariable=self.shortcut_steps,
+                 bg=theme.SURFACE_CARD, fg=theme.ON_PRIMARY_CONTAINER,
                  font=(ui_font(), 10), wraplength=490, justify="left").pack(anchor="w", pady=(10, 0))
 
         overview = ttk.Frame(page, style="Page.TFrame")
@@ -711,16 +710,16 @@ class SettingsWindow:
             [v for _, v in hotkey_presets() if v], editable=True,
         )
         mode_state = "disabled" if is_wayland() else "normal"
-        self.hold_mode = ttk.Radiobutton(
+        self.hold_mode = SegmentedControl(
             p, text="Hold to talk", variable=self.vars["mode"],
             value="hold", state=mode_state,
         )
-        self.hold_mode.pack(anchor="w", pady=(6, 2))
-        self.toggle_mode = ttk.Radiobutton(
+        self.hold_mode.pack(fill="x", pady=(6, 2))
+        self.toggle_mode = SegmentedControl(
             p, text="Press to start / stop", variable=self.vars["mode"],
             value="toggle", state=mode_state,
         )
-        self.toggle_mode.pack(anchor="w", pady=2)
+        self.toggle_mode.pack(fill="x", pady=2)
         self._register_search("mode", "Hold to talk / press to start or stop", self.hold_mode)
         if is_wayland():
             self.hotkey_box.configure(state="disabled")
@@ -762,16 +761,17 @@ class SettingsWindow:
         shortcut.grid(row=0, column=0, sticky="nsew")
         microphone.grid(row=0, column=1, sticky="nsew")
 
-        output = ttk.Frame(page, padding=(12, 4))
-        output.pack(fill="x", pady=(0, 4))
+        output_card = Card(page, padding=(12, 8))
+        output_card.pack(fill="x", pady=(0, 12))
+        output = output_card.body
         ttk.Label(output, text="Output style").pack(anchor="w")
         output_modes = ttk.Frame(output)
         output_modes.pack(anchor="w", pady=(4, 0))
-        self.output_format_control = ttk.Radiobutton(
+        self.output_format_control = SegmentedControl(
             output_modes, text="Prose", variable=self.vars["output_format"], value="prose"
         )
         self.output_format_control.pack(side="left", padx=(0, 18))
-        self.markdown_control = ttk.Radiobutton(
+        self.markdown_control = SegmentedControl(
             output_modes, text="Markdown", variable=self.vars["output_format"], value="markdown"
         )
         self.markdown_control.pack(side="left")
@@ -795,9 +795,9 @@ class SettingsWindow:
         p = self._section(page, "Recording feedback", "Keep things quiet, or add guidance while you speak.")
         self.limit_hint = tk.StringVar(self.root)
         ttk.Label(p, textvariable=self.limit_hint, style="Hint.TLabel", wraplength=510).pack(fill="x", pady=(0, 6))
-        tray_only = ttk.Radiobutton(p, text="Tray icon only", variable=self.vars["indicator"], value=False)
+        tray_only = SegmentedControl(p, text="Tray icon only", variable=self.vars["indicator"], value=False)
         tray_only.pack(anchor="w", pady=4)
-        self.indicator_toggle = ttk.Radiobutton(p, text="Tray + floating indicator", variable=self.vars["indicator"], value=True)
+        self.indicator_toggle = SegmentedControl(p, text="Tray + floating indicator", variable=self.vars["indicator"], value=True)
         self.indicator_toggle.pack(anchor="w", pady=4)
         self._register_search("indicator", "Tray + floating indicator", self.indicator_toggle,
                               terms=str(tray_only.cget("text")))
@@ -1222,7 +1222,7 @@ class SettingsWindow:
             for child in widget.winfo_children():
                 if (isinstance(child, (ttk.Label, tk.Label))
                         and int(child.cget("wraplength") or 0) and child not in self._column_labels):
-                    inset = 140 if child.master is self.shortcut_card else 104
+                    inset = 140 if child.master is self.shortcut_card.body else 104
                     if child in self._mascot_heading_labels:
                         inset += 92
                     child.configure(wraplength=max(180, width - inset))
