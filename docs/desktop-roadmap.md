@@ -28,6 +28,10 @@ intended field, with understandable local processing and minimal interruption.
   marker expression. This is unreleased source, not an installed
   build or a stable-release claim; current whole-app and native accessibility
   acceptance remain open.
+  A subsequent static integration review restored preview UI-test coverage and
+  aligned stable publication with the six explicitly named test/build matrix
+  jobs. Publication still requires a successful main run for the exact tag SHA;
+  no test, hosted CI, installation or release ran for that follow-up.
 
 - **Windows accessibility shell:** the September 27 UI Automation audit is a
   measured framework decision gate, not missing documentation: all 12 inspected

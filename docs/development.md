@@ -60,14 +60,22 @@ an unsigned exception and must disclose the resulting SmartScreen warning.
 
 ## CI and test budget
 
-The desktop pull request gate has a five-minute job budget. It runs the focused
-security, capture, delivery, and settings behavior checks on Windows, the
-documented Settings capture smoke on Windows, and one Linux X11-backed subset
-with a Wayland session value. It does not build installers. The `main` branch
-runs the full pytest suite on Windows, macOS, and Linux with a 15-minute budget
-per platform. Installer builds and artifact uploads run only for `main` and
-`v*` tags. Desktop path ignores continue to exclude mobile source and Android
-documentation.
+The desktop pull request gate has a five-minute job budget. It runs focused
+headless security, capture, delivery, and settings checks on Windows and a Linux
+X11-backed subset with a Wayland session value. It does not capture screenshots
+or build installers. The `main` branch runs the full pytest suite, including UI
+tests, on Windows, macOS, and Linux with a 15-minute budget per platform.
+Installer builds and artifact uploads run only for `main` and `v*` tags. Desktop
+path ignores continue to exclude mobile source and Android documentation.
+
+The Windows desktop preview workflow runs the full pytest suite with the
+explicit `--run-ui` opt-in before building its preview archive. Stable release
+publication is manual and requires a completed successful `build.yml` run from
+`main` at the exact commit tagged for release. Use that main run's ID: it must
+contain all three successful full-suite jobs and all three successful installer
+jobs. A tag-triggered build run alone is insufficient because it does not run
+the full suite. The publisher also verifies the downloaded Windows, macOS, and
+Linux archives before creating the release.
 
 Android pull requests always run JVM unit tests and `lintDebug`. The Android
 emulator suite runs on `main`, nightly at 06:00 UTC, or when a pull request has

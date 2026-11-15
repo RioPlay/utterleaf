@@ -87,3 +87,40 @@ def test_collection_guard_keeps_ui_items_with_opt_in() -> None:
     conftest.pytest_collection_modifyitems(config, items)
 
     assert items == [ui, ordinary]
+
+
+def test_windows_preview_explicitly_runs_the_display_suite() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "desktop-preview.yml").read_text(encoding="utf-8")
+
+    assert "[sys.executable,'-m','pytest','--run-ui','-q','-ra','--junitxml=preview-evidence/pytest.xml']" in workflow
+
+
+def test_release_publisher_requires_the_current_successful_main_build() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "publish-release.yml").read_text(encoding="utf-8")
+    build = (ROOT / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
+
+    assert "tag_sha=$(git rev-parse \"refs/tags/$RELEASE_TAG^{commit}\")" in workflow
+    assert "gh api \"repos/$GH_REPO/actions/runs/$BUILD_RUN\" > run.json" in workflow
+    assert '.head_sha == $tag_sha' in workflow
+    assert '.path == ".github/workflows/build.yml"' in workflow
+    assert '.status == "completed"' in workflow
+    assert '.conclusion == "success"' in workflow
+    assert '.event == "push"' in workflow
+    assert '.head_branch == "main"' in workflow
+
+    operating_systems = ("windows-latest", "ubuntu-24.04", "macos-latest")
+    full_suite = build.split("  full-suite:", 1)[1].split("\n  installers:", 1)[0]
+    installers = build.split("  installers:", 1)[1]
+    for operating_system in operating_systems:
+        assert f"os: {operating_system}" in full_suite
+    assert "os: [windows-latest, macos-latest, ubuntu-24.04]" in installers
+    for job_group in ("full-suite", "installers"):
+        assert f"name: {job_group} (${{{{ matrix.os }}}})" in build
+        for operating_system in operating_systems:
+            job = f"{job_group} ({operating_system})"
+            assert f'"{job}"' in workflow
+    for stale_job in ("macos-build", "linux-build", "macos-tests", "linux-tests"):
+        assert stale_job not in workflow
+    assert "z.testzip() is None" in workflow
+    assert "tar -tzf Utterleaf-macos-arm64.tar.gz" in workflow
+    assert "tar -tzf Utterleaf-linux-x64.tar.gz" in workflow

@@ -78,7 +78,7 @@ jobs:
       - name: Run full desktop tests
         run: |
           New-Item -ItemType Directory -Path 'preview-evidence' | Out-Null
-          .\.venv\Scripts\python.exe -c "import subprocess,sys; from pathlib import Path; p=subprocess.run([sys.executable,'-m','pytest','-q','-ra','--junitxml=preview-evidence/pytest.xml'],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding='utf-8',errors='replace'); Path('preview-evidence/pytest.txt').write_text(p.stdout,encoding='utf-8'); print(p.stdout,end=''); raise SystemExit(p.returncode)"
+          .\.venv\Scripts\python.exe -c "import subprocess,sys; from pathlib import Path; p=subprocess.run([sys.executable,'-m','pytest','--run-ui','-q','-ra','--junitxml=preview-evidence/pytest.xml'],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding='utf-8',errors='replace'); Path('preview-evidence/pytest.txt').write_text(p.stdout,encoding='utf-8'); print(p.stdout,end=''); raise SystemExit(p.returncode)"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build canonical CPU distribution

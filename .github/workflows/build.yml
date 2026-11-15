@@ -71,6 +71,7 @@ jobs:
         run: xvfb-run -a ./.venv/bin/python -m pytest tests/test_hotkey.py tests/test_host.py tests/test_window_activation.py -m "not ui and not integration" -q
 
   full-suite:
+    name: full-suite (${{ matrix.os }})
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -131,6 +132,7 @@ jobs:
           else { ./.venv/bin/python -m pytest --run-ui -q -ra -m "not integration" -o faulthandler_timeout=120 }
 
   installers:
+    name: installers (${{ matrix.os }})
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30

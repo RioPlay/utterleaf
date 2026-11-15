@@ -79,6 +79,45 @@ the existing Windows accessibility-shell release gates. The 15-minute hosted
 full-suite budget remains unmeasured on this revision. The broader goal remains
 open; do not infer production readiness from this bounded result.
 
+### Release compatibility follow-up
+
+Goal: preserve the existing full-test release gate after CI job consolidation
+and the explicit display-test opt-in. Baseline: `c37207a`.
+
+Source inspection found two integration defects: the Windows preview's full-test
+subprocess omits `--run-ui`, and stable publication still requires the removed
+`windows`, `macos-build`, `linux-build`, `macos-tests` and `linux-tests` jobs.
+The current build produces three `full-suite` and three `installers` matrix jobs.
+
+Area: preview and publication workflows, their focused source-contract checks,
+and development guidance. Luna owns these edits; the coordinator owns this
+contract and independent review. No runtime/product-source changes.
+
+Acceptance: preview full tests explicitly include UI; stable publication requires
+all current native test/build jobs to succeed for the exact tagged source, while
+retaining archive verification. A tag-only build that skipped full tests must
+not qualify. Removed job names must not remain as publish requirements.
+
+Verification boundary: source/configuration parsing and independent static
+review only. The prior one-check authorization has been consumed. No local test,
+CI dispatch, tag, release, upload or install is authorized by this follow-up.
+Stop when the source matches these requirements and unexecuted checks remain
+explicit. This repairs release preparation; it does not authorize publication.
+
+Implemented and statically reviewed: preview tests now pass `--run-ui`. Build
+jobs have explicit OS-based names, and publication requires the six matching
+successful test/installer jobs from a completed successful `build.yml` main push
+at the exact tag SHA. Existing archive checks are unchanged. The development
+guide no longer claims PR screenshot generation.
+
+Independent review traced a valid main-run case and rejection of tag-only,
+missing-test, failed-job and revision-mismatch cases through the gate. It also
+found a deterministic source-contract assertion mismatch in the preview argument
+list; the missing `sys.executable` prefix was corrected and read back. No
+outstanding material static finding remains. AST/YAML parsing and whitespace
+checks passed. The new source-contract tests and hosted API gate have not run;
+source assertions do not prove runtime positive/negative validation behavior.
+
 [Desktop roadmap](../../desktop-roadmap.md) ·
 [UI baseline](../../desktop-ui-baseline.md) ·
 [Interface guide](../../interface.md) ·
