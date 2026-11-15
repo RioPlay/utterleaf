@@ -10,6 +10,8 @@ from utterleaf import model_setup
 from utterleaf.settings_ui import messagebox
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 @pytest.fixture
 def download(working_tk_display, monkeypatch):
     original_start = threading.Thread.start

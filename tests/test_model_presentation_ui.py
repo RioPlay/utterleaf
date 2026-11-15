@@ -9,6 +9,8 @@ from utterleaf.model_setup import ModelAvailability
 from utterleaf.settings_ui import SettingsWindow
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 @pytest.fixture(autouse=True)
 def isolated_model_cache(tmp_path, monkeypatch):
     monkeypatch.setattr("utterleaf.models.models_dir", lambda: tmp_path)

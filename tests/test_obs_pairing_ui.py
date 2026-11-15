@@ -13,6 +13,8 @@ from utterleaf import obs_pairing_ui as ui
 from utterleaf.obs_pairing_store import PairingStoreCancelled, PairingStoreCommitError, PairingStoreError
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 class Store:
     def __init__(self, paired=False):
         self.paired, self.closed, self.claimed = paired, False, False

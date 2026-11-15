@@ -8,6 +8,8 @@ from utterleaf.backup import export_backup, inspect_backup
 from utterleaf.backup_ui import BackupDialog
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 @pytest.fixture(scope="module")
 def tk_root():
     # Real Tk widgets with synthetic files; no microphone or running-app IPC.

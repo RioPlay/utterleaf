@@ -14,6 +14,8 @@ from test_capture_auxiliary import working_tk_display
 from utterleaf.ui_layout import ActionRow, ScrollableContent
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 SOURCE = Path(__file__).with_name("capture_auxiliary.py")
 SPEC = importlib.util.spec_from_file_location("utterleaf_auxiliary_layout_capture", SOURCE)
 assert SPEC is not None and SPEC.loader is not None

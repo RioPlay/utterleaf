@@ -12,6 +12,8 @@ from utterleaf.ui_feedback import technical_details
 from utterleaf.ui_layout import ScrollableContent
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 INSTALLED = ModelInstallation("base", "ctranslate2", "installed", 1_234_567)
 NPU = ModelInstallation("base", "openvino", "installed", 4_567_890)
 INCOMPLETE = ModelInstallation("distil-small.en", "ctranslate2", "incomplete", 0)

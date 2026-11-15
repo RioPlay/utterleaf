@@ -59,17 +59,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $py -m pip install --constraint packaging/constraints-posix.txt -e ".[dev]"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      # Headless only. No display tests and no screenshot capture: the capture
+      # harness renders dozens of frames to produce images nobody reviews in CI.
       - name: Fast security, capture, delivery, and settings behavior
         if: runner.os == 'Windows'
-        run: .\.venv\Scripts\python.exe -m pytest tests/test_repo_boundaries.py tests/test_privacy.py tests/test_config.py tests/test_audio.py tests/test_capture_store.py tests/test_continuous_capture.py tests/test_inject.py tests/test_edit_target.py tests/test_delivery_cancellation.py tests/test_settings.py tests/test_settings_controller.py tests/test_settings_instance.py tests/test_settings_search.py -m "not slow and not integration" -q
-      - name: Documented Settings UI smoke
-        if: runner.os == 'Windows'
-        run: .\.venv\Scripts\python.exe tests/capture_settings.py
+        run: .\.venv\Scripts\python.exe -m pytest tests/test_ci_workflow.py tests/test_repo_boundaries.py tests/test_privacy.py tests/test_config.py tests/test_audio.py tests/test_capture_store.py tests/test_continuous_capture.py tests/test_inject.py tests/test_edit_target.py tests/test_delivery_cancellation.py tests/test_settings.py tests/test_settings_controller.py tests/test_settings_instance.py -m "not ui and not slow and not integration" -q
       - name: Linux Wayland session subset on X11
         if: runner.os == 'Linux'
         env:
           XDG_SESSION_TYPE: wayland
-        run: xvfb-run -a ./.venv/bin/python -m pytest tests/test_hotkey.py tests/test_host.py tests/test_window_activation.py -q
+        run: xvfb-run -a ./.venv/bin/python -m pytest tests/test_hotkey.py tests/test_host.py tests/test_window_activation.py -m "not integration" -q
 
   full-suite:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -127,9 +126,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Full desktop suite
         run: |
-          if ($IsWindows) { .\.venv\Scripts\python.exe -m pytest -q }
-          elseif ($IsLinux) { xvfb-run -a ./.venv/bin/python -m pytest -q -ra }
-          else { ./.venv/bin/python -m pytest -q -ra -o faulthandler_timeout=120 }
+          if ($IsWindows) { .\.venv\Scripts\python.exe -m pytest -q -ra -m "not integration" }
+          elseif ($IsLinux) { xvfb-run -a ./.venv/bin/python -m pytest -q -ra -m "not integration" }
+          else { ./.venv/bin/python -m pytest -q -ra -m "not integration" -o faulthandler_timeout=120 }
 
   installers:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))

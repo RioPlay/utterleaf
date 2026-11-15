@@ -10,6 +10,8 @@ from utterleaf.host import is_wayland
 from utterleaf.settings_ui import SettingsWindow, _service_close_request
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 @pytest.fixture(scope="module")
 def tk_root():
     failure = None

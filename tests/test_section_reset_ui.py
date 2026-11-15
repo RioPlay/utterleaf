@@ -16,6 +16,8 @@ from utterleaf.model_setup import ModelAvailability
 from utterleaf.settings_ui import SettingsWindow
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 FEEDBACK = ("indicator", "live_preview", "beep")
 PRIVATE = "private-section-reset-sentinel C:/private/settings.toml"
 

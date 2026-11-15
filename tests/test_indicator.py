@@ -84,6 +84,7 @@ def test_win32_colorref_keeps_listening_red() -> None:
     ("engine", ""),
     ("no_paste", "Use Copy last dictation in the tray menu to recover your text."),
 ])
+@pytest.mark.ui  # creates a real Tk root; excluded from the default headless run
 def test_tk_long_caption_stays_inside_window(monkeypatch, kind, caption):
     import queue
     import time

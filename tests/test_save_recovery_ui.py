@@ -16,6 +16,8 @@ from utterleaf.settings import FormValidationError, SettingsSaveError
 from utterleaf.settings_ui import SettingsWindow
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 PRIVATE = "private-save-sentinel C:/private-account/settings.toml"
 STEPS = ("dictation settings", "vocabulary", "start at login")
 RETRY = "Your form entries are kept. Try Save again."

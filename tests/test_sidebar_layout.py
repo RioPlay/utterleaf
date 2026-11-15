@@ -10,6 +10,8 @@ from utterleaf.model_setup import ModelAvailability
 from utterleaf.settings_ui import SettingsWindow
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 @pytest.mark.parametrize("scale", [1.0, 1.5, 2.0])
 def test_sidebar_preserves_navigation_and_only_shows_complete_tagline(tk_root, monkeypatch, scale):
     monkeypatch.setattr("utterleaf.settings_ui.startup_enabled", lambda: False)

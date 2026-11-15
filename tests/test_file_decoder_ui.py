@@ -7,6 +7,8 @@ from utterleaf.file_decoder_ui import DecoderDialog
 from utterleaf import theme
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 @pytest.fixture(scope="module")
 def root():
     failure = None

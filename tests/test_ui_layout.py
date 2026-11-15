@@ -7,6 +7,9 @@ from utterleaf import theme
 from utterleaf.ui_layout import Card, Divider, Field, PillNav, SectionHeader, SegmentedControl, inset
 
 
+import pytest
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 def test_card_keeps_native_children_and_decorations_out_of_tab_order(tk_root):
     root = tk.Toplevel(tk_root)
     theme.apply(root)

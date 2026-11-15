@@ -9,6 +9,8 @@ import capture_appearance
 from test_capture_auxiliary import working_tk_display
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 @contextmanager
 def guide_fixture(scale=1.0):
     with capture_appearance.blocked_runtime() as runtime, capture_appearance.owned_root(scale) as (owner, errors):

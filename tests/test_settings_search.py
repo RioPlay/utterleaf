@@ -12,6 +12,8 @@ from utterleaf.config import Config
 from utterleaf.settings_ui import SettingsWindow
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 @pytest.fixture(autouse=True)
 def isolated_environment(tmp_path, monkeypatch):
     monkeypatch.setattr("utterleaf.models.models_dir", lambda: tmp_path)

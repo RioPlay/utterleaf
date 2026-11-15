@@ -11,6 +11,8 @@ from test_capture_auxiliary import working_tk_display
 from utterleaf.settings import SettingsSaveError
 from utterleaf.settings_ui import SettingsWindow
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 REAL_SAVE = SettingsWindow.save
 
 

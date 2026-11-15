@@ -13,6 +13,8 @@ from utterleaf.config import Config
 from utterleaf.ui_feedback import technical_details
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 RAW_ERROR = "Synthetic private/path/東京\x00\u202e: decoder permission detail"
 
 

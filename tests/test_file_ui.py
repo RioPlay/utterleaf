@@ -13,6 +13,8 @@ from utterleaf.file_ui import FileWindow
 from utterleaf.transcript import Segment, Transcript
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 @pytest.fixture(scope="module")
 def tk_root():
     failure = None

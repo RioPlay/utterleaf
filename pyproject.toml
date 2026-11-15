@@ -45,7 +45,12 @@ utterleaf = ["assets/*.png"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+# Plain `pytest` is headless: display tests are marked `ui` and deselected here so
+# running the suite does not open a parade of Tk windows. Use `pytest -m ui` when you
+# want the display tests, or `pytest -m "not integration"` for the complete suite.
+# An explicit -m on the command line replaces this one, so do not assume it is still
+# applied when you pass your own expression.
+addopts = "-q -m 'not ui'"
 markers = [
     "ui: Tk or other desktop presentation tests that need a display or exercise interaction",
     "native: tests that exercise operating-system integrations or native libraries",

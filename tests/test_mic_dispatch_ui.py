@@ -17,6 +17,8 @@ from utterleaf.settings import SYSTEM_DEFAULT
 from utterleaf.settings_ui import SettingsWindow
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 PRIVATE = "private-dispatch-sentinel C:/private-account/driver"
 ACTIONS = ("refresh_mics", "test_mic", "refresh_connection")
 COPY = {

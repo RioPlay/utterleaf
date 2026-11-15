@@ -82,17 +82,28 @@ Pytest markers describe test cost and environment:
 - `integration`: crosses module or process boundaries and is reserved for the
   full suite when it is not needed in the focused pull request gate.
 
-The pull request gate selects its test files explicitly; the marker filter is a
-secondary cost guard, not the selection mechanism. Markers are applied as tests
-are classified against measured timings, so most tests are still unmarked and
-the filter currently excludes only the tests already labelled `slow` or
-`integration`. Re-measure before widening the filter or the job budget.
+## Running tests without opening windows
 
-The capture harnesses are manual visual references, not behavior tests. The
-Settings harness writes ten representative screenshots under
-`artifacts/screenshots`; it remains the documented Windows UI check and never
-records microphone input. Security, privacy, capture-store, delivery, and
-settings behavior remain covered by pytest.
+A plain `pytest` is **headless**. Display-dependent tests carry `pytest.mark.ui`
+and are deselected by default, so running the suite does not open a parade of Tk
+windows on your desktop. Use:
+
+- `pytest` for the quiet, headless run you normally want.
+- `pytest -m ui` when you deliberately want the display tests.
+- `pytest -m "not integration"` for the complete suite, display included.
+
+Passing your own `-m` replaces the default expression rather than combining with
+it, so `pytest -m "not slow"` will in fact run the display tests.
+
+The capture harnesses are manual visual references, not behavior tests and not a
+CI step. `tests/capture_settings.py` renders a number of frames to write
+screenshots under `artifacts/screenshots`; it remains the documented Windows UI
+check and never records microphone input. Run it by hand when you want to see the
+surfaces. It is deliberately absent from the pull request gate because generating
+images that no one reviews in CI is pure cost.
+
+Security, privacy, capture-store, delivery, and settings behavior remain covered
+by pytest.
 
 Before change: **2,714 collected tests** across **108 test files**. The baseline
 full-suite attempt took **17m48s**, but overlapped shared desktop UI activity

@@ -9,6 +9,8 @@ from test_capture_auxiliary import capture_auxiliary
 from utterleaf.ui_feedback import RecoveryFeedback, technical_details
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 def test_technical_details_preserves_unicode_and_removes_display_controls():
     value = "Café 東京 — naïve 😀\nnext\tcolumn\x00\x1b\x7f\x85\u202e\u2066\ud800"
     assert technical_details(value) == "Café 東京 — naïve 😀\nnext    column"

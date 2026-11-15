@@ -12,6 +12,8 @@ from utterleaf.model_setup import ModelAvailability
 from utterleaf.settings_ui import SettingsWindow
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 def _blocked(*_args, **_kwargs):
     pytest.fail("Unexpected external operation in a diagnostic UI test")
 

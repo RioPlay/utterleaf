@@ -8,6 +8,8 @@ import capture_backup
 from test_capture_auxiliary import working_tk_display
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 @contextmanager
 def dialog_fixture(state, scale=1.0):
     with capture_backup.blocked_runtime() as runtime, capture_backup.owned_root(scale) as (owner, errors):
