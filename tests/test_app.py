@@ -117,6 +117,32 @@ def test_three_prose_passes_keep_separators_after_title_change_and_timeout(monke
     app.recent_dictation.clear()
 
 
+@pytest.mark.parametrize("text_cleanup,app_name,expected", [
+    (True, "T3 Code (Beta).exe T3 Code (Beta)", "We can see. It works. "),
+    (False, "T3 Code (Beta).exe T3 Code (Beta)", "we can see periodit works period"),
+    (True, "Code.exe T3 Code (Beta)", "we can see.it works."),
+])
+def test_two_takes_in_t3_preserve_prose_boundary_and_literal_modes(
+        monkeypatch, text_cleanup, app_name, expected):
+    app = _app(monkeypatch, text_cleanup=text_cleanup)
+    takes = iter(["we can see period", "it works period"])
+    pasted = []
+    monkeypatch.setattr("utterleaf.app.foreground_app", lambda: app_name)
+    monkeypatch.setattr("utterleaf.app.foreground_id", lambda: 123)
+    monkeypatch.setattr("utterleaf.app.transcribe", lambda *a: next(takes))
+    monkeypatch.setattr("utterleaf.app.paste", lambda text, **kw: pasted.append(text) or "pasted")
+    monkeypatch.setattr("utterleaf.app.edit_target.capture", lambda *a: None)
+    monkeypatch.setattr(app, "_schedule_edit_expiry", lambda: None)
+    for _ in range(2):
+        app._finish(np.ones(16000, dtype=np.float32), target=123)
+        # Unsupported T3 fields have no receipt; expired continuation must
+        # still retain a completed prose boundary in the assembled document.
+        app.last_paste_at -= 30
+    assert "".join(pasted) == expected
+    assert app._edit_receipt is None
+    app.recent_dictation.clear()
+
+
 def test_native_edit_neighbors_are_included_in_verified_delivery(monkeypatch):
     from utterleaf import edit_target
 

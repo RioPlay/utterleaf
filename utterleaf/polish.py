@@ -732,7 +732,9 @@ def infer_style(app_name: str) -> str:
     # Windows supplies "executable.exe window title"; title words must not
     # switch a browser or chat app into code mode. macOS supplies the process
     # name; X11 titles conventionally put the application after the last dash.
-    executable = re.match(r"^([^\s]+)\.exe(?:\s|$)", name)
+    # Keep arbitrary spaced titles on the X11 suffix path. Only the known
+    # spaced T3 executable aliases need an exception to the existing parser.
+    executable = re.match(r"^(t3 code(?: \(beta\))?|[^\s]+)\.exe(?:\s|$)", name)
     app_identity = executable.group(1) if executable else re.split(r"\s+[—–-]\s+", name)[-1]
 
     def has_hint(hints: tuple[str, ...], source: str = name) -> bool:
@@ -741,6 +743,10 @@ def infer_style(app_name: str) -> str:
             for hint in hints
         )
 
+    # T3 Code is an assistant composer. Its product name is not evidence
+    # that dictation is being inserted into a source-code editor.
+    if app_identity in {"t3 code", "t3 code (beta)", "t3-code", "t3code"}:
+        return "default"
     if has_hint(CODE_HINTS, app_identity):
         return "code"
     if has_hint(EMAIL_HINTS):

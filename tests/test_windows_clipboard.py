@@ -74,6 +74,10 @@ class FakeApi:
         self.calls.append("sequence")
         return self.sequence_value
 
+    def owner(self):
+        self.calls.append("owner")
+        return 42
+
     def allocate_text(self, text):
         self.calls.append(("allocate", text))
         return 99
@@ -135,6 +139,78 @@ def test_native_write_transfers_handle_and_returns_receipt():
     assert api.calls.index("empty") < api.calls.index(("set", 99))
     assert ("free", 99) not in api.calls
     assert api.calls[-2:] == ["close", ("destroy", 42)]
+
+
+class PublishedApi(FakeApi):
+    """Windows publishes synthesized formats when the first open closes."""
+
+    def __init__(self, *, new_owner=False, reopen=True):
+        super().__init__()
+        self.closes = 0
+        self.new_owner = new_owner
+        self.reopen = reopen
+
+    def close_clipboard(self):
+        self.closes += 1
+        if self.closes == 1:
+            self.sequence_value += 3
+        return super().close_clipboard()
+
+    def open_clipboard(self, window):
+        super().open_clipboard(window)
+        return self.reopen or self.closes == 0
+
+    def owner(self):
+        super().owner()
+        return 77 if self.new_owner else 42
+
+
+def test_native_write_receipt_includes_close_time_format_publication():
+    api = PublishedApi()
+    result = wc._native_write(api, "dictation", None)
+    assert result == wc.Result("ok", sequence=api.sequence_value)
+    assert api.calls.count(("open", 42)) == 2
+    assert api.calls.index("close") < api.calls.index("owner")
+    assert api.calls[api.calls.index("owner") + 1] == "sequence"
+
+
+@pytest.mark.parametrize("same_text", [False, True])
+def test_native_write_does_not_adopt_intervening_owner(same_text):
+    api = PublishedApi(new_owner=True)
+    api.text = "dictation" if same_text else "new user copy"
+    assert wc._native_write(api, "dictation", None).status == "uncertain"
+    assert api.calls.count("empty") == 1
+    assert "read" not in api.calls
+
+
+def test_native_write_reopen_failure_is_uncertain_without_retry():
+    api = PublishedApi(reopen=False)
+    assert wc._native_write(api, "dictation", None).status == "uncertain"
+    assert api.calls.count("empty") == 1
+    assert api.calls[-1] == ("destroy", 42)
+
+
+@pytest.mark.parametrize("failure", ["owner", "sequence", "second-close"])
+def test_native_write_final_receipt_failure_stays_uncertain(failure):
+    class FailedReceiptApi(PublishedApi):
+        def owner(self):
+            if failure == "owner":
+                raise OSError("owner unavailable")
+            return super().owner()
+
+        def sequence(self):
+            if failure == "sequence" and self.closes:
+                return 0
+            return super().sequence()
+
+        def close_clipboard(self):
+            result = super().close_clipboard()
+            return False if failure == "second-close" and self.closes == 2 else result
+
+    api = FailedReceiptApi()
+    assert wc._native_write(api, "dictation", None).status == "uncertain"
+    assert api.calls.count("empty") == 1
+    assert api.calls[-1] == ("destroy", 42)
 
 
 def test_native_write_frees_untransferred_handle_and_reports_uncertain_after_empty():

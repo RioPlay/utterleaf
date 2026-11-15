@@ -26,14 +26,18 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 
+internal enum class KeyVisualRole { STANDARD, SUGGESTION, ACTION }
+
 /** Secondary hints are visual; the button keeps its primary spoken key label. */
 internal class HintedKey(context: Context) : Button(context) {
+    var visualRole: KeyVisualRole = KeyVisualRole.STANDARD
     var primaryIcon: android.graphics.drawable.Drawable? = null
     var primaryIconSizeDp: Int = 24
     var tintPrimaryIcon: Boolean = true
     var bottomIcon: android.graphics.drawable.Drawable? = null
     var secondaryHint: String? = null
         set(value) { field = value; invalidate() }
+    var secondaryHintColor: Int? = null
     /** Mockup letter hints sit at the top-left; digit hints at the top-right. */
     var hintAlignRight: Boolean = true
         set(value) { field = value; invalidate() }
@@ -61,9 +65,9 @@ internal class HintedKey(context: Context) : Button(context) {
         }
         val hint = secondaryHint
         if (hint != null) {
-            hintPaint.color = currentTextColor
-            hintPaint.alpha = 170
-            hintPaint.textSize = 8 * resources.displayMetrics.scaledDensity
+            hintPaint.color = secondaryHintColor ?: currentTextColor
+            hintPaint.alpha = if (secondaryHintColor == null) 120 else 255
+            hintPaint.textSize = Ui.KeyboardTokens.secondaryHintSp * resources.displayMetrics.scaledDensity
             // At very large label sizes, preserve the primary key's legibility.
             val offset = Ui.dp(context, 3).toFloat()
             val primaryTop = (height - (paint.fontMetrics.descent - paint.fontMetrics.ascent)) / 2f + offset
@@ -74,12 +78,12 @@ internal class HintedKey(context: Context) : Button(context) {
                 canvas.restore()
                 if (hintAlignRight) {
                     hintPaint.textAlign = Paint.Align.RIGHT
-                    canvas.drawText(hint, width - Ui.dp(context, 8).toFloat(),
-                        Ui.dp(context, 6).toFloat() - hintPaint.ascent(), hintPaint)
+                    canvas.drawText(hint, width - Ui.dp(context, 7).toFloat(),
+                        Ui.dp(context, 5).toFloat() - hintPaint.ascent(), hintPaint)
                 } else {
                     hintPaint.textAlign = Paint.Align.LEFT
-                    canvas.drawText(hint, Ui.dp(context, 8).toFloat(),
-                        Ui.dp(context, 6).toFloat() - hintPaint.ascent(), hintPaint)
+                    canvas.drawText(hint, Ui.dp(context, 7).toFloat(),
+                        Ui.dp(context, 5).toFloat() - hintPaint.ascent(), hintPaint)
                 }
                 return
             }
@@ -118,6 +122,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private val keyColor = palette.key
     private val utilityColor = palette.utility
     private val ink = palette.ink
+    private val muted = palette.muted
     private val accent = palette.accent
     private val accentInk = palette.accentInk
     private val keyHeight = if (options.keyHeightDp == 0) { if (options.large) 66 else 54 }
@@ -239,7 +244,6 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     private var layoutGeneration = 0
     private var suggestionRow: LinearLayout? = null
     private val suggestionChips = mutableListOf<Button>()
-    private var suggestionEmpty: TextView? = null
     private var renderedSuggestions = SuggestionEngine.SuggestionState.EMPTY
 
     /** Refreshes the cache-backed strip without reading the host editor. */
@@ -356,7 +360,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         caps = false; hubOpen = false; editOpen = false; extraKeysOpen = false
         alternateMode = false; alternateKey = null
         renderedSuggestions = SuggestionEngine.SuggestionState.EMPTY
-        suggestionRow = null; suggestionChips.clear(); suggestionEmpty = null
+        suggestionRow = null; suggestionChips.clear()
         arrowRepeaters.clear()
         toolbarStatus = null; capsKey = null
         ctrlKey = null; altKey = null
@@ -386,14 +390,18 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         content.addView(picker.view, LinearLayout.LayoutParams(-1, -2))
     }
     private val border = Color.parseColor(if (light) "#B9CCC1" else "#3D4845")
-    private fun shape(color: Int, pillShape: Boolean = false) = GradientDrawable().apply {
+    private fun shape(color: Int, pillShape: Boolean = false, outlined: Boolean = true,
+        emphasisStroke: Int? = null) = GradientDrawable().apply {
         setColor(color)
-        cornerRadius = if (pillShape) Ui.dp(context, 23).toFloat() else Ui.dp(context, 8).toFloat()
-        if (options.keyBorders) setStroke(Ui.dp(context, 1), border)
+        cornerRadius = Ui.dp(context, if (pillShape) Ui.KeyboardTokens.brandedPillRadiusDp
+            else Ui.KeyboardTokens.keyRadiusDp).toFloat()
+        if (emphasisStroke != null) setStroke(Ui.dp(context, 2), emphasisStroke)
+        else if (outlined && options.keyBorders) setStroke(Ui.dp(context, 1), border)
     }
     private fun key(row: LinearLayout, label: String, description: String = label, weight: Float = 1f,
         utility: Boolean = false, primary: Boolean = false, height: Int = keyHeight, chordable: Boolean = true,
         widthDp: Int? = null, compact: Boolean = false, labelSizeSp: Int? = null, pill: Boolean = false,
+        visualRole: KeyVisualRole = KeyVisualRole.STANDARD,
         action: () -> Unit): Button {
         val generation = layoutGeneration
         val button = HintedKey(context).apply {
@@ -406,21 +414,41 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             setAutoSizeTextTypeUniformWithConfiguration(minOf(if (compact) 10 else 12, maximumLabelSize),
                 maximumLabelSize,
                 1, TypedValue.COMPLEX_UNIT_SP)
-            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+            typeface = Typeface.create(if (visualRole == KeyVisualRole.SUGGESTION)
+                "sans-serif-medium" else "sans-serif", Typeface.NORMAL)
+            this.visualRole = visualRole
+            secondaryHintColor = muted
             minWidth = 0; minimumWidth = 0; minHeight = 0; minimumHeight = 0
             setPadding(0, 0, 0, 0); includeFontPadding = false
             gravity = Gravity.CENTER
             val selectedFill = if (compact && !primary) utilityColor else accent
-            val ordinaryFill = if (primary) accent else if (compact) surface else if (utility) utilityColor else keyColor
+            val ordinaryFill = if (visualRole == KeyVisualRole.SUGGESTION) surface else if (primary) accent
+                else if (compact) surface else if (utility) utilityColor else keyColor
+            val pressedFill = when {
+                primary -> accent
+                visualRole == KeyVisualRole.SUGGESTION || compact -> utilityColor
+                utility -> keyColor
+                else -> utilityColor
+            }
             val fill = StateListDrawable().apply {
-                if (primary) addState(intArrayOf(-android.R.attr.state_enabled), shape(surface, pill))
-                addState(intArrayOf(android.R.attr.state_selected), shape(selectedFill, pill))
-                addState(intArrayOf(android.R.attr.state_focused), shape(selectedFill, pill))
-                addState(intArrayOf(), shape(ordinaryFill, pill))
+                val outlined = visualRole != KeyVisualRole.SUGGESTION
+                if (primary && visualRole != KeyVisualRole.ACTION)
+                    addState(intArrayOf(-android.R.attr.state_enabled), shape(surface, pill, outlined))
+                addState(intArrayOf(android.R.attr.state_pressed), shape(pressedFill, pill, outlined))
+                addState(intArrayOf(android.R.attr.state_selected), shape(selectedFill, pill, outlined))
+                addState(intArrayOf(android.R.attr.state_focused), shape(selectedFill, pill, outlined))
+                addState(intArrayOf(), shape(ordinaryFill, pill, outlined))
             }
             val verticalInset = Ui.dp(context, if (compact) 5 else 4)
             background = InsetDrawable(RippleDrawable(ColorStateList.valueOf(0x40808080), fill, shape(Color.WHITE, pill)),
                 Ui.dp(context, 3), verticalInset, Ui.dp(context, 3), verticalInset)
+            if (primary) foreground = InsetDrawable(StateListDrawable().apply {
+                    addState(intArrayOf(android.R.attr.state_selected),
+                        shape(Color.TRANSPARENT, pill, outlined = false, emphasisStroke = accentInk))
+                    addState(intArrayOf(android.R.attr.state_focused),
+                        shape(Color.TRANSPARENT, pill, outlined = false, emphasisStroke = accentInk))
+                    addState(intArrayOf(), shape(Color.TRANSPARENT, pill, outlined = false))
+                }, Ui.dp(context, 3), verticalInset, Ui.dp(context, 3), verticalInset)
             backgroundTintList = null
             stateListAnimator = null
             setTextColor(ColorStateList(arrayOf(intArrayOf(-android.R.attr.state_enabled),
@@ -519,7 +547,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         if (suggestionChips.isEmpty()) {
             repeat(3) { index ->
                 suggestionChips += key(row, "", "", height = 48, compact = true,
-                    chordable = false, labelSizeSp = 16) {
+                    chordable = false, labelSizeSp = 15, visualRole = KeyVisualRole.SUGGESTION) {
                     renderedSuggestions.candidates.getOrNull(index)?.let { candidate ->
                         completeChip(renderedSuggestions.composing, candidate)
                     }
@@ -528,23 +556,12 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         }
         if (state.candidates.isEmpty()) {
             suggestionChips.forEach { chip ->
-                chip.visibility = View.GONE
+                chip.text = ""
+                chip.contentDescription = ""
+                chip.visibility = View.INVISIBLE
                 chip.isEnabled = false
             }
-            val empty = suggestionEmpty ?: TextView(context).also { created ->
-                created.textSize = 13f
-                created.setTextColor(ink)
-                created.gravity = Gravity.CENTER
-                created.includeFontPadding = false
-                suggestionEmpty = created
-                row.addView(created, row.indexOfChild(suggestionChips.first()),
-                    LinearLayout.LayoutParams(0, Ui.dp(context, 48), 3f))
-            }
-            empty.text = if (state.composing.isEmpty()) "Type a word" else "No completions"
-            empty.contentDescription = empty.text
-            empty.visibility = View.VISIBLE
         } else {
-            suggestionEmpty?.visibility = View.GONE
             suggestionChips.forEachIndexed { index, chip ->
                 val candidate = state.candidates.getOrNull(index)
                 chip.text = candidate ?: ""
@@ -1183,7 +1200,7 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
         arrowRepeaters.forEach { it.cancel() }
         arrowRepeaters.clear()
         content.removeAllViews(); letters.clear(); actionKeys.clear()
-        suggestionRow = null; suggestionChips.clear(); suggestionEmpty = null
+        suggestionRow = null; suggestionChips.clear()
         shiftKeys.clear(); letterShiftKey = null; capsKey = null; ctrlKey = null; altKey = null
         applyContentAlignment()
         val landscapeExtra = extraKeysOpen && context.resources.configuration.orientation ==
@@ -1271,13 +1288,14 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
     /** Continuous daily row: mode, punctuation, Space, punctuation and editor action. */
     private fun renderBottomRow() {
         val bottom = row()
-        key(bottom, if (symbols) "ABC" else "?123", "Switch letters and symbols", 1.5f, utility = true) {
+        key(bottom, if (symbols) "ABC" else "?123", "Switch letters and symbols", utility = true,
+            widthDp = Ui.KeyboardTokens.bottomModeWidthDp) {
             symbols = !symbols; moreSymbols = false
             extraKeysOpen = false; extraKeyGroup = ExtraKeyGroup.ACCESSORY
             cancelCompose(); alternateMode = false; alternateKey = null; render()
         }
         fun addPunctuation(label: String, description: String, value: Char) =
-            key(bottom, label, description) {
+            key(bottom, label, description, widthDp = Ui.KeyboardTokens.bottomPunctuationWidthDp) {
                 if (alternateMode) openAlternates(value) else if (type(value.toString())) afterCommit(value.toString())
             }.also { punctuation ->
                 view.registerOrdinaryKey(punctuation)
@@ -1308,7 +1326,8 @@ class TypingPanel(private val context: Context, private var options: KeyboardOpt
             addSpace(5f)
         }
         addPunctuation(".", ".", '.')
-        key(bottom, if (actionLabel == "Enter") "↵" else actionLabel, actionLabel, 1.5f, primary = true, pill = true) {
+        key(bottom, if (actionLabel == "Enter") "↵" else actionLabel, actionLabel, primary = true,
+            widthDp = Ui.KeyboardTokens.bottomActionWidthDp, visualRole = KeyVisualRole.ACTION) {
             if (!sensitiveField && (ctrl || alt)) special(KeyEvent.KEYCODE_ENTER)
             else {
                 if (!sensitiveField && options.autoCapitalize && actionLabel == "Enter" && !caps) {

@@ -2,6 +2,7 @@ import json
 import subprocess
 import sys
 import threading
+import time
 import pytest
 
 from utterleaf import settings_instance
@@ -79,6 +80,28 @@ os._exit(0)
         assert replacement.acquire(lambda: None)
     finally:
         replacement.close()
+
+
+def test_waiting_contender_recovers_when_owner_releases_lock(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings_instance, "data_dir", lambda: tmp_path)
+    monkeypatch.setattr(settings_instance, "_LOCK_WAIT_SECONDS", 0.5)
+    monkeypatch.setattr(settings_instance, "_LOCK_RETRY_SECONDS", 0.01)
+    monkeypatch.setattr(settings_instance, "activate", lambda namespace="settings": False)
+    owner = settings_instance.SettingsInstance()
+    assert owner.acquire(lambda: None)
+    contender = settings_instance.SettingsInstance()
+    result = []
+    thread = threading.Thread(target=lambda: result.append(contender.acquire(lambda: None)))
+    thread.start()
+    time.sleep(0.08)
+    owner.close()
+    thread.join(1)
+    try:
+        assert not thread.is_alive()
+        assert result == [True]
+        assert contender.lock is not None
+    finally:
+        contender.close()
 
 
 def test_files_and_settings_activate_independently(tmp_path, monkeypatch):

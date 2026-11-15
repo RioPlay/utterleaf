@@ -88,10 +88,19 @@ class KeyboardSpacingTest {
     @Test fun suggestionStripKeepsKeyGeometryAcrossCandidateStates() = main {
         var state = SuggestionEngine.SuggestionState.EMPTY
         val panel = panel(state = { state })
+        fun dailyControlBounds() = listOf("Keyboard tools", "Editing tools", "Dictate")
+            .associateWith { bounds(panel, it) }
         panel.reset(false, false, "Enter")
         val emptyHeight = measure(panel)
         val emptySpace = bounds(panel, "Space")
         val emptyQ = bounds(panel, "q")
+        val emptyControls = dailyControlBounds()
+        val emptySuggestionSlots = descendants(panel.view).filterIsInstance<HintedKey>()
+            .filter { it.visualRole == KeyVisualRole.SUGGESTION }
+        assertEquals("Daily strip must retain three predictable suggestion slots",
+            3, emptySuggestionSlots.size)
+        assertTrue("Empty suggestion slots must stay quiet without collapsing",
+            emptySuggestionSlots.all { it.visibility == View.INVISIBLE && it.measuredWidth > 0 })
         capture(panel, "empty")
 
         state = SuggestionEngine.SuggestionState("q", emptyList())
@@ -99,7 +108,8 @@ class KeyboardSpacingTest {
         val noMatchHeight = measure(panel)
         val noMatchSpace = bounds(panel, "Space")
         val noMatchQ = bounds(panel, "q")
-        assertTrue("No-match state must be represented accessibly",
+        val noMatchControls = dailyControlBounds()
+        assertFalse("No-match state must not add instructional filler",
             descendants(panel.view).filterIsInstance<TextView>().any { it.text == "No completions" })
         capture(panel, "no-match")
 
@@ -108,6 +118,7 @@ class KeyboardSpacingTest {
         val oneHeight = measure(panel)
         val oneSpace = bounds(panel, "Space")
         val oneQ = bounds(panel, "q")
+        val oneControls = dailyControlBounds()
         val oneChipCount = descendants(panel.view).filterIsInstance<Button>()
             .count { it.contentDescription == "Complete with quick" }
         capture(panel, "one")
@@ -117,6 +128,7 @@ class KeyboardSpacingTest {
         val threeHeight = measure(panel)
         val threeSpace = bounds(panel, "Space")
         val threeQ = bounds(panel, "q")
+        val threeControls = dailyControlBounds()
         val threeChipCount = descendants(panel.view).filterIsInstance<Button>()
             .count { it.contentDescription?.toString()?.startsWith("Complete with ") == true }
         capture(panel, "three")
@@ -129,14 +141,50 @@ class KeyboardSpacingTest {
         assertEquals("Three completions moved Space", oneSpace, threeSpace)
         assertEquals("Expected three completion chips", 3, threeChipCount)
         assertEquals("Expected the current candidate set to contain quick", 1, oneChipCount)
+        val visibleSuggestionSlots = descendants(panel.view).filterIsInstance<HintedKey>()
+            .filter { it.visualRole == KeyVisualRole.SUGGESTION && it.visibility == View.VISIBLE }
+        assertEquals("Expected three visible suggestion slots", 3, visibleSuggestionSlots.size)
+        val suggestionWidths = visibleSuggestionSlots.map { it.width }
+        assertTrue("Suggestion slots must divide their region evenly",
+            suggestionWidths.max() - suggestionWidths.min() <= 1)
+        assertTrue("Suggestion slots must retain 48dp touch widths",
+            visibleSuggestionSlots.all { it.width >= Ui.dp(app, 48) })
+        assertTrue("Completions must use the quiet suggestion visual role",
+            visibleSuggestionSlots.all { it.background.isStateful })
+        fun assertPressedDiffers(label: String, button: Button) {
+            val normal = android.graphics.Bitmap.createBitmap(button.width, button.height,
+                android.graphics.Bitmap.Config.ARGB_8888)
+            val pressed = android.graphics.Bitmap.createBitmap(button.width, button.height,
+                android.graphics.Bitmap.Config.ARGB_8888)
+            try {
+                button.isPressed = false; button.jumpDrawablesToCurrentState()
+                button.draw(android.graphics.Canvas(normal))
+                button.isPressed = true; button.jumpDrawablesToCurrentState()
+                button.draw(android.graphics.Canvas(pressed))
+                assertFalse("$label pressed state was visually indistinguishable", normal.sameAs(pressed))
+            } finally {
+                button.isPressed = false; button.jumpDrawablesToCurrentState()
+                normal.recycle(); pressed.recycle()
+            }
+        }
+        assertPressedDiffers("Suggestion", visibleSuggestionSlots.first())
+        assertPressedDiffers("Letter key", key(panel, "q"))
         assertEquals("No-match moved q", emptyQ, noMatchQ)
         assertEquals("One completion moved q", noMatchQ, oneQ)
         assertEquals("Three completions moved q", oneQ, threeQ)
+        assertEquals("No-match moved daily controls", emptyControls, noMatchControls)
+        assertEquals("One completion moved daily controls", noMatchControls, oneControls)
+        assertEquals("Three completions moved daily controls", oneControls, threeControls)
         state = SuggestionEngine.SuggestionState.EMPTY
         key(panel, "Space").performClick()
         val afterSpaceHeight = measure(panel)
         assertEquals("Space must not change the strip geometry", threeHeight, afterSpaceHeight)
-        assertTrue("Empty strip must be represented accessibly",
+        val clearedSlots = descendants(panel.view).filterIsInstance<HintedKey>()
+            .filter { it.visualRole == KeyVisualRole.SUGGESTION }
+        assertTrue("Hidden suggestions must not retain stale candidate text",
+            clearedSlots.all { it.visibility == View.INVISIBLE && !it.isEnabled &&
+                it.text.isEmpty() && it.contentDescription.isNullOrEmpty() })
+        assertFalse("Empty strip must not add instructional filler",
             descendants(panel.view).filterIsInstance<TextView>().any { it.text == "Type a word" })
         capture(panel, "after-space")
     }
@@ -169,36 +217,83 @@ class KeyboardSpacingTest {
 
     @Test fun bottomRowHasNoUnassignedTouchRegionOutsideExplicitSplitChannel() = main {
         val configurations = listOf(
-            Configuration.ORIENTATION_PORTRAIT to 360,
-            Configuration.ORIENTATION_LANDSCAPE to 700,
+            Triple(Configuration.ORIENTATION_PORTRAIT, 320, false),
+            Triple(Configuration.ORIENTATION_LANDSCAPE, 600, false),
+            Triple(Configuration.ORIENTATION_LANDSCAPE, 600, true),
         )
-        for ((orientation, widthDp) in configurations) {
+        for ((orientation, widthDp, split) in configurations) {
             val configured = Configuration(app.resources.configuration).apply {
                 this.orientation = orientation
             }
             val panelContext = app.createConfigurationContext(configured)
-            for (alignment in KeyboardAlignment.entries) {
+            val alignments = if (split) listOf(KeyboardAlignment.FULL) else KeyboardAlignment.entries
+            for (alignment in alignments) {
                 val panel = panel(panelContext,
-                    KeyboardOptions(numberRow = false, alignment = alignment), enabled = false)
+                    KeyboardOptions(numberRow = false, alignment = alignment,
+                        splitLandscape = split), enabled = false)
                 panel.reset(false, false, "Enter")
                 val width = Ui.dp(panelContext, widthDp)
                 panel.view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
                 panel.view.layout(0, 0, width, panel.view.measuredHeight)
 
-                val bottom = key(panel, "Space").parent as LinearLayout
+                val bottom = descendants(panel.view).filterIsInstance<Button>()
+                    .first { it.contentDescription == "Space" }.parent as LinearLayout
                 val children = (0 until bottom.childCount).map { bottom.getChildAt(it) }
-                assertTrue("$orientation/$alignment bottom row contains an inert slot",
-                    children.all { it is Button && it.isClickable && it.isFocusable })
+                if (split) {
+                    assertEquals("Split bottom row must contain exactly one intentional center channel",
+                        1, children.count { it !is Button })
+                    assertTrue("Split bottom row contains another inert slot",
+                        children.filterIsInstance<Button>().all { it.isClickable && it.isFocusable })
+                } else {
+                    assertTrue("$orientation/$alignment bottom row contains an inert slot",
+                        children.all { it is Button && it.isClickable && it.isFocusable })
+                }
                 assertEquals(0, children.first().left)
                 assertEquals(bottom.width, children.last().right)
                 children.zipWithNext().forEach { (left, right) ->
-                    assertEquals("$orientation/$alignment bottom row has a dead gap",
+                    assertEquals("$orientation/$alignment/split=$split bottom row has a dead gap",
                         left.right, right.left)
                 }
                 assertTrue(descendants(panel.view).filterIsInstance<Button>()
                     .mapNotNull { it.contentDescription?.toString() }
                     .containsAll(setOf(",", "Space", ".")))
+                listOf("Switch letters and symbols", ",", "Space", ".", "Enter").forEach { description ->
+                    val targets = descendants(panel.view).filterIsInstance<Button>()
+                        .filter { it.contentDescription == description }
+                    assertTrue("$orientation/$alignment/split=$split $description was absent",
+                        targets.isNotEmpty())
+                    assertTrue("$orientation/$alignment/split=$split $description was narrower than 48dp",
+                        targets.all { it.width >= Ui.dp(panelContext, 48) })
+                    assertTrue("$orientation/$alignment/split=$split $description was shorter than 48dp",
+                        targets.all { it.height >= Ui.dp(panelContext, 48) })
+                }
+                val action = key(panel, "Enter")
+                assertTrue("$orientation/$alignment/split=$split action key was disabled", action.isEnabled)
+                assertEquals(KeyVisualRole.ACTION, (action as HintedKey).visualRole)
+                val bitmap = android.graphics.Bitmap.createBitmap(action.width, action.height,
+                    android.graphics.Bitmap.Config.ARGB_8888)
+                val focused = android.graphics.Bitmap.createBitmap(action.width, action.height,
+                    android.graphics.Bitmap.Config.ARGB_8888)
+                try {
+                    action.background.draw(android.graphics.Canvas(bitmap))
+                    assertTrue("$orientation/$alignment/split=$split action key lost its primary fill",
+                        bitmap.getPixel(action.width / 2, action.height / 2) !=
+                            Ui.palette(panelContext, KeyboardOptions(numberRow = false,
+                                alignment = alignment, splitLandscape = split)).background)
+                    bitmap.eraseColor(android.graphics.Color.TRANSPARENT)
+                    action.draw(android.graphics.Canvas(bitmap))
+                    action.isFocusableInTouchMode = true
+                    assertTrue("$orientation/$alignment/split=$split action did not accept focus",
+                        action.requestFocus())
+                    action.jumpDrawablesToCurrentState()
+                    action.draw(android.graphics.Canvas(focused))
+                    assertFalse("$orientation/$alignment/split=$split action focus was visually indistinguishable",
+                        bitmap.sameAs(focused))
+                } finally {
+                    action.clearFocus(); action.jumpDrawablesToCurrentState()
+                    bitmap.recycle(); focused.recycle()
+                }
                 panel.dispose()
             }
         }

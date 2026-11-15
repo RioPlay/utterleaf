@@ -3,9 +3,14 @@
 This records the desktop control component's resource review, not a live OBS
 release or proof of native plugin compatibility. Android does not use this library.
 
-The desktop dependency is pinned to `websockets==16.1.1`. Its published metadata
+The desktop dependency is pinned to `websockets==16.1.1`. The November 2026
+security update raises Utterleaf's source minimum to Python 3.11; the pin remains
+until a separately tested transport upgrade. The receipt below records the
+original selection and does not describe the current Python support floor.
+
+Its published metadata
 declares Python `>=3.10`, no runtime dependencies, and `BSD-3-Clause`. The newer
-17.1 release requires Python 3.11 and would exclude Utterleaf's declared Python
+17.1 release required Python 3.11 and excluded Utterleaf's then-declared Python
 3.10 support. See the [16.1.1 metadata](https://pypi.org/pypi/websockets/16.1.1/json)
 and [17.1 metadata](https://pypi.org/pypi/websockets/17.1/json).
 

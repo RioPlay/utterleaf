@@ -13,10 +13,10 @@
   <a href="docs/README.md">Help & docs</a>
 </p>
 
-> **Windows desktop 0.4.6 RC3 candidate:** this checkout contains the desktop
-> modernization, recovery, continuous-dictation, long-file, speech-end, Markdown,
-> and delivery-safety updates. See the [preview notes](packaging/preview-notes.md).
-> RC3 is not published yet; the Download links below point to stable v0.4.5.
+> **Windows desktop 0.4.6 RC4 preview:** the Windows clipboard and Settings
+> recovery fixes, T3 Code spacing correction and dependency update are available
+> in the [published prerelease](https://github.com/RioPlay/utterleaf/releases/tag/desktop-v0.4.6-rc.4). See the [preview notes](packaging/preview-notes.md).
+> Stable v0.4.5 remains the default download.
 
 Speak into the app you're already using. Utterleaf turns your words into text,
 then gets out of the way. No account, no cloud transcription, and no saved audio

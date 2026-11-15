@@ -23,6 +23,8 @@ on:
       - 'docs/plans/completed/android*.md'
       - 'docs/workspaces.md'
       - '.github/workflows/android*.yml'
+  workflow_dispatch:
+
 permissions:
   contents: read
 
@@ -39,12 +41,10 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Windows Python, Tk, and audio tools
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Set up the reviewed Windows Python runtime
         if: runner.os == 'Windows'
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.14.7"
+        run: .\packaging\setup-windows-python.ps1
       - name: Install Linux Python, Tk, and X11 tools
         if: runner.os == 'Linux'
         run: |
@@ -57,7 +57,13 @@ jobs:
           if ($IsWindows) { python -m venv .venv; $py = '.\.venv\Scripts\python.exe' }
           else { /usr/bin/python3 -m venv .venv; $py = './.venv/bin/python' }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $py -m pip install --constraint packaging/constraints-posix.txt -e ".[dev]"
+          if ($IsWindows) {
+            & $py -m pip install --require-hashes -r packaging\requirements-windows-preview.txt
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            & $py -m pip install --no-deps --no-build-isolation -e ".[dev]"
+          } else {
+            & $py -m pip install --constraint packaging/constraints-posix.txt -e ".[dev]"
+          }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       # Headless only. No display tests and no screenshot capture: the capture
       # harness renders dozens of frames to produce images nobody reviews in CI.
@@ -80,21 +86,19 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            python: "3.14.7"
+            python: "3.14.10"
           - os: ubuntu-24.04
             python: system
           - os: macos-latest
-            python: "3.14.7"
+            python: "3.14.10"
     defaults:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Python and Linux Tk/audio/X11 tools
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Set up the reviewed Windows Python runtime
         if: runner.os == 'Windows'
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.14.7"
+        run: .\packaging\setup-windows-python.ps1
       - name: Install Linux system dependencies
         if: runner.os == 'Linux'
         run: |
@@ -118,7 +122,7 @@ jobs:
           else { python -m venv .venv; $py = './.venv/bin/python' }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ($IsWindows) {
-            & $py -m pip install --require-hashes -r packaging\\requirements-windows-preview.txt
+            & $py -m pip install --require-hashes -r packaging\requirements-windows-preview.txt
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             & $py -m pip install --no-deps --no-build-isolation -e ".[dev]"
           } else {
@@ -144,12 +148,10 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Windows Python and build tools
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Set up the reviewed Windows Python runtime
         if: runner.os == 'Windows'
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.14.7"
+        run: .\packaging\setup-windows-python.ps1
       - name: Install macOS Python, Tk, and PortAudio
         if: runner.os == 'macOS'
         run: |
@@ -172,7 +174,7 @@ jobs:
           else { python -m venv .venv; $py = './.venv/bin/python' }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ($IsWindows) {
-            & $py -m pip install --require-hashes -r packaging\\requirements-windows-preview.txt
+            & $py -m pip install --require-hashes -r packaging\requirements-windows-preview.txt
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             & $py -m pip install --no-deps --no-build-isolation -e .
           } elseif ($IsMacOS) {
@@ -210,7 +212,17 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./.venv/bin/python -m utterleaf --help
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - uses: actions/upload-artifact@v4
+      - name: Test extracted Linux release startup and Wayland session controls
+        if: runner.os == 'Linux'
+        env:
+          UTTERLEAF_EXPECT_TRAY_BACKEND: pystray._appindicator
+        run: |
+          New-Item -ItemType Directory -Path extracted-release
+          tar -xzf dist/Utterleaf-linux-x64.tar.gz -C extracted-release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          xvfb-run -a ./.venv/bin/python tests/smoke_linux_release.py extracted-release/Utterleaf
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Utterleaf-${{ runner.os }}
           path: dist/

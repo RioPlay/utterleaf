@@ -1906,7 +1906,12 @@ def run() -> int:
     requests = threading.Event()
     close_requests = threading.Event()
     instance = SettingsInstance()
-    if not instance.acquire(requests.set, close_requests.set):
+    try:
+        acquired = instance.acquire(requests.set, close_requests.set)
+    except RuntimeError as exc:
+        messagebox.showerror("Settings unavailable", str(exc))
+        return 1
+    if not acquired:
         return 0
     root = None
     try:

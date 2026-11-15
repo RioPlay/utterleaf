@@ -72,6 +72,62 @@ def test_multiline_prose_keeps_internal_breaks_and_both_take_boundaries():
     assert delivery.text == "Cats.\nDogs."
 
 
+@pytest.mark.parametrize("text", ["ßeta.\nNext.", "ﬀirst.\r\nNext.", "ﬃrst.\rNext."])
+@pytest.mark.parametrize("previous, prefix", [
+    ("", ""),
+    (" \t", ""),
+    ("Before.", " "),
+    ("Before", ". "),
+    ("Before. ", ""),
+    ("Before.\n\t", ""),
+    ("Before.\r\n", ""),
+    ('Before.”', " "),
+    ("Before:", " "),
+])
+def test_multiline_unicode_keeps_exact_text_and_only_boundary_separator(text, previous, prefix):
+    delivery = prepare_delivery(text, previous_delivered=previous)
+    assert delivery.text == text
+    assert delivery.prefix == prefix
+    assert delivery.suffix == " "
+    assert previous + delivery.payload == previous + prefix + text + " "
+
+
+@pytest.mark.parametrize("text, prefix", [
+    ("ßeta.\n\tNext.\n", " "),
+    ("ﬀirst.\r\n  Next. \t", " "),
+    ("  ßeta.\nNext.\t", ""),
+    ("\nﬃrst.\nNext.\n", ""),
+])
+def test_multiline_unicode_preserves_leading_internal_and_trailing_whitespace(text, prefix):
+    delivery = prepare_delivery(text, previous_delivered="Before.")
+    assert delivery.text == text
+    assert delivery.payload == prefix + text
+    assert delivery.suffix == ""
+
+
+@pytest.mark.parametrize("neighbors, prefix, suffix", [
+    (("e", "a"), " ", " "),
+    (("e", ","), " ", ""),
+    ((" ", " "), "", ""),
+])
+def test_multiline_unicode_keeps_destination_neighbor_spacing(neighbors, prefix, suffix):
+    text = "ßeta.\nNext."
+    delivery = prepare_delivery(text, neighbors=neighbors)
+    assert delivery.text == text
+    assert delivery.payload == prefix + text + suffix
+
+
+@pytest.mark.parametrize("text, expected", [
+    ("ßeta.", "SSeta."),
+    ("ﬀirst.", "FFirst."),
+    ("ﬃrst.", "FFIrst."),
+])
+def test_single_line_unicode_still_capitalizes_without_extra_letters(text, expected):
+    delivery = prepare_delivery(text, previous_delivered="Before.")
+    assert delivery.text == expected
+    assert delivery.payload == " " + expected + " "
+
+
 @pytest.mark.parametrize("command, text", [
     ("bullets", "- Apples\n- Pears"),
     ("numbered", "1. Apples\n2. Pears"),

@@ -21,8 +21,9 @@ def test_windows_installer_runs_the_frozen_smoke_before_upload() -> None:
     installers = workflow.split("  installers:", 1)[1]
 
     assert "packaging\\build.ps1" in installers
-    assert "actions/upload-artifact@v4" in installers
+    assert "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02" in installers
     assert "tests\\smoke_release.py dist\\Utterleaf" in installers
+    assert installers.index("tests\\smoke_release.py") < installers.index("actions/upload-artifact@")
     assert "continue-on-error: true" not in installers
 
 

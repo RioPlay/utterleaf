@@ -115,7 +115,9 @@ def prepare_delivery(text: str, *, previous_delivered: str = "",
         prefix = ""
         if previous_delivered and not text[0].isspace():
             stitched = stitch_to_previous(previous_delivered, text)
-            prefix = stitched[:-len(text.strip())]
+            # Unicode capitalization can expand characters. Remove the same
+            # normalized body so only the separator precedes our exact text.
+            prefix = stitched.removesuffix(stitch_to_previous("", text))
         return Delivery(text, prefix or _context_prefix(text, command, neighbors),
                         _context_suffix(_prose_suffix(text), neighbors))
     body = _avoid_right_delimiter(text.strip(), neighbors)
