@@ -11,8 +11,8 @@ set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
 set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
 set(GGML_BACKEND_DL OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(whisper
-    URL https://codeload.github.com/ggml-org/whisper.cpp/tar.gz/2eeeba56e9edd762b4b38467bab96c2517163158
-    URL_HASH SHA256=089b898aa83b24a8321e0fd554eeb0967fb03dd687e27f6374c72d3363b5b429)
+    URL https://codeload.github.com/ggml-org/whisper.cpp/tar.gz/d1be6fde11ac6e0407606b4e42fe72d34add8037
+    URL_HASH SHA256=645445da884df6dbd52b30f82d7be7c01d1767c938714e477e786b88d529e9f4)
 FetchContent_MakeAvailable(whisper)
 add_library(utterleaf SHARED bridge.cpp)
 target_compile_features(utterleaf PRIVATE cxx_std_17)
