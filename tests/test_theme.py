@@ -81,3 +81,25 @@ def test_warm_tray_updates_do_not_render_and_images_are_independent(monkeypatch)
     first = leaf_image("idle")
     first.putpixel((0, 0), (255, 0, 0, 255))
     assert leaf_image("idle").tobytes() == original.tobytes()
+
+
+def test_visual_tokens_keep_scales_and_readable_state_content():
+    from utterleaf import theme
+    assert theme.SPACING == (4, 8, 12, 16, 24, 32)
+    assert theme.RADII == (6, 10, 14)
+    assert set(theme.TYPE_SCALE) == {'page_title', 'section_label', 'body', 'hint', 'caption'}
+    assert len({theme.SURFACE_BASE, theme.SURFACE_CARD, theme.SURFACE_RAISED}) == 3
+    assert theme.FOCUS_WIDTH == 2
+    assert theme.FOCUS_RING == theme.PRIMARY
+    assert len({theme.STATE_HOVER, theme.STATE_PRESSED, theme.STATE_SELECTED}) == 3
+
+    def luminance(color):
+        values = [int(color[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+        values = [v / 12.92 if v <= .04045 else ((v + .055) / 1.055) ** 2.4 for v in values]
+        return sum(v * weight for v, weight in zip(values, (.2126, .7152, .0722)))
+
+    for background in (theme.SURFACE_BASE, theme.SURFACE_CARD, theme.SURFACE_RAISED,
+                       theme.STATE_HOVER, theme.STATE_PRESSED, theme.STATE_SELECTED):
+        for text in (theme.ON_SURFACE, theme.ON_VARIANT):
+            assert (luminance(text) + .05) / (luminance(background) + .05) >= 4.5
+    assert theme.font('page_title')[1] > theme.font('body')[1]

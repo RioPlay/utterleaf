@@ -7,7 +7,7 @@ from utterleaf.host import ui_font
 
 def _fonts() -> tuple[str, tuple, tuple, tuple, tuple]:
     family = ui_font()
-    return family, (family, 22, "bold"), (family, 10), (family, 9), (family, 10, "bold")
+    return family, font("page_title"), font("body"), font("hint"), (family, 10, "bold")
 
 # Dark by default, with the same green identity as the tray leaf.
 PRIMARY = "#83DA9A"
@@ -15,14 +15,36 @@ PRIMARY_HOVER = "#A0E9B2"
 ON_PRIMARY = "#102A1B"
 PRIMARY_CONTAINER = "#203C2D"
 ON_PRIMARY_CONTAINER = "#C1F2CD"
-SURFACE = "#171E20"
-SURFACE_LOW = "#101617"
+SURFACE = "#1B2425"
+SURFACE_LOW = "#0E1515"
 SURFACE_CONTAINER = "#283335"
 ON_SURFACE = "#E5EEE8"
 ON_VARIANT = "#AABCB1"
 OUTLINE = "#71897B"
 OUTLINE_VARIANT = "#35483D"
 ERROR = "#FFB4AB"
+
+# Shared tokens. Font sizes are points, leaving Tk display scaling intact.
+SPACING = (4, 8, 12, 16, 24, 32)
+TYPE_SCALE = {"page_title": (22, "bold"), "section_label": (12, "bold"),
+              "body": (10,), "hint": (9,), "caption": (9, "bold")}
+RADII = (6, 10, 14)
+SURFACE_BASE = "#131B1C"
+SURFACE_CARD = SURFACE
+SURFACE_RAISED = SURFACE_CONTAINER
+HAIRLINE = "#334443"
+FOCUS_RING = PRIMARY
+FOCUS_WIDTH = 2
+STATE_HOVER = "#2D3E39"
+STATE_PRESSED = "#182F25"
+STATE_SELECTED = PRIMARY_CONTAINER
+DISABLED_CONTENT = "#8B9C92"
+
+
+def font(role="body"):
+    """Return a point-based font token using the platform's UI family."""
+    return (ui_font(), *TYPE_SCALE[role])
+
 
 # Dark surfaces for the always-on overlay.
 PILL_SURFACE = "#1C1B1F"
@@ -55,12 +77,12 @@ def apply(root) -> None:
 
     style.configure(".", background=SURFACE, foreground=ON_SURFACE, font=font_body)
     style.configure("TFrame", background=SURFACE)
-    style.configure("Page.TFrame", background=SURFACE_LOW)
-    style.configure("Page.TLabel", background=SURFACE_LOW)
+    style.configure("Page.TFrame", background=SURFACE_BASE)
+    style.configure("Page.TLabel", background=SURFACE_BASE)
     style.configure("Card.TFrame", background=SURFACE_CONTAINER, relief="flat")
     style.configure("TLabel", background=SURFACE, foreground=ON_SURFACE, font=font_body)
-    style.configure("Title.TLabel", background=SURFACE_LOW, foreground=ON_SURFACE, font=font_title)
-    style.configure("Subtitle.TLabel", background=SURFACE_LOW, foreground=ON_VARIANT, font=font_body)
+    style.configure("Title.TLabel", background=SURFACE_BASE, foreground=ON_SURFACE, font=font_title)
+    style.configure("Subtitle.TLabel", background=SURFACE_BASE, foreground=ON_VARIANT, font=font_body)
     style.configure("Hint.TLabel", background=SURFACE, foreground=ON_VARIANT, font=font_hint)
     style.configure("Card.TLabel", background=SURFACE_CONTAINER, foreground=ON_SURFACE, font=font_body)
     style.configure(
@@ -76,11 +98,13 @@ def apply(root) -> None:
                         focuscolor=PRIMARY,
                         indicatorbackground=SURFACE_CONTAINER, indicatorforeground=ON_PRIMARY)
         style.map(control, background=[("active", SURFACE)],
-                  foreground=[("disabled", OUTLINE)],
+                  foreground=[("disabled", DISABLED_CONTENT)],
                   indicatorbackground=[("selected", PRIMARY), ("active", SURFACE_CONTAINER)])
-    style.configure("TScrollbar", background=SURFACE_CONTAINER, troughcolor=SURFACE_LOW,
-                    arrowcolor=ON_VARIANT, bordercolor=SURFACE)
-    style.map("TScrollbar", background=[("active", OUTLINE_VARIANT)])
+    style.configure("TScrollbar", background=HAIRLINE, troughcolor=SURFACE_BASE,
+                    arrowcolor=ON_VARIANT, bordercolor=SURFACE_BASE,
+                    lightcolor=SURFACE_BASE, darkcolor=SURFACE_BASE,
+                    borderwidth=0, arrowsize=12, gripcount=0)
+    style.map("TScrollbar", background=[("pressed", STATE_PRESSED), ("active", STATE_HOVER)])
     style.configure("TNotebook", background=SURFACE, bordercolor=OUTLINE_VARIANT)
     style.configure("TNotebook.Tab", background=SURFACE_CONTAINER, foreground=ON_VARIANT, padding=(10, 6))
     style.map("TNotebook.Tab", background=[("selected", PRIMARY_CONTAINER)],
@@ -94,7 +118,7 @@ def apply(root) -> None:
         bordercolor=OUTLINE_VARIANT,
         lightcolor=OUTLINE_VARIANT,
         darkcolor=OUTLINE_VARIANT,
-        padding=6,
+        padding=(12, 10),
     )
     style.map(
         "TCombobox",
@@ -108,7 +132,7 @@ def apply(root) -> None:
         "TEntry",
         fieldbackground=SURFACE_LOW,
         foreground=ON_SURFACE,
-        padding=6,
+        padding=(12, 10),
         bordercolor=OUTLINE_VARIANT,
         lightcolor=OUTLINE_VARIANT,
         darkcolor=OUTLINE_VARIANT,
@@ -129,8 +153,8 @@ def apply(root) -> None:
         borderwidth=0,
         focuscolor=PRIMARY,
     )
-    style.map("TButton", background=[("active", OUTLINE_VARIANT)],
-              foreground=[("disabled", OUTLINE)])
+    style.map("TButton", background=[("pressed", STATE_PRESSED), ("active", STATE_HOVER)],
+              foreground=[("disabled", DISABLED_CONTENT)])
     style.configure(
         "Primary.TButton",
         background=PRIMARY,
@@ -143,9 +167,9 @@ def apply(root) -> None:
     )
     style.map("Primary.TButton", background=[("disabled", SURFACE_CONTAINER), ("active", PRIMARY_HOVER)],
               foreground=[("disabled", OUTLINE), ("!disabled", ON_PRIMARY)])
-    style.configure("Section.TLabel", font=(_family, 13, "bold"))
-    style.configure("Eyebrow.TLabel", background=SURFACE_LOW, foreground=PRIMARY, font=(_family, 9, "bold"))
-    style.configure("Nav.TButton", anchor="w", padding=(16, 12), background=SURFACE_LOW)
+    style.configure("Section.TLabel", font=font("section_label"))
+    style.configure("Eyebrow.TLabel", background=SURFACE_BASE, foreground=PRIMARY, font=(_family, 9, "bold"))
+    style.configure("Nav.TButton", anchor="w", padding=(16, 12), background=SURFACE_BASE)
     style.map("Nav.TButton", background=[("active", SURFACE_CONTAINER)])
     style.configure("Selected.Nav.TButton", background=PRIMARY_CONTAINER,
                     foreground=ON_PRIMARY_CONTAINER, font=font_button)
@@ -153,3 +177,10 @@ def apply(root) -> None:
     style.configure("TSeparator", background=OUTLINE_VARIANT)
     style.configure("TProgressbar", background=PRIMARY, troughcolor=SURFACE_CONTAINER,
                     borderwidth=0, thickness=6)
+
+    style.configure("Segmented.TRadiobutton", padding=(12, 8), font=font_body)
+    style.configure("Field.TEntry", padding=(12, 10), borderwidth=FOCUS_WIDTH)
+    style.configure("TCombobox", borderwidth=FOCUS_WIDTH, arrowsize=14)
+    style.map("TCombobox", foreground=[("disabled", DISABLED_CONTENT), ("readonly", ON_SURFACE)],
+              arrowcolor=[("disabled", DISABLED_CONTENT), ("!disabled", ON_VARIANT)])
+    style.map("TEntry", foreground=[("disabled", DISABLED_CONTENT)])
