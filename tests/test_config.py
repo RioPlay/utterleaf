@@ -1,4 +1,4 @@
-from utterleaf.config import Config, _dump_toml, _parse_toml, ensure_files
+from utterleaf.config import Config, _dump_toml, _parse_toml, ensure_files, load, save
 from utterleaf.host import default_hotkey
 import pytest
 
@@ -11,7 +11,40 @@ def test_round_trip_defaults() -> None:
     assert loaded.model == "small"
     assert loaded.microphone == ""
     assert loaded.remove_fillers is True
+    assert loaded.allow_network is False
     assert not hasattr(loaded, "polish")
+
+
+def test_first_run_model_downloads_require_explicit_consent(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr("utterleaf.config.data_dir", lambda: tmp_path)
+    monkeypatch.setattr("utterleaf.config.config_path", lambda: tmp_path / "config.toml")
+    monkeypatch.setattr("utterleaf.config.dictionary_path", lambda: tmp_path / "dictionary.txt")
+
+    cfg = ensure_files()
+
+    assert cfg.allow_network is False
+    assert _parse_toml((tmp_path / "config.toml").read_text(encoding="utf-8"))[
+        "allow_network"
+    ] is False
+
+
+@pytest.mark.parametrize("value", ['"false"', "1"])
+def test_malformed_model_download_consent_fails_closed(
+    tmp_path, monkeypatch, value
+) -> None:
+    monkeypatch.setattr("utterleaf.config.config_path", lambda: tmp_path / "config.toml")
+    (tmp_path / "config.toml").write_text(
+        f"allow_network = {value}\n", encoding="utf-8"
+    )
+
+    assert load().allow_network is False
+
+
+def test_explicit_model_download_consent_survives_load(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr("utterleaf.config.config_path", lambda: tmp_path / "config.toml")
+    save(Config(allow_network=True))
+
+    assert load().allow_network is True
 
 
 def test_live_preview_defaults_off() -> None:
@@ -47,8 +80,6 @@ def test_invalid_speech_end_config_fails_closed(tmp_path, monkeypatch):
     (tmp_path / "config.toml").write_text(
         'speech_end_enabled = "true"\nspeech_end_insert = "true"\n'
         'speech_end_pause_seconds = 99\n', encoding="utf-8")
-    from utterleaf.config import load
-
     loaded = load()
     assert loaded.speech_end_enabled is False
     assert loaded.speech_end_insert is False
@@ -80,8 +111,6 @@ def test_legacy_cloud_polish_keys_are_ignored(tmp_path, monkeypatch) -> None:
         'polish = "ollama"\nollama_model = "llama3.2"\nhotkey = "f8"\n',
         encoding="utf-8",
     )
-    from utterleaf.config import load
-
     cfg = load()
     assert cfg.hotkey == "f8"
     assert not hasattr(cfg, "polish")

@@ -4,7 +4,7 @@
 
 Scope: Windows, macOS, and Linux desktop application only.
 
-Updated November 13, 2026. Priorities follow the
+Updated November 15, 2026. Priorities follow the
 [offline STT user research](offline-stt-user-research-2026-09-08.md).
 This is an ordered development plan, not a promise of release dates.
 
@@ -16,12 +16,246 @@ intended field, with understandable local processing and minimal interruption.
 
 ## Now
 
-- **Published Windows 0.4.6 RC4:** the unsigned Windows x64 CPU prerelease includes the merged dependency update, clipboard publication receipt correction, bounded Settings lock recovery, and exact T3 Code prose spacing. [Release](https://github.com/RioPlay/utterleaf/releases/tag/desktop-v0.4.6-rc.4) is prerelease `latest=false`; stable v0.4.5 remains the default. [PR #76](https://github.com/RioPlay/utterleaf/pull/76/checks) passed its hosted gates, and the exact-tag [Windows build](https://github.com/RioPlay/utterleaf/actions/runs/43364255809) passed. Its JUnit report records 1,699 passed, 13 skipped, zero failures and errors. The 113,160,790-byte ZIP SHA-256 is `630949d0144bcc4242380addac62d0eca5d9ed2b068c22f229be91c2009f6b2f`; all five uploaded asset digests and sizes matched the reviewed local artifacts, and the public checksum download matched the ZIP. Actual T3 Code two-take dictation after the local fix remains unconfirmed. Expat 2.9.0 and SQLite 3.50.4 advisories remain. Other desktop platforms, live OBS, GPU behavior, physical-device accessibility and unbounded performance are not established. See the [completed release record](plans/completed/windows-packaged-paste.md).
-- **Security remediation merged (November 12):** patched Python dependency floors and Windows hash pins, reviewed CPython 3.14.10/OpenSSL 3.5.9 packaging inputs, immutable desktop action references and dependency-audit automation were merged to main in commit `87012a56bb376656fe976476f909a9df2bf72cea`. Final Windows checks: 1,675 tests passed, 14 skipped; CPU build/doctor and independent review passed; scanned Python dependency inventories have no known PyPI advisories. GitHub dependency alerts/security fixes are enabled. [Plan, residual bundled-runtime advisories and release limits](plans/active/desktop-dependency-security.md). The Windows RC4 preview is published; Android security work has a separate branch and plan.
+- **Current focus: local desktop 0.4.6 RC5 preparation.** Source version `0.4.6rc5` is an unpublished candidate. The Vocabulary form accepts manually entered corrections and stages them in the existing dictionary draft until Save; it does not persist on form submission. Targeted headless source checks passed: 212 selected checks and 54 mocked clipboard checks. The local Windows CPU archive is prepared and four frozen CLI cases passed. It is unsigned, not installed, and not published. Final CI and native GUI/device acceptance remain open. See the [RC5 readiness plan](plans/active/desktop-0.4.6-rc5-release-readiness.md) for archive identity and evidence. Android is paused until a suitable build and validation pipeline is agreed.
+- **Published Windows 0.4.6 RC4, historical release evidence:** the unsigned Windows x64 CPU prerelease includes the merged dependency update, clipboard publication receipt correction, bounded Settings lock recovery, and exact T3 Code prose spacing. [Release](https://github.com/RioPlay/utterleaf/releases/tag/desktop-v0.4.6-rc.4) is prerelease `latest=false`; stable v0.4.5 remains the default. [PR #76](https://github.com/RioPlay/utterleaf/pull/76/checks) passed its hosted gates, and the exact-tag [Windows build](https://github.com/RioPlay/utterleaf/actions/runs/43364255809) passed. Its JUnit report records 1,699 passed, 13 skipped, zero failures and errors. The 113,160,790-byte ZIP SHA-256 is `630949d0144bcc4242380addac62d0eca5d9ed2b068c22f229be91c2009f6b2f`; all five uploaded asset digests and sizes matched the reviewed local artifacts, and the public checksum download matched the ZIP. Actual T3 Code two-take dictation after the local fix remains unconfirmed. Expat 2.9.0 and SQLite 3.50.4 advisories remain. Other desktop platforms, live OBS, GPU behavior, physical-device accessibility and unbounded performance are not established. See the [completed release record](plans/completed/windows-packaged-paste.md).
+- **Security remediation merged (November 12):** patched Python dependency floors and Windows hash pins, reviewed CPython 3.14.10/OpenSSL 3.5.9 packaging inputs, immutable desktop action references and dependency-audit automation were merged to main in commit `87012a56bb376656fe976476f909a9df2bf72cea`. Final Windows checks: 1,675 tests passed, 14 skipped; CPU build/doctor and independent review passed; scanned Python dependency inventories have no known PyPI advisories. GitHub dependency alerts/security fixes are enabled. [Plan, residual bundled-runtime advisories and release limits](plans/active/desktop-dependency-security.md). Those security and delivery fixes are included in published RC4; Android security work remains separate and paused.
+
+- **Desktop stabilization:** the layered visual source and quiet-testing cleanup
+  are consolidated on `feat/desktop-modernization`, starting from `9b28250`.
+  The [current bounded contract](plans/active/desktop-modernization.md#current-stabilization-slice-november-15-2026)
+  records the work and verification boundary. Independent static review found no
+  demonstrated material regression in the merged visual controls, and existing
+  captures match the reviewed implementation. The interface guide now reflects
+  those desktop tokens. Display tests now require explicit opt-in even when
+  a marker expression is supplied. One headless selection/theme invocation passed
+  **10 checks** and excluded a harmless inherited UI sentinel under an explicit
+  marker expression. This is unreleased source, not an installed
+  build or a stable-release claim; current whole-app and native accessibility
+  acceptance remain open.
+  A subsequent static integration review restored preview UI-test coverage and
+  aligned stable publication with the six explicitly named test/build matrix
+  jobs. Publication still requires a successful main run for the exact tag SHA;
+  the subsequent approved headless run passed **7 CI-contract checks** at
+  `5c2ee71`. Hosted CI, installation and release remain unperformed.
+
+- **Windows accessibility shell:** the September 27 UI Automation audit is a
+  measured framework decision gate, not missing documentation: all 12 inspected
+  Tk surfaces exposed only a Window and unnamed panes, with no semantic controls.
+  The [active accessibility-shell plan](plans/active/desktop-windows-accessibility-shell.md)
+  starts an isolated, opt-in standard-Win32 proof while preserving the existing
+  speech/configuration architecture and Tk on macOS/Linux. A frozen version-6
+  common-controls probe and the restored opt-in Dictation shell passed an
+  independent native UIA inventory for names, focusability and standard
+    interaction patterns. Its second stage now shares the complete Settings draft
+    and guarded save controller with Tk; the native shell still has no production
+    dispatch and cannot discover product state or dependencies on its own. It is
+    not yet integrated. It cannot become the default or satisfy the release gate until
+  complete automated UIA, Narrator, NVDA, physical DPI, packaging and regression
+  acceptance passes.
+- **Active bounded desktop stream:** the
+  [desktop modernization plan](plans/active/desktop-modernization.md) starts with
+  a deterministic [UI baseline](desktop-ui-baseline.md): 39 Settings captures and
+  eight indicator captures, with source and physical-device evidence separated.
+  The first implemented source slice adds last-checked app presence and selected
+  model-file status to Dictation, a scale-aware maximum page width, and local
+  page/help shortcuts. The focused Settings/save/configuration/theme/brand/
+  indicator/capture suite passed **103 tests**; the final wrapping and actual-key
+  event follow-up passed **12 tests**, including 1×/1.5×/2× Tk text scaling.
+  Native indicator checks passed eight scenarios through three lifecycles.
+  Independent review found no blocking issues in this bounded source slice.
+  A follow-up recovery slice adds safe device-list/model-download failure copy,
+  optional local Details, and non-overlapping microphone refresh/test feedback.
+  Input changes invalidate old check results; audio detection no longer claims
+  speech-model readiness. **133 focused tests passed, with no skips**, and all
+  **40 candidate Settings captures** completed. Native device enumeration still
+  has no timeout; physical recovery and Details-dialog accessibility remain open.
+  Independent review caught a late-cancel download race; it is fixed and covered
+  by a regression test, with no blocking findings after re-review.
+  A third slice adds authenticated, text-free last-reported app status:
+  Idle, Listening, Processing, or Needs attention. Opening Settings and explicit
+  Refresh query a snapshot; no polling or readiness claim is added. **174 focused
+  tests passed with no skips**, **43 candidate captures** completed, and the full
+  desktop suite passed **1,690 tests with 14 explicit prerequisite skips**.
+  Independent product review found no blocking issues; exact receipts and skip
+  reasons are in the active plan.
+  Keyboard page scrolling now makes the full Voice commands reference reachable
+  without a mouse. Page Up/Down and Home/End preserve native editing keys,
+  focus, and drafts; explicit scrolling survives a queued page-opening reset.
+  **101 focused Settings tests passed with no skips**, including 12 new keyboard
+  cases and compact 1×/1.5×/2× Tk text scales. All **43 captures** completed and
+  the updated Help reference was inspected. Independent review is clear.
+  Follow-up source slices keep oversized-editor insertion/validation lines in
+  view, support held-key repeats and report Tab traversal, and add consistent
+  model names/purpose with explicit cached Model details. Model rows/actions
+  stack at larger text sizes; compact sidebar copy is no longer partially clipped.
+  A consolidated run passed **1,760 tests with 14 prerequisite skips** before
+  the final sidebar correction. Final-source Settings/model/save/reset checks
+  passed **173 tests with no skips**, and **46 candidate captures** completed.
+  Independent reviews are clear. An earlier intermittent Tcl Tab-command failure
+  remains recorded despite subsequent green runs. A bounded six-sample Settings
+  comparison measured low idle CPU and nearly unchanged private memory; its exact
+  scope, source stage, startup variance, and raw receipt are in the active plan.
+  The auxiliary follow-up records **19 before-state and 19 final file/decoder/
+  review captures**, fixes clipped large-text actions with fixed wrapping footers
+  and scrollable content, and preserves native preview/picker keys. Independent
+  review is clear; **69 final-source focused tests passed without skips using
+  pytest `-s`**. Ordinary captured-output runs still intermittently fail during
+  Tcl startup before widgets exist; an initial 80-lifecycle probe did not
+  reproduce it. A later bare-Tk probe, with no Utterleaf imports or capture
+  guards, reproduced two startup failures in 20 cases under pytest FD capture;
+  all 20 passed under `--capture=sys`. The native cause remains unproven.
+  Focused UI checks now use explicit sys capture, preserving all assertions;
+  no app workaround, startup retry or global test-policy change was added.
+  The recovery/state follow-up adds reusable, explicit Details for file
+  transcription/export and decoder setup failures, preserves previews on export
+  errors, and handles destination-validation failures without bypassing overwrite
+  consent. Entire recovery messages and Details reveal together without moving
+  focus. Shared artwork says Listening; indicator errors use Speech model
+  unavailable and Needs attention. Measured Tk headline width prevents clipping.
+  **142 final-source focused tests passed without skips**, **21 final auxiliary
+  captures** completed, and **11 native indicator scenarios passed three
+  lifecycles**, including headline-fit checks. Independent review is clear.
+  The applied-model readiness follow-up now requires a successful load matching
+  applied model/device/compute/language settings, separate from unsaved choices
+  and local files. Serialized, generation-checked warmup preserves active states,
+  respects revoked download permission before native loading, and clears cached
+  result captions on Quit. Independent review is clear. The final full suite
+  passed **1,958 tests with 14 prerequisite skips**; **47 Settings captures** and
+  **11 native indicator scenarios through three lifecycles** completed.
+  Exact commands, earlier focused receipts and limitations are in the plan.
+  The next recovery slice recognizes structured unsupported audio configurations
+  without guessing from exception text or changing capture retries/fallback.
+  **275 focused app/audio/Settings/capture tests** and **29 indicator/failure
+  tests** pass without skips. **49 Settings images** and **12 native indicator
+  scenarios through three lifecycles** completed; independent review is clear.
+  Stable device identity and bounded enumeration remain separate contracts.
+  Settings search now covers 21 preferences and five destinations using static
+  labels/help terms, never private entered values. Ctrl+F/Command+F, keyboard
+  results, prerequisite guidance and focus-preserving dismissal have real-Tk
+  checks. **181 combined Settings tests passed**, followed by **37 final-source
+  search/capture tests** after a reviewed alternate-label correction, all without
+  skips. **55 final Settings captures** completed; independent review is clear.
+  Backup preview now supports both Tab directions and wraps choices/actions at
+  natural widths. Source fixes keep the vocabulary disclosure visible and prevent
+  ancestor focus events moving a checkbox during its first mouse click.
+  **41 final-source backup tests passed without skips**; eight source-hashed
+  reviewed captures retain the separate eight-image before-state. Independent
+  review is clear; backup storage, consent and staleness checks are unchanged.
+  Icons & artwork now keeps its actions visible, uses five concise stable tab
+  labels, supports page-key scrolling and gives inline export recovery with
+  explicit Details. **21 focused tests passed without skips**; nine reviewed
+  artwork captures retain the separate before-state, and **55 Settings captures**
+  refresh the integrated guide views. Independent review is clear. The compact
+  2× failure keeps a 103-pixel reference viewport and complete recovery/actions.
+  Diagnostic/GPU checks now share one guarded operation and retain the previous
+  report on failure. Report exports handle picker/write errors, preserve the
+  chosen snapshot across native-picker callbacks, and distinguish newer previews.
+  Details remains stationary during pointer activation while keyboard focus
+  reveals full recovery. **48 focused checks** and **195 final-source Settings
+  regressions** pass without skips; 23 existing hardware tests also pass. Nine
+  reviewed diagnostic captures and **55 refreshed Settings captures** completed
+  with matching source hashes. Independent review is clear; probing, saved-config
+  semantics and the existing direct report-file writer are unchanged.
+  Settings-save recovery now preserves confirmed local progress separately from
+  app notification. Partial/unknown/start failures retain drafts and explain
+  retry; optional bounded Save details keeps raw causes out of automatic alerts.
+  Stale/closed callbacks are ignored and worker-start failure unlocks controls.
+  **34 UI** and **13 harness checks** pass without skips; **38 pure presentation
+  tests** pass. Ten reviewed captures retain the separate ten-image baseline;
+  all source/helper/harness hashes match. Independent review caught and verified
+  a keyboard retry-focus correction, with no remaining bounded findings.
+  The final combined Settings/recovery integration passed **290 tests without
+  skips**. Separate settings/configuration/privacy/boundary/startup/presentation
+  checks passed **81**, with one existing Windows symlink-privilege prerequisite
+  skip; no persistence source changed.
+  **55 refreshed Settings images** completed with unchanged reviewed source
+  hashes; ordinary footers remain unchanged outside save recovery.
+  Microphone Refresh/Test and app-status checks now recover when a worker cannot
+  start. Controls unlock, drafts/selection remain, and both initial background
+  checks can fail without abandoning Settings construction. No recording,
+  enumeration or IPC runs for those failed starts. **26 new UI checks**, **11
+  harness checks** and **41 existing microphone/status/landing checks** pass
+  without skips. Six reviewed captures retain the before evidence; independent
+  source/test/image review is clear. Actual keyboard tests prove three-scale
+  reachability; manually framed captures do not claim automatic resize reveal.
+  The final Settings/search/save/dispatch regression passed **208 tests without
+  skips** on unchanged reviewed source.
+  Guided model inventory now checks the 16 known model/backend locations only
+  on explicit Refresh, with human names, file state, scoped setup-file sizes and
+  draft-only selection. Language/device mismatches explain the prerequisite;
+  they never change those preferences silently. Download start failures,
+  reentrant consent and stale/closed completion recover without changing consent
+  or the non-daemon cancellation/reaping path. **398 focused checks** passed,
+  followed by **25 strengthened integration checks**, without skips. Twenty
+  source-hashed reviewed model captures and 55 refreshed Settings images are
+  recorded in the active plan. At 2×, long groups require scrolling; actual-key
+  checks establish access, not full-group fit or physical accessibility.
+  The runtime now supplies one authenticated last-check snapshot containing
+  operational status and the matching loaded model for applied settings.
+  Custom identifiers stay private; unsaved drafts, file inventory and Save
+  outcomes cannot establish load proof. Old status clients remain compatible,
+  and malformed replies cannot trigger fallback. Compact/larger-text summary
+  actions stack below their text, with native keyboard/resize coverage.
+  The full desktop gauntlet passed **2,648 tests with 14 prerequisite skips**;
+  fixture-isolation failures and their fixes remain documented in the plan.
+  Recording feedback now has a reviewed, explicit three-field section reset;
+  **16 scoped tests**, a **192-test Settings/privacy regression**, and **56
+  source-matched Settings captures** verify persistence, cancellation, both
+  global-reset orderings, keyboard access and focus recovery. Effective input
+  routes are now revalidated between explicit takes; query-string/OS-default and
+  same-name route replacement, duplicate-name failure and named reconnect have
+  **145 focused audio lifecycle checks** plus independent review. Next: stable
+  native identity/physical device acceptance, gated model lifecycle, full-plan
+  performance and native release gates.
+  Fresh profiles now keep missing-model network access off until an explicit
+  installation. Malformed persisted consent fails closed; explicit Boolean
+  consent still round-trips. A merged-head Windows onedir package passed three
+  isolated launches where polling saw no established external TCP socket owned
+  by the parent app process, download marker or model weight, then authenticated
+  parent-process quit. The first-run harness left the separately launched Settings
+  processes alive, so that receipt is not whole-process shutdown evidence.
+  Source tests separately deny both downloader entry points. The unforced doctor reports the opt-in
+  default and explicit Settings recovery. The final local desktop suite passed
+  **2,685 tests with 14 documented prerequisite skips**, and **56 source-matched
+  Settings captures** refresh the privacy/help copy. The package also supplies a
+  bounded startup/tray-idle receipt; sustained/recognition and packaged-baseline
+  performance remain open rather than inferred.
+  Desktop Settings now also exposes Automatic detection and the complete
+  100-language Whisper catalog with explicit multilingual versus English-only
+  guided packs. Legacy saved sizes retain their behavior, custom identifiers stay
+  editable, and incompatible English-only/non-English pairs cannot download or
+  save. The final local suite passed **2,693 tests with 14 documented prerequisite
+  skips**; a fresh package smoke and **58 source-matched Settings captures** passed.
+  PR source revision `3dd958d` passed all five desktop jobs in
+  [CI 36349620833](https://github.com/RioPlay/utterleaf/actions/runs/36349620833).
+  Its downloaded Windows artifact passed the complete frozen smoke locally, but
+  the hosted Windows job itself only ran CLI help and a non-blocking doctor. The
+  workflow now requires the complete smoke on subsequent revisions.
+  Per-language recognition quality remains open.
+  Active-take identity and safe removal/update are not inferred from a local
+  file inventory or a generic app-status response.
+  Backup recovery now uses optional technical Details, OBS pairing has a guarded
+  10-state baseline with compact 2× actions fixed, and authenticated Quit requests
+  both Settings and file-transcription companion windows to close without bypassing
+  unsaved-change confirmation. The integrated suite passed **2,714 tests with 14
+  prerequisite skips**, followed by a fresh Windows onedir build and full frozen
+  smoke. A whole-family rebuilt-package probe then closed every process without
+  harness intervention in all four samples; the 60-second sample includes visible
+  first-run Settings and is not tray-only idle or recognition-latency evidence.
+  Exact PR revision `ee39b93` passed all five desktop jobs in
+  [CI 36356378028](https://github.com/RioPlay/utterleaf/actions/runs/36356378028),
+  including the required full frozen Windows smoke and Linux X11/Wayland checks.
+  A fresh Windows UI Automation audit found zero focusable or named-focusable
+  controls across all 12 inspected Tk surfaces. That is an actionable toolkit
+  accessibility blocker: implement a real UIA provider/bridge or a Windows-native
+  presentation shell before manual Narrator/NVDA and mixed-DPI acceptance.
+  These are unreleased source results. Physical readiness, accessibility,
+  remaining auxiliary/native-dialog acceptance, device/model lifecycle, physical DPI,
+  and sustained/recognition/cross-platform performance remain open.
 - **Landed:** native pairing/vendor integration and desktop enrollment UI, PR #36 (`aa296c9`); [CI 35366314920](https://github.com/RioPlay/utterleaf/actions/runs/35366314920) passed all five desktop jobs.
-- **Parked while Android is prioritized:** `desktop-obs-bridge` on `feat/obs-session-arm`, draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37). Its earlier green check was against `aa296c9`; refresh onto current `main` and rerun checks before review/landing, then replay #38 onto the resulting `main`.
+- **Parked:** `desktop-obs-bridge` on `feat/obs-session-arm`, draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37). Its earlier green check was against `aa296c9`; refresh onto current `main` and rerun checks before review/landing, then replay #38 onto the resulting `main`. Android is paused until a suitable pipeline is agreed; this OBS work remains outside the current desktop RC5 focus.
 - **Parked:** #38 PCM, #39 disarm, #40 controller, #41 provenance, #42 timelines. Each must be rebased, retargeted and verified in order; do not merge the old stack as-is. See [workspaces](workspaces.md).
-- **Limits:** Windows RC4 is the current published prerelease; stable v0.4.5 remains the default download. No released live OBS capture or plugin binary; real OBS, physical-device and accessibility acceptance remain open.
+- **Limits:** Windows RC4 remains the latest published prerelease; stable v0.4.5 remains the default download. No released live OBS capture or plugin binary; real OBS, physical-device and accessibility acceptance remain open.
 
 ## Evidence and follow-up
 
@@ -514,3 +748,55 @@ should be installed only for features the user enables.
 Live microphones, external editor delivery, clean-install packaging, and speech
 benchmarks still require direct validation. Automated unit tests do not substitute
 for those checks.
+
+## Layered desktop visual system (unreleased source)
+
+Goal: modernize Dictation and Speech & privacy with layered charcoal surfaces,
+rounded cards, restrained leaf-green selection, clearer typography and taller
+fields on the existing Tk/ttk stack. Shared section primitives also finish the
+other existing Settings pages without adding features.
+
+Area: `theme.py`, `ui_layout.py`, `settings_ui.py` and focused visual tests.
+Constraints: preserve palette imports, native control classes, traversal order,
+focus reveal, text scaling, staged settings and capture/privacy behavior. No
+new dependency, framework, Windows shell work or model/device operations.
+
+Acceptance: unchanged Settings/sidebar/feedback assertions pass, new primitive
+checks exercise keyboard and pointer activation plus disabled rejection, and
+matched before/after captures show readable layered surfaces. Decorative cards,
+headers and dividers intentionally do not add keyboard stops. Radio segments
+retain native radio semantics and their individual existing tab stops.
+
+Verification commands (run from the desktop visual worktree with the shared
+repository virtual environment):
+
+- `python tests/capture_visual.py --phase before`
+- `python tests/capture_visual.py --phase after`
+- `python tests/capture_settings.py`
+- `python -m pytest tests/test_settings_ui.py tests/test_theme.py tests/test_sidebar_layout.py tests/test_ui_feedback.py tests/test_ui_layout.py tests/test_config.py tests/test_privacy.py tests/test_repo_boundaries.py -q`
+- `python -m pytest -q`
+
+Evidence and verification results are recorded below after the final checks.
+Stop after those checks and visual inspection pass. Native file/dialog chrome,
+ordinary action buttons and checkboxes retain ttk semantics and their existing
+layout. Real Windows screen-reader behavior, installed builds and other desktop
+platforms require separate acceptance; Canvas decoration does not establish
+assistive-technology support. No live microphone or model acceptance is claimed.
+
+Verified locally on Windows: the guarded `capture_settings.py` run completed all
+58 baseline frames without microphone, network/model or preference operations.
+Matched `artifacts/screenshots/visual/before/{dictation,speech-privacy}.png` and
+`artifacts/screenshots/visual/after/{dictation,speech-privacy}.png` were inspected.
+The after frames show layered page/card/field surfaces, rounded navigation and
+selection, and retained leaf identity. Final compact Dictation and focused
+2x-text Speech & privacy frames were also inspected for readable controls.
+The requested focused regression command passed, as did the affected compact
+Dictation checks after the card wrapping correction. Existing test assertions
+were retained. Independent review was deferred during implementation. The
+November 15 integration review found no demonstrated material defect in the
+merged visual source. The three implementation files match the checkout holding
+the reviewed captures. This was a static review with existing artifacts, not a
+new GUI run.
+
+The commands above record historical visual verification. Current pytest display
+runs require `--run-ui`; use the current development guide for invocation details.

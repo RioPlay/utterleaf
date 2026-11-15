@@ -1,11 +1,11 @@
 # Build an onedir distribution:  pyinstaller packaging/utterleaf.spec
-# Output lands in dist/Utterleaf. The app downloads its own model on first run,
-# so nothing heavy is bundled here. Works on Windows, macOS, and Linux hosts.
+# Output lands in dist/Utterleaf. Models are installed separately after explicit
+# approval, so nothing heavy is bundled here. Works on Windows, macOS, and Linux hosts.
 #
 # Windows defaults to a GUI executable. utterleaf-cli is the explicit diagnostic
 # console entry, and utterleafw remains a windowless compatibility entry.
-# macOS needs a signed .app bundle and Linux an AppImage; both
-# wrap this same onedir COLLECT.
+# Platform release workflows archive this same onedir COLLECT. Code signing,
+# notarization, installers, and native package formats are separate release gates.
 
 import sys
 import os
@@ -57,6 +57,14 @@ hidden += ["PIL._tkinter_finder", "PIL._imagingtk"]
 # Optional accelerated edition. DLLs must retain their package layout so the
 # runtime's NVIDIA discovery can find them. The default stays a small CPU build.
 binaries = []
+if sys.platform == "win32":
+    # Explicit inputs take precedence over dependency DLLs found on PATH, which
+    # can otherwise select an unrelated JDK's runtime. Notices still verify hashes.
+    for name in ("vcruntime140.dll", "vcruntime140_1.dll"):
+        runtime_dll = Path(sys.base_prefix) / name
+        if not runtime_dll.is_file():
+            raise RuntimeError(f"Required Python runtime DLL is missing: {runtime_dll}")
+        binaries.append((str(runtime_dll), "."))
 if os.environ.get("UTTERLEAF_BUNDLE_CUDA") == "1":
     for package in ("nvidia.cublas", "nvidia.cudnn", "nvidia.cuda_runtime", "nvidia.cuda_nvrtc"):
         if importlib.util.find_spec(package) is None:
@@ -84,7 +92,7 @@ a.datas = [item for item in a.datas if not item[0].lower().endswith("-asio.dll")
 
 pyz = PYZ(a.pure)
 
-# Windows exe icon; other platforms ignore it here (macOS wraps an .app later).
+# Windows exe icon; other platforms ignore it in the current onedir archives.
 app_icon = str(project_root / "packaging" / "utterleaf.ico") if sys.platform == "win32" else None
 
 exes = [
@@ -103,8 +111,7 @@ if sys.platform == "win32":
         EXE(pyz, a.scripts, [], name="utterleaf-cli", console=True, exclude_binaries=True,
             icon=app_icon)
     )
-    # Only the runw bootloader exists for a windowless exe; macOS/Linux bundle
-    # wrappers ship later from the .app / AppImage specs.
+    # Only Windows ships the separate windowless compatibility entry.
     exes.append(
         EXE(
             pyz,

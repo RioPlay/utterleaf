@@ -29,15 +29,20 @@ The tray and Settings window use the shared leaf/waveform renderer. Settings use
 leaf-green accents and “Let ideas speak.” Windows executable icons are regenerated
 from the same geometry. Existing builds must be rebuilt to acquire the new icon.
 
-| Ready | Recording | Processing | Error |
+| Ready | Listening | Processing | Needs attention |
 | --- | --- | --- | --- |
-| ![Ready](assets/brand/tray-idle.png) | ![Recording](assets/brand/tray-recording.png) | ![Processing](assets/brand/tray-busy.png) | ![Error](assets/brand/tray-error.png) |
+| ![Ready](assets/brand/tray-idle.png) | ![Listening](assets/brand/tray-recording.png) | ![Processing](assets/brand/tray-busy.png) | ![Needs attention](assets/brand/tray-error.png) |
 | Green leaf | Coral leaf and solid dot | Cyan leaf and three dots | Coral leaf and exclamation |
 
 Tooltips and the existing status pill continue to explain the actual state.
-Recording and listening describe the same capture operation. Model loading and
+Listening is the desktop presentation label; the stable `recording` key and
+asset filenames are unchanged. Model loading and
 transcription share the processing icon, with their distinct text labels.
-Microphone, engine, transcription, and delivery failures use the error icon.
+Microphone, speech-model, transcription, and delivery failures use the error icon.
+The indicator uses “Speech model unavailable” for model failures and “Needs
+attention” for its shared copy/edit/review failure state, with the caption
+explaining recovery. The artwork's Ready label is not proof of model readiness;
+Settings deliberately calls its last-reported resting state Idle.
 
 Offline operation is normal readiness, not a gray disconnected/error state.
 Utterleaf has no speech-output feature, so the board's “speaking” tray state is
@@ -102,7 +107,7 @@ on light and dark backgrounds, with filenames and usage notes:
 
 | Tab | Contents | File references |
 | --- | --- | --- |
-| Tray states | Ready, Recording, Processing, Needs attention; badge and cutout versions | `tray-{idle,recording,busy,error}.png`; `cutout-STATE-for-{light,dark}-SIZE.png` |
+| Tray states | Ready, Listening, Processing, Needs attention; badge and cutout versions | `tray-{idle,recording,busy,error}.png`; `cutout-STATE-for-{light,dark}-SIZE.png` |
 | App badges | Dark, light, green rounded-square designs | `app-{dark,light,green}-SIZE.png` |
 | Cutout marks | Green, black, gray, light, inverse | `mark-VARIANT-SIZE.png`, `mark-VARIANT.svg` |
 | Utterling | Welcome, Listening, Thinking, Success, Concern, Speaking, Typing | `utterling-{default,listening,thinking,success,error,speaking,typing}.png` |

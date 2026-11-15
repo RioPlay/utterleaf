@@ -24,9 +24,10 @@ LOOK = {
     # Failures. Red accent, and the caption carries the detail.
     "no_mic": ("Microphone unavailable", "#2B1618", "#E46962"),
     "capture_error": ("Recording interrupted", "#2B1618", "#E46962"),
-    "engine": ("Engine not ready", "#2B1618", "#E46962"),
+    "engine": ("Speech model unavailable", "#2B1618", "#E46962"),
     "transcribe": ("Couldn't transcribe", "#2B1618", "#E46962"),
-    "no_paste": ("Couldn't paste", "#2B1618", "#E46962"),
+    # This key also covers copy, edit, and review failures; the caption names it.
+    "no_paste": ("Needs attention", "#2B1618", "#E46962"),
 }
 
 ERROR_KINDS = frozenset({"no_mic", "capture_error", "engine", "transcribe", "no_paste"})
@@ -532,6 +533,7 @@ def _run_win32(q: queue.Queue[PillItem]) -> None:
 def _run_tk(q: queue.Queue[PillItem]) -> None:
     try:
         import tkinter as tk
+        from tkinter import font as tkfont
     except Exception:
         log.warning("No tkinter; on-screen indicator disabled")
         return
@@ -547,10 +549,14 @@ def _run_tk(q: queue.Queue[PillItem]) -> None:
     width, height = 196, 44
     canvas = tk.Canvas(root, width=width, height=height, highlightthickness=0, bd=0, bg="#1C1B1F")
     canvas.pack()
+    family = ui_font()
+    headline_font = tkfont.Font(root=root, family=family, size=11, weight="bold")
 
     def paint(kind: str, caption: str = "") -> None:
         look = appearance(kind)
         w, h = (460, 84) if caption else (220, 48)
+        if look is not None:
+            w = max(w, headline_font.measure(look[0]) + 58)
         sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
         canvas.config(width=w, height=h)
         root.geometry(f"{w}x{h}+{(sw - w) // 2}+{sh - h - 72}")
@@ -567,8 +573,7 @@ def _run_tk(q: queue.Queue[PillItem]) -> None:
         label, fill, accent = look
         canvas.create_rectangle(1, 1, w - 2, h - 2, fill=fill, outline=fill)
         canvas.create_oval(16, 16, 30, 30, fill=accent, outline=accent)
-        family = ui_font()
-        canvas.create_text(42, 23, text=label, fill="#E6E1E5", font=(family, 11, "bold"), anchor="w")
+        canvas.create_text(42, 23, text=label, fill="#E6E1E5", font=headline_font, anchor="w")
         if caption:
             # A character limit alone does not constrain pixels with a
             # proportional font. Wrap to the canvas and ellipsize excess lines.

@@ -13,10 +13,12 @@
   <a href="docs/README.md">Help & docs</a>
 </p>
 
-> **Windows desktop 0.4.6 RC4 preview:** the Windows clipboard and Settings
-> recovery fixes, T3 Code spacing correction and dependency update are available
-> in the [published prerelease](https://github.com/RioPlay/utterleaf/releases/tag/desktop-v0.4.6-rc.4). See the [preview notes](packaging/preview-notes.md).
-> Stable v0.4.5 remains the default download.
+> **Desktop 0.4.6 RC5 is being prepared locally.** It combines the desktop
+> modernization work with the published RC4 security and delivery fixes, and adds
+> an explicit vocabulary correction form. RC5 is not published. The
+> [Windows RC4 preview](https://github.com/RioPlay/utterleaf/releases/tag/desktop-v0.4.6-rc.4)
+> remains available; stable v0.4.5 remains the default download. See the
+> [candidate notes](packaging/preview-notes.md).
 
 Speak into the app you're already using. Utterleaf turns your words into text,
 then gets out of the way. No account, no cloud transcription, and no saved audio
@@ -54,8 +56,9 @@ these stable `latest` downloads.
 
 ## Your first words on desktop
 
-1. **Open Utterleaf.** The speech model downloads on first launch. Once installed,
-   recognition works offline; you can disable further model downloads in Settings.
+1. **Open Utterleaf.** Fresh profiles stay offline. In **Speech & privacy**, choose
+   **Download selected model…** and approve that one-time installation. Once installed,
+   recognition works offline. Automatic missing-model downloads remain optional.
 2. **Check your microphone.** Click the tray leaf, then **Test microphone**.
 3. **Click a text field and speak.** Hold **Ctrl+Win** on Windows or
    **Ctrl+Shift+Space** on macOS/X11, wait for Listening or the start sound, and

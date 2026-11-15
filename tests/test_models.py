@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from utterleaf.models import ct2_ready, ensure_ct2, ov_ready
+from utterleaf.models import ct2_ready, ensure_ct2, ensure_ov, ov_ready, status_lines
 
 
 def test_ct2_ready_needs_bin_and_config(tmp_path: Path) -> None:
@@ -41,5 +41,35 @@ def test_ensure_ct2_offline_missing_raises(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("utterleaf.models.models_dir", lambda: tmp_path)
+    monkeypatch.setattr(
+        "faster_whisper.utils.download_model",
+        lambda *_args, **_kwargs: pytest.fail("offline CT2 lookup attempted a download"),
+    )
     with pytest.raises(RuntimeError, match="Settings.*Model & installation"):
         ensure_ct2("tiny.en", allow_network=False)
+    assert not (tmp_path / "faster-whisper-tiny.en").exists()
+
+
+def test_ensure_openvino_offline_missing_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("utterleaf.models.models_dir", lambda: tmp_path)
+    monkeypatch.setattr(
+        "huggingface_hub.snapshot_download",
+        lambda *_args, **_kwargs: pytest.fail("offline OpenVINO lookup attempted a download"),
+    )
+    with pytest.raises(RuntimeError, match="Settings.*Model & installation"):
+        ensure_ov("openai/whisper-tiny.en", allow_network=False)
+    assert not (tmp_path / "OpenVINO--whisper-tiny.en").exists()
+
+
+def test_missing_model_status_requires_explicit_install(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("utterleaf.models.models_dir", lambda: tmp_path)
+
+    lines = status_lines("tiny.en", "openai/whisper-tiny.en")
+
+    assert lines[1].endswith("missing (install from Settings)")
+    assert lines[2].endswith("missing (install from Settings if selected)")
+    assert all("first use" not in line for line in lines)

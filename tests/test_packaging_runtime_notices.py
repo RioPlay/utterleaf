@@ -3,8 +3,10 @@ import email
 import hashlib
 import importlib.util
 import json
+import runpy
+import sys
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -43,6 +45,45 @@ def runtime(tmp_path, monkeypatch):
 
 def package_metadata(version="1.0", name="example"):
     return email.message_from_string(f"Name: {name}\nVersion: {version}\nLicense: MIT\n")
+
+
+@pytest.mark.parametrize("missing", [None, "vcruntime140.dll", "vcruntime140_1.dll"])
+def test_windows_spec_selects_python_runtime_dlls_and_rejects_missing_inputs(tmp_path, monkeypatch, missing):
+    root = Path(__file__).resolve().parents[1]
+    names = ("vcruntime140.dll", "vcruntime140_1.dll")
+    for name in names:
+        if name != missing:
+            (tmp_path / name).write_bytes(b"Python runtime fixture")
+    captured = []
+
+    def analysis(*_args, **kwargs):
+        captured.extend(kwargs["binaries"])
+        return SimpleNamespace(pure=[], scripts=[], binaries=[], datas=[])
+
+    api = ModuleType("PyInstaller.building.api")
+    api.EXE = api.PYZ = api.COLLECT = lambda *_args, **_kwargs: None
+    hooks = ModuleType("PyInstaller.utils.hooks")
+    hooks.collect_data_files = hooks.collect_dynamic_libs = hooks.copy_metadata = lambda *_args, **_kwargs: []
+    for name in ("PyInstaller", "PyInstaller.building", "PyInstaller.utils"):
+        monkeypatch.setitem(sys.modules, name, ModuleType(name))
+    monkeypatch.setitem(sys.modules, "PyInstaller.building.api", api)
+    monkeypatch.setitem(sys.modules, "PyInstaller.utils.hooks", hooks)
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(sys, "base_prefix", str(tmp_path))
+    monkeypatch.delenv("UTTERLEAF_BUNDLE_CUDA", raising=False)
+
+    def execute():
+        runpy.run_path(root / "packaging" / "utterleaf.spec", init_globals={
+            "SPECPATH": str(root / "packaging"), "Analysis": analysis,
+        })
+
+    if missing:
+        with pytest.raises(RuntimeError, match="Required Python runtime DLL is missing"):
+            execute()
+        assert not captured
+    else:
+        execute()
+        assert captured == [(str(tmp_path / name), ".") for name in names]
 
 
 def test_expression_only_or_unreviewed_version_cannot_ship(runtime):
@@ -165,7 +206,7 @@ def test_unfinished_component_review_prevents_distribution(runtime):
         module.copy_reviewed_notice_files(entry, output)
 
 
-@pytest.mark.parametrize("problem", ["pending", "version", "missing", "changed"])
+@pytest.mark.parametrize("problem", ["pending", "version", "missing", "changed", "extra"])
 def test_unreviewed_windows_native_closure_prevents_distribution(runtime, problem):
     module, manifest, _, output = runtime
     payload = module.DIST / "_internal" / "example.dll"
@@ -175,6 +216,8 @@ def test_unreviewed_windows_native_closure_prevents_distribution(runtime, proble
         manifest["python_version"] = "3.14.7"
     elif problem == "missing":
         payload.rename(payload.with_suffix(".unavailable"))
+    elif problem == "extra":
+        (module.DIST / "_internal" / "surprise.dll").write_bytes(b"undeclared runtime")
     else:
         payload.write_bytes(b"different build")
     with pytest.raises(SystemExit):
@@ -187,6 +230,82 @@ def test_reviewed_native_payload_receives_its_notice_tree(runtime):
     rows = module.copy_windows_runtime_notices(output)
     assert rows[0][:3] == ("Example", "1.0", "MIT")
     assert (output / "example" / "dependency" / "LICENSE").read_text() == "Complete dependency terms"
+
+
+def test_reviewed_native_payload_accepts_each_explicit_host_variant(runtime):
+    module, manifest, _, output = runtime
+    payload = module.DIST / "_internal" / "example.dll"
+    alternate = hashlib.sha256(b"alternate reviewed host build").hexdigest()
+    manifest["windows_runtime"]["example"]["payloads"]["example.dll"] = [
+        hashlib.sha256(payload.read_bytes()).hexdigest(),
+        alternate,
+    ]
+    payload.write_bytes(b"alternate reviewed host build")
+
+    module.copy_windows_runtime_notices(output)
+
+    assert (output / "example" / "PROVENANCE.json").is_file()
+
+
+def test_signed_windows_payload_requires_the_reviewed_microsoft_signer(runtime, monkeypatch):
+    module, manifest, entry, output = runtime
+    signed = module.DIST / "_internal" / "host-runtime.dll"
+    signed.write_bytes(b"host-specific signed runtime")
+    entry["signed_payloads"] = [signed.name]
+    subject = "CN=Microsoft Corporation, O=Microsoft Corporation, C=US"
+    entry["signature_policy"] = {"subjects": [subject]}
+
+    monkeypatch.setattr(module.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(
+        returncode=0,
+        stdout=json.dumps({
+            "name": signed.name,
+            "status": "Valid",
+            "subject": subject,
+        }),
+    ))
+
+    module.copy_windows_runtime_notices(output)
+    assert (output / "example" / "PROVENANCE.json").is_file()
+
+
+def test_signed_windows_payload_rejects_an_untrusted_signer(runtime, monkeypatch):
+    module, _, entry, output = runtime
+    signed = module.DIST / "_internal" / "host-runtime.dll"
+    signed.write_bytes(b"host-specific unsigned runtime")
+    entry["signed_payloads"] = [signed.name]
+    entry["signature_policy"] = {
+        "subjects": ["CN=Microsoft Corporation, O=Microsoft Corporation, C=US"]
+    }
+    monkeypatch.setattr(module.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(
+        returncode=0,
+        stdout=json.dumps({
+            "name": signed.name,
+            "status": "Valid",
+            "subject": "CN=Lookalike, O=Microsoft Corporation Example, C=US",
+        }),
+    ))
+
+    with pytest.raises(SystemExit, match="Microsoft runtime signature review failed"):
+        module.copy_windows_runtime_notices(output)
+    assert not output.exists()
+
+
+def test_signed_windows_payload_times_out_closed(runtime, monkeypatch):
+    module, _, entry, output = runtime
+    signed = module.DIST / "_internal" / "host-runtime.dll"
+    signed.write_bytes(b"host-specific signed runtime")
+    entry["signed_payloads"] = [signed.name]
+    entry["signature_policy"] = {
+        "subjects": ["CN=Microsoft Corporation, O=Microsoft Corporation, C=US"]
+    }
+
+    def timeout(*args, **kwargs):
+        raise module.subprocess.TimeoutExpired(args[0], kwargs["timeout"])
+
+    monkeypatch.setattr(module.subprocess, "run", timeout)
+    with pytest.raises(SystemExit, match="Microsoft runtime signature review failed"):
+        module.copy_windows_runtime_notices(output)
+    assert not output.exists()
 
 
 @pytest.mark.parametrize("name", ["libportaudio64bit-asio.dll", "LIBPORTAUDIO32BIT-ASIO.DLL"])
@@ -227,6 +346,10 @@ def test_general_windows_ci_uses_the_reviewed_runtime_inputs():
     )
 
     assert len(bytes.fromhex(manifest["python_windows_x64_archive_sha256"])) == 32
+    assert manifest["windows_runtime"]["python"]["version"] == manifest["python_version"]
+    assert manifest["windows_runtime"]["zlib_ng"]["payloads"]["python314.dll"] == (
+        manifest["windows_runtime"]["python"]["payloads"]["python314.dll"]
+    )
     assert r"run: .\packaging\setup-windows-python.ps1" in workflow
     assert r"run: .\packaging\setup-windows-python.ps1" in preview
     assert preview.index('git rev-parse "refs/tags/') < preview.index(
@@ -237,6 +360,21 @@ def test_general_windows_ci_uses_the_reviewed_runtime_inputs():
     assert "pip install --no-deps --no-build-isolation -e ." in workflow
     assert "ctranslate2==4.8.1" in lock
     assert manifest["packages"]["ctranslate2"]["targets"] == ["win32:x86_64"]
+
+
+def test_microsoft_runtime_provenance_distinguishes_pinned_and_host_payloads():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads(
+        (root / "packaging" / "notices" / "runtime-manifest.json").read_text(encoding="utf-8")
+    )
+    runtime = manifest["windows_runtime"]["microsoft_runtime"]
+
+    assert set(runtime["payloads"]) == {"vcruntime140.dll", "vcruntime140_1.dll"}
+    assert len(runtime["signed_payloads"]) == 46
+    assert "host-supplied" in runtime["version"].lower()
+    assert "host-supplied" in runtime["binary_provenance"].lower()
+    assert "exact, hash-pinned" in runtime["binary_provenance"]
+    assert "Valid Authenticode signature" in runtime["binary_provenance"]
 
 
 def test_posix_ci_uses_the_reviewed_tokenizers_source_and_targets():

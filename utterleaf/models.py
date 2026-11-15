@@ -1,4 +1,4 @@
-"""App-owned model cache. Download once if missing, then never touch the network."""
+"""App-owned model cache with explicit installation and offline reuse."""
 
 from __future__ import annotations
 
@@ -90,11 +90,11 @@ def status_lines(name: str, ov_repo: str | None) -> list[str]:
     lines = [f"model cache: {models_dir()}"]
     ct2 = ct2_dir(name)
     lines.append(
-        f"  {ct2.name}: {'ready' if ct2_ready(ct2) else 'missing (download on first use)'}"
+        f"  {ct2.name}: {'ready' if ct2_ready(ct2) else 'missing (install from Settings)'}"
     )
     if ov_repo:
         ov = ov_dir(ov_repo)
         lines.append(
-            f"  {ov.name}: {'ready' if ov_ready(ov) else 'missing (download if NPU/Intel GPU is used)'}"
+            f"  {ov.name}: {'ready' if ov_ready(ov) else 'missing (install from Settings if selected)'}"
         )
     return lines

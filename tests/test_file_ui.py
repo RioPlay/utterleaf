@@ -13,6 +13,8 @@ from utterleaf.file_ui import FileWindow
 from utterleaf.transcript import Segment, Transcript
 
 
+pytestmark = pytest.mark.ui  # needs a real display; excluded from the default headless run
+
 @pytest.fixture(scope="module")
 def tk_root():
     failure = None
@@ -141,6 +143,13 @@ def test_close_discards_queued_result_without_widget_callbacks(window):
     window.poll()
     assert window.result is None
     assert window.events.empty()
+    assert window.cancel_event.is_set()
+
+
+def test_authenticated_close_request_is_applied_on_tk_poll(window):
+    window.close_requests.set()
+    window.poll()
+    assert window.closed
     assert window.cancel_event.is_set()
 
 

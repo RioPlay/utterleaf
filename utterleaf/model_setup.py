@@ -11,6 +11,7 @@ import time
 from utterleaf.config import Config
 from utterleaf import models
 from utterleaf.hardware import ov_model_id
+from utterleaf.model_selection import resolve_model_selection
 
 GUIDED_NAMES = frozenset({"tiny", "tiny.en", "base", "base.en", "small", "small.en", "medium",
                           "medium.en", "large-v3", "distil-small.en"})
@@ -30,10 +31,7 @@ class ModelAvailability:
 
 
 def model_name(cfg: Config) -> str:
-    name = cfg.model.strip()
-    if cfg.language.lower() in {"en", "english"} and name in {"tiny", "base", "small", "medium"}:
-        return name + ".en"
-    return name
+    return resolve_model_selection(cfg.model, cfg.language)
 
 
 def _usable(path: Path) -> bool:

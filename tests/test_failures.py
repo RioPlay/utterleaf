@@ -17,7 +17,7 @@ def test_every_error_kind_has_a_look() -> None:
 
 
 def test_paste_failure_is_not_blamed_on_hearing() -> None:
-    assert indicator.appearance("no_paste")[0] == "Couldn't paste"
+    assert indicator.appearance("no_paste")[0] == "Needs attention"
     assert indicator.appearance("missed")[0] == "Didn't hear"
     assert indicator.appearance("transcribe")[0] == "Couldn't transcribe"
 

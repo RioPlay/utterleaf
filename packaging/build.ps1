@@ -1,20 +1,27 @@
 # Build the Windows binary: packaging/build.ps1  (run from the repo root)
 # Output: dist\Utterleaf\ — windowless app entries + an explicit diagnostic CLI.
+param(
+    [string]$PythonPath = '.\.venv\Scripts\python.exe'
+)
+
 $ErrorActionPreference = 'Stop'
 
-if (-not (Test-Path '.\.venv\Scripts\python.exe')) {
-    Write-Error "Run from the repo root with a .venv present."
+if (-not (Test-Path -LiteralPath $PythonPath -PathType Leaf)) {
+    Write-Error "Run from the repo root with a .venv present, or pass -PythonPath for an existing build environment."
 }
+$PythonPath = (Resolve-Path -LiteralPath $PythonPath).Path
 
-if (-not (Test-Path '.\.venv\Scripts\pyinstaller.exe')) {
-    & .\.venv\Scripts\python -m pip install pyinstaller
+& $PythonPath -c 'import PyInstaller'
+if ($LASTEXITCODE -ne 0) {
+    & $PythonPath -m pip install pyinstaller
+    if ($LASTEXITCODE -ne 0) { exit 1 }
 }
 
 # Regenerate the exe icon from the leaf renderer; the spec consumes the .ico.
-& .\.venv\Scripts\python 'packaging\make_icon.py'
+& $PythonPath 'packaging\make_icon.py'
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
-& .\.venv\Scripts\pyinstaller --noconfirm --clean 'packaging\utterleaf.spec'
+& $PythonPath -m PyInstaller --noconfirm --clean 'packaging\utterleaf.spec'
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
 Write-Host ''
@@ -36,7 +43,7 @@ Write-Host 'SHA256SUMS.txt written.'
 
 # Third-party license texts + notices ship inside dist\Utterleaf (legal hygiene,
 # regenerated every build).
-& .\.venv\Scripts\python 'packaging\collect_notices.py'
+& $PythonPath 'packaging\collect_notices.py'
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
 # The readme sits at the top of the dist folder, the first thing a user sees

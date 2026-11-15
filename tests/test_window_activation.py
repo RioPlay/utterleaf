@@ -39,6 +39,7 @@ def test_malformed_activation_metadata_does_not_raise(tmp_path, monkeypatch, pay
 
 
 @pytest.mark.parametrize("foreground_allowed", [True, False])
+@pytest.mark.ui  # creates a real Tk root; excluded from the default headless run
 def test_raise_reuses_window_and_preserves_modal_and_topmost(monkeypatch, foreground_allowed):
     import tkinter as tk
     failure = None

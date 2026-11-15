@@ -2222,6 +2222,159 @@
       },
       "binary_provenance": "https://www.python.org/ftp/python/3.14.10/python-3.14.10-amd64.zip; official windows-3.14.10.json SHA-256 47eb0a77a09048a88fae77428122c9190eff664dc14572152b249992bf9bd680. CPython PCbuild uses zlib-ng 2.2.4 in compatibility mode for Python's built-in zlib module, which reports 1.3.1.zlib-ng."
     },
+    "microsoft_runtime": {
+      "name": "Microsoft Windows runtime",
+      "version": "Host-supplied signed UCRT/MSVC variants; CPython 3.14.10 vcruntime payloads",
+      "license": "Microsoft Distributable Code terms",
+      "review_status": "complete",
+      "files": [
+        {
+          "path": "runtime/python/LICENSE.txt",
+          "destination": "LICENSE.txt",
+          "sha256": "935cf13e19f8c31b497d20b05d73623431a226b230c3599bc30fa3348979bc68",
+          "source": "Official hash-verified CPython 3.14.10 Windows x64 runtime zip (PSF signature verified; unchanged license text); upstream https://github.com/python/cpython/tree/b703b2c5e704341d61e367b9b940b77ed11dded0; Microsoft Distributable Code terms"
+        }
+      ],
+      "signed_payloads": [
+        "api-ms-win-core-console-l1-1-0.dll",
+        "api-ms-win-core-datetime-l1-1-0.dll",
+        "api-ms-win-core-debug-l1-1-0.dll",
+        "api-ms-win-core-errorhandling-l1-1-0.dll",
+        "api-ms-win-core-fibers-l1-1-0.dll",
+        "api-ms-win-core-fibers-l1-1-1.dll",
+        "api-ms-win-core-file-l1-1-0.dll",
+        "api-ms-win-core-file-l1-2-0.dll",
+        "api-ms-win-core-file-l2-1-0.dll",
+        "api-ms-win-core-handle-l1-1-0.dll",
+        "api-ms-win-core-heap-l1-1-0.dll",
+        "api-ms-win-core-interlocked-l1-1-0.dll",
+        "api-ms-win-core-kernel32-legacy-l1-1-1.dll",
+        "api-ms-win-core-libraryloader-l1-1-0.dll",
+        "api-ms-win-core-localization-l1-2-0.dll",
+        "api-ms-win-core-memory-l1-1-0.dll",
+        "api-ms-win-core-namedpipe-l1-1-0.dll",
+        "api-ms-win-core-processenvironment-l1-1-0.dll",
+        "api-ms-win-core-processthreads-l1-1-0.dll",
+        "api-ms-win-core-processthreads-l1-1-1.dll",
+        "api-ms-win-core-profile-l1-1-0.dll",
+        "api-ms-win-core-rtlsupport-l1-1-0.dll",
+        "api-ms-win-core-string-l1-1-0.dll",
+        "api-ms-win-core-synch-l1-1-0.dll",
+        "api-ms-win-core-synch-l1-2-0.dll",
+        "api-ms-win-core-sysinfo-l1-1-0.dll",
+        "api-ms-win-core-sysinfo-l1-2-0.dll",
+        "api-ms-win-core-timezone-l1-1-0.dll",
+        "api-ms-win-core-util-l1-1-0.dll",
+        "api-ms-win-crt-conio-l1-1-0.dll",
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-private-l1-1-0.dll",
+        "api-ms-win-crt-process-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "api-ms-win-crt-time-l1-1-0.dll",
+        "api-ms-win-crt-utility-l1-1-0.dll",
+        "MSVCP140_1.dll",
+        "msvcp140.dll",
+        "ucrtbase.dll"
+      ],
+      "signature_policy": {
+        "subjects": [
+          "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+          "CN=Microsoft Windows Software Compatibility Publisher, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+        ],
+        "verification": "Windows Authenticode signature must be Valid"
+      },
+      "payloads": {
+        "vcruntime140_1.dll": "a7146c08f89fe5b04541ab507cdb59ff7b44534d4ba3c668a426c6450a03434e",
+        "vcruntime140.dll": "d1f4225df2cd877dbf130d5668a021dce3f94118455ff5ec952061c30afc9ce7"
+      },
+      "binary_provenance": "The two vcruntime payloads are exact, hash-pinned binaries bundled by the official CPython 3.14.10 Windows x64 runtime ZIP. The signed_payloads inventory contains host-supplied Microsoft UCRT/MSVC variants accepted only by exact filename and a Valid Authenticode signature from an explicitly reviewed Microsoft certificate subject. Exact payload bytes verified against the hash-pinned official CPython 3.14.10 Windows x64 runtime ZIP."
+    },
+    "libffi": {
+      "name": "libffi",
+      "version": "3.4.4",
+      "license": "MIT",
+      "review_status": "complete",
+      "files": [
+        {
+          "path": "runtime/libffi/LICENSE",
+          "destination": "LICENSE",
+          "sha256": "2c9c2acb9743e6b007b91350475308aee44691d96aa20eacef8e199988c8c388",
+          "source": "https://github.com/python/cpython-bin-deps/blob/94cb9a1c7feb608adf2b9f8fe2dbd6925ffbf90d/LICENSE"
+        }
+      ],
+      "payloads": {
+        "libffi-8.dll": "eff52743773eb550fcc6ce3efc37c85724502233b6b002a35496d828bd7b280a"
+      },
+      "binary_provenance": " Exact payload bytes verified against the hash-pinned official CPython 3.14.10 Windows x64 runtime ZIP."
+    },
+    "tcl_tk": {
+      "name": "Tcl/Tk Windows runtime",
+      "version": "Tcl 9.0.4 / Tk 9.0.4",
+      "license": "TCL",
+      "review_status": "complete",
+      "files": [
+        {
+          "path": "runtime/tcl-tk/tcllicense.terms",
+          "destination": "tcllicense.terms",
+          "sha256": "c0a69a2bfd757361ec7e6143973b103c90409316b49e9c88db26ad6388e79f16",
+          "source": "https://github.com/python/cpython-bin-deps/blob/907f3f4de820cb74fc8fb4431a39beae4c690915/amd64/tcllicense.terms"
+        },
+        {
+          "path": "runtime/tcl-tk/tklicense.terms",
+          "destination": "tklicense.terms",
+          "sha256": "2cde822b93ca16ae535c954b7dfe658b4ad10df2a193628d1b358f1765e8b198",
+          "source": "https://github.com/python/cpython-bin-deps/blob/907f3f4de820cb74fc8fb4431a39beae4c690915/amd64/tklicense.terms"
+        }
+      ],
+      "payloads": {
+        "tcl90.dll": "e25b40e8a61542804c32c6aa38912953281ff69c786832a430ce9cd70df3ccf0",
+        "tcl9tk90.dll": "80b8ad2a25f29aadf442c68c57b2ffaa2fdba57f0d5300622475c8d4446c3d49"
+      },
+      "binary_provenance": "CPython tcltk-9.0.4.0 bundle 907f3f4de820cb74fc8fb4431a39beae4c690915; source pins Tcl 9.0.4.0 and Tk 9.0.4.1. Exact payload bytes verified against the hash-pinned official CPython 3.14.10 Windows x64 runtime ZIP."
+    },
+    "libtommath": {
+      "name": "LibTomMath",
+      "version": "1.3.0",
+      "license": "Unlicense",
+      "review_status": "complete",
+      "files": [
+        {
+          "path": "runtime/libtommath/LICENSE",
+          "destination": "LICENSE",
+          "sha256": "2fa64b163659f41965c9815882a8296d3d03ff546b76153e11445f9bdecf955a",
+          "source": "https://github.com/python/cpython-source-deps/blob/53c758cbf2cc178b359abc03fdd912c5e66ed74f/libtommath/LICENSE"
+        }
+      ],
+      "payloads": {
+        "libtommath.dll": "b1834c6e5a2789cff054bafe96d6c96db18b3a9d72c4df88711ef9c7c8bc45d9"
+      },
+      "binary_provenance": " Exact payload bytes verified against the hash-pinned official CPython 3.14.10 Windows x64 runtime ZIP."
+    },
+    "zlib_ng": {
+      "name": "zlib-ng",
+      "version": "2.2.4",
+      "license": "Zlib",
+      "review_status": "complete",
+      "files": [
+        {
+          "path": "runtime/zlib-ng/LICENSE.md",
+          "destination": "LICENSE.md",
+          "sha256": "6c9f0d975b41afaa34d22f55bb8986ce69e5cb7ad327cb2b28820cd425edf5ee",
+          "source": "https://github.com/python/cpython-source-deps/blob/a502e047655c31db29601def76ad6539acacf43d/LICENSE.md"
+        }
+      ],
+      "payloads": {
+        "python314.dll": "d8a06cc6ca3348925ea29e343e1c5c5895fe0bb433ff913e1cee44caf358aa6a"
+      },
+      "binary_provenance": "CPython 3.14.10 PCbuild pins zlib-ng 2.2.4 and links it into python314.dll; exact DLL hash comes from the reviewed official Windows x64 runtime ZIP."
+    },
     "openssl": {
       "name": "OpenSSL",
       "version": "3.5.9",

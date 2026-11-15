@@ -11,6 +11,8 @@ from utterleaf.config import Config, save
 from utterleaf.host import default_hotkey
 from utterleaf.hotkey import parse_hotkey
 from utterleaf.polish import save_dictionary
+from utterleaf.languages import language_supported, normalize_language
+from utterleaf.model_selection import model_language_compatible
 from utterleaf.startup import set_enabled as set_startup
 
 _HOTKEY_CHOICES = (
@@ -114,8 +116,13 @@ def apply_form(
         raise FormValidationError("device", "Choose Automatic, CPU, GPU, or NPU.")
     if denoise.strip() not in {"auto", "on", "off"}:
         raise FormValidationError("denoise", "Noise reduction must be auto, on, or off.")
-    if not language.strip():
-        raise FormValidationError("language", "Enter a language code, such as en, or auto.")
+    language = normalize_language(language)
+    if not language_supported(language):
+        raise FormValidationError("language", "Choose a supported language or Automatic detection.")
+    if not model_language_compatible(model, language):
+        raise FormValidationError(
+            "language", "This model pack recognizes English only. Choose English, Automatic detection, or a multilingual pack."
+        )
     if output_format is not None and output_format not in {"prose", "markdown"}:
         raise FormValidationError("output_format", "Choose prose or Markdown output.")
     for field, value in (("speech_end_enabled", speech_end_enabled),
@@ -147,7 +154,7 @@ def apply_form(
         "mode": mode,
         "model": model.strip(),
         "device": device.strip(),
-        "language": language.strip(),
+        "language": language,
         "denoise": denoise.strip(),
         "beep": beep,
         "indicator": indicator,

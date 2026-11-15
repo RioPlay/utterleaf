@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       build_run:
-        description: Build run ID containing successful native builds and tests
+        description: Successful build.yml main run for the exact tag commit
         required: true
         type: string
 
@@ -35,11 +35,11 @@ jobs:
           [[ "$RELEASE_TAG" =~ ^v[0-9][A-Za-z0-9.+-]*$ ]]
           [[ "$BUILD_RUN" =~ ^[0-9]+$ ]]
           tag_sha=$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")
-          run_sha=$(gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN" --jq .head_sha)
-          test "$tag_sha" = "$run_sha"
+          gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN" > run.json
+          jq -e --arg tag_sha "$tag_sha" '.head_sha == $tag_sha and .path == ".github/workflows/build.yml" and .status == "completed" and .conclusion == "success" and .event == "push" and .head_branch == "main"' run.json > /dev/null
           gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN/jobs?per_page=100" > jobs.json
-          for job in windows macos-build linux-build macos-tests linux-tests; do
-            jq -e --arg job "$job" '.jobs | any(.name == $job and .conclusion == "success")' jobs.json
+          for job in "full-suite (windows-latest)" "full-suite (ubuntu-24.04)" "full-suite (macos-latest)" "installers (windows-latest)" "installers (ubuntu-24.04)" "installers (macos-latest)"; do
+            jq -e --arg job "$job" '.jobs | any(.name == $job and .conclusion == "success")' jobs.json > /dev/null
           done
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:

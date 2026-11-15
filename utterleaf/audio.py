@@ -59,6 +59,7 @@ class Recorder:
         self._ring: deque[np.ndarray] = deque()
         self._ring_samples = 0
         self._stream: sd.InputStream | None = None
+        self._device_route = None
         self._opened_at: float | None = None
         self._recording_started_at: float | None = None
         self._last_callback_at: float | None = None
@@ -103,13 +104,20 @@ class Recorder:
     def _prepare(self) -> None:
         try:
             chosen = resolve_input_device(self.preferred_device)
-            info = sd.query_devices(chosen, kind="input")
+            if chosen is None:
+                # Snapshot the effective default before querying or opening it.
+                # PortAudio indices are only a within-process enumeration route,
+                # not durable hardware identity.
+                chosen, info = _default_input_route()
+            else:
+                info = sd.query_devices(chosen, kind="input")
             chosen, info = shared_input_device(chosen, info, self.preferred_device)
         except Exception:
             self._close()
             raise
         name = str(info.get("name") or self.preferred_device or "default")
-        if self._stream is not None and name != self.device_name:
+        route = (chosen, info.get("hostapi"), name)
+        if self._stream is not None and route != self._device_route:
             log.info("Mic changed (%s -> %s); reopening", self.device_name, name)
             self._close()
         if self._stream is not None:
@@ -158,6 +166,7 @@ class Recorder:
                     continue
                 raise
             self._stream = stream
+            self._device_route = route
             self._opened_at = time.monotonic()
             break
 
@@ -337,6 +346,7 @@ class Recorder:
             self._last_callback_at = None
             stream = self._stream
             self._stream = None
+            self._device_route = None
             self._ring.clear()
             self._ring_samples = 0
             self._chunks = []
@@ -416,6 +426,13 @@ def microphone_error_hint(exc: BaseException) -> str:
         return ("Windows invalidated the microphone or its audio resources. Reconnect the microphone, "
                 "check the selected input in Settings → Dictation, then try again. "
                 "If it continues, restart Utterleaf.")
+    # PortAudio core errors: invalid channels/rate, unsupported sample format,
+    # or an unsupported input/output device combination. Host errors use 3 args.
+    if (isinstance(exc, sd.PortAudioError) and len(exc.args) == 2
+            and isinstance(exc.args[0], str) and type(exc.args[1]) is int
+            and exc.args[1] in {-9998, -9997, -9994, -9993}):
+        return ("This microphone cannot use the requested audio format. "
+                "Choose another input in Settings → Dictation, then try again.")
     if device_unavailable(exc):
         return ("Microphone unavailable. Another app may have exclusive access, or the device may be disconnected. "
                 "Release it in that app, reconnect it, or choose an input in Settings → Dictation, then try again.")
@@ -472,13 +489,35 @@ def list_input_names() -> list[str]:
     return names
 
 
+def _default_input_route():
+    """Resolve the current default selector to one numeric enumeration route."""
+    selector = sd.default.device[0]
+    if type(selector) is int:
+        if selector < 0:
+            raise RuntimeError("System default input is unavailable")
+        index = selector
+    elif isinstance(selector, str) and selector.strip():
+        # sounddevice rejects ambiguous query strings. The returned index is
+        # then re-queried so the stream and route key use one current numeric
+        # enumeration route rather than retaining the query string.
+        selected = sd.query_devices(selector, kind="input")
+        index = selected.get("index")
+        if type(index) is not int or index < 0:
+            raise RuntimeError("System default input could not be resolved uniquely")
+    else:
+        raise RuntimeError("System default input is unavailable")
+    info = sd.query_devices(index, kind="input")
+    return index, info
+
+
 def resolve_input_device(name: str) -> int | None:
     """Map a saved device name to a sounddevice index. None = system default."""
     wanted = (name or "").strip()
     if not wanted:
         return None
     devices = sd.query_devices()
-    for index, device in enumerate(devices):
-        if device["max_input_channels"] > 0 and str(device["name"]) == wanted:
-            return index
+    matches = [index for index, device in enumerate(devices)
+               if device["max_input_channels"] > 0 and str(device["name"]) == wanted]
+    if len(matches) == 1:
+        return matches[0]
     raise SelectedMicrophoneUnavailable("Selected microphone is not in the input device list")

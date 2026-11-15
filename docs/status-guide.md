@@ -12,8 +12,8 @@ and written messages to tell whether a take is recording or processing.
 
 | Icon | Meaning | What to do |
 | --- | --- | --- |
-| <img src="assets/brand/tray-idle.png" width="48" alt="Green leaf" /> | **Ready.** Utterleaf is ready for a take. | Focus your text field, then use your shortcut. The microphone is not kept listening between takes. |
-| <img src="assets/brand/tray-recording.png" width="48" alt="Coral leaf with a solid dot" /> | **Recording.** Utterleaf is capturing this take. | Speak. Release the hold shortcut, or press your toggle shortcut again, to finish. |
+| <img src="assets/brand/tray-idle.png" width="48" alt="Green leaf" /> | **Idle leaf / Ready artwork.** No active take is shown; the icon alone does not establish model or microphone readiness. | Focus your text field, then use your shortcut and wait for Listening. The microphone is not kept listening between takes. |
+| <img src="assets/brand/tray-recording.png" width="48" alt="Coral leaf with a solid dot" /> | **Listening.** Utterleaf is capturing this take (called Recording in older artwork guides). | Speak. Release the hold shortcut, or press your toggle shortcut again, to finish. |
 | <img src="assets/brand/tray-busy.png" width="48" alt="Cyan leaf with three dots" /> | **Processing.** The model is loading or speech is being transcribed. | Read the status message and wait for it to finish. This icon alone does not prove text has reached your editor. |
 | <img src="assets/brand/tray-error.png" width="48" alt="Coral leaf with an exclamation mark" /> | **Needs attention.** A capture, storage, model, transcription, or delivery step failed. | Read the message for the cause and use the recovery steps below. |
 
@@ -21,6 +21,26 @@ Recording and processing have shape cues as well as different colors. Tray
 tooltips or menu status provide more detail where the desktop supports them.
 There is no disconnected/error state just because you are offline: local speech
 recognition is the normal workflow after the model is installed.
+
+In unreleased source, the floating indicator calls model failures **Speech model
+unavailable**. Its shared copy/edit/review failure heading is **Needs attention**;
+read the caption for the affected action. Background model loading or failure
+returns after active capture/processing and brief result feedback; a late model
+callback cannot replace a newer operational state.
+
+Settings can report **Ready · applied speech model loaded** when its last check
+finds a successful engine load for the app's applied model, requested device,
+compute type and language, including the existing CPU fallback when needed.
+**Idle · app is running** remains valid when that proof
+is unavailable. These are last-check snapshots. Neither Ready, an idle icon nor
+installed files establish that the next microphone operation will succeed.
+The selected draft model's file status is separate from the applied app status.
+The same check now names the **loaded model for applied settings** in Dictation
+and Help, or says **not confirmed** when matching proof is unavailable. Custom
+identifiers and paths appear only as **Custom model**. This does not identify
+the model retained by a take already in progress. Saving preferences does not
+change this last-check result; Refresh status checks the app again. Older app
+versions may provide status without a loaded name.
 
 On GNOME, tray visibility requires an AppIndicator extension. If the leaf is
 missing on Linux, start with [Wayland setup](wayland.md) or
