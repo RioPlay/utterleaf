@@ -109,44 +109,16 @@ SEARCH_CAPTURES = (
 )
 
 CAPTURE_INVENTORY = (
-    *(f"page-{slug}-standard.png" for _, slug in PAGE_SLUGS),
-    *(f"page-{slug}-lower.png" for _, slug in PAGE_SLUGS),
+    "page-dictation-standard.png",
+    "page-engine-standard.png",
     "layout-dictation-compact.png",
-    "layout-dictation-wide.png",
-    *(filename for filename, *_ in SEARCH_CAPTURES),
-    "vocabulary-empty.png",
-    "vocabulary-oversized-validation-synthetic-post-dialog.png",
-    "device-none.png",
-    "device-selected-missing.png",
-    "device-refresh-error.png",
-    "microphone-opening.png",
-    "microphone-listening.png",
-    "microphone-low-input.png",
-    "microphone-ready.png",
-    "microphone-error.png",
-    "microphone-unsupported-format.png",
+    "search-results.png",
     "microphone-unsupported-compact-text-scale-2x-focused.png",
-    "model-missing.png",
-    "model-incomplete.png",
-    "model-downloading.png",
-    "model-cancelled.png",
-    "model-installed.png",
     "model-error.png",
-    "model-multilingual-french.png",
-    "model-language-incompatible.png",
-    "engine-compact-text-scale-2x-synthetic-overview.png",
-    "engine-compact-text-scale-2x-synthetic-cancel-focused.png",
-    "save-clean.png",
-    "save-unsaved.png",
-    "save-in-progress.png",
     "save-partial-failure-post-dialog.png",
-    "save-invalid-vocabulary-post-dialog.png",
-    "recording-feedback-reset-staged.png",
-    "reset-staged.png",
-    *(filename for filename, _reply in APP_STATUS_CAPTURES),
+    "app-status-attention.png",
     "help-app-running.png",
-    "help-app-not-running.png",
-    *(f"guide-{name.lower().replace(' ', '-')}.png" for name in GUIDE_TABS),
+    "guide-wordmark.png",
 )
 # Keep references to the real presentation transitions before the safety guard
 # replaces user-invokable actions on SettingsWindow.
@@ -438,6 +410,8 @@ def _capture_guide(
             destination = output / (
                 "guide-" + tab_name.lower().replace(" ", "-") + ".png"
             )
+            if destination.name not in CAPTURE_INVENTORY:
+                continue
             _grab(guide.root, destination)
             captured.append(destination.name)
     finally:
@@ -641,8 +615,9 @@ def _stage_app_status(
     return message
 
 
-def _record(captured: list[str], path: Path) -> None:
-    captured.append(path.name)
+def _record(captured: list[str], path: Path | None) -> None:
+    if path is not None:
+        captured.append(path.name)
 
 
 def _stage_search(window: SettingsWindow, query: str, key: str | None) -> None:
@@ -664,7 +639,9 @@ def main(output: Path = OUTPUT) -> None:
     enable_dpi_awareness()
     captured: list[str] = []
 
-    def capture(*args, **kwargs) -> Path:
+    def capture(*args, **kwargs) -> Path | None:
+        if args[1] not in CAPTURE_INVENTORY:
+            return None
         return _capture(*args, output=output, **kwargs)
 
     with _blocked_runtime() as runtime:

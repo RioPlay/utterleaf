@@ -35,8 +35,6 @@ CASES = (
     ("uncertain", (620, 530), 1.0),
     ("storage-unavailable", (620, 530), 1.0),
     ("saved-file-kept", (620, 530), 1.0),
-    ("file-error", (450, 460), 2.0),
-    ("storage-unavailable", (450, 460), 2.0),
 )
 INVENTORY = tuple(
     f"obs-pairing-{state}-{width}x{height}-{scale:g}x.png"

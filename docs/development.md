@@ -58,7 +58,62 @@ an unsigned exception and must disclose the resulting SmartScreen warning.
 
 `packaging\build.ps1` is the canonical Windows build entry point. It runs PyInstaller, writes executable checksums, ships `README.md` at the top of the dist folder, and collects third-party notices; invoking PyInstaller directly skips those release steps. Install the development dependencies above before running it. The script installs PyInstaller if needed.
 
-CI (`.github/workflows/build.yml`) runs pytest on Windows, macOS, and Linux, and builds native binaries for all three: the Windows CPU build via the same `packaging\build.ps1` script, and macOS/Linux bundles via the shared PyInstaller spec plus third-party notice collection. Pushes to `main` and pull requests run the full matrix except changes confined to mobile source, Android guides/plans, the workspace table, or Android CI. Only `v*` tags publish a desktop GitHub Release with all three archives. The CUDA release is prepared manually with the CUDA bundle flag. Signing is a manual pre-publish step.
+## CI and test budget
+
+The desktop pull request gate has a five-minute job budget. It runs the focused
+security, capture, delivery, and settings behavior checks on Windows, the
+documented Settings capture smoke on Windows, and one Linux X11-backed subset
+with a Wayland session value. It does not build installers. The `main` branch
+runs the full pytest suite on Windows, macOS, and Linux with a 15-minute budget
+per platform. Installer builds and artifact uploads run only for `main` and
+`v*` tags. Desktop path ignores continue to exclude mobile source and Android
+documentation.
+
+Android pull requests always run JVM unit tests and `lintDebug`. The Android
+emulator suite runs on `main`, nightly at 06:00 UTC, or when a pull request has
+the `run-emulator` label. The independent `android-release.yml` gates are
+unchanged.
+
+Pytest markers describe test cost and environment:
+
+- `ui`: exercises a desktop interface and may require Tk or a display.
+- `native`: exercises an operating-system integration or native library.
+- `slow`: intentionally long running and excluded from the pull request gate.
+- `integration`: crosses module or process boundaries and is reserved for the
+  full suite when it is not needed in the focused pull request gate.
+
+The pull request gate selects its test files explicitly; the marker filter is a
+secondary cost guard, not the selection mechanism. Markers are applied as tests
+are classified against measured timings, so most tests are still unmarked and
+the filter currently excludes only the tests already labelled `slow` or
+`integration`. Re-measure before widening the filter or the job budget.
+
+The capture harnesses are manual visual references, not behavior tests. The
+Settings harness writes ten representative screenshots under
+`artifacts/screenshots`; it remains the documented Windows UI check and never
+records microphone input. Security, privacy, capture-store, delivery, and
+settings behavior remain covered by pytest.
+
+Before change: **2,714 collected tests** across **108 test files**. The baseline
+full-suite attempt took **17m48s**, but overlapped shared desktop UI activity
+and workflow edits. It ended with five failures, so that timing is not a clean
+comparison. The ten screenshot-harness assertion suites were removed.
+
+After change: **2,607 collected tests** across **98 test files**. The full-suite
+timing is pending a clean run after the shared desktop is available. A partial
+post-change run was stopped at 82% when the shared-resource constraint arrived.
+
+The count reduction is deliberately modest. The ten removed suites asserted on
+the screenshot harnesses rather than on product behavior. The remaining tests
+cover cleanup, audio, status encoding, delivery, settings, clipboard and the OBS
+protocol, where security, privacy and capture-store behavior is asserted by
+name. Trimming further would remove behavior coverage rather than repetition, so
+the cost reduction comes from the pull request gate and the Android emulator
+schedule rather than from a smaller total. Treat a target test count as a
+symptom to measure first, not a quota to hit.
+
+The CUDA release is prepared manually with the CUDA bundle flag. Signing is a
+manual pre-publish step.
 
 Windows preview tags use the separate `desktop-v*` namespace and a Windows-only
 workflow. After the exact artifact and source revision are reviewed, publication

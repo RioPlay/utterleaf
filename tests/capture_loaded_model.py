@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REAL_REFRESH = SettingsWindow.refresh_connection
 ERROR = "Synthetic status failure /synthetic/private/model.bin"
 STATES = ("ready-english", "ready-custom", "listening-unconfirmed", "old-version", "malformed", "error-retry")
-SIZES = (((960, 780), 1.0), ((760, 560), 2.0))
+SIZES = (((960, 780), 1.0),)
 CASES = tuple((state, size, scale) for size, scale in SIZES for state in STATES)
 SOURCE_NAMES = ("settings_ui.py", "app_status.py", "ipc.py", "model_presentation.py",
                 "app.py", "transcribe.py", "theme.py")

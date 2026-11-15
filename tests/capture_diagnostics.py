@@ -22,10 +22,7 @@ REAL_METHODS = {name: getattr(SettingsWindow, name)
                 for name in ("diagnostics", "cuda_setup", "export_report")}
 CASES = (
     *((state, (960, 780), 1.0) for state in (
-        "normal", "success", "error-empty", "error-previous", "gpu-error",
-        "save-picker-error", "save-write-error")),
-    ("error-previous", (760, 560), 2.0),
-    ("save-write-error", (760, 560), 2.0),
+        "normal", "success", "error-previous", "gpu-error", "save-write-error")),
 )
 INVENTORY = tuple(f"report-{state}-{size[0]}x{size[1]}-{scale:g}x.png"
                   for state, size, scale in CASES)

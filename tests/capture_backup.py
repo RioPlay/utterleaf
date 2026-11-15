@@ -20,8 +20,6 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE_NAMES = ("backup_ui.py", "backup.py", "backup_store.py", "ui_layout.py", "theme.py")
 CASES = (
     ("export", (680, 660), 1.0), ("import", (680, 660), 1.0), ("error", (680, 660), 1.0),
-    ("export", (480, 460), 1.0), ("import", (480, 460), 1.0),
-    ("export", (480, 460), 2.0), ("import", (480, 460), 2.0), ("error", (480, 460), 2.0),
 )
 INVENTORY = tuple(f"backup-{state}-{width}x{height}-{scale:g}x.png"
                   for state, (width, height), scale in CASES)

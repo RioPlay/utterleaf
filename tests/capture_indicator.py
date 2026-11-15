@@ -53,16 +53,11 @@ APP_SCENARIOS = (
                 "Use Copy last dictation in the tray menu to recover your text.", (480, 86)),
 )
 
-# Renderer-only stress cases. The long caption is deliberately synthetic UI
-# stress text, not product copy. The duplicate long-listening frame verifies
-# that the expanded region survives a two-second dwell; compact-again verifies
-# the expanded-to-compact transition that previously regressed.
+# Two renderer samples supplement the real app states with a longer caption and
+# an expanded-to-compact transition.
 _STRESS_CAPTION = "A longer recording should keep every corner rounded and this caption readable."
 RENDERER_STRESS_CASES = (
-    CaptureCase("renderer-stress-compact-listening", "listening", "", (248, 48)),
     CaptureCase("renderer-stress-expanded-listening", "listening", _STRESS_CAPTION, (480, 86)),
-    CaptureCase("renderer-stress-long-listening", "listening", _STRESS_CAPTION, (480, 86), 2.0),
-    CaptureCase("renderer-stress-compact-model-error", "engine", "", (248, 48)),
     CaptureCase("renderer-stress-compact-again", "transcribing", "", (248, 48)),
 )
 

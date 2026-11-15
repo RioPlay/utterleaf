@@ -23,187 +23,193 @@ on:
       - 'docs/plans/completed/android*.md'
       - 'docs/workspaces.md'
       - '.github/workflows/android*.yml'
-  workflow_dispatch:
-
 permissions:
   contents: read
 
 jobs:
-  windows:
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: powershell
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.14.7"
-      - name: Install
-        run: |
-          python -m venv .venv
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          .\.venv\Scripts\python.exe -m pip install --require-hashes -r packaging\requirements-windows-preview.txt
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          .\.venv\Scripts\python.exe -m pip install --no-deps --no-build-isolation -e .
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Test
-        run: .\.venv\Scripts\python.exe -m pytest -q
-      - name: Build CPU distribution and collect notices
-        run: .\packaging\build.ps1
-      - name: Frozen Windows release smoke test
-        run: .\.venv\Scripts\python.exe tests\smoke_release.py dist\Utterleaf
-      - name: Package
-        run: |
-          Compress-Archive -Path dist\Utterleaf -DestinationPath dist\Utterleaf-windows-x64-cpu.zip
-          Copy-Item dist\Utterleaf\SHA256SUMS.txt dist\SHA256SUMS.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Utterleaf-windows-x64-cpu
-          path: |
-            dist/Utterleaf-windows-x64-cpu.zip
-            dist/SHA256SUMS.txt
-  linux-tests:
-    runs-on: ubuntu-24.04
+  pr-gate:
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-24.04]
     defaults:
       run:
         shell: pwsh
     steps:
       - uses: actions/checkout@v4
-      - name: Install system Python, Tk, audio and X11 test tools
+      - name: Install Windows Python, Tk, and audio tools
+        if: runner.os == 'Windows'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14.7"
+      - name: Install Linux Python, Tk, and X11 tools
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           sudo apt-get install -y python3-venv python3-tk libportaudio2 xvfb xauth xclip xdotool
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Install
+      - name: Create virtual environment and install
         run: |
-          /usr/bin/python3 -m venv .venv
+          if ($IsWindows) { python -m venv .venv; $py = '.\.venv\Scripts\python.exe' }
+          else { /usr/bin/python3 -m venv .venv; $py = './.venv/bin/python' }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          ./.venv/bin/python -m pip install --constraint packaging/constraints-posix.txt -e ".[dev]"
+          & $py -m pip install --constraint packaging/constraints-posix.txt -e ".[dev]"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Test with a virtual X11 display
-        run: xvfb-run -a ./.venv/bin/python -m pytest -q -ra
-      - name: Test Wayland session decisions with a virtual X11 display
+      - name: Fast security, capture, delivery, and settings behavior
+        if: runner.os == 'Windows'
+        run: .\.venv\Scripts\python.exe -m pytest tests/test_repo_boundaries.py tests/test_privacy.py tests/test_config.py tests/test_audio.py tests/test_capture_store.py tests/test_continuous_capture.py tests/test_inject.py tests/test_edit_target.py tests/test_delivery_cancellation.py tests/test_settings.py tests/test_settings_controller.py tests/test_settings_instance.py tests/test_settings_search.py -m "not slow and not integration" -q
+      - name: Documented Settings UI smoke
+        if: runner.os == 'Windows'
+        run: .\.venv\Scripts\python.exe tests/capture_settings.py
+      - name: Linux Wayland session subset on X11
+        if: runner.os == 'Linux'
         env:
           XDG_SESSION_TYPE: wayland
-        run: xvfb-run -a ./.venv/bin/python -m pytest -q -ra
-      - name: CLI smoke test
-        run: ./.venv/bin/python -m utterleaf --help
+        run: xvfb-run -a ./.venv/bin/python -m pytest tests/test_hotkey.py tests/test_host.py tests/test_window_activation.py -q
 
-  macos-tests:
-    runs-on: macos-latest
+  full-suite:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            python: "3.14.7"
+          - os: ubuntu-24.04
+            python: system
+          - os: macos-latest
+            python: "3.14.7"
     defaults:
       run:
         shell: pwsh
     steps:
       - uses: actions/checkout@v4
-      - name: Install Python with matching Tk and PortAudio
-        run: |
-          brew install python@3.14 python-tk@3.14 portaudio
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $pythonPrefix = brew --prefix python@3.14
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & "$pythonPrefix/bin/python3.14" -m venv .venv
-      - name: Install
-        run: ./.venv/bin/python -m pip install --constraint packaging/constraints-posix.txt -e ".[dev]"
-      - name: Test
-        run: ./.venv/bin/python -m pytest -q -ra -o faulthandler_timeout=120
-      - name: CLI smoke test
-        run: ./.venv/bin/python -m utterleaf --help
-
-  macos-build:
-    runs-on: macos-latest
-    defaults:
-      run:
-        shell: pwsh
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Python with matching Tk and PortAudio
-        run: |
-          brew install python@3.14 python-tk@3.14 portaudio
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $pythonPrefix = brew --prefix python@3.14
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & "$pythonPrefix/bin/python3.14" -m venv .venv
-      - name: Install
-        run: ./.venv/bin/python -m pip install --constraint packaging/constraints-posix.txt -e . pyinstaller
-      - name: Build
-        run: ./.venv/bin/python -m PyInstaller --noconfirm --clean packaging/utterleaf.spec
-      - name: CLI smoke test
-        run: ./dist/Utterleaf/utterleaf --help
-      - name: Collect third-party notices
-        run: ./.venv/bin/python packaging/collect_notices.py
-      - name: Package
-        run: tar -czf dist/Utterleaf-macos-arm64.tar.gz -C dist Utterleaf
-      - uses: actions/upload-artifact@v4
+      - name: Install Python and Linux Tk/audio/X11 tools
+        if: runner.os == 'Windows'
+        uses: actions/setup-python@v5
         with:
-          name: Utterleaf-macos-arm64
-          path: dist/Utterleaf-macos-arm64.tar.gz
+          python-version: "3.14.7"
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          sudo apt-get install -y python3-venv python3-tk libportaudio2 xvfb xauth xclip xdotool
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install matching macOS Tk and PortAudio
+        if: runner.os == 'macOS'
+        run: |
+          brew install python@3.14 python-tk@3.14 portaudio
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $pythonPrefix = brew --prefix python@3.14
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & "$pythonPrefix/bin/python3.14" -m venv .venv
+      - name: Install Python dependencies
+        run: |
+          if ($IsWindows) { python -m venv .venv; $py = '.\.venv\Scripts\python.exe' }
+          elseif ($IsLinux) { /usr/bin/python3 -m venv .venv; $py = './.venv/bin/python' }
+          elseif ($IsMacOS) { $py = './.venv/bin/python' }
+          else { python -m venv .venv; $py = './.venv/bin/python' }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($IsWindows) {
+            & $py -m pip install --require-hashes -r packaging\\requirements-windows-preview.txt
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            & $py -m pip install --no-deps --no-build-isolation -e ".[dev]"
+          } else {
+            & $py -m pip install --constraint packaging/constraints-posix.txt -e ".[dev]"
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Full desktop suite
+        run: |
+          if ($IsWindows) { .\.venv\Scripts\python.exe -m pytest -q }
+          elseif ($IsLinux) { xvfb-run -a ./.venv/bin/python -m pytest -q -ra }
+          else { ./.venv/bin/python -m pytest -q -ra -o faulthandler_timeout=120 }
 
-  linux-build:
-    runs-on: ubuntu-24.04
+  installers:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-24.04]
     defaults:
       run:
         shell: pwsh
     steps:
       - uses: actions/checkout@v4
-      - name: Install system Python, Tk and audio libraries
+      - name: Install Windows Python and build tools
+        if: runner.os == 'Windows'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14.7"
+      - name: Install macOS Python, Tk, and PortAudio
+        if: runner.os == 'macOS'
+        run: |
+          brew install python@3.14 python-tk@3.14 portaudio
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $pythonPrefix = brew --prefix python@3.14
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & "$pythonPrefix/bin/python3.14" -m venv .venv
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           sudo apt-get install -y python3-venv python3-tk libportaudio2 xvfb xauth xclip xdotool python3-gi gir1.2-ayatanaappindicator3-0.1
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Install
+      - name: Install dependencies
         run: |
-          /usr/bin/python3 -m venv --system-site-packages .venv
+          if ($IsWindows) { python -m venv .venv; $py = '.\.venv\Scripts\python.exe' }
+          elseif ($IsLinux) { /usr/bin/python3 -m venv --system-site-packages .venv; $py = './.venv/bin/python' }
+          elseif ($IsMacOS) { $py = './.venv/bin/python' }
+          else { python -m venv .venv; $py = './.venv/bin/python' }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          ./.venv/bin/python -m pip install --constraint packaging/constraints-posix.txt -e . pyinstaller
-      - name: Build
-        run: ./.venv/bin/python -m PyInstaller --noconfirm --clean packaging/utterleaf.spec
-      - name: CLI smoke test
-        run: ./dist/Utterleaf/utterleaf --help
-      - name: Collect third-party notices
-        run: ./.venv/bin/python packaging/collect_notices.py
-      - name: Package
-        run: tar -czf dist/Utterleaf-linux-x64.tar.gz -C dist Utterleaf
-      - name: Test extracted Linux release startup and Wayland session controls
-        env:
-          UTTERLEAF_EXPECT_TRAY_BACKEND: pystray._appindicator
+          if ($IsWindows) {
+            & $py -m pip install --require-hashes -r packaging\\requirements-windows-preview.txt
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            & $py -m pip install --no-deps --no-build-isolation -e .
+          } elseif ($IsMacOS) {
+            & $py -m pip install --constraint packaging/constraints-posix.txt -e . pyinstaller
+          } else {
+            & $py -m pip install --constraint packaging/constraints-posix.txt -e . pyinstaller
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build Windows CPU distribution
+        if: runner.os == 'Windows'
+        run: .\packaging\build.ps1
+      - name: Test and archive Windows distribution
+        if: runner.os == 'Windows'
         run: |
-          New-Item -ItemType Directory -Path extracted-release
-          tar -xzf dist/Utterleaf-linux-x64.tar.gz -C extracted-release
+          .\.venv\Scripts\python.exe tests\smoke_release.py dist\Utterleaf
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          xvfb-run -a ./.venv/bin/python tests/smoke_linux_release.py extracted-release/Utterleaf
+          Compress-Archive -Path dist\Utterleaf -DestinationPath dist\Utterleaf-windows-x64-cpu.zip
+          Copy-Item dist\Utterleaf\SHA256SUMS.txt dist\SHA256SUMS.txt
+      - name: Build and archive macOS distribution
+        if: runner.os == 'macOS'
+        run: |
+          ./.venv/bin/python -m PyInstaller --noconfirm --clean packaging/utterleaf.spec
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./.venv/bin/python packaging/collect_notices.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          tar -czf dist/Utterleaf-macos-arm64.tar.gz -C dist Utterleaf
+      - name: Build and archive Linux distribution
+        if: runner.os == 'Linux'
+        run: |
+          ./.venv/bin/python -m PyInstaller --noconfirm --clean packaging/utterleaf.spec
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./.venv/bin/python packaging/collect_notices.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          tar -czf dist/Utterleaf-linux-x64.tar.gz -C dist Utterleaf
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./.venv/bin/python -m utterleaf --help
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
-          name: Utterleaf-linux-x64
-          path: dist/Utterleaf-linux-x64.tar.gz
-
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [windows, macos-build, linux-build, macos-tests, linux-tests]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          merge-multiple: true
-          path: dist
-      - name: Checksum the archives
-        run: |
-          cd dist
-          for f in *.zip *.tar.gz; do sha256sum "$f" > "$f.sha256"; done
-          sha256sum *.zip *.tar.gz > SHA256SUMS.txt
-      - name: Create the GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          gh release create "$GITHUB_REF_NAME" dist/* \
-            --title "Utterleaf $GITHUB_REF_NAME" \
-            --notes-file packaging/release-notes.md
+          name: Utterleaf-${{ runner.os }}
+          path: dist/

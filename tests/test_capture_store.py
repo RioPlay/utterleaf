@@ -14,6 +14,7 @@ from utterleaf import local_filesystem as local
 from utterleaf.transcript import TranscriptionCancelled
 
 
+@pytest.mark.slow
 def test_long_take_uses_bounded_windows_and_removes_temporary_file(tmp_path, monkeypatch):
     monkeypatch.setattr(store.tempfile, "tempdir", str(tmp_path))
     capture = store.CaptureStore(16000)

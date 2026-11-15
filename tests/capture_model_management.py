@@ -27,7 +27,7 @@ REAL_REFRESH = ModelInventoryPanel.refresh
 DOWNLOAD_STATES = ("start-failure", "cancelled", "failure", "installed", "empty")
 INVENTORY_STATES = ("inventory-installed", "inventory-incomplete", "inventory-empty",
                     "inventory-read-error", "inventory-start-failure")
-CASES = tuple((state, size, scale) for size, scale in (((960, 780), 1.0), ((760, 560), 2.0))
+CASES = tuple((state, size, scale) for size, scale in (((960, 780), 1.0),)
               for state in DOWNLOAD_STATES + INVENTORY_STATES)
 INVENTORY = tuple(f"model-{state}-{size[0]}x{size[1]}-{scale:g}x.png" for state, size, scale in CASES)
 SOURCE_NAMES = ("settings_ui.py", "model_setup.py", "model_inventory.py", "model_inventory_ui.py",

@@ -46,3 +46,9 @@ utterleaf = ["assets/*.png"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "ui: Tk or other desktop presentation tests that need a display or exercise interaction",
+    "native: tests that exercise operating-system integrations or native libraries",
+    "slow: tests whose runtime makes them unsuitable for the pull request gate",
+    "integration: tests that cross module or process boundaries and run in the main-branch suite",
+]

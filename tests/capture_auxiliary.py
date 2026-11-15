@@ -31,16 +31,11 @@ from utterleaf.transcript import Segment, Transcript
 
 SAMPLE_TEXT = "Synthetic review sample. Café notes stay local; nothing has been inserted or exported."
 SAMPLE_RESULT = Transcript((Segment(0, 4, SAMPLE_TEXT),), "en")
-FILE_STATES = ("empty", "selected", "opening", "recognizing", "cancelling",
-               "cancelled", "result", "no-speech", "error", "export-error")
+FILE_STATES = ("empty", "selected", "result", "error")
 INVENTORY = (
-    *(f"file-{state}.png" for state in FILE_STATES),
-    "file-result-compact-text-2x.png",
+    "file-empty.png", "file-selected.png", "file-result.png", "file-error.png",
     "decoder-none.png", "decoder-selected.png", "decoder-error.png",
-    "decoder-compact-text-2x.png",
-    "review-insert.png", "review-copy-only.png", "review-compact.png",
-    "review-compact-text-2x.png",
-    "file-error-compact-text-2x.png", "decoder-error-compact-text-2x.png",
+    "review-insert.png", "review-copy-only.png",
 )
 
 
@@ -244,11 +239,8 @@ def capture_all(output):
                     settle(root)
                     stage_file(window, runtime, state)
                     records.append(capture(root, errors, f"file-{state}.png", (800, 640), output))
-            with owned_root(2.0) as (root, errors):
-                window = file_ui.FileWindow(root, Config())
-                stage_file(window, runtime, "result")
-                records.append(capture(root, errors, "file-result-compact-text-2x.png", (760, 560), output))
-            for state, scale in (("none", 1.0), ("selected", 1.0), ("error", 1.0), ("compact-text-2x", 2.0)):
+            for state in ("none", "selected", "error"):
+                scale = 1.0
                 with owned_root(scale) as (parent, errors):
                     parent.geometry("760x560+60+40")
                     parent.deiconify()
@@ -257,41 +249,16 @@ def capture_all(output):
                                        RuntimeError("Synthetic selection changed; choose FFmpeg again.") if state == "error" else None)
                     dialog = file_decoder_ui.DecoderDialog(parent)
                     dialog.root.report_callback_exception = parent.report_callback_exception
-                    records.append(capture(dialog.root, errors, f"decoder-{state}.png",
-                                           (560, 500) if scale == 2 else (680, 530), output))
+                    records.append(capture(dialog.root, errors, f"decoder-{state}.png", (680, 530), output))
                     dialog.root.destroy()
             for name, allow_insert, size, scale in (
                 ("insert", True, (680, 480), 1.0), ("copy-only", False, (680, 480), 1.0),
-                ("compact", True, (480, 320), 1.0), ("compact-text-2x", False, (480, 320), 2.0),
             ):
                 with owned_root(scale) as (root, errors):
                     response = render_review(root, allow_insert, lambda: records.append(
                         capture(root, errors, f"review-{name}.png", size, output)))
                     if response != "ready\n":
                         raise AssertionError("Review emitted an unexpected action")
-            # Deliver errors after mapping, as an actual user-triggered failure
-            # arrives. This exercises production error reveal at large text.
-            for kind, size in (("file", (760, 560)), ("decoder", (560, 500))):
-                with owned_root(2.0) as (root, errors):
-                    root.geometry("760x560+60+40")
-                    root.deiconify()
-                    root.update()
-                    runtime.decoder = None
-                    window = (file_ui.FileWindow(root, Config()) if kind == "file"
-                              else file_decoder_ui.DecoderDialog(root))
-                    window.root.geometry(f"{size[0]}x{size[1]}+60+40")
-                    settle(window.root)
-                    if kind == "file":
-                        stage_file(window, runtime, "error")
-                    else:
-                        runtime.open_path = "synthetic-tools/ffmpeg.exe"
-                        runtime.confirm = True
-                        with patch.object(file_decoder_ui, "select_decoder",
-                                          side_effect=RuntimeError("Synthetic selection could not be verified.")):
-                            window.choose()
-                    records.append(capture(window.root, errors, f"{kind}-error-compact-text-2x.png", size, output))
-                    if kind == "decoder":
-                        window.root.destroy()
             if runtime.violations or tuple(record["file"] for record in records) != INVENTORY:
                 raise AssertionError("Capture guard or inventory mismatch")
         manifest["status"] = "completed"

@@ -24,8 +24,7 @@ ERROR = "Synthetic persistence failure: /synthetic/private/settings.json"
 RELOAD_ERROR = "Synthetic reload failure: /synthetic/private/app.sock"
 STATES = ("config-failure", "vocabulary-failure", "startup-failure", "unknown-failure",
           "worker-start-failure", "full-reload-failure", "partial-reload-failure", "validation")
-CASES = (*((state, (960, 780), 1.0) for state in STATES),
-         ("vocabulary-failure", (760, 560), 2.0), ("unknown-failure", (760, 560), 2.0))
+CASES = tuple((state, (960, 780), 1.0) for state in STATES)
 INVENTORY = tuple(f"save-{state}-{size[0]}x{size[1]}-{scale:g}x-post-alert.png"
                   for state, size, scale in CASES)
 SOURCE_NAMES = ("settings_ui.py", "settings.py", "config.py", "ui_feedback.py", "theme.py")

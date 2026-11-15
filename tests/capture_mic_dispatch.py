@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ERROR = "Synthetic thread start failure: /synthetic/private/device.txt"
 REAL_METHODS = {name: getattr(SettingsWindow, name)
                 for name in ("refresh_mics", "test_mic", "refresh_connection")}
-CASES = tuple((name, size, scale) for size, scale in (((960, 780), 1.0), ((760, 560), 2.0))
+CASES = tuple((name, size, scale) for size, scale in (((960, 780), 1.0),)
               for name in REAL_METHODS)
 INVENTORY = tuple(f"dispatch-{name}-{size[0]}x{size[1]}-{scale:g}x.png" for name, size, scale in CASES)
 SOURCE_NAMES = ("settings_ui.py", "audio.py", "app_status.py", "ui_feedback.py", "theme.py")

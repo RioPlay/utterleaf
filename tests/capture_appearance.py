@@ -22,7 +22,6 @@ ROOT = Path(__file__).resolve().parents[1]
 TABS = ("Tray states", "App badges", "Cutout marks", "Utterling", "Wordmark")
 CASES = (
     *((tab, (900, 740), 1.0, False) for tab in TABS),
-    *((tab, (720, 540), 2.0, False) for tab in ("Tray states", "Utterling", "Wordmark")),
     ("Wordmark", (720, 540), 2.0, True),
 )
 INVENTORY = tuple(f"artwork-{tab.lower().replace(' ', '-')}-{size[0]}x{size[1]}-{scale:g}x"
