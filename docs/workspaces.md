@@ -7,10 +7,16 @@ published/unpublished release receipts.
 
 ## Streams (one owner, one PR at a time)
 
+Current direction, November 15, 2026: desktop delivery and RC5 preparation take
+priority. Android implementation, builds and releases are paused until a suitable
+pipeline is agreed. The prepared `feat/android-experience-ux` branch is retained;
+its state is not release acceptance. This direction supersedes the older next-work
+assignments below without changing their historical release evidence.
+
 | Stream | Checkout | Next PR |
 | --- | --- | --- |
-| Android keyboard | `android-keyboard-hardening` on `codex/android-alpha21-release-record` | [Signed alpha21](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha21) is published. Record the immutable evidence, then continue workflow maintenance and the active experience plan. Physical campaigns remain unverified follow-up, not routine-preview gates. |
-| Desktop modernization | `desktop-modernization` on `feat/desktop-modernization` | Baseline, shell, recovery, explicit multilingual model packs, privacy consent and RC3 readiness are tracked in the [active plan](plans/active/desktop-modernization.md). Next: exact-head CI plus an evidence-based Windows UIA provider/presentation decision; stable native device identity, gated model lifecycle and physical acceptance remain separate. |
+| Android keyboard | Published records and `feat/android-experience-ux` retained | Paused until the pipeline decision. Preserve release and candidate evidence. |
+| Desktop modernization | `.agent/worktrees/desktop-upgrades` on `feat/desktop-modernization` | Reconciled with current main `056cb49`; implement explicit draft-only corrections and prepare the [RC5 candidate](plans/active/desktop-0.4.6-rc5-release-readiness.md). Exact-head CI and native acceptance remain separate gates. |
 | Desktop OBS | `desktop-obs-bridge` on `feat/obs-session-arm` | Parked while Android is prioritized. PR #36 is merged. On resumption, refresh, review and check draft [PR #37](https://github.com/RioPlay/utterleaf/pull/37), then replay #38 onto the resulting `main`. Keep #38–42 draft until each is rebased and verified. |
 | Android CI split | same Android release-record branch | Fast PR checks are implemented; full emulator/release gates remain required on every exact main/manual release revision. |
 

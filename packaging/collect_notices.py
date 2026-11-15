@@ -17,6 +17,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import sysconfig
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -24,14 +25,10 @@ DIST = ROOT / "dist" / "Utterleaf"
 
 
 def site_packages() -> Path | None:
-    """The project venv's site-packages, Windows or POSIX layout."""
-    windows = ROOT / ".venv" / "Lib" / "site-packages"
-    if windows.is_dir():
-        return windows
-    candidates = sorted((ROOT / ".venv" / "lib").glob("python*/site-packages"))
-    if candidates:
-        return candidates[-1]
-    return None
+    """Use the interpreter that built the package, including a reused venv."""
+    selected = sysconfig.get_path("purelib")
+    path = Path(selected) if selected else None
+    return path if path is not None and path.is_dir() else None
 
 
 SITE = site_packages()
@@ -415,7 +412,7 @@ def copy_vad_notices(licenses_dir: Path) -> tuple[str, str, str, str]:
 
 def main() -> int:
     if SITE is None:
-        raise SystemExit("collect_notices: could not find .venv site-packages — run from the repo root")
+        raise SystemExit("collect_notices: the selected Python interpreter has no site-packages directory")
     if not DIST.exists():
         raise SystemExit(f"collect_notices: {DIST} does not exist — run the build first")
     verify_media_policy(DIST)

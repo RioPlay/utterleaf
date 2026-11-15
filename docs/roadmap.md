@@ -4,13 +4,19 @@
 
 [Documentation](README.md) · [Development boundaries](development-boundaries.md) · [Execution plan](execution-plan.md)
 
-Updated September 26, 2026. This is the planning hub, not a list of released features.
+Updated November 15, 2026. This is the planning hub, not a list of released features.
 **Security first, privacy second, convenience third.** Accessibility and reliability
 are requirements throughout development, not finishing touches.
 
 ## Now
 
-- Android is the priority. [Signed alpha19](mobile.md) ships Backspace interaction fixes, direct Settings, visible Tools and visual corrections. Next: roadmap design follow-ups and [manually reported issues](plans/completed/android-alpha18-phone-acceptance.md). Emulator verification suffices; physical test campaigns are no longer required.
+- Desktop user-value work and release preparation are the current priority. The
+  [RC5 candidate plan](plans/active/desktop-0.4.6-rc5-release-readiness.md) tracks
+  explicit local corrections, the current-main integration and release evidence.
+- Android development and releases are paused by user direction until a suitable
+  pipeline is agreed. Preserve the published releases, current branches and
+  existing evidence; do not start Android implementation or builds under this
+  desktop task.
 - A bounded [desktop modernization](plans/active/desktop-modernization.md)
   stream is active alongside the parked OBS stack. Its baseline records current
   screens and dynamic presentation states; tested source slices cover landing

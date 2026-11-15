@@ -1,5 +1,9 @@
 # Desktop 0.4.6 RC3 release readiness
 
+Historical candidate contract: published RC4 supersedes this release identity.
+Current preparation is tracked in the [RC5 plan](desktop-0.4.6-rc5-release-readiness.md).
+Unresolved native/accessibility gates below remain evidence, not completed work.
+
 ## Goal
 
 Produce an immutable, honestly described Windows x64 CPU release candidate for

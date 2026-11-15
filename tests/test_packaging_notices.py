@@ -7,6 +7,21 @@ import shutil
 import pytest
 
 
+@pytest.mark.parametrize("selected_exists", [True, False])
+def test_notice_inputs_follow_selected_interpreter_not_checkout_venv(tmp_path, monkeypatch, selected_exists):
+    source = Path(__file__).resolve().parents[1] / "packaging" / "collect_notices.py"
+    spec = importlib.util.spec_from_file_location("utterleaf_notice_environment", source)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    (tmp_path / ".venv" / "Lib" / "site-packages").mkdir(parents=True)
+    selected = tmp_path / "reviewed-environment" / "site-packages"
+    if selected_exists:
+        selected.mkdir(parents=True)
+    monkeypatch.setattr(module.sysconfig, "get_path", lambda name: str(selected))
+    assert module.site_packages() == (selected if selected_exists else None)
+
+
 @pytest.fixture
 def notices(tmp_path, monkeypatch):
     root = Path(__file__).resolve().parents[1]

@@ -70,6 +70,14 @@ Click the tray icon (or right-click → **Settings…**) to open Settings. First
   installation.
 - **Help:** check whether the app is running, generate a device report, and save it wherever you choose.
 
+In the RC5 source candidate, Vocabulary includes **Remember a correction**.
+Enter the spoken phrase and the text you want instead, then choose **Add to
+draft**. This adds one rule to the existing vocabulary editor; choose **Save
+changes** to store it. Closing without saving discards the staged rule. Duplicate
+spoken phrases are rejected so an existing rule is not overwritten. Replacements
+remain paused while **Clean up dictated text** is off. The form does not read
+your clipboard, editor or dictation history.
+
 In current unreleased source, device-report and GPU-guidance checks run one at
 a time. Device reports use saved settings, not unsaved choices. A failed check
 retains the previous report and offers retry guidance; **Details…** shows optional

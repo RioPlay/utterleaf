@@ -58,6 +58,12 @@ an unsigned exception and must disclose the resulting SmartScreen warning.
 
 `packaging\build.ps1` is the canonical Windows build entry point. It runs PyInstaller, writes executable checksums, ships `README.md` at the top of the dist folder, and collects third-party notices; invoking PyInstaller directly skips those release steps. Install the development dependencies above before running it. The script installs PyInstaller if needed.
 
+An existing reviewed build environment can be reused without copying it into the
+checkout: `./packaging/build.ps1 -PythonPath $BuildPython`. Run from the owning
+checkout, set `PYTHONPATH` to that checkout, and confirm the Python version and
+dependency pins match the runtime manifest before building. Keep one output tree
+and check volume headroom before each build or archive copy.
+
 ## CI and test budget
 
 The desktop pull request gate has a five-minute job budget. It runs focused

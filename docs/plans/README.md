@@ -4,14 +4,17 @@ Substantial in-flight work lives here so a new session can continue without the
 previous chat. One-line fixes do not need a plan.
 
 Start with [workspaces](../workspaces.md) and the platform roadmap's **Now**
-section, not the first filename in `active/`. Android alpha21 is published; its
-[release record](completed/android-alpha21-release-readiness.md) preserves the
-exact promotion evidence. Continue the roadmap design follow-ups;
+section, not the first filename in `active/`. Desktop development is the current
+focus; Android work is paused until a suitable pipeline is agreed. Android
+alpha21 is published; its [release record](completed/android-alpha21-release-readiness.md) preserves the
+exact promotion evidence. Its roadmap retains design follow-ups for resumption;
 [physical issues are reported manually](completed/android-alpha18-phone-acceptance.md),
 and a dedicated phone acceptance campaign is no longer required. The separate
 [desktop modernization stream](active/desktop-modernization.md) is active, with
-[0.4.6 RC3 release readiness](active/desktop-0.4.6-rc3-release-readiness.md)
-tracking candidate identity, packaging, CI, and the publication boundary. Desktop
+[0.4.6 RC5 release readiness](active/desktop-0.4.6-rc5-release-readiness.md)
+tracking local candidate identity, correction staging, release checks, and the
+publication boundary. Published Windows RC4 remains the historical latest preview;
+RC5 build and usability acceptance are not claimed. Desktop
 Windows accessibility work is isolated in the
 [native presentation-shell plan](active/desktop-windows-accessibility-shell.md);
 the proof remains opt-in until its UIA and assistive-technology gates pass. Desktop

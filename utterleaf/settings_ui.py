@@ -27,6 +27,7 @@ from utterleaf.settings import SYSTEM_DEFAULT, FormValidationError, SettingsSave
 from utterleaf.settings_controller import SettingsController, SettingsDraft
 from utterleaf.startup import enabled as startup_enabled
 from utterleaf.ui_feedback import RecoveryFeedback, technical_details
+from utterleaf.vocabulary import append_vocabulary_entry
 
 
 # Keep paragraphs readable on wide desktops; scale with the native text size.
@@ -822,8 +823,23 @@ class SettingsWindow:
         p = self._section(page, "Personal vocabulary", "One replacement per line: spoken = written. For example: utter leaf = Utterleaf")
         self.names = self._text(p, 8)
         self.fields["names"] = self.names
-        self._register_search("names", "Personal vocabulary", self.names)
+        self._register_search("names", "Personal vocabulary", self.names,
+                              terms="names terms phrases correction spoken write replacement dictionary")
         self.names.insert("1.0", dictionary_text())
+        p = self._section(page, "Remember a correction",
+                          "Add a pair to this draft, then select Save changes to apply it.")
+        self.vocabulary_spoken = tk.StringVar(self.root)
+        self.vocabulary_written = tk.StringVar(self.root)
+        ttk.Label(p, text="Spoken phrase").pack(anchor="w", pady=(2, 4))
+        spoken_entry = Field(p, textvariable=self.vocabulary_spoken, width=36)
+        spoken_entry.pack(fill="x", pady=(0, 8))
+        ttk.Label(p, text="Write as").pack(anchor="w", pady=(2, 4))
+        written_entry = Field(p, textvariable=self.vocabulary_written, width=36)
+        written_entry.pack(fill="x", pady=(0, 8))
+        ttk.Button(p, text="Add to draft", command=self.add_vocabulary_entry).pack(anchor="w", pady=(0, 4))
+        self.vocabulary_add_status = tk.StringVar(self.root, value="")
+        ttk.Label(p, textvariable=self.vocabulary_add_status, style="Hint.TLabel",
+                  wraplength=520).pack(anchor="w")
         p = self._section(page, "Text cleanup")
         self._check(p, "Remove filler words", "remove_fillers", "Clean up “um” and “uh” automatically.")
         self._check(p, "Follow spoken corrections", "fix_corrections", "Recognize corrections such as “no wait” and “I mean”.")
@@ -833,6 +849,31 @@ class SettingsWindow:
         ttk.Button(p, text="Preview clean text", command=self.preview).pack(anchor="w", pady=(0, 10))
         self.preview_result = tk.StringVar(self.root, value="Your cleaned-up text will appear here.")
         ttk.Label(p, textvariable=self.preview_result, wraplength=520).pack(anchor="w", pady=8)
+
+    def add_vocabulary_entry(self):
+        """Stage a manually entered pair in the existing unsaved editor."""
+        existing = self.names.get("1.0", "end-1c")
+        try:
+            updated = append_vocabulary_entry(
+                existing, self.vocabulary_spoken.get(), self.vocabulary_written.get())
+        except (TypeError, ValueError) as exc:
+            self.vocabulary_add_status.set(str(exc))
+            return
+
+        insertion = "end-1c"
+        addition = updated[len(existing):]
+        cursor = self.names.index("insert")
+        selection = self.names.tag_ranges("sel")
+        self.names.edit_separator()
+        self.names.insert(insertion, addition)
+        self.names.edit_separator()
+        self.names.mark_set("insert", cursor)
+        if len(selection) == 2:
+            self.names.tag_remove("sel", "1.0", "end")
+            self.names.tag_add("sel", selection[0], selection[1])
+        self.vocabulary_spoken.set("")
+        self.vocabulary_written.set("")
+        self.vocabulary_add_status.set("Added to your draft. Select Save changes to apply it.")
 
     def _commands(self):
         p = self._page("Voice commands", "Reference", "Voice commands",

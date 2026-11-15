@@ -4,6 +4,12 @@ Status: active. This is the owning contract for the post-RC2 desktop experience
 work. It supersedes chat-only planning, but not the desktop roadmap or the
 bounded contracts linked below.
 
+Current delivery focus: [local RC5 preparation](desktop-0.4.6-rc5-release-readiness.md)
+reconciles current main and the published RC4 fixes, adds explicitly entered
+vocabulary corrections, and prepares a Windows CPU candidate. Android is paused
+until its pipeline is agreed. Earlier bounded checks below remain historical
+evidence for their stated source, not verification of the RC5 package.
+
 ## Current stabilization slice, November 15, 2026
 
 Goal: consolidate the existing visual upgrade into a quiet, consistent desktop
