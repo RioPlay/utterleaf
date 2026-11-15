@@ -84,16 +84,19 @@ Pytest markers describe test cost and environment:
 
 ## Running tests without opening windows
 
-A plain `pytest` is **headless**. Display-dependent tests carry `pytest.mark.ui`
-and are deselected by default, so running the suite does not open a parade of Tk
-windows on your desktop. Use:
+UI tests carry `pytest.mark.ui` and are deselected during collection by default.
+This guard applies even when a command supplies its own `-m` expression, so
+`pytest -m ui` and `pytest -m "not slow"` remain headless. To deliberately run
+them, pass `--run-ui`:
 
-- `pytest` for the quiet, headless run you normally want.
-- `pytest -m ui` when you deliberately want the display tests.
-- `pytest -m "not integration"` for the complete suite, display included.
+- `pytest` runs the default headless suite.
+- `pytest -m "not integration"` runs the non-integration headless suite.
+- `pytest --run-ui -m ui` runs only UI tests.
+- `pytest --run-ui -m "not integration"` includes UI tests in the selected suite.
 
-Passing your own `-m` replaces the default expression rather than combining with
-it, so `pytest -m "not slow"` will in fact run the display tests.
+The main-branch CI suite passes `--run-ui`; pull request pytest invocations do
+not. This is a collection safeguard, not a substitute for a display on systems
+that require one.
 
 The capture harnesses are manual visual references, not behavior tests and not a
 CI step. `tests/capture_settings.py` renders a number of frames to write

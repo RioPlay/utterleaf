@@ -4,6 +4,81 @@ Status: active. This is the owning contract for the post-RC2 desktop experience
 work. It supersedes chat-only planning, but not the desktop roadmap or the
 bounded contracts linked below.
 
+## Current stabilization slice, November 15, 2026
+
+Goal: consolidate the existing visual upgrade into a quiet, consistent desktop
+candidate and prevent ordinary test commands from opening display windows.
+Source baseline: `feat/desktop-modernization` at `9b28250`, including visual
+commit `d78fdd1` through merge `df8648c`. The mixed root checkout is reference
+only. Android remains on its separate branch and is not changed by this slice.
+
+Constraints: retain speech, privacy, staged settings, cancellation and reset
+behavior. No framework migration, native-shell activation, release publication,
+model operations or application launch. No screenshot or emulator runs. The user
+authorized one bounded headless check of selection and theme logic after fixes.
+
+Acceptance: an explicit display-test opt-in is required even when a caller
+passes a marker expression; the PR gate stays headless; main retains deliberate
+display coverage. Review the merged visual controls for actionable regressions
+and align the interface guide with the actual desktop tokens. Existing captured
+images may inform visual review, but do not establish current interaction or
+installed-build acceptance.
+
+Ready queue:
+
+| Work | Owner | Scope | Status / evidence |
+| --- | --- | --- | --- |
+| Quiet test selection and CI | Luna runner | pytest configuration, workflow, selection checks, development guide | Complete; AST/TOML/YAML parsing and diff whitespace checks passed |
+| Independent visual review | Sol reviewer | merged visual controls, theme and Settings usage | Complete: no demonstrated material defect; source matches saved visual captures; no GUI execution |
+| Independent selection review | Sol reviewer | collection hook, workflow and focused checks | Complete; no demonstrated material finding; no test execution |
+| Integration and documentation | Sol coordinator | demonstrated fixes, interface guide, roadmap and this plan | Complete for this slice; one focused invocation passed 10 selected checks |
+
+Verification: cheap source/configuration parsing, independent review, then the
+single authorized focused headless invocation. No broad suite or packaging.
+Stop this slice after demonstrated defects are repaired, the bounded check is
+reported accurately, and remaining usability/accessibility gates are explicit.
+This slice alone does not certify stable release readiness.
+
+The visual review covered the implementation with SHA-256 identities:
+
+- `ui_layout.py`: `e35179884057d03151f15477a85942d0de0a854dad27332bea245a5867c2a0fb`
+- `theme.py`: `fd49edaeda315dea8b96228f661173aef7ef29665219ec20d82682aa1c4b0649`
+- `settings_ui.py`: `fbfdd0d5160ecb6489434fc6fea556efa815f062771c21c2bd811eb9571379b5`
+
+One interaction question remains unverified: rounded controls forward pointer
+crossing events without copying the button-state mask. Native ancestor events
+may preserve drag cancellation, so this is not a demonstrated product failure.
+The next permitted interaction check should cover press, drag outside and
+release, plus drag back before release. No speculative control rewrite was made.
+
+Delivered locally, November 15, 2026:
+
+- A collection hook now excludes `ui` items unless `--run-ui` is supplied,
+  independently of marker expressions. PR invocations remain headless and all
+  three main-suite platform invocations explicitly opt in to UI coverage.
+- The independent selection review found no material defect. The coordinator
+  then added a harmless inherited UI-marker sentinel to the same workflow test
+  module to exercise real collection without a window. The sentinel asserts that
+  explicit opt-in exists if it is ever selected; it passes on opted-in CI runs.
+- Exactly one headless invocation ran from the owning worktree, using the shared
+  repository Python environment with `PYTHONPATH` set to that worktree and
+  `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`:
+  `python -m pytest tests/test_ci_workflow.py tests/test_theme.py -m "not slow" -q -ra`.
+  All **10 selected checks passed**, exit 0. The inherited UI sentinel was
+  deselected even with the explicit marker expression. Fake-item checks also
+  verified rejection without opt-in, retention with opt-in, ordinary-item
+  preservation and deselection reporting. Theme checks covered readable contrast
+  and style application through a fake root. No real Tk root was created.
+- Interface guidance and roadmap now match the current layered desktop design.
+  No application, screenshot harness, emulator, microphone, model operation or
+  package build ran. No CI job, public push, installation or release was made.
+
+Remaining broader-goal acceptance: current whole-app/runtime and packaged-build
+verification, real pointer drag cancellation, supported-platform interaction and
+the existing Windows accessibility-shell release gates. The 15-minute hosted
+full-suite budget remains unmeasured on this revision. The broader goal remains
+open; do not infer production readiness from this bounded result.
+
 [Desktop roadmap](../../desktop-roadmap.md) ·
 [UI baseline](../../desktop-ui-baseline.md) ·
 [Interface guide](../../interface.md) ·

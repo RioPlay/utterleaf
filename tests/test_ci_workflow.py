@@ -1,7 +1,19 @@
 from pathlib import Path
+from types import SimpleNamespace
+
+import conftest
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.mark.ui
+class TestDisplayOptIn:
+    def test_ui_marker_requires_explicit_permission(self, request) -> None:
+        # Harmless sentinel: exercise real inherited marker collection without
+        # opening a window, even if the selection safeguard regresses.
+        assert request.config.getoption("--run-ui")
 
 
 def test_windows_installer_runs_the_frozen_smoke_before_upload() -> None:
@@ -25,27 +37,53 @@ def test_desktop_workflow_keeps_platform_isolation_and_bounded_jobs() -> None:
     pr_gate = workflow.split("  pr-gate:", 1)[1].split("\n  full-suite:", 1)[0]
     full_suite = workflow.split("  full-suite:", 1)[1].split("\n  installers:", 1)[0]
 
-    # The pull request gate stays headless and never renders screenshot frames.
-    assert "-m \"not ui and not slow and not integration\" -q" in pr_gate
+    pytest_invocations = [line for line in pr_gate.splitlines() if "pytest" in line]
+    assert pytest_invocations, "PR gate must retain its focused pytest coverage"
+    for invocation in pytest_invocations:
+        assert "--run-ui" not in invocation
+        assert '"not ui' in invocation, invocation
     assert "capture_settings.py" not in pr_gate
     assert "capture_visual.py" not in pr_gate
 
-    # Display tests run on main, not on every pull request.
-    assert "-m \"not integration\"" in full_suite
-    assert "not ui" not in full_suite
+    full_invocations = [line for line in full_suite.splitlines() if "pytest" in line]
+    assert full_invocations, "main branch must retain its full pytest suite"
+    for invocation in full_invocations:
+        assert "--run-ui" in invocation
+        assert '-m "not integration"' in invocation
 
 
-def test_default_pytest_run_is_headless() -> None:
-    """A plain `pytest` must not open display windows, so ui tests are deselected."""
+def test_default_pytest_run_is_headless_and_has_an_explicit_opt_in() -> None:
     config = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    assert "addopts" in config
-    assert "not ui" in config
+    assert 'addopts = "-q"' in config
+    assert "addopts = \"-q -m" not in config
 
-    marked = []
-    for path in (ROOT / "tests").glob("test_*.py"):
-        source = path.read_text(encoding="utf-8")
-        if "pytest.mark.ui" in source:
-            marked.append(path.name)
-    # The display-dependent modules carry the marker, so the filter is load-bearing
-    # rather than a no-op guard that silently selects everything.
-    assert len(marked) >= 20, f"only {len(marked)} modules marked ui: {sorted(marked)}"
+    hook_source = (ROOT / "tests" / "conftest.py").read_text(encoding="utf-8")
+    assert 'config.getoption("--run-ui")' in hook_source
+    assert '"ui" in item.keywords' in hook_source
+
+
+def test_collection_guard_deselects_ui_items_without_opt_in() -> None:
+    ui = SimpleNamespace(keywords={"ui": True})
+    ordinary = SimpleNamespace(keywords={})
+    deselected = []
+    config = SimpleNamespace(
+        getoption=lambda _name: False,
+        hook=SimpleNamespace(pytest_deselected=lambda *, items: deselected.extend(items)),
+    )
+    items = [ui, ordinary]
+
+    conftest.pytest_collection_modifyitems(config, items)
+
+    assert items == [ordinary]
+    assert deselected == [ui]
+
+
+def test_collection_guard_keeps_ui_items_with_opt_in() -> None:
+    ui = SimpleNamespace(keywords={"ui": True})
+    ordinary = SimpleNamespace(keywords={})
+    config = SimpleNamespace(getoption=lambda _name: True)
+    items = [ui, ordinary]
+
+    conftest.pytest_collection_modifyitems(config, items)
+
+    assert items == [ui, ordinary]

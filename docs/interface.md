@@ -91,24 +91,28 @@ out of that everyday path until they serve a clear user need.
 
 ## Existing desktop tokens
 
-These are the current values in `utterleaf/theme.py`, retained as the starting
-point for modernization. Android app surfaces share the primary green, base
-surface, primary text, and control surface; keyboard density stays independent.
+These are the desktop values in `utterleaf/theme.py`. Android owns its separate
+theme implementation and keyboard density; desktop changes do not update it.
 
 | Role | Existing token / value |
 | --- | --- |
 | Brand action | `PRIMARY` `#83DA9A`, `ON_PRIMARY` `#102A1B` |
 | Selection | `PRIMARY_CONTAINER` `#203C2D`, `ON_PRIMARY_CONTAINER` `#C1F2CD` |
-| Base / recessed / raised | `SURFACE` `#171E20`, `SURFACE_LOW` `#101617`, `SURFACE_CONTAINER` `#283335` |
+| Page / card / raised | `SURFACE_BASE` `#131B1C`, `SURFACE_CARD` `#1B2425`, `SURFACE_RAISED` `#283335` |
+| Recessed controls / sidebar | `SURFACE_LOW` `#0E1515` |
 | Primary / supporting text | `ON_SURFACE` `#E5EEE8`, `ON_VARIANT` `#AABCB1` |
-| Borders / disabled | `OUTLINE_VARIANT` `#35483D`, `OUTLINE` `#71897B` |
+| Borders / disabled text | `HAIRLINE` `#334443`, `DISABLED_CONTENT` `#8B9C92` |
 | Error text | `ERROR` `#FFB4AB` |
-| Type hierarchy | System family; title 22 bold, section 13 bold, body 10, support 9, primary action 10 bold |
-| Spacing rhythm | Fine 4–6, controls 8–12, groups 16, page inset 24–26 pixels |
+| Type hierarchy | System family; title 22 bold, section 12 bold, body 10, support 9, primary action 10 bold |
+| Spacing rhythm | Shared steps 4, 8, 12, 16, 24, 32 pixels; existing page inset 26 pixels |
+| Corner radii / focus | Radii 6, 10, 14 pixels; 2-pixel green focus ring |
 
-Use flat sections and native control geometry. Rounded status pills and app
-badges already have distinct roles; the page does not need additional decorative
-containers. Status copy remains authoritative and uses non-color cues.
+Use rounded cards to group related decisions, restrained pill navigation and
+radio selection, and native control geometry and keyboard behavior. Canvas
+decoration must not add tab stops or replace text with color-only cues. Status
+copy remains authoritative. These visual changes do not resolve the documented
+Windows Tk UI Automation limitation; the native shell remains a separate gated
+experiment.
 
 Within Settings, Alt+1–5 (Command+1–5 on macOS) navigates the five destinations;
 F1 opens Help. Ctrl+F (Command+F on macOS) opens local Settings search; a visible

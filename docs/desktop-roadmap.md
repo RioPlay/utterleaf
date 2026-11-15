@@ -4,7 +4,7 @@
 
 Scope: Windows, macOS, and Linux desktop application only.
 
-Updated September 27, 2026. Priorities follow the
+Updated November 15, 2026. Priorities follow the
 [offline STT user research](offline-stt-user-research-2026-09-08.md).
 This is an ordered development plan, not a promise of release dates.
 
@@ -15,6 +15,19 @@ The product goal is simple: press a key, speak, and get dependable text in the
 intended field, with understandable local processing and minimal interruption.
 
 ## Now
+
+- **Desktop stabilization:** the layered visual source and quiet-testing cleanup
+  are consolidated on `feat/desktop-modernization`, starting from `9b28250`.
+  The [current bounded contract](plans/active/desktop-modernization.md#current-stabilization-slice-november-15-2026)
+  records the work and verification boundary. Independent static review found no
+  demonstrated material regression in the merged visual controls, and existing
+  captures match the reviewed implementation. The interface guide now reflects
+  those desktop tokens. Display tests now require explicit opt-in even when
+  a marker expression is supplied. One headless selection/theme invocation passed
+  **10 checks** and excluded a harmless inherited UI sentinel under an explicit
+  marker expression. This is unreleased source, not an installed
+  build or a stable-release claim; current whole-app and native accessibility
+  acceptance remain open.
 
 - **Windows accessibility shell:** the September 27 UI Automation audit is a
   measured framework decision gate, not missing documentation: all 12 inspected
@@ -770,5 +783,11 @@ selection, and retained leaf identity. Final compact Dictation and focused
 2x-text Speech & privacy frames were also inspected for readable controls.
 The requested focused regression command passed, as did the affected compact
 Dictation checks after the card wrapping correction. Existing test assertions
-were retained. Independent review is deferred to integration because this slice
-was explicitly assigned to one implementation worker without subagents.
+were retained. Independent review was deferred during implementation. The
+November 15 integration review found no demonstrated material defect in the
+merged visual source. The three implementation files match the checkout holding
+the reviewed captures. This was a static review with existing artifacts, not a
+new GUI run.
+
+The commands above record historical visual verification. Current pytest display
+runs require `--run-ui`; use the current development guide for invocation details.
