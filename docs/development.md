@@ -53,8 +53,8 @@ To bundle the installed CUDA libraries for NVIDIA acceleration, set `$env:UTTERL
 
 `utterleafw.exe` is what start-at-login uses; `startup.py`, the settings relaunch,
 and the --pill subprocess are all frozen-aware. Stable releases should sign the
-executables before shipping. The explicitly labeled 0.4.6 RC2 Windows preview is
-an unsigned exception and must disclose the resulting SmartScreen warning.
+executables before shipping. The published 0.4.6 RC4 Windows preview is an
+unsigned exception and must disclose the resulting SmartScreen warning.
 
 `packaging\build.ps1` is the canonical Windows build entry point. It runs PyInstaller, writes executable checksums, ships `README.md` at the top of the dist folder, and collects third-party notices; invoking PyInstaller directly skips those release steps. Install the development dependencies above before running it. The script installs PyInstaller if needed.
 
@@ -83,10 +83,11 @@ jobs. A tag-triggered build run alone is insufficient because it does not run
 the full suite. The publisher also verifies the downloaded Windows, macOS, and
 Linux archives before creating the release.
 
-Android pull requests always run JVM unit tests and `lintDebug`. The Android
-emulator suite runs on `main`, nightly at 06:00 UTC, or when a pull request has
-the `run-emulator` label. The independent `android-release.yml` gates are
-unchanged.
+Android implementation, builds and releases are paused until its pipeline is
+agreed. This desktop candidate retains the current-main Android workflow rather
+than introducing a nightly emulator schedule or revised Android PR checks.
+Deferred Android CI edits remain preserved locally; resume them in the owning
+Android branch. The independent `android-release.yml` gates are unchanged.
 
 Pytest markers describe test cost and environment:
 

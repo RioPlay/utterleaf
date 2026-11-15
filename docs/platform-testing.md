@@ -11,8 +11,10 @@ Settings-only CPU/memory comparison is recorded separately in the plan, with
 all samples and limitations; it is not tray or speech-engine clearance. Keep the direct
 platform checklist below open until its own evidence is collected.
 
-The [0.4.6 RC3 readiness plan](plans/active/desktop-0.4.6-rc3-release-readiness.md)
-is the candidate-specific ledger. After the multilingual model-pack follow-up,
+The [0.4.6 RC5 readiness plan](plans/active/desktop-0.4.6-rc5-release-readiness.md)
+is the current candidate-specific ledger. Earlier multilingual and recovery
+results below remain historical evidence for their named source revisions. After
+the multilingual model-pack follow-up,
 the multilingual worktree run passed **2,693 tests with 14 documented prerequisite
 skips** in 370.55 seconds, including the
 Windows OBS ownership/ACL checks. Child-process tests explicitly import the active
@@ -86,7 +88,8 @@ Local results for the v0.3.4 microphone-recovery changes:
 
 Published release validation is recorded in [GitHub Actions](https://github.com/RioPlay/utterleaf/actions/workflows/build.yml).
 The release workflow tests and builds Windows, macOS, and Linux on native runners;
-publication is gated on all five jobs. The Linux package also runs extracted-app
+stable publication is gated on all six jobs: three full-suite jobs and three
+installer jobs. The Linux package also runs extracted-app
 startup and IPC checks under Xvfb with X11 and Wayland session selection. This is
 not a real Wayland compositor, microphone, or external-editor test.
 

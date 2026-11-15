@@ -728,13 +728,12 @@ and primary platform references are in [the mobile guide](mobile.md).
 
 ## Before each mobile release
 
-The current published baseline is Android alpha21, exact main revision
-`394fdff11b8ed300d320d9e28c04876d00cc2c93`. Exact-main CI
-[run 36347322221](https://github.com/RioPlay/utterleaf/actions/runs/36347322221) and
-protected signing/publication [run 36348423330](https://github.com/RioPlay/utterleaf/actions/runs/36348423330)
-passed; see [signed publication, preservation evidence and APK checksum](#current-status).
-Earlier alpha entries retain their historical validation scope and do not validate
-a newer candidate.
+The current published baseline is Android alpha19, revision `599f675`: 186 API 35
+tests and applicable JVM/tooling/lint/build checks passed in
+[CI 35462899374](https://github.com/RioPlay/utterleaf/actions/runs/35462899374).
+See [signed publication, preservation evidence and APK checksum](#current-status).
+Alpha20 release preparation is tracked separately; earlier alpha entries retain
+their historical validation scope and do not validate a newer candidate.
 
 Track the [Android responsiveness and acceleration pass](android-performance.md)
 separately from feature completeness; hardware speedups require physical-device

@@ -141,6 +141,32 @@ push/tag/release was performed. Expat 2.9.0 and SQLite 3.50.4 advisory limits re
 
 ## Remaining broader gates and stop
 
+Completion audit, November 15:
+
+| Requirement | Evidence and remaining work |
+| --- | --- |
+| Modern desktop presentation and simpler CI | Prepared source and prior visual review are retained; display tests require explicit opt-in, PR checks remain headless, and release gates retain six named native jobs. Current actual interaction remains open. |
+| Complete text in the intended field | Current-main clipboard receipt and cancellation fixes are included; 54 mocked clipboard cases and adjacent delivery checks passed. Browser, rich-text, terminal, elevated-field and real microphone acceptance remain open. |
+| Explicit recurring corrections | The manually entered Vocabulary form and draft helper pass success, duplicate, malformed-input and no-persistence checks. The existing dictionary editor keeps rules inspectable and removable. Actual Tk Save/Cancel/undo/focus acceptance remains open. |
+| Low effort and accessibility | Existing one-key start/stop, cancellation and short-lived recovery are retained. The known Tk UIA defect is unresolved; the native shell remains an isolated proof with complete pages, other surfaces and assistive-technology acceptance still required. No accessibility clearance is claimed. |
+| Understandable privacy | Existing local processing, download controls and two-minute memory-only recovery remain; privacy checks passed. No passive learning, ambient capture or permanent transcript history was added. |
+| Desktop release preparation | Source, notes, unsigned Windows CPU ZIP, checksums and headless frozen receipts are ready. Hosted exact-revision CI, target acceptance, signing decision and public actions are not complete. macOS/Linux packages require native runners. |
+| Android pause and platform isolation | No Android worktree changes or builds were made. The desktop diff's earlier Android CI changes and roadmap correction were removed from its final tree and preserved as a local patch. No new Android schedule will ship with this desktop change. |
+
+The Android baseline removal is tied to main `056cb49`: both
+`.github/workflows/android.yml` and `docs/mobile-roadmap.md` match it exactly.
+The deferred patch is `.grok/verification/rc5/deferred-android.patch`, SHA-256
+`88bbd3c2a8c980e82c1512d8ec0cf5b09aa58aff62ee3209065fd74551c5002b`;
+its source commits remain in history. Twelve focused CI-contract/repository-boundary
+checks passed after the isolation fix. No package source or packaged file changed,
+so the Windows archive receipt above still applies to its recorded source.
+
+PR #62 was read back as open at remote head `0fb5aac3`, before these local commits;
+its published description still identifies RC3. The remote head is an ancestor
+of the prepared local branch, so a future authorized update can be a normal push.
+No push or PR mutation has occurred. A replacement title/body is prepared locally
+under `.grok/verification/rc5/` and must be bound to the approved branch revision.
+
 Actual Tk focus/undo/save/cancel interaction, pointer drag cancellation, complete
 Windows UI Automation and screen-reader support, microphone/editor/device tests,
 mixed DPI and other desktop platforms remain unverified. Existing native-shell
