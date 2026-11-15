@@ -80,6 +80,14 @@ environment while a conflicting checkout environment exists.
 The local Windows CPU package and frozen CLI checks are still pending. Headless
 test results do not establish actual Tk interaction or native device behavior.
 
+The first executable build completed, but its notice gate rejected two Microsoft
+runtime DLLs selected from the host JDK on PATH. This is a failed package, not
+release evidence. The spec now explicitly selects both DLLs from the selected
+Python base runtime; their existing manifest pins remain unchanged. The base
+runtime bytes match the reviewed Python archive. All 36 affected packaging/media
+checks passed, including valid inputs and each missing-DLL failure. A rebuild
+must prove the collected bytes and complete the full notice gate.
+
 ## Remaining broader gates and stop
 
 Actual Tk focus/undo/save/cancel interaction, pointer drag cancellation, complete

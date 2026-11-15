@@ -3,8 +3,10 @@ import email
 import hashlib
 import importlib.util
 import json
+import runpy
+import sys
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -43,6 +45,45 @@ def runtime(tmp_path, monkeypatch):
 
 def package_metadata(version="1.0", name="example"):
     return email.message_from_string(f"Name: {name}\nVersion: {version}\nLicense: MIT\n")
+
+
+@pytest.mark.parametrize("missing", [None, "vcruntime140.dll", "vcruntime140_1.dll"])
+def test_windows_spec_selects_python_runtime_dlls_and_rejects_missing_inputs(tmp_path, monkeypatch, missing):
+    root = Path(__file__).resolve().parents[1]
+    names = ("vcruntime140.dll", "vcruntime140_1.dll")
+    for name in names:
+        if name != missing:
+            (tmp_path / name).write_bytes(b"Python runtime fixture")
+    captured = []
+
+    def analysis(*_args, **kwargs):
+        captured.extend(kwargs["binaries"])
+        return SimpleNamespace(pure=[], scripts=[], binaries=[], datas=[])
+
+    api = ModuleType("PyInstaller.building.api")
+    api.EXE = api.PYZ = api.COLLECT = lambda *_args, **_kwargs: None
+    hooks = ModuleType("PyInstaller.utils.hooks")
+    hooks.collect_data_files = hooks.collect_dynamic_libs = hooks.copy_metadata = lambda *_args, **_kwargs: []
+    for name in ("PyInstaller", "PyInstaller.building", "PyInstaller.utils"):
+        monkeypatch.setitem(sys.modules, name, ModuleType(name))
+    monkeypatch.setitem(sys.modules, "PyInstaller.building.api", api)
+    monkeypatch.setitem(sys.modules, "PyInstaller.utils.hooks", hooks)
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(sys, "base_prefix", str(tmp_path))
+    monkeypatch.delenv("UTTERLEAF_BUNDLE_CUDA", raising=False)
+
+    def execute():
+        runpy.run_path(root / "packaging" / "utterleaf.spec", init_globals={
+            "SPECPATH": str(root / "packaging"), "Analysis": analysis,
+        })
+
+    if missing:
+        with pytest.raises(RuntimeError, match="Required Python runtime DLL is missing"):
+            execute()
+        assert not captured
+    else:
+        execute()
+        assert captured == [(str(tmp_path / name), ".") for name in names]
 
 
 def test_expression_only_or_unreviewed_version_cannot_ship(runtime):
