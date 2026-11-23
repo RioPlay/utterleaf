@@ -2,25 +2,25 @@
 
 <img src="assets/brand/utterling-thinking.png" width="88" alt="Utterling considering mobile voice input" />
 
-[Documentation](README.md) · [Mobile roadmap](mobile-roadmap.md) · [Android preview](../mobile/android/README.md)
+[Documentation](README.md) · [Mobile roadmap](mobile-roadmap.md) · [Android setup](../mobile/android/README.md)
 
 Mobile development follows the same priority as desktop: security first, privacy
 second, convenience third. The Android project is a separate native application;
 it does not replace or add dependencies to the desktop Python application.
 
-## Android — typing and local dictation preview
+## Android — typing and local dictation
 
-[Download the signed Android alpha19 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha19/Utterleaf-Android-0.1.0-alpha19.apk) ·
-[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha19) ·
+[Download the signed Android 0.1.0 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0/Utterleaf-Android-0.1.0.apk) ·
+[Release notes](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0) ·
 [Setup and current limits](../mobile/android/README.md)
 
-Android **0.1.0-alpha19 is released as a signed preview**. Setup
+Android **0.1.0** is the first stable signed keyboard release. Setup
 separates the two keyboard activation steps from optional voice setup, reports
 whether the keyboard is enabled and selected, and shows model and microphone
 permission status independently.
 
-Alpha17 adds the daily toolbar/settings redesign, a password-manager shortcut in
-password fields and local English word completions. Suggestions complete the word
+The daily row includes Tools, Edit, local English word completions and Dictate.
+Password fields offer a password-manager shortcut. Suggestions complete the word
 immediately before the caret; they do not predict the next word, correct spelling
 automatically, learn from typing or send text anywhere. Password/raw fields and
 disabled suggestions do not show completions. See the [current release evidence

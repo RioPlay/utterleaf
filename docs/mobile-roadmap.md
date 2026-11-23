@@ -31,17 +31,18 @@ wait for the editor, privacy and testing foundation.
 
 ## Now
 
-- **Release checkout:** `codex/android-stable-release` from current `main`.
-- **Released:** [signed alpha21](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha21), including the clean-room daily-surface reset and live selected-text completion safeguard (PRs #64–#66).
-- **Current:** prepare [Android 0.1.0](plans/active/android-stable-release.md)
-  with the narrow Space correction, reviewed dependency patches, and protected
-  stable publishing. Alpha21 remains the published APK until signing succeeds.
+- **Released:** [Android 0.1.0](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0)
+  is the first stable signed APK. It includes the narrow Space correction and
+  dependency updates. See the [release record](plans/completed/android-stable-release.md).
 - **Next:** complete the workflow-only Node.js/action and runner-image maintenance
   recorded in [alpha20 release readiness](plans/completed/android-alpha20-release-readiness.md#post-release-ci-maintenance-memory).
   Editor-bound dictation recovery and the remaining Tools architecture work stay
   in the [capability and experience plan](plans/active/android-experience-refresh.md).
   Android remains the priority; desktop is parked.
-- **Verified for alpha21:** exact-main CI [run 36347322221](https://github.com/RioPlay/utterleaf/actions/runs/36347322221) passed; protected signing [run 36348423330](https://github.com/RioPlay/utterleaf/actions/runs/36348423330) preserved the established signer, passed signed alpha03 upgrade and same-version reinstall preservation checks, and published the prerelease.
+- **Verified for 0.1.0:** exact-main [CI run 45094727177](https://github.com/RioPlay/utterleaf/actions/runs/45094727177)
+  passed 239 keyboard and two lifecycle-host emulator tests. [Protected signing
+  run 45096360732](https://github.com/RioPlay/utterleaf/actions/runs/45096360732)
+  preserved the established signer and verified upgrade and reinstall preservation.
 - **Manual feedback:** physical typing/latency, TalkBack/Switch Access, phone landscape/three-button navigation and real Obtainium behavior are handled through user reports, not mandatory test gates. Emulator success does not establish physical-device verification. See the [manual reporting policy](plans/completed/android-alpha18-phone-acceptance.md).
 - **CI maintenance after alpha20:** update Node.js-20-based actions (including
   deprecated `actions/setup-java@v4`) to supported Node.js 24 releases, and pin or
@@ -52,6 +53,13 @@ wait for the editor, privacy and testing foundation.
 **Acceptance policy — September 26, 2026:** routine increments and preview releases use the applicable automated regression, privacy/security, build and signed-release checks without making unobserved device claims. The A–M redesign is not complete until its named compatibility, performance and final accessibility audits pass. Physical-device and assistive-technology work need not block every bounded source slice, but unperformed checks remain open and can never be reported as passed.
 
 ## Current status
+
+- **Android 0.1.0 published:** the immutable tag resolves to
+  `c79e5a9ee80b9cb6d3345404fa9952ad6f16f422`. The downloaded APK matches the
+  published SHA-256 `e75df292d445d114aa8e66f71d4a14bf5e22799c7bb0aaec6ce898195083d451`.
+  Independent local checks confirmed the signer, package, version code **22**,
+  release build flags and 16 KB alignment. Phone and assistive-technology
+  observations remain separate from emulator results.
 
 - **Dependency security remediation — November 4, 2026:** the isolated
   [Android security candidate](plans/active/android-dependency-security.md)
@@ -738,12 +746,9 @@ and primary platform references are in [the mobile guide](mobile.md).
 
 ## Before each mobile release
 
-The current published baseline is Android alpha19, revision `599f675`: 186 API 35
-tests and applicable JVM/tooling/lint/build checks passed in
-[CI 35462899374](https://github.com/RioPlay/utterleaf/actions/runs/35462899374).
-See [signed publication, preservation evidence and APK checksum](#current-status).
-Alpha20 release preparation is tracked separately; earlier alpha entries retain
-their historical validation scope and do not validate a newer candidate.
+Use the [Android 0.1.0 release record](plans/completed/android-stable-release.md)
+for the stable baseline and its build, signing, preservation and checksum evidence.
+Verify each new candidate at its own revision.
 
 Track the [Android responsiveness and acceleration pass](android-performance.md)
 separately from feature completeness; hardware speedups require physical-device

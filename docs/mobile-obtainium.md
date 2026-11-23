@@ -6,10 +6,8 @@ Obtainium checks GitHub and installs Android updates. Utterleaf itself keeps **n
 Internet permission** and does not add an updater service. The signed channel
 begins with Android alpha03; alpha01/alpha02 used disposable debug keys.
 
-Current release: [Android alpha19](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha19) ·
-[Signed APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0-alpha19/Utterleaf-Android-0.1.0-alpha19.apk).
-Alpha20 is an unreleased candidate; do not treat its roadmap or local build as an
-available update.
+Current stable release: [Android 0.1.0](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0) ·
+[Signed APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0/Utterleaf-Android-0.1.0.apk).
 
 ## Set up
 
@@ -21,7 +19,7 @@ Alternatively, add `https://github.com/RioPlay/utterleaf` in Obtainium and set:
 
 | Setting | Value |
 | --- | --- |
-| Include prereleases | On while Android is an alpha |
+| Include prereleases | Off for stable updates only. Utterleaf's import profile enables previews. |
 | Filter release titles by regular expression | `^Utterleaf Android ` (including the trailing space) |
 | Filter APKs by regular expression | `^Utterleaf-Android-.*\.apk$` |
 | Verify latest tag | Off — the repository's stable latest release belongs to desktop |
@@ -86,7 +84,7 @@ depends on the source and device installer, and is not a separate audit of app s
 - Use `android-v<versionName>` tags and `Utterleaf Android <versionName>` titles.
 - Increase `versionCode` on every published version. Do not replace published APKs.
 - Publish one `Utterleaf-Android-<versionName>.apk`, checksums, signing information
-  and `version.json`; leave the release as a prerelease during alpha development.
+  and `version.json`. Suffix preview versions so GitHub marks them as prereleases.
 - Keep signing secrets in the main-only `android-release` environment. Normal
   builds and pull requests do not receive them. Sign a verified CI artifact in
   the separate release workflow; private keys never belong in artifacts or Git.
