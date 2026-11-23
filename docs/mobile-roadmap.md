@@ -31,12 +31,11 @@ wait for the editor, privacy and testing foundation.
 
 ## Now
 
-- **Checkout:** `android-keyboard-hardening`, branch `codex/android-comfort-pass`.
+- **Release checkout:** `codex/android-stable-release` from current `main`.
 - **Released:** [signed alpha21](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha21), including the clean-room daily-surface reset and live selected-text completion safeguard (PRs #64–#66).
-- **Current:** finish review and exact-main validation of the bounded
-  [daily-keyboard comfort pass](plans/active/android-comfort-pass.md). It quiets
-  suggestions, improves hint hierarchy, guarantees bottom-row touch widths and
-  unifies the action-key shape without changing typing, privacy or editor logic.
+- **Current:** prepare [Android 0.1.0](plans/active/android-stable-release.md)
+  with the narrow Space correction, reviewed dependency patches, and protected
+  stable publishing. Alpha21 remains the published APK until signing succeeds.
 - **Next:** complete the workflow-only Node.js/action and runner-image maintenance
   recorded in [alpha20 release readiness](plans/completed/android-alpha20-release-readiness.md#post-release-ci-maintenance-memory).
   Editor-bound dictation recovery and the remaining Tools architecture work stay
