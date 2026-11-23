@@ -2,9 +2,9 @@
 
 <img src="../../docs/assets/brand/utterling-listening.png" width="88" alt="Listening Utterling" />
 
-An experimental English typing keyboard with integrated offline dictation.
-**0.1.0-alpha21 is the current signed preview.**
-The alpha21 ordinary surface uses one compact daily row for Tools, Edit, three
+An English typing keyboard with integrated offline dictation.
+**[0.1.0](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0) is the first stable signed release.**
+The keyboard uses one compact daily row for Tools, Edit, three
 stable suggestion positions and Dictate. Secondary editing, Emoji, Private Draft
 and specialist controls appear only when requested. Its continuous bottom row is
 ?123, comma, Space, period and the dynamic action key. System,
@@ -126,12 +126,10 @@ prediction, accessibility and device coverage remain on the
 
 ## Try it
 
-1. Choose an Android APK from a [published signed preview](https://github.com/RioPlay/utterleaf/releases)
-   for Android 8.0 or newer with a 64-bit ARM processor (ARM64).
-   Alpha21 is the current published preview. Development revisions built locally
-   remain unsigned test candidates, not release downloads.
+1. Install the [signed Android 0.1.0 APK](https://github.com/RioPlay/utterleaf/releases/download/android-v0.1.0/Utterleaf-Android-0.1.0.apk)
+   on Android 8.0 or newer with an ARM64 or x86_64 processor.
    If alpha01/alpha02 is installed, its debug signer differs: uninstall it once,
-   then install the signed preview. Uninstalling removes the imported model and other app data.
+   then install the signed release. Uninstalling removes the imported model and other app data.
    Alpha03 began the persistent signing channel; an installed signed alpha03 uses
    the same release identity and should be updated in place rather than uninstalled.
 2. Open **Utterleaf**. Under **Your keyboard**, enable **Utterleaf**
