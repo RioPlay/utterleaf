@@ -31,12 +31,11 @@ wait for the editor, privacy and testing foundation.
 
 ## Now
 
-- **Checkout:** `android-keyboard-hardening`, branch `codex/android-comfort-pass`.
+- **Release checkout:** `codex/android-stable-release` from current `main`.
 - **Released:** [signed alpha21](https://github.com/RioPlay/utterleaf/releases/tag/android-v0.1.0-alpha21), including the clean-room daily-surface reset and live selected-text completion safeguard (PRs #64–#66).
-- **Current:** finish review and exact-main validation of the bounded
-  [daily-keyboard comfort pass](plans/active/android-comfort-pass.md). It quiets
-  suggestions, improves hint hierarchy, guarantees bottom-row touch widths and
-  unifies the action-key shape without changing typing, privacy or editor logic.
+- **Current:** prepare [Android 0.1.0](plans/active/android-stable-release.md)
+  with the narrow Space correction, reviewed dependency patches, and protected
+  stable publishing. Alpha21 remains the published APK until signing succeeds.
 - **Next:** complete the workflow-only Node.js/action and runner-image maintenance
   recorded in [alpha20 release readiness](plans/completed/android-alpha20-release-readiness.md#post-release-ci-maintenance-memory).
   Editor-bound dictation recovery and the remaining Tools architecture work stay
@@ -53,6 +52,17 @@ wait for the editor, privacy and testing foundation.
 **Acceptance policy — September 26, 2026:** routine increments and preview releases use the applicable automated regression, privacy/security, build and signed-release checks without making unobserved device claims. The A–M redesign is not complete until its named compatibility, performance and final accessibility audits pass. Physical-device and assistive-technology work need not block every bounded source slice, but unperformed checks remain open and can never be reported as passed.
 
 ## Current status
+
+- **Dependency security remediation — November 4, 2026:** the isolated
+  [Android security candidate](plans/active/android-dependency-security.md)
+  updates Gradle to 8.14.6, hash-pinned whisper.cpp to 1.9.5 and affected
+  AGP/lint/test-tool Maven transitives. CI now resolves all app/test/buildscript
+  graphs and matches public Maven advisories locally without uploading inventory.
+  Initial patched JVM/lint/debug checks and 36 tooling tests passed; final
+  release/lifecycle-host and advisory results are recorded in the plan. This is
+  unpublished source work. Three focused API 35 emulator native/model tests passed;
+  independent review reproduced the corrected audit and cleared the bounded diff.
+  Hosted CI, ARM64 runtime and physical-device acceptance remain unverified.
 
 - **Daily-keyboard comfort candidate verified locally — September 27, 2026:**
   suggestions now use quiet, borderless fixed slots and clear stale hidden text;

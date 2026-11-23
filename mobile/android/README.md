@@ -300,9 +300,30 @@ Requirements: JDK 17, Android SDK platform 36, NDK 28.0.13004108, CMake 3.22.1.
 Set `ANDROID_HOME` to your SDK or create an untracked `local.properties`.
 The checked-in Gradle wrapper verifies its distribution hash. Native dependencies
 are fetched at build time from whisper.cpp commit
-`2eeeba56e9edd762b4b38467bab96c2517163158` (v1.8.3); there is no runtime fetch.
+`d1be6fde11ac6e0407606b4e42fe72d34add8037` (v1.9.5); there is no runtime fetch.
 The source archive is verified against SHA-256
-`089b898aa83b24a8321e0fd554eeb0967fb03dd687e27f6374c72d3363b5b429`.
+`645445da884df6dbd52b30f82d7be7c01d1767c938714e477e786b88d529e9f4`.
+Gradle 8.14.6 and bounded AGP/lint transitive security versions are pinned in
+the wrapper and settings. See the [security evidence](../../docs/plans/active/android-dependency-security.md).
+
+Resolve every application, test and buildscript configuration (including the
+opt-in lifecycle host), then audit locally against public Maven advisories:
+
+```sh
+./gradlew --no-daemon -I tools/dependency_inventory.gradle -PincludeLifecycleHost=true securityDependencyInventory
+python3 tools/audit_dependencies.py --download
+```
+
+This downloads OSV's public Maven database; it uploads no dependency information.
+The download also retrieves a pinned, SHA-256-verified Apache Maven comparator
+JAR. JDK 17 runs the small version-comparison helper. Use `--database
+/path/to/Maven-all.zip` and the cached comparator JAR without `--download` for an
+offline rerun.
+Exit codes are 0 for no applicable matches, 1 for affected versions and 2 for
+an incomplete audit. JSON evidence stays in `build/reports/security/`.
+Matching uses the union of OSV enumerated versions and ranges with Apache Maven
+version semantics; unsupported range types/events fail explicitly. Native sources,
+JDK/SDK binaries and unreported vulnerabilities require separate review.
 
 ```sh
 ./gradlew testDebugUnitTest lintDebug assembleDebug assembleRelease
