@@ -329,11 +329,16 @@ class DeviceTest {
                     focused
                 }
                 onMain { field.requestFocus() }
-                awaitCondition("Synthetic ${if (field === screen.editor) "text" else "password"} field did not acquire its input connection") {
+                awaitCondition("Synthetic editor did not acquire its input connection") {
                     onMain { manager.isActive(field) }
                 }
                 onMain { manager.showSoftInput(field, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT) }
-                awaitCondition("Typing keyboard did not appear") { findKey("a") != null }
+                // InputConnection readiness can precede the keyboard's field-specific rebuild.
+                // A letter key alone may still be from the previous field's keyboard.
+                val toolbarKey = if (field === screen.password) "Switch keyboard" else "Editing tools"
+                awaitCondition("Typing keyboard did not show the expected $toolbarKey control") {
+                    findKey(toolbarKey)?.isEnabled == true && findKey("a")?.isEnabled == true
+                }
             }
             fun assertSensitiveSurface() {
                 awaitCondition("Minimal password keyboard did not appear") {
